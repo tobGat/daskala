@@ -1,0 +1,260 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  body {
+    @apply bg-zinc-50 text-zinc-900 font-sans;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  .dark body {
+    @apply bg-zinc-950 text-zinc-100;
+  }
+}
+
+@layer components {
+  /* ─── Tabelle ─────────────────────────────────────────────── */
+  .noten-tabelle-container {
+    @apply overflow-auto flex-1;
+    scroll-behavior: auto;
+  }
+
+  .noten-tabelle {
+    border-collapse: collapse;
+    white-space: nowrap;
+  }
+
+  .noten-tabelle th {
+    @apply bg-white text-zinc-400 font-medium text-xs tracking-wide uppercase;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .dark .noten-tabelle th {
+    @apply bg-zinc-950 text-zinc-500;
+  }
+
+  .noten-tabelle th.name-header {
+    z-index: 15;
+  }
+
+  /* Sticky Namenspalte */
+  .noten-tabelle th:first-child,
+  .noten-tabelle td:first-child {
+    @apply sticky left-0 z-10 bg-white;
+    min-width: 160px;
+    max-width: 180px;
+  }
+
+  .dark .noten-tabelle th:first-child,
+  .dark .noten-tabelle td:first-child {
+    @apply bg-zinc-950;
+  }
+
+  /* Row hover */
+  .noten-tabelle tr:hover td {
+    background: rgba(99, 102, 241, 0.04);
+  }
+
+  .dark .noten-tabelle tr:hover td {
+    background: rgba(99, 102, 241, 0.06);
+  }
+
+  /* ─── Zellen ──────────────────────────────────────────────── */
+  .zelle {
+    @apply w-9 h-9 flex items-center justify-center text-sm font-medium cursor-pointer select-none;
+    @apply border-b border-zinc-100 transition-colors duration-75;
+    min-width: 36px;
+  }
+
+  .zelle:hover {
+    @apply bg-indigo-50;
+  }
+
+  .dark .zelle {
+    @apply border-zinc-800/60;
+  }
+
+  .dark .zelle:hover {
+    @apply bg-indigo-950/60;
+  }
+
+  /* ZN-Zelle */
+  .zn-zelle {
+    @apply w-10 h-9 flex items-center justify-center text-sm font-bold cursor-pointer;
+    @apply border-l border-zinc-100;
+  }
+
+  .dark .zn-zelle {
+    @apply border-zinc-800/60;
+  }
+
+  /* ─── MA / HÜ Farben ──────────────────────────────────────── */
+  .zelle-plus { @apply text-emerald-600 bg-emerald-50; }
+  .zelle-minus { @apply text-red-500 bg-red-50; }
+  .dark .zelle-plus { @apply text-emerald-400 bg-emerald-950/60; }
+  .dark .zelle-minus { @apply text-red-400 bg-red-950/60; }
+
+  .zelle-haken { @apply text-emerald-600; }
+  .zelle-kreuz { @apply text-red-500; }
+  .zelle-strich { @apply text-zinc-300 dark:text-zinc-600; }
+
+  /* ─── Note-Farben ─────────────────────────────────────────── */
+  .note-1 { @apply text-emerald-600 font-bold; }
+  .note-2 { @apply text-emerald-500; }
+  .note-3 { @apply text-amber-500; }
+  .note-4 { @apply text-orange-500; }
+  .note-5 { @apply text-red-500 font-bold; }
+
+  /* Manuell überschriebene ZN */
+  .zn-manuell { @apply bg-amber-50; }
+  .dark .zn-manuell { @apply bg-amber-950/40; }
+
+  /* Eingeklappte Spalte */
+  .spalte-eingeklappt {
+    @apply w-5;
+    writing-mode: vertical-lr;
+  }
+
+  /* ─── Scrollbar ───────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-zinc-200 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-zinc-300; }
+  .dark ::-webkit-scrollbar-thumb { @apply bg-zinc-700; }
+
+  /* ─── Context Menu ────────────────────────────────────────── */
+  .context-menu {
+    @apply absolute z-50 bg-white border border-zinc-100 rounded-xl shadow-2xl py-1.5 min-w-52;
+    @apply text-sm text-zinc-700;
+    box-shadow: 0 10px 40px -5px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+  }
+
+  .dark .context-menu {
+    @apply bg-zinc-900 border-zinc-800 text-zinc-200;
+    box-shadow: 0 10px 40px -5px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+  }
+
+  .context-menu-item {
+    @apply px-3 py-1.5 cursor-pointer transition-colors flex items-center gap-2 mx-1 rounded-lg;
+  }
+
+  .context-menu-item:hover {
+    @apply bg-zinc-50;
+  }
+
+  .dark .context-menu-item:hover {
+    @apply bg-zinc-800;
+  }
+
+  .context-menu-separator {
+    @apply border-t border-zinc-100 my-1;
+  }
+
+  .dark .context-menu-separator {
+    @apply border-zinc-800;
+  }
+
+  /* ─── Modal ───────────────────────────────────────────────── */
+  .modal-overlay {
+    @apply fixed inset-0 flex items-center justify-center z-50;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .modal-box {
+    @apply bg-white rounded-2xl w-full max-w-md p-6;
+    @apply border border-zinc-100;
+    box-shadow: 0 24px 64px -12px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.03);
+  }
+
+  .dark .modal-box {
+    @apply bg-zinc-900 border-zinc-800;
+    box-shadow: 0 24px 64px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+  }
+
+  /* ─── Slide-Over ──────────────────────────────────────────── */
+  .slide-over {
+    @apply fixed top-0 right-0 h-full bg-white z-40;
+    width: 360px;
+    box-shadow: -16px 0 48px -8px rgba(0,0,0,0.08), -1px 0 0 rgba(0,0,0,0.04);
+    @apply transform transition-transform;
+  }
+
+  .dark .slide-over {
+    @apply bg-zinc-900;
+    box-shadow: -16px 0 48px -8px rgba(0,0,0,0.4), -1px 0 0 rgba(255,255,255,0.04);
+  }
+
+  /* ─── Buttons ─────────────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm;
+    @apply hover:bg-indigo-700 active:bg-indigo-800 transition-colors;
+    @apply disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-4 py-2 text-zinc-600 rounded-lg font-medium text-sm;
+    @apply border border-zinc-200 bg-white;
+    @apply hover:bg-zinc-50 active:bg-zinc-100 transition-colors;
+    @apply disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .dark .btn-secondary {
+    @apply text-zinc-300 border-zinc-700 bg-transparent hover:bg-zinc-800;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center px-4 py-2 bg-red-500 text-white rounded-lg font-medium text-sm;
+    @apply hover:bg-red-600 active:bg-red-700 transition-colors;
+  }
+
+  /* ─── Input ───────────────────────────────────────────────── */
+  .input {
+    @apply w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm bg-white;
+    @apply focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400;
+    @apply transition-colors placeholder:text-zinc-400;
+  }
+
+  .dark .input {
+    @apply bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500;
+    @apply focus:border-indigo-500;
+  }
+
+  /* ─── Stundenplan ─────────────────────────────────────────── */
+  .stundenplan-slot {
+    @apply h-16 border border-zinc-100 cursor-pointer transition-all duration-100;
+    @apply hover:bg-indigo-50/50 hover:border-indigo-100;
+  }
+
+  .dark .stundenplan-slot {
+    @apply border-zinc-800 hover:bg-indigo-950/30 hover:border-indigo-900;
+  }
+
+  .stundenplan-slot.belegt {
+    @apply rounded-lg px-1.5 py-1 text-xs font-medium border-0;
+  }
+}
+
+/* Animations */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}

@@ -1,0 +1,5 @@
+console.log('process.type:', process.type)
+console.log('process.versions.electron:', process.versions.electron)
+const electronModule = require('electron')
+console.log('type:', typeof electronModule)
+console.log('is app available:', !!(electronModule && electronModule.app))
