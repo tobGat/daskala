@@ -201,6 +201,28 @@ function initDB() {
   `)
   try { db.prepare('ALTER TABLE todos ADD COLUMN faelligkeit TEXT').run() } catch {}
 
+  // Sitzplan-Tabellen
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sitzplan_tische (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      klasse_id INTEGER NOT NULL,
+      typ TEXT NOT NULL DEFAULT 'einzel',
+      x REAL NOT NULL DEFAULT 100,
+      y REAL NOT NULL DEFAULT 100,
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS sitzplan_sitzplaetze (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tisch_id INTEGER NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      schueler_id INTEGER,
+      UNIQUE(tisch_id, position),
+      FOREIGN KEY (tisch_id) REFERENCES sitzplan_tische(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE SET NULL
+    );
+  `)
+
   // Standard-Gewichtungen
   const insertGewichtung = db.prepare(
     'INSERT OR IGNORE INTO gewichtung_global (kategorie, gewichtung) VALUES (?, ?)'
@@ -1274,6 +1296,62 @@ function registerIPC() {
     const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>${css}</style></head><body>${bodyHtml}</body></html>`
     const buf = await htmlZuPdf(html)
     fs.writeFileSync(savePath.filePath, buf)
+    return true
+  })
+
+  // ─── Sitzplan ───────────────────────────────────────────────────────────────
+  ipcMain.handle('sitzplan:getTische', (_, klasseId) => {
+    const rows = db.prepare(`
+      SELECT t.id as tisch_id, t.typ, t.x, t.y,
+             s.id as sitz_id, s.position, s.schueler_id,
+             sch.vorname, sch.nachname
+      FROM sitzplan_tische t
+      LEFT JOIN sitzplan_sitzplaetze s ON s.tisch_id = t.id
+      LEFT JOIN schueler sch ON sch.id = s.schueler_id
+      WHERE t.klasse_id = ?
+      ORDER BY t.id, s.position
+    `).all(klasseId)
+    // Gruppiere Rows zu Tisch-Objekten
+    const map = {}
+    for (const row of rows) {
+      if (!map[row.tisch_id]) {
+        map[row.tisch_id] = { id: row.tisch_id, typ: row.typ, x: row.x, y: row.y, sitze: [] }
+      }
+      if (row.sitz_id != null) {
+        map[row.tisch_id].sitze.push({
+          id: row.sitz_id, position: row.position,
+          schueler_id: row.schueler_id, vorname: row.vorname, nachname: row.nachname,
+        })
+      }
+    }
+    return Object.values(map)
+  })
+
+  ipcMain.handle('sitzplan:createTisch', (_, klasseId, typ, x, y) => {
+    const tisch = db.prepare(
+      'INSERT INTO sitzplan_tische (klasse_id, typ, x, y) VALUES (?, ?, ?, ?)'
+    ).run(klasseId, typ, x, y)
+    const tischId = tisch.lastInsertRowid
+    db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position) VALUES (?, 0)').run(tischId)
+    if (typ === 'doppel') {
+      db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position) VALUES (?, 1)').run(tischId)
+    }
+    return tischId
+  })
+
+  ipcMain.handle('sitzplan:deleteTisch', (_, tischId) => {
+    db.prepare('DELETE FROM sitzplan_tische WHERE id = ?').run(tischId)
+    return true
+  })
+
+  ipcMain.handle('sitzplan:moveTisch', (_, tischId, x, y) => {
+    db.prepare('UPDATE sitzplan_tische SET x = ?, y = ? WHERE id = ?').run(x, y, tischId)
+    return true
+  })
+
+  ipcMain.handle('sitzplan:assignSchueler', (_, sitzplatzId, schuelerId) => {
+    db.prepare('UPDATE sitzplan_sitzplaetze SET schueler_id = ? WHERE id = ?')
+      .run(schuelerId ?? null, sitzplatzId)
     return true
   })
 }

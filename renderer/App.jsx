@@ -10,6 +10,7 @@ import Stundenplan from './components/Stundenplan'
 import TodoBoard from './components/TodoBoard'
 import SpalteHinzufuegen from './components/SpalteHinzufuegen'
 import Einstellungen from './components/Einstellungen'
+import SitzplanView from './components/SitzplanView'
 import {
   KlasseHinzufuegenModal,
   FachHinzufuegenModal,
@@ -51,13 +52,14 @@ export default function App() {
 
       {/* Immer sichtbare Navigation */}
       <KlassenTabs />
-      {currentView === 'notentabelle' && <FachTabs />}
+      {(currentView === 'notentabelle' || currentView === 'sitzplan') && <FachTabs />}
 
       {/* Haupt-Inhalt */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {currentView === 'stundenplan' && <Stundenplan />}
         {currentView === 'notentabelle' && <NotenTabelle />}
         {currentView === 'todos' && <TodoBoard />}
+        {currentView === 'sitzplan' && <SitzplanView />}
       </div>
 
       {/* Schüler:innen Slide-over */}

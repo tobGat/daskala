@@ -83,6 +83,16 @@ export default function KlassenTabs() {
         >
           ToDos
         </button>
+        <button
+          className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all whitespace-nowrap
+            ${currentView === 'sitzplan'
+              ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}
+          onClick={() => setCurrentView('sitzplan')}
+          title="Sitzplan"
+        >
+          Sitzplan
+        </button>
       </div>
 
       {/* Trennlinie */}
