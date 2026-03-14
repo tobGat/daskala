@@ -141,4 +141,11 @@ contextBridge.exposeInMainWorld('api', {
     moveTisch: (tischId, x, y) => invoke('sitzplan:moveTisch', tischId, x, y),
     assignSchueler: (sitzplatzId, schuelerId) => invoke('sitzplan:assignSchueler', sitzplatzId, schuelerId),
   },
+
+  jahresplanung: {
+    getAll:  (fachId) => invoke('jahresplanung:getAll', fachId),
+    create:  (data)   => invoke('jahresplanung:create', data),
+    update:  (id, d)  => invoke('jahresplanung:update', id, d),
+    delete:  (id)     => invoke('jahresplanung:delete', id),
+  },
 })

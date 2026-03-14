@@ -201,6 +201,20 @@ function initDB() {
   `)
   try { db.prepare('ALTER TABLE todos ADD COLUMN faelligkeit TEXT').run() } catch {}
 
+  // Jahresplanung
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS jahresplanung_abschnitte (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fach_id INTEGER NOT NULL,
+      titel TEXT NOT NULL DEFAULT '',
+      inhalt TEXT DEFAULT '',
+      datum_von TEXT NOT NULL,
+      datum_bis TEXT NOT NULL,
+      farbe TEXT,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
+    );
+  `)
+
   // Sitzplan-Tabellen
   db.exec(`
     CREATE TABLE IF NOT EXISTS sitzplan_tische (
@@ -1352,6 +1366,22 @@ function registerIPC() {
   ipcMain.handle('sitzplan:assignSchueler', (_, sitzplatzId, schuelerId) => {
     db.prepare('UPDATE sitzplan_sitzplaetze SET schueler_id = ? WHERE id = ?')
       .run(schuelerId ?? null, sitzplatzId)
+    return true
+  })
+
+  // ─── Jahresplanung ────────────────────────────────────────────────────────────
+  ipcMain.handle('jahresplanung:getAll', (_, fachId) =>
+    db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY datum_von').all(fachId)
+  )
+  ipcMain.handle('jahresplanung:create', (_, d) =>
+    Number(db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe) VALUES (?,?,?,?,?,?)').run(d.fachId, d.titel, d.inhalt, d.datumVon, d.datumBis, d.farbe ?? null).lastInsertRowid)
+  )
+  ipcMain.handle('jahresplanung:update', (_, id, d) => {
+    db.prepare('UPDATE jahresplanung_abschnitte SET titel=?, inhalt=?, datum_von=?, datum_bis=?, farbe=? WHERE id=?').run(d.titel, d.inhalt, d.datumVon, d.datumBis, d.farbe ?? null, id)
+    return true
+  })
+  ipcMain.handle('jahresplanung:delete', (_, id) => {
+    db.prepare('DELETE FROM jahresplanung_abschnitte WHERE id=?').run(id)
     return true
   })
 }

@@ -11,7 +11,7 @@ const SITZ_W = 75
 function tischBreite(typ) { return typ === 'doppel' ? DOPPEL_W : EINZEL_W }
 
 export default function SitzplanView() {
-  const { aktiveKlasse, schueler, aktivesFach, spalten, eintraege, setEintrag, aktiveSemester } = useStore()
+  const { aktiveKlasse, schueler, aktivesFach, spalten, eintraege, aktiveSemester } = useStore()
 
   const [tische, setTische] = useState([])
   const [bearbeitungsModus, setBearbeitungsModus] = useState(false)
@@ -117,24 +117,35 @@ export default function SitzplanView() {
 
   // ─── Heutige Spalten ───────────────────────────────────────────────────────
   const heute = new Date().toISOString().split('T')[0]
-  const heutigeSpalten = aktivesFach
-    ? spalten.filter(s => s.datum === heute && s.semester === aktiveSemester && ['MA', 'HÜ'].includes(s.kategorie))
-    : []
 
-  const getEintragWert = (spalteId, schuelerId) => {
-    return eintraege[`${spalteId}_${schuelerId}`] ?? ''
+  const handleSitzEintrag = async (kategorie, wert) => {
+    // Frische Werte direkt aus dem Store holen (nicht aus der Closure)
+    const { aktivesFach: fach, spalten: freshSpalten, aktiveSemester: sem, ladeFachDaten } = useStore.getState()
+    if (!fach) return
+
+    const schuelerId = eintragMenu.schueler_id
+
+    // Bestehende Spalte für heute suchen oder neue anlegen
+    const existing = freshSpalten.find(s =>
+      s.datum === heute && s.semester === sem && s.kategorie === kategorie
+    )
+    const spalteId = existing
+      ? existing.id
+      : await window.api.spalten.create({
+          fachId: fach.id,
+          semester: sem,
+          kategorie,
+          kuerzel: kategorie,
+          datum: heute,
+        })
+
+    await window.api.eintraege.set(spalteId, schuelerId, wert)
+    await ladeFachDaten(fach.id)
   }
 
-  const handleEintragToggle = async (spalteId, schuelerId, kat) => {
-    const aktuell = getEintragWert(spalteId, schuelerId)
-    let neu
-    if (kat === 'MA') {
-      neu = aktuell === '+' ? '-' : aktuell === '-' ? '' : '+'
-    } else {
-      // HÜ
-      neu = aktuell === '✓' ? '✗' : aktuell === '✗' ? '—' : aktuell === '—' ? '' : '✓'
-    }
-    await setEintrag(spalteId, schuelerId, neu)
+  const getHeutigerWert = (kategorie, schuelerId) => {
+    const s = spalten.find(sp => sp.datum === heute && sp.semester === aktiveSemester && sp.kategorie === kategorie)
+    return s ? (eintraege[`${s.id}_${schuelerId}`] ?? '') : ''
   }
 
   // ─── Rendering ─────────────────────────────────────────────────────────────
@@ -151,19 +162,6 @@ export default function SitzplanView() {
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800">
         <button
-          className="btn-secondary text-xs"
-          onClick={() => handleAddTisch('einzel')}
-        >
-          + Einzeltisch
-        </button>
-        <button
-          className="btn-secondary text-xs"
-          onClick={() => handleAddTisch('doppel')}
-        >
-          + Doppeltisch
-        </button>
-        <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700 mx-1" />
-        <button
           className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
             bearbeitungsModus
               ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
@@ -171,13 +169,22 @@ export default function SitzplanView() {
           }`}
           onClick={() => setBearbeitungsModus(v => !v)}
         >
-          {bearbeitungsModus ? '✓ Bearbeiten aktiv' : 'Bearbeiten'}
+          {bearbeitungsModus ? '✓ Bearbeiten' : 'Bearbeiten'}
         </button>
         {bearbeitungsModus && (
-          <span className="text-xs text-zinc-400">Tische verschieben und löschen</span>
+          <>
+            <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700" />
+            <button className="btn-secondary text-xs" onClick={() => handleAddTisch('einzel')}>
+              + Einzeltisch
+            </button>
+            <button className="btn-secondary text-xs" onClick={() => handleAddTisch('doppel')}>
+              + Doppeltisch
+            </button>
+            <span className="text-xs text-zinc-400">Tische verschieben und löschen</span>
+          </>
         )}
         {!bearbeitungsModus && tische.length > 0 && (
-          <span className="text-xs text-zinc-400 ml-2">
+          <span className="text-xs text-zinc-400">
             Rechtsklick auf Sitzplatz → Schüler:in zuweisen · Klick auf belegten Sitz → Eintrag
           </span>
         )}
@@ -251,27 +258,48 @@ export default function SitzplanView() {
             {!aktivesFach && (
               <p className="text-xs text-zinc-400">Kein Fach ausgewählt.</p>
             )}
-            {aktivesFach && heutigeSpalten.length === 0 && (
-              <p className="text-xs text-zinc-400">Keine MA/HÜ-Spalten für heute in {aktivesFach.name}.</p>
-            )}
-            {heutigeSpalten.map(spalte => {
-              const wert = getEintragWert(spalte.id, eintragMenu.schueler_id)
-              return (
-                <div key={spalte.id} className="flex items-center justify-between gap-3 mb-1">
-                  <span className="text-xs text-zinc-600 dark:text-zinc-400">{spalte.kuerzel} ({spalte.kategorie})</span>
-                  <button
-                    className={`w-8 h-8 rounded font-bold text-sm transition-colors
-                      ${wert === '+' || wert === '✓' ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' :
-                        wert === '-' || wert === '✗' ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' :
-                        wert === '—' ? 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500' :
-                        'bg-zinc-100 dark:bg-zinc-700 text-zinc-400 hover:bg-zinc-200'}`}
-                    onClick={() => handleEintragToggle(spalte.id, eintragMenu.schueler_id, spalte.kategorie)}
-                  >
-                    {wert || '–'}
-                  </button>
+            {aktivesFach && (
+              <div className="space-y-2">
+                {/* MA */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400 w-6">MA</span>
+                  {['+', '-'].map(wert => {
+                    const aktiv = getHeutigerWert('MA', eintragMenu.schueler_id) === wert
+                    return (
+                      <button
+                        key={wert}
+                        className={`w-8 h-8 rounded font-bold text-sm transition-colors
+                          ${aktiv
+                            ? wert === '+' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                            : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-600'}`}
+                        onClick={() => handleSitzEintrag('MA', wert)}
+                      >
+                        {wert}
+                      </button>
+                    )
+                  })}
                 </div>
-              )
-            })}
+                {/* HÜ */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400 w-6">HÜ</span>
+                  {[['✓', 'green'], ['✗', 'red']].map(([wert, farbe]) => {
+                    const aktiv = getHeutigerWert('HÜ', eintragMenu.schueler_id) === wert
+                    return (
+                      <button
+                        key={wert}
+                        className={`w-8 h-8 rounded font-bold text-sm transition-colors
+                          ${aktiv
+                            ? farbe === 'green' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                            : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-600'}`}
+                        onClick={() => handleSitzEintrag('HÜ', wert)}
+                      >
+                        {wert}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

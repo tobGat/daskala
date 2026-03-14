@@ -49,15 +49,15 @@ export default function KlassenTabs() {
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-950 border-b border-zinc-100 dark:border-zinc-800/60">
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-950 border-b border-zinc-800 dark:border-zinc-800/60">
 
-      {/* View-Toggle: Stundenplan / Notentabelle */}
-      <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 flex-shrink-0">
+      {/* View-Toggle: Stundenplan / ToDos */}
+      <div className="flex items-center gap-0.5 bg-zinc-800 dark:bg-zinc-800 rounded-lg p-0.5 flex-shrink-0">
         <button
           className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all whitespace-nowrap
             ${currentView === 'stundenplan'
-              ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}
+              ? 'bg-zinc-600 dark:bg-zinc-700 text-white dark:text-zinc-100 shadow-sm'
+              : 'text-zinc-400 dark:text-zinc-400 hover:text-zinc-200 dark:hover:text-zinc-200'}`}
           onClick={() => setCurrentView('stundenplan')}
           title="Stundenplan"
         >
@@ -65,38 +65,18 @@ export default function KlassenTabs() {
         </button>
         <button
           className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all whitespace-nowrap
-            ${currentView === 'notentabelle'
-              ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}
-          onClick={() => setCurrentView('notentabelle')}
-          title="Notentabelle"
-        >
-          Noten
-        </button>
-        <button
-          className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all whitespace-nowrap
             ${currentView === 'todos'
-              ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}
+              ? 'bg-zinc-600 dark:bg-zinc-700 text-white dark:text-zinc-100 shadow-sm'
+              : 'text-zinc-400 dark:text-zinc-400 hover:text-zinc-200 dark:hover:text-zinc-200'}`}
           onClick={() => setCurrentView('todos')}
           title="ToDo-Board"
         >
           ToDos
         </button>
-        <button
-          className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all whitespace-nowrap
-            ${currentView === 'sitzplan'
-              ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}
-          onClick={() => setCurrentView('sitzplan')}
-          title="Sitzplan"
-        >
-          Sitzplan
-        </button>
       </div>
 
       {/* Trennlinie */}
-      <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700 flex-shrink-0" />
+      <div className="w-px h-5 bg-zinc-700 dark:bg-zinc-700 flex-shrink-0" />
 
       {/* Klassen-Tabs */}
       <div className="flex items-center gap-0.5 flex-1 overflow-x-auto">
@@ -105,7 +85,7 @@ export default function KlassenTabs() {
             {renameId === k.id ? (
               <input
                 ref={renameInputRef}
-                className="px-3 py-1 text-sm border border-indigo-300 rounded-full outline-none bg-white dark:bg-zinc-800 dark:text-white w-24 focus:ring-2 focus:ring-indigo-500/20"
+                className="px-3 py-1 text-sm border border-indigo-400 rounded-full outline-none bg-zinc-800 text-white w-24 focus:ring-2 focus:ring-indigo-500/30"
                 value={renameWert}
                 onChange={e => setRenameWert(e.target.value)}
                 onBlur={renameSpeichern}
@@ -118,8 +98,8 @@ export default function KlassenTabs() {
               <button
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full transition-all whitespace-nowrap
                   ${aktiveKlasse?.id === k.id
-                    ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                    ? 'bg-white dark:bg-white text-zinc-900 dark:text-zinc-900'
+                    : 'text-zinc-400 dark:text-zinc-400 hover:text-zinc-100 dark:hover:text-zinc-200 hover:bg-zinc-800 dark:hover:bg-zinc-800'}`}
                 onClick={() => setAktiveKlasse(k)}
                 onDoubleClick={e => renameStarten(k, e)}
                 onContextMenu={e => { e.preventDefault(); setFarbMenuKlasse(k) }}
@@ -135,7 +115,7 @@ export default function KlassenTabs() {
         ))}
 
         <button
-          className="flex-shrink-0 px-3 py-1.5 text-sm text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+          className="flex-shrink-0 px-3 py-1.5 text-sm text-zinc-600 dark:text-zinc-500 hover:text-zinc-300 dark:hover:text-zinc-300 hover:bg-zinc-800 dark:hover:bg-zinc-800 rounded-full transition-colors"
           onClick={() => openModal('klasseHinzufuegen')}
           title="Neue Klasse"
         >
@@ -146,8 +126,8 @@ export default function KlassenTabs() {
       {/* Schuljahr + Aktionen rechts */}
       <div className="flex items-center gap-1 flex-shrink-0">
         <select
-          className="text-xs bg-transparent border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 cursor-pointer
-            text-zinc-600 dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
+          className="text-xs bg-zinc-800 dark:bg-transparent border border-zinc-700 dark:border-zinc-700 rounded-lg px-2 py-1 cursor-pointer
+            text-zinc-300 dark:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/40 transition-colors"
           value={aktuellesSchuljahr?.id ?? ''}
           onChange={schuljahrWechseln}
         >
@@ -157,7 +137,7 @@ export default function KlassenTabs() {
         </select>
 
         <button
-          className="text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 px-2.5 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          className="text-xs text-zinc-500 hover:text-zinc-200 dark:hover:text-zinc-200 px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-800 transition-colors"
           onClick={() => openModal('archiv')}
           title="Archiv"
         >
@@ -165,7 +145,7 @@ export default function KlassenTabs() {
         </button>
 
         <button
-          className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-base"
+          className="text-zinc-500 hover:text-zinc-200 dark:hover:text-zinc-200 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-800 transition-colors text-base"
           onClick={() => openModal('einstellungen')}
           title="Einstellungen"
         >
@@ -173,7 +153,7 @@ export default function KlassenTabs() {
         </button>
 
         <button
-          className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-sm"
+          className="text-zinc-500 hover:text-zinc-200 dark:hover:text-zinc-200 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-800 transition-colors text-sm"
           onClick={() => openModal('exportieren')}
           title="Exportieren"
         >

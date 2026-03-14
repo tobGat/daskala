@@ -443,13 +443,21 @@ function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
   const [titel, setTitel] = useState('')
   const [inhalt, setInhalt] = useState('')
   const [laden, setLaden] = useState(true)
+  const [jahresAbschnitte, setJahresAbschnitte] = useState([])
 
   useEffect(() => {
-    window.api.stundenPlanung.get(eintrag.id, wocheDatum)
-      .then(plan => {
-        if (plan) { setTitel(plan.titel); setInhalt(plan.inhalt) }
-      })
-      .catch(e => console.error('PlanungModal laden:', e))
+    const [datum] = wocheDatum.split('T')
+    const freitag = new Date(datum)
+    freitag.setDate(freitag.getDate() + 4)
+    const freitagStr = freitag.toISOString().split('T')[0]
+
+    Promise.all([
+      window.api.stundenPlanung.get(eintrag.id, wocheDatum),
+      window.api.jahresplanung.getAll(eintrag.fach_id),
+    ]).then(([plan, abschnitte]) => {
+      if (plan) { setTitel(plan.titel); setInhalt(plan.inhalt) }
+      setJahresAbschnitte(abschnitte.filter(a => a.datum_bis >= datum && a.datum_von <= freitagStr))
+    }).catch(e => console.error('PlanungModal laden:', e))
       .finally(() => setLaden(false))
   }, [])
 
@@ -525,6 +533,27 @@ function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
             autoFocus
           />
         </div>
+
+        {/* Jahresplanung-Referenz */}
+        {jahresAbschnitte.length > 0 && (
+          <div className="mb-3 rounded-lg border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/60 dark:bg-indigo-950/30 px-3 py-2 flex flex-col gap-1.5">
+            <span className="text-[10px] font-semibold text-indigo-400 dark:text-indigo-500 uppercase tracking-wide">Jahresplanung</span>
+            {jahresAbschnitte.map(a => (
+              <div key={a.id}>
+                <div className="flex items-center gap-2">
+                  {a.farbe && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: a.farbe }} />}
+                  <span className="text-xs font-medium text-indigo-800 dark:text-indigo-200">{a.titel}</span>
+                  <span className="text-[10px] text-indigo-400 dark:text-indigo-500 ml-auto whitespace-nowrap">
+                    {a.datum_von.split('-').reverse().slice(0,2).join('.')}. – {a.datum_bis.split('-').reverse().slice(0,2).join('.')}.
+                  </span>
+                </div>
+                {a.inhalt && (
+                  <p className="text-[11px] text-indigo-600 dark:text-indigo-400 mt-0.5 ml-4 whitespace-pre-wrap line-clamp-3">{a.inhalt}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Formatierungs-Toolbar */}
         <div className="flex items-center gap-1 mb-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">

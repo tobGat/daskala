@@ -13,7 +13,7 @@
   }
 
   body {
-    @apply bg-zinc-50 text-zinc-900 font-sans;
+    @apply bg-slate-100 text-zinc-900 font-sans;
     -webkit-font-smoothing: antialiased;
     user-select: none;
   }
@@ -36,7 +36,7 @@
   }
 
   .noten-tabelle th {
-    @apply bg-white text-zinc-400 font-medium text-xs tracking-wide uppercase;
+    @apply bg-slate-50 text-zinc-500 font-semibold text-xs tracking-wide uppercase;
     position: sticky;
     top: 0;
     z-index: 5;
@@ -53,7 +53,7 @@
   /* Sticky Namenspalte */
   .noten-tabelle th:first-child,
   .noten-tabelle td:first-child {
-    @apply sticky left-0 z-10 bg-white;
+    @apply sticky left-0 z-10 bg-white border-r border-zinc-100;
     min-width: 160px;
     max-width: 180px;
   }
@@ -75,7 +75,7 @@
   /* ─── Zellen ──────────────────────────────────────────────── */
   .zelle {
     @apply w-9 h-9 flex items-center justify-center text-sm font-medium cursor-pointer select-none;
-    @apply border-b border-zinc-100 transition-colors duration-75;
+    @apply border-b border-zinc-200 transition-colors duration-75;
     min-width: 36px;
   }
 
@@ -94,7 +94,7 @@
   /* ZN-Zelle */
   .zn-zelle {
     @apply w-10 h-9 flex items-center justify-center text-sm font-bold cursor-pointer;
-    @apply border-l border-zinc-100;
+    @apply border-l border-zinc-200;
   }
 
   .dark .zn-zelle {
@@ -177,8 +177,8 @@
 
   .modal-box {
     @apply bg-white rounded-2xl w-full max-w-md p-6;
-    @apply border border-zinc-100;
-    box-shadow: 0 24px 64px -12px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.03);
+    @apply border border-zinc-200;
+    box-shadow: 0 24px 64px -12px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.06);
   }
 
   .dark .modal-box {
@@ -207,9 +207,9 @@
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center px-4 py-2 text-zinc-600 rounded-lg font-medium text-sm;
-    @apply border border-zinc-200 bg-white;
-    @apply hover:bg-zinc-50 active:bg-zinc-100 transition-colors;
+    @apply inline-flex items-center justify-center px-4 py-2 text-zinc-700 rounded-lg font-medium text-sm;
+    @apply border border-zinc-300 bg-white;
+    @apply hover:bg-zinc-50 hover:border-zinc-400 active:bg-zinc-100 transition-colors;
     @apply disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
@@ -224,8 +224,8 @@
 
   /* ─── Input ───────────────────────────────────────────────── */
   .input {
-    @apply w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm bg-white;
-    @apply focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400;
+    @apply w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm bg-white;
+    @apply focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
     @apply transition-colors placeholder:text-zinc-400;
   }
 
@@ -236,8 +236,8 @@
 
   /* ─── Stundenplan ─────────────────────────────────────────── */
   .stundenplan-slot {
-    @apply h-16 border border-zinc-100 cursor-pointer transition-all duration-100;
-    @apply hover:bg-indigo-50/50 hover:border-indigo-100;
+    @apply h-16 border border-zinc-200 cursor-pointer transition-all duration-100;
+    @apply hover:bg-indigo-50/60 hover:border-indigo-200;
   }
 
   .dark .stundenplan-slot {

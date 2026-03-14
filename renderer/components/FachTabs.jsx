@@ -16,10 +16,17 @@ const FARB_PALETTE = [
   '#cbd5e1', '#64748b', '#334155',
 ]
 
+const KLASSEN_VIEWS = [
+  { id: 'notentabelle',  label: 'Noten' },
+  { id: 'sitzplan',      label: 'Sitzplan' },
+  { id: 'jahresplanung', label: 'Jahresplan' },
+]
+
 export default function FachTabs() {
   const {
     faecher, aktivesFach, setAktivesFach,
     aktiveKlasse, openModal, ladeKlassen, aktuellesSchuljahr,
+    currentView, setCurrentView,
   } = useStore()
 
   const [renameId, setRenameId] = useState(null)
@@ -55,10 +62,28 @@ export default function FachTabs() {
     await window.api.export.toExcel(aktivesFach.id)
   }
 
+  const istKlassenView = KLASSEN_VIEWS.some(v => v.id === currentView)
+
   return (
-    <div className="flex items-center px-3 bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-700/80">
-      {/* Fach-Tabs (Connected-Tab-Stil) */}
-      <div className="flex items-center flex-1 overflow-x-auto gap-0.5 pt-1.5">
+    <div className="flex items-center px-3 bg-white dark:bg-zinc-900 border-b border-zinc-300 dark:border-zinc-700/80">
+      {/* View-Selector: klassenspezifische Ansichten */}
+      <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 flex-shrink-0 mr-3">
+        {KLASSEN_VIEWS.map(v => (
+          <button
+            key={v.id}
+            className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all whitespace-nowrap
+              ${currentView === v.id
+                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}
+            onClick={() => setCurrentView(v.id)}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Fach-Tabs (Connected-Tab-Stil) – nur in klassenspezifischen Views */}
+      {istKlassenView && <div className="flex items-center flex-1 overflow-x-auto gap-0.5 pt-1.5">
         {faecher.map(f => {
           const aktiv = aktivesFach?.id === f.id
           const akzentFarbe = f.farbe ?? '#6366f1'
@@ -80,8 +105,8 @@ export default function FachTabs() {
               <button
                 className={`relative flex items-center gap-1.5 px-4 py-2 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors
                   ${aktiv
-                    ? 'bg-white dark:bg-zinc-950 border border-b-0 border-zinc-200 dark:border-zinc-700/80 -mb-px text-zinc-900 dark:text-zinc-100 shadow-sm'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60'}`}
+                    ? 'bg-white dark:bg-zinc-950 border border-b-0 border-zinc-300 dark:border-zinc-700/80 -mb-px text-zinc-900 dark:text-zinc-100 shadow-sm'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'}`}
                 onClick={() => setAktivesFach(f)}
                 onDoubleClick={() => renameStarten(f)}
                 onContextMenu={e => handleContextMenu(e, f)}
@@ -115,10 +140,10 @@ export default function FachTabs() {
             + Fach
           </button>
         )}
-      </div>
+      </div>}
 
       {/* Aktionen rechts – visuell getrennt vom Tab-Bereich */}
-      {(aktiveKlasse || aktivesFach) && (
+      {istKlassenView && (aktiveKlasse || aktivesFach) && (
         <div className="flex items-center gap-1 ml-2 pl-3 py-1 flex-shrink-0 border-l border-zinc-300 dark:border-zinc-700">
           {aktiveKlasse && (
             <button
