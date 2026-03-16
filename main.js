@@ -1,7 +1,8 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
+
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -52,6 +53,126 @@ try {
 }
 
 let db
+
+// ─── Undo/Redo ────────────────────────────────────────────────────────────────
+const undoStack = []
+const redoStack = []
+
+function pushUndo(action) {
+  undoStack.push(action)
+  if (undoStack.length > 50) undoStack.shift()
+  redoStack.length = 0
+}
+
+function executeUndo() {
+  if (undoStack.length === 0) return
+  const action = undoStack.pop()
+  try { action.undo(); redoStack.push(action) } catch (e) { console.error('Undo fehlgeschlagen:', e) }
+  BrowserWindow.getAllWindows()[0]?.webContents.send('undo:applied')
+}
+
+function executeRedo() {
+  if (redoStack.length === 0) return
+  const action = redoStack.pop()
+  try { action.redo(); undoStack.push(action) } catch (e) { console.error('Redo fehlgeschlagen:', e) }
+  BrowserWindow.getAllWindows()[0]?.webContents.send('undo:applied')
+}
+
+function doBackupCreate() {
+  const now = new Date()
+  const ts = now.toISOString().replace(/:/g, '-').slice(0, 19)
+  const backupPath = path.join(backupDir, `db_${ts}.sqlite`)
+  try {
+    fs.copyFileSync(dbPath, backupPath)
+    return backupPath
+  } catch (e) {
+    return null
+  }
+}
+
+async function doSaveAs(win) {
+  const result = await dialog.showSaveDialog(win, {
+    defaultPath: 'daskala.sqlite',
+    filters: [{ name: 'Daskala Datenbank', extensions: ['sqlite'] }],
+  })
+  if (result.canceled) return false
+  try {
+    fs.copyFileSync(dbPath, result.filePath)
+    return result.filePath
+  } catch (e) {
+    return null
+  }
+}
+
+async function doOpen(win) {
+  const result = await dialog.showOpenDialog(win, {
+    properties: ['openFile'],
+    filters: [{ name: 'Daskala Datenbank', extensions: ['sqlite'] }],
+  })
+  if (result.canceled) return false
+  try {
+    db.close()
+    fs.copyFileSync(result.filePaths[0], dbPath)
+    app.relaunch()
+    app.exit(0)
+    return true
+  } catch (e) {
+    db = new Database(dbPath)
+    db.pragma('journal_mode = WAL')
+    db.pragma('foreign_keys = ON')
+    return null
+  }
+}
+
+function setupMenu() {
+  const template = [
+    {
+      label: 'Datei',
+      submenu: [
+        {
+          label: 'Öffnen…',
+          accelerator: 'CmdOrCtrl+O',
+          click: async (_, win) => {
+            const ok = await doOpen(win ?? BrowserWindow.getAllWindows()[0])
+            if (ok === null) dialog.showMessageBox(win ?? BrowserWindow.getAllWindows()[0], { type: 'error', message: 'Öffnen fehlgeschlagen.' })
+          },
+        },
+        {
+          label: 'Speichern unter…',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: async (_, win) => {
+            const pfad = await doSaveAs(win ?? BrowserWindow.getAllWindows()[0])
+            if (pfad === null) dialog.showMessageBox(win ?? BrowserWindow.getAllWindows()[0], { type: 'error', message: 'Speichern fehlgeschlagen.' })
+            else if (pfad) dialog.showMessageBox(win ?? BrowserWindow.getAllWindows()[0], { type: 'info', message: `Gespeichert unter:\n${pfad}` })
+          },
+        },
+        { type: 'separator' },
+        {
+          label: 'Backup erstellen',
+          click: async (_, win) => {
+            const pfad = doBackupCreate()
+            const w = win ?? BrowserWindow.getAllWindows()[0]
+            if (pfad) dialog.showMessageBox(w, { type: 'info', message: `Backup erstellt:\n${pfad}` })
+            else dialog.showMessageBox(w, { type: 'error', message: 'Backup fehlgeschlagen.' })
+          },
+        },
+      ],
+    },
+    {
+      label: 'Bearbeiten',
+      submenu: [
+        { label: 'Rückgängig', accelerator: 'CmdOrCtrl+Z', click: executeUndo },
+        { label: 'Wiederholen', accelerator: 'CmdOrCtrl+Y', click: executeRedo },
+        { type: 'separator' },
+        { role: 'cut', label: 'Ausschneiden' },
+        { role: 'copy', label: 'Kopieren' },
+        { role: 'paste', label: 'Einfügen' },
+        { role: 'selectAll', label: 'Alles auswählen' },
+      ],
+    },
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
 
 function initDB() {
   db = new Database(dbPath)
@@ -172,6 +293,7 @@ function initDB() {
       woche_datum TEXT NOT NULL,
       titel TEXT NOT NULL DEFAULT '',
       inhalt TEXT NOT NULL DEFAULT '',
+      musizieren INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (stundenplan_id) REFERENCES stundenplan(id) ON DELETE CASCADE,
       UNIQUE(stundenplan_id, woche_datum)
     );
@@ -183,6 +305,7 @@ function initDB() {
   try { db.prepare('ALTER TABLE schueler ADD COLUMN spf INTEGER DEFAULT 0').run() } catch {}
   try { db.prepare('ALTER TABLE klassen ADD COLUMN farbe TEXT').run() } catch {}
   try { db.prepare('ALTER TABLE faecher ADD COLUMN farbe TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN musizieren INTEGER DEFAULT 0').run() } catch {}
   try { db.prepare('ALTER TABLE zeugnisnoten ADD COLUMN s1_eingerechnet INTEGER DEFAULT 0').run() } catch {}
 
   // Todos-Tabelle
@@ -194,12 +317,29 @@ function initDB() {
       klasse_id INTEGER,
       fach_id INTEGER,
       faelligkeit TEXT,
+      erinnerung TEXT,
       reihenfolge INTEGER DEFAULT 0,
       FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE CASCADE,
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE SET NULL
     )
   `)
   try { db.prepare('ALTER TABLE todos ADD COLUMN faelligkeit TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE todos ADD COLUMN erinnerung TEXT').run() } catch {}
+
+  // Termine
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS termine (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      titel TEXT NOT NULL,
+      datum TEXT NOT NULL,
+      uhrzeit TEXT,
+      notiz TEXT,
+      klasse_id INTEGER,
+      schuljahr_id INTEGER NOT NULL,
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE SET NULL,
+      FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
+    )
+  `)
 
   // Jahresplanung
   db.exec(`
@@ -216,6 +356,19 @@ function initDB() {
   `)
 
   // Sitzplan-Tabellen
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sitzplan_fach_zuweisungen (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sitzplatz_id INTEGER NOT NULL,
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER,
+      UNIQUE(sitzplatz_id, fach_id),
+      FOREIGN KEY (sitzplatz_id) REFERENCES sitzplan_sitzplaetze(id) ON DELETE CASCADE,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE SET NULL
+    );
+  `)
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS sitzplan_tische (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -236,6 +389,7 @@ function initDB() {
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE SET NULL
     );
   `)
+  try { db.prepare('ALTER TABLE sitzplan_tische ADD COLUMN fach_id INTEGER').run() } catch {}
 
   // Standard-Gewichtungen
   const insertGewichtung = db.prepare(
@@ -663,7 +817,13 @@ function registerIPC() {
   })
 
   ipcMain.handle('spalten:update', (_, id, data) => {
+    const old = db.prepare('SELECT kuerzel, datum FROM spalten WHERE id = ?').get(id)
     db.prepare('UPDATE spalten SET kuerzel = ?, datum = ? WHERE id = ?').run(data.kuerzel, data.datum, id)
+    if (old) pushUndo({
+      description: 'Spalte umbenennen',
+      undo: () => db.prepare('UPDATE spalten SET kuerzel = ?, datum = ? WHERE id = ?').run(old.kuerzel, old.datum, id),
+      redo: () => db.prepare('UPDATE spalten SET kuerzel = ?, datum = ? WHERE id = ?').run(data.kuerzel, data.datum, id),
+    })
     return true
   })
 
@@ -701,11 +861,17 @@ function registerIPC() {
   })
 
   ipcMain.handle('eintraege:set', (_, spalteId, schuelerId, wert) => {
-    if (wert === '' || wert === null) {
-      db.prepare('DELETE FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').run(spalteId, schuelerId)
-    } else {
-      db.prepare('INSERT OR REPLACE INTO eintraege (spalte_id, schueler_id, wert) VALUES (?, ?, ?)').run(spalteId, schuelerId, wert)
+    const existing = db.prepare('SELECT wert FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').get(spalteId, schuelerId)
+    const oldWert = existing ? existing.wert : null
+    const apply = (w) => {
+      if (w === '' || w === null) {
+        db.prepare('DELETE FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').run(spalteId, schuelerId)
+      } else {
+        db.prepare('INSERT OR REPLACE INTO eintraege (spalte_id, schueler_id, wert) VALUES (?, ?, ?)').run(spalteId, schuelerId, w)
+      }
     }
+    apply(wert)
+    pushUndo({ description: 'Eintrag', undo: () => apply(oldWert), redo: () => apply(wert) })
     return true
   })
 
@@ -728,18 +894,40 @@ function registerIPC() {
   })
 
   ipcMain.handle('zeugnisnoten:setManuell', (_, fachId, schuelerId, semester, note) => {
+    const existing = db.prepare('SELECT note_manuell FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = ?').get(fachId, schuelerId, semester)
+    const rowExisted = !!existing
+    const oldManuell = existing ? existing.note_manuell : undefined
     const { note: berechnet, s1Eingerechnet } = berechneZeugnisnote(fachId, schuelerId, semester)
-    db.prepare(`
+    const upsert = (n) => db.prepare(`
       INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, note_manuell, s1_eingerechnet)
       VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(fach_id, schueler_id, semester)
       DO UPDATE SET note_berechnet = excluded.note_berechnet, note_manuell = excluded.note_manuell, s1_eingerechnet = excluded.s1_eingerechnet
-    `).run(fachId, schuelerId, semester, berechnet, note, s1Eingerechnet ? 1 : 0)
+    `).run(fachId, schuelerId, semester, berechnet, n, s1Eingerechnet ? 1 : 0)
+    upsert(note)
+    pushUndo({
+      description: 'Zeugnisnote',
+      undo: () => {
+        if (!rowExisted) {
+          db.prepare('DELETE FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(fachId, schuelerId, semester)
+        } else {
+          db.prepare('UPDATE zeugnisnoten SET note_manuell = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(oldManuell ?? null, fachId, schuelerId, semester)
+        }
+      },
+      redo: () => upsert(note),
+    })
     return true
   })
 
   ipcMain.handle('zeugnisnoten:clearManuell', (_, fachId, schuelerId, semester) => {
+    const existing = db.prepare('SELECT note_manuell FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = ?').get(fachId, schuelerId, semester)
+    const oldManuell = existing?.note_manuell ?? null
     db.prepare('UPDATE zeugnisnoten SET note_manuell = NULL WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(fachId, schuelerId, semester)
+    pushUndo({
+      description: 'Zeugnisnote zurücksetzen',
+      undo: () => db.prepare('UPDATE zeugnisnoten SET note_manuell = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(oldManuell, fachId, schuelerId, semester),
+      redo: () => db.prepare('UPDATE zeugnisnoten SET note_manuell = NULL WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(fachId, schuelerId, semester),
+    })
     return true
   })
 
@@ -773,7 +961,17 @@ function registerIPC() {
   })
 
   ipcMain.handle('notizen:set', (_, schuelerId, fachId, text) => {
-    db.prepare('INSERT OR REPLACE INTO notizen (schueler_id, fach_id, text) VALUES (?, ?, ?)').run(schuelerId, fachId, text)
+    const existing = db.prepare('SELECT text FROM notizen WHERE schueler_id = ? AND fach_id = ?').get(schuelerId, fachId)
+    const oldText = existing ? existing.text : null
+    const apply = (t) => {
+      if (t === null) {
+        db.prepare('DELETE FROM notizen WHERE schueler_id = ? AND fach_id = ?').run(schuelerId, fachId)
+      } else {
+        db.prepare('INSERT OR REPLACE INTO notizen (schueler_id, fach_id, text) VALUES (?, ?, ?)').run(schuelerId, fachId, t)
+      }
+    }
+    apply(text)
+    pushUndo({ description: 'Notiz', undo: () => apply(oldText), redo: () => apply(text) })
     return true
   })
 
@@ -851,13 +1049,27 @@ function registerIPC() {
     ).all(wocheDatum)
   })
 
-  ipcMain.handle('stundenPlanung:save', (_, stundenplanId, wocheDatum, titel, inhalt) => {
+  ipcMain.handle('stundenPlanung:save', (_, stundenplanId, wocheDatum, titel, inhalt, musizieren) => {
     db.prepare(`
-      INSERT INTO stunden_planung (stundenplan_id, woche_datum, titel, inhalt)
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT(stundenplan_id, woche_datum) DO UPDATE SET titel = excluded.titel, inhalt = excluded.inhalt
-    `).run(stundenplanId, wocheDatum, titel, inhalt)
+      INSERT INTO stunden_planung (stundenplan_id, woche_datum, titel, inhalt, musizieren)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(stundenplan_id, woche_datum) DO UPDATE SET titel = excluded.titel, inhalt = excluded.inhalt, musizieren = excluded.musizieren
+    `).run(stundenplanId, wocheDatum, titel, inhalt, musizieren ? 1 : 0)
     return true
+  })
+
+  ipcMain.handle('stundenPlanung:checkMusizieren', (_, wocheDatum, klasseId, excludeStundenplanId) => {
+    const row = db.prepare(`
+      SELECT spl.id FROM stunden_planung spl
+      JOIN stundenplan sp ON spl.stundenplan_id = sp.id
+      JOIN faecher f ON sp.fach_id = f.id
+      WHERE spl.woche_datum = ?
+        AND f.klasse_id = ?
+        AND spl.musizieren = 1
+        AND spl.stundenplan_id != ?
+        AND LOWER(f.name) LIKE '%musik%'
+    `).get(wocheDatum, klasseId, excludeStundenplanId)
+    return !!row
   })
 
   ipcMain.handle('stundenPlanung:delete', (_, stundenplanId, wocheDatum) => {
@@ -879,19 +1091,20 @@ function registerIPC() {
     `).all(schuljahrId)
   })
 
-  ipcMain.handle('todos:create', (_, { titel, klasseId, fachId, faelligkeit }) => {
+  ipcMain.handle('todos:create', (_, { titel, klasseId, fachId, faelligkeit, erinnerung }) => {
+    console.log('[main] todos:create:', { titel, faelligkeit, erinnerung })
     const maxReihenfolge = klasseId
       ? db.prepare('SELECT MAX(reihenfolge) as m FROM todos WHERE klasse_id = ?').get(klasseId)?.m ?? 0
       : db.prepare('SELECT MAX(reihenfolge) as m FROM todos WHERE klasse_id IS NULL').get()?.m ?? 0
     const info = db.prepare(
-      'INSERT INTO todos (titel, klasse_id, fach_id, faelligkeit, reihenfolge) VALUES (?, ?, ?, ?, ?)'
-    ).run(titel, klasseId ?? null, fachId ?? null, faelligkeit ?? null, maxReihenfolge + 1)
+      'INSERT INTO todos (titel, klasse_id, fach_id, faelligkeit, erinnerung, reihenfolge) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(titel, klasseId ?? null, fachId ?? null, faelligkeit ?? null, erinnerung ?? null, maxReihenfolge + 1)
     return info.lastInsertRowid
   })
 
-  ipcMain.handle('todos:update', (_, id, { titel, fachId, faelligkeit }) => {
-    db.prepare('UPDATE todos SET titel = ?, fach_id = ?, faelligkeit = ? WHERE id = ?')
-      .run(titel, fachId ?? null, faelligkeit ?? null, id)
+  ipcMain.handle('todos:update', (_, id, { titel, fachId, faelligkeit, erinnerung }) => {
+    db.prepare('UPDATE todos SET titel = ?, fach_id = ?, faelligkeit = ?, erinnerung = ? WHERE id = ?')
+      .run(titel, fachId ?? null, faelligkeit ?? null, erinnerung ?? null, id)
     return true
   })
 
@@ -912,17 +1125,7 @@ function registerIPC() {
   })
 
   // Backup
-  ipcMain.handle('backup:create', () => {
-    const now = new Date()
-    const ts = now.toISOString().replace(/:/g, '-').slice(0, 19)
-    const backupPath = path.join(backupDir, `db_${ts}.sqlite`)
-    try {
-      fs.copyFileSync(dbPath, backupPath)
-      return backupPath
-    } catch (e) {
-      return null
-    }
-  })
+  ipcMain.handle('backup:create', () => doBackupCreate())
 
   ipcMain.handle('backup:getList', () => {
     try {
@@ -934,6 +1137,37 @@ function registerIPC() {
       return []
     }
   })
+
+  ipcMain.handle('db:saveAs', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return doSaveAs(win)
+  })
+
+  ipcMain.handle('db:open', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return doOpen(win)
+  })
+
+  // ─── Undo/Redo ─────────────────────────────────────────────────────────────
+  ipcMain.handle('undo:execute', () => {
+    if (undoStack.length === 0) return { ok: false }
+    executeUndo()
+    return { ok: true }
+  })
+
+  ipcMain.handle('undo:redo', () => {
+    if (redoStack.length === 0) return { ok: false }
+    executeRedo()
+    return { ok: true }
+  })
+
+  ipcMain.handle('undo:state', () => ({
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
+    undoDescription: undoStack[undoStack.length - 1]?.description,
+    redoDescription: redoStack[redoStack.length - 1]?.description,
+  }))
+
 
   // Dialog
   ipcMain.handle('dialog:openFile', async (_, filters) => {
@@ -1314,17 +1548,18 @@ function registerIPC() {
   })
 
   // ─── Sitzplan ───────────────────────────────────────────────────────────────
-  ipcMain.handle('sitzplan:getTische', (_, klasseId) => {
+  ipcMain.handle('sitzplan:getTische', (_, fachId) => {
     const rows = db.prepare(`
       SELECT t.id as tisch_id, t.typ, t.x, t.y,
-             s.id as sitz_id, s.position, s.schueler_id,
+             s.id as sitz_id, s.position,
+             s.schueler_id,
              sch.vorname, sch.nachname
       FROM sitzplan_tische t
       LEFT JOIN sitzplan_sitzplaetze s ON s.tisch_id = t.id
       LEFT JOIN schueler sch ON sch.id = s.schueler_id
-      WHERE t.klasse_id = ?
+      WHERE t.fach_id = ?
       ORDER BY t.id, s.position
-    `).all(klasseId)
+    `).all(fachId)
     // Gruppiere Rows zu Tisch-Objekten
     const map = {}
     for (const row of rows) {
@@ -1341,10 +1576,11 @@ function registerIPC() {
     return Object.values(map)
   })
 
-  ipcMain.handle('sitzplan:createTisch', (_, klasseId, typ, x, y) => {
+  ipcMain.handle('sitzplan:createTisch', (_, fachId, typ, x, y) => {
+    const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(fachId)
     const tisch = db.prepare(
-      'INSERT INTO sitzplan_tische (klasse_id, typ, x, y) VALUES (?, ?, ?, ?)'
-    ).run(klasseId, typ, x, y)
+      'INSERT INTO sitzplan_tische (klasse_id, fach_id, typ, x, y) VALUES (?, ?, ?, ?, ?)'
+    ).run(fach.klasse_id, fachId, typ, x, y)
     const tischId = tisch.lastInsertRowid
     db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position) VALUES (?, 0)').run(tischId)
     if (typ === 'doppel') {
@@ -1369,6 +1605,37 @@ function registerIPC() {
     return true
   })
 
+  // ─── Termine ─────────────────────────────────────────────────────────────────
+  ipcMain.handle('termine:getAll', (_, schuljahrId) =>
+    db.prepare(`
+      SELECT t.*, k.name as klasse_name
+      FROM termine t
+      LEFT JOIN klassen k ON k.id = t.klasse_id
+      WHERE t.schuljahr_id = ?
+      ORDER BY t.datum, t.uhrzeit
+    `).all(schuljahrId)
+  )
+
+  ipcMain.handle('termine:create', (_, { titel, datum, uhrzeit, notiz, klasseId, schuljahrId }) => {
+    console.log('[main] termine:create', { titel, datum, uhrzeit, notiz, klasseId, schuljahrId })
+    const info = db.prepare(
+      'INSERT INTO termine (titel, datum, uhrzeit, notiz, klasse_id, schuljahr_id) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(titel, datum, uhrzeit ?? null, notiz ?? null, klasseId ?? null, schuljahrId)
+    console.log('[main] termine:create → id', info.lastInsertRowid)
+    return info.lastInsertRowid
+  })
+
+  ipcMain.handle('termine:update', (_, id, { titel, datum, uhrzeit, notiz, klasseId }) => {
+    db.prepare('UPDATE termine SET titel = ?, datum = ?, uhrzeit = ?, notiz = ?, klasse_id = ? WHERE id = ?')
+      .run(titel, datum, uhrzeit ?? null, notiz ?? null, klasseId ?? null, id)
+    return true
+  })
+
+  ipcMain.handle('termine:delete', (_, id) => {
+    db.prepare('DELETE FROM termine WHERE id = ?').run(id)
+    return true
+  })
+
   // ─── Jahresplanung ────────────────────────────────────────────────────────────
   ipcMain.handle('jahresplanung:getAll', (_, fachId) =>
     db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY datum_von').all(fachId)
@@ -1382,6 +1649,25 @@ function registerIPC() {
   })
   ipcMain.handle('jahresplanung:delete', (_, id) => {
     db.prepare('DELETE FROM jahresplanung_abschnitte WHERE id=?').run(id)
+    return true
+  })
+  ipcMain.handle('jahresplanung:getFaecherMitPlan', () =>
+    db.prepare(`
+      SELECT f.id, f.name, f.farbe, k.name as klasse_name, k.id as klasse_id,
+             COUNT(a.id) as abschnitt_anzahl
+      FROM jahresplanung_abschnitte a
+      JOIN faecher f ON a.fach_id = f.id
+      JOIN klassen k ON f.klasse_id = k.id
+      GROUP BY f.id
+      ORDER BY k.name, f.name
+    `).all()
+  )
+  ipcMain.handle('jahresplanung:importVonFach', (_, quellFachId, zielFachId) => {
+    const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ?').all(quellFachId)
+    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe) VALUES (?,?,?,?,?,?)')
+    db.transaction(() => {
+      for (const a of abschnitte) insert.run(zielFachId, a.titel, a.inhalt, a.datum_von, a.datum_bis, a.farbe)
+    })()
     return true
   })
 }
@@ -1420,6 +1706,7 @@ app.whenReady().then(() => {
   initDB()
   createBackup()
   registerIPC()
+  setupMenu()
   createWindow()
 
   app.on('activate', () => {

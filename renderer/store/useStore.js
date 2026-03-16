@@ -28,6 +28,8 @@ const useStore = create((set, get) => ({
   spalten: [],
   eintraege: {},  // { spalte_id_schueler_id: wert }
   zeugnisnoten: {}, // { schueler_id_semester: { note_berechnet, note_manuell } }
+  todos: [],
+  termine: [],
 
   // ─── UI-Zustand ───────────────────────────────────────────────────────────
   detailSchueler: null,  // { id, vorname, nachname }
@@ -83,6 +85,8 @@ const useStore = create((set, get) => ({
 
     if (!erststart && aktuellesSchuljahr) {
       await get().ladeKlassen(aktuellesSchuljahr.id)
+      await get().ladeTodos()
+      await get().ladeTermine()
     }
   },
 
@@ -99,6 +103,26 @@ const useStore = create((set, get) => ({
   setAktuellesSchuljahr: async (schuljahr) => {
     set({ aktuellesSchuljahr: schuljahr, klassen: [], aktiveKlasse: null, faecher: [], aktivesFach: null })
     await get().ladeKlassen(schuljahr.id)
+    await get().ladeTodos()
+    await get().ladeTermine()
+  },
+
+  ladeTodos: async () => {
+    const { aktuellesSchuljahr } = get()
+    if (!aktuellesSchuljahr) return
+    const data = await window.api.todos?.getAll(aktuellesSchuljahr.id) ?? []
+    set({ todos: data })
+  },
+
+  ladeTermine: async () => {
+    const { aktuellesSchuljahr } = get()
+    if (!aktuellesSchuljahr) return
+    try {
+      const data = await window.api.termine.getAll(aktuellesSchuljahr.id)
+      set({ termine: data })
+    } catch (err) {
+      console.error('[store] ladeTermine Fehler:', err)
+    }
   },
 
   // ─── Klassen ─────────────────────────────────────────────────────────────

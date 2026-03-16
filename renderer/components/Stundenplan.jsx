@@ -1,30 +1,71 @@
 import { useState, useEffect, useCallback } from 'react'
 import useStore from '../store/useStore'
 
+function toLocalDateStr(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 function getMontag(wochenOffset) {
   const now = new Date()
   const dow = now.getDay()
   const daysToMon = dow === 0 ? -6 : 1 - dow
   const mon = new Date(now)
   mon.setDate(now.getDate() + daysToMon + wochenOffset * 7)
-  mon.setHours(0, 0, 0, 0)
-  return mon.toISOString().slice(0, 10)
+  return toLocalDateStr(mon)
 }
 
 const WOCHENTAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
 
+function faelligkeitRelativ(faelligkeit, vonDatum) {
+  if (!faelligkeit) return null
+  const diff = Math.round(
+    (new Date(faelligkeit + 'T00:00:00') - new Date(vonDatum + 'T00:00:00')) / 86400000
+  )
+  if (diff < 0)  return `${Math.abs(diff)}d überfällig`
+  if (diff === 0) return 'Heute fällig'
+  if (diff === 1) return 'Morgen fällig'
+  return `in ${diff} Tagen fällig`
+}
+
+function getKalenderwoche(datumStr) {
+  const d = new Date(datumStr + 'T00:00:00')
+  const dayNum = d.getDay() || 7
+  d.setDate(d.getDate() + 4 - dayNum)
+  const yearStart = new Date(d.getFullYear(), 0, 1)
+  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7)
+}
+
 const KLASSE_FARBEN = [
-  'bg-indigo-50 text-indigo-800 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-200 dark:border-indigo-800',
-  'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800',
-  'bg-violet-50 text-violet-800 border-violet-200 dark:bg-violet-950 dark:text-violet-200 dark:border-violet-800',
-  'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800',
-  'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-800',
-  'bg-cyan-50 text-cyan-800 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-200 dark:border-cyan-800',
-  'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950 dark:text-orange-200 dark:border-orange-800',
+  { bg: 'bg-indigo-100 dark:bg-indigo-900',   text: 'text-indigo-900 dark:text-indigo-100',   border: 'border-indigo-400 dark:border-indigo-600',   accent: 'bg-indigo-400 dark:bg-indigo-500' },
+  { bg: 'bg-emerald-100 dark:bg-emerald-900', text: 'text-emerald-900 dark:text-emerald-100', border: 'border-emerald-400 dark:border-emerald-600', accent: 'bg-emerald-400 dark:bg-emerald-500' },
+  { bg: 'bg-violet-100 dark:bg-violet-900',   text: 'text-violet-900 dark:text-violet-100',   border: 'border-violet-400 dark:border-violet-600',   accent: 'bg-violet-400 dark:bg-violet-500' },
+  { bg: 'bg-amber-100 dark:bg-amber-900',     text: 'text-amber-900 dark:text-amber-100',     border: 'border-amber-400 dark:border-amber-600',     accent: 'bg-amber-400 dark:bg-amber-500' },
+  { bg: 'bg-rose-100 dark:bg-rose-900',       text: 'text-rose-900 dark:text-rose-100',       border: 'border-rose-400 dark:border-rose-600',       accent: 'bg-rose-400 dark:bg-rose-500' },
+  { bg: 'bg-cyan-100 dark:bg-cyan-900',       text: 'text-cyan-900 dark:text-cyan-100',       border: 'border-cyan-400 dark:border-cyan-600',       accent: 'bg-cyan-400 dark:bg-cyan-500' },
+  { bg: 'bg-orange-100 dark:bg-orange-900',   text: 'text-orange-900 dark:text-orange-100',   border: 'border-orange-400 dark:border-orange-600',   accent: 'bg-orange-400 dark:bg-orange-500' },
 ]
 
 function getKlasseFarbe(klasseId) {
   return KLASSE_FARBEN[klasseId % KLASSE_FARBEN.length]
+}
+
+function SlotInhalt({ eintrag, planungTitel }) {
+  const f = getKlasseFarbe(eintrag.klasse_id)
+  return (
+    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex`}>
+      <div className={`w-1 flex-shrink-0 ${f.accent}`} />
+      <div className={`flex-1 px-1.5 py-1 min-w-0 ${f.text}`}>
+        <div className="font-semibold text-xs truncate leading-tight">{eintrag.fach_name}</div>
+        <div className="text-xs truncate leading-tight opacity-60">{eintrag.klasse_name}</div>
+        {planungTitel && (
+          <div className="text-xs truncate opacity-70 mt-0.5 italic">{planungTitel}</div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function aktuelleStunde(stundenzeiten) {
@@ -39,7 +80,7 @@ function aktuellerWochentag() {
 }
 
 export default function Stundenplan() {
-  const { klassen } = useStore()
+  const { klassen, todos, termine } = useStore()
 
   const [stundenzeiten, setStundenzeiten] = useState([])
   const [stundenplanEintraege, setStundenplanEintraege] = useState([])
@@ -53,6 +94,13 @@ export default function Stundenplan() {
   const [planungen, setPlanungen] = useState([]) // [{ stundenplan_id, titel, ... }]
 
   const wocheDatum = getMontag(aktuelleWoche)
+
+  // Daten der Woche (Mo–Fr) als lokale Datums-Strings
+  const wochenDaten = Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(wocheDatum + 'T00:00:00')
+    d.setDate(d.getDate() + i)
+    return toLocalDateStr(d)
+  })
 
   useEffect(() => {
     laden()
@@ -106,12 +154,11 @@ export default function Stundenplan() {
     stundenplanEintraege.find(e => e.wochentag === wochentag && e.stunde_id === stundeId)
 
   const handleSlotClick = (wochentag, stunde) => {
+    const eintrag = eintragFuerSlot(wochentag, stunde.id)
     if (bearbeitungsModus) {
-      const eintrag = eintragFuerSlot(wochentag, stunde.id)
       setSlotModal({ wochentag, stundeId: stunde.id, eintrag })
-    } else {
-      const eintrag = eintragFuerSlot(wochentag, stunde.id)
-      if (eintrag) navigiereZuNotentabelle(eintrag)
+    } else if (eintrag) {
+      setPlanungModal({ eintrag, wocheDatum })
     }
   }
 
@@ -214,12 +261,10 @@ export default function Stundenplan() {
           >
             ›
           </button>
-          {aktuelleWoche !== 0 && (
-            <span className="text-xs text-zinc-400 ml-1">
-              {aktuelleWoche > 0 ? `+${aktuelleWoche}` : aktuelleWoche} Wochen
-            </span>
-          )}
         </div>
+        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800">
+          KW {getKalenderwoche(wocheDatum)}
+        </span>
 
         <div className="ml-auto flex items-center gap-2">
           <button
@@ -241,37 +286,82 @@ export default function Stundenplan() {
       </div>
 
       {/* Stundenplan-Raster */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-4 bg-slate-50 dark:bg-zinc-950">
         <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: bearbeitungsModus ? 100 : 72 }} />
             {WOCHENTAGE.map((_, i) => <col key={i} />)}
           </colgroup>
           <thead>
+            {/* Zeile 1: Wochentag + Datum */}
             <tr>
               <th className="text-left px-2 py-2 text-xs font-medium text-zinc-400 dark:text-zinc-600">
                 {bearbeitungsModus && (
                   <span className="text-xs text-zinc-400 dark:text-zinc-600">Zeiten</span>
                 )}
               </th>
-              {WOCHENTAGE.map((tag, i) => (
-                <th
-                  key={i}
-                  className={`px-2 py-2 text-sm font-medium text-center
-                    ${aktuelleWoche === 0 && aktTag === i + 1
-                      ? 'text-indigo-600 dark:text-indigo-400'
-                      : 'text-zinc-600 dark:text-zinc-400'}`}
-                >
-                  {tag}
-                </th>
-              ))}
+              {WOCHENTAGE.map((tag, i) => {
+                const istHeute = aktuelleWoche === 0 && aktTag === i + 1
+                return (
+                  <th
+                    key={i}
+                    className={`px-2 py-2 text-center ${istHeute ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-400'}`}
+                  >
+                    <div className={`text-sm font-semibold ${istHeute ? 'underline underline-offset-4 decoration-indigo-400' : ''}`}>
+                      {tag}
+                    </div>
+                    <div className="text-[11px] font-normal opacity-70 mt-0.5">
+                      {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
+                    </div>
+                  </th>
+                )
+              })}
+            </tr>
+            {/* Zeile 2: Todo-Badges */}
+            <tr>
+              <td />
+              {wochenDaten.map((tagDatum, i) => {
+                const faelligHier    = todos.filter(t => !t.erledigt && t.faelligkeit === tagDatum)
+                const erinnerungHier = todos.filter(t => !t.erledigt && t.erinnerung  === tagDatum)
+                const termineHier    = termine.filter(t => t.datum === tagDatum)
+                const badges = [
+                  ...faelligHier.map(t => ({ t, typ: 'faellig' })),
+                  ...erinnerungHier.map(t => ({ t, typ: 'erinnerung' })),
+                  ...termineHier.map(t => ({ t, typ: 'termin' })),
+                ]
+                return (
+                  <td key={i} className="px-1 pb-1.5 align-top">
+                    <div className="flex flex-col gap-0.5">
+                      {badges.map(({ t, typ }) => (
+                        <div
+                          key={`${typ}-${t.id}`}
+                          className={`text-[9px] px-1.5 py-0.5 rounded font-medium truncate ${
+                            typ === 'faellig'
+                              ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                              : typ === 'erinnerung'
+                              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+                              : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                          }`}
+                          title={t.titel}
+                        >
+                          {typ === 'faellig'
+                            ? `✓ ${t.titel}`
+                            : typ === 'erinnerung'
+                            ? `🔔 ${t.titel} – ${faelligkeitRelativ(t.faelligkeit, tagDatum)}`
+                            : `◆ ${t.uhrzeit ? t.uhrzeit + ' ' : ''}${t.titel}`}
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
             {stundenzeiten.map(stunde => {
               const istAktuelleStunde = aktuelleWoche === 0 && aktStunde?.id === stunde.id
               return (
-                <tr key={stunde.id} className="border-t border-zinc-100 dark:border-zinc-800/60">
+                <tr key={stunde.id} className="border-t border-zinc-200 dark:border-zinc-800">
                   {/* Zeit-Spalte */}
                   <td className="px-2 py-1 align-top">
                     {bearbeitungsModus ? (
@@ -322,7 +412,7 @@ export default function Stundenplan() {
                     return (
                       <td
                         key={tagIdx}
-                        className={`px-1 py-1 h-14 align-top border border-zinc-100 dark:border-zinc-800/60 transition-colors
+                        className={`px-1 py-1 h-14 align-top border border-zinc-200 dark:border-zinc-800 transition-colors
                           ${istAktuell ? 'ring-2 ring-indigo-400 ring-inset' : ''}
                           ${bearbeitungsModus ? 'cursor-pointer hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30' : ''}
                           ${!bearbeitungsModus && eintrag ? 'cursor-pointer hover:opacity-80' : ''}`}
@@ -330,16 +420,7 @@ export default function Stundenplan() {
                         onContextMenu={e => handleSlotContextMenu(e, wochentag, stunde)}
                       >
                         {eintrag ? (
-                          <div className={`h-full rounded px-1.5 py-1 text-xs font-medium border ${getKlasseFarbe(eintrag.klasse_id)}`}>
-                            <div className="font-semibold truncate">{eintrag.fach_name}</div>
-                            <div className="opacity-60 text-xs truncate">{eintrag.klasse_name}</div>
-                            {(() => {
-                              const pl = planungFuerEintrag(eintrag.id)
-                              return pl?.titel
-                                ? <div className="truncate opacity-75 mt-0.5 italic">{pl.titel}</div>
-                                : null
-                            })()}
-                          </div>
+                          <SlotInhalt eintrag={eintrag} planungTitel={planungFuerEintrag(eintrag.id)?.titel} />
                         ) : (
                           bearbeitungsModus && (
                             <div className="h-full rounded border border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
@@ -354,7 +435,7 @@ export default function Stundenplan() {
               )
             })}
             {bearbeitungsModus && (
-              <tr className="border-t border-zinc-100 dark:border-zinc-800/60">
+              <tr className="border-t border-zinc-200 dark:border-zinc-800">
                 <td colSpan={6} className="px-2 py-1">
                   <button
                     className="text-xs text-zinc-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg px-3 py-1.5 transition-colors w-full text-left"
@@ -442,8 +523,11 @@ export default function Stundenplan() {
 function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
   const [titel, setTitel] = useState('')
   const [inhalt, setInhalt] = useState('')
+  const [musizieren, setMusizieren] = useState(false)
+  const [musiziertWarnung, setMusiziertWarnung] = useState(false)
   const [laden, setLaden] = useState(true)
   const [jahresAbschnitte, setJahresAbschnitte] = useState([])
+  const istMusik = eintrag.fach_name?.toLowerCase().includes('musik')
 
   useEffect(() => {
     const [datum] = wocheDatum.split('T')
@@ -455,14 +539,32 @@ function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
       window.api.stundenPlanung.get(eintrag.id, wocheDatum),
       window.api.jahresplanung.getAll(eintrag.fach_id),
     ]).then(([plan, abschnitte]) => {
-      if (plan) { setTitel(plan.titel); setInhalt(plan.inhalt) }
+      if (plan) { setTitel(plan.titel); setInhalt(plan.inhalt); setMusizieren(!!plan.musizieren) }
       setJahresAbschnitte(abschnitte.filter(a => a.datum_bis >= datum && a.datum_von <= freitagStr))
     }).catch(e => console.error('PlanungModal laden:', e))
       .finally(() => setLaden(false))
   }, [])
 
+  const handleMusiziertChange = async (checked) => {
+    if (checked) {
+      try {
+        const konflikt = await window.api.stundenPlanung.checkMusizieren?.(wocheDatum, eintrag.klasse_id, eintrag.id)
+        if (konflikt) { setMusizieren(true); setMusiziertWarnung(true); return }
+      } catch (e) {
+        console.error('checkMusizieren:', e)
+      }
+    }
+    setMusizieren(checked)
+  }
+
   const speichern = async () => {
-    await window.api.stundenPlanung.save(eintrag.id, wocheDatum, titel, inhalt)
+    try {
+      await window.api.stundenPlanung.save(eintrag.id, wocheDatum, titel, inhalt, musizieren)
+    } catch (e) {
+      console.error('stundenPlanung.save Fehler:', e)
+      alert('Fehler beim Speichern: ' + e.message)
+      return
+    }
     await onGespeichert()
     onClose()
   }
@@ -587,6 +689,19 @@ function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
           onChange={e => setInhalt(e.target.value)}
         />
 
+        {/* Musizieren-Checkbox (nur bei Musik) */}
+        {istMusik && (
+          <label className="flex items-center gap-2 mt-3 cursor-pointer select-none w-fit">
+            <input
+              type="checkbox"
+              checked={musizieren}
+              onChange={e => handleMusiziertChange(e.target.checked)}
+              className="accent-indigo-600 w-4 h-4"
+            />
+            <span className="text-sm text-zinc-700 dark:text-zinc-300">Musizieren</span>
+          </label>
+        )}
+
         {/* Aktionen */}
         <div className="flex gap-3 mt-4">
           <button className="btn-secondary flex-1" onClick={onClose}>Abbrechen</button>
@@ -594,6 +709,26 @@ function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
           <button className="btn-primary flex-1" onClick={speichern}>Speichern</button>
         </div>
       </div>
+
+      {/* Musizieren-Warnungsmodal */}
+      {musiziertWarnung && (
+        <div className="modal-overlay" onClick={e => e.stopPropagation()}>
+          <div className="modal-box max-w-sm" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-2">Bereits musiziert</h3>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-5">
+              Mit dieser Klasse wurde in dieser Woche bereits musiziert.
+            </p>
+            <div className="flex gap-3">
+              <button className="btn-secondary flex-1" onClick={() => { setMusizieren(false); setMusiziertWarnung(false) }}>
+                Haken entfernen
+              </button>
+              <button className="btn-primary flex-1" onClick={() => setMusiziertWarnung(false)}>
+                Ignorieren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

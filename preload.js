@@ -91,9 +91,10 @@ contextBridge.exposeInMainWorld('api', {
   stundenPlanung: {
     get: (stundenplanId, wocheDatum) => invoke('stundenPlanung:get', stundenplanId, wocheDatum),
     getWoche: (wocheDatum) => invoke('stundenPlanung:getWoche', wocheDatum),
-    save: (stundenplanId, wocheDatum, titel, inhalt) => invoke('stundenPlanung:save', stundenplanId, wocheDatum, titel, inhalt),
+    save: (stundenplanId, wocheDatum, titel, inhalt, musizieren) => invoke('stundenPlanung:save', stundenplanId, wocheDatum, titel, inhalt, musizieren),
     delete: (stundenplanId, wocheDatum) => invoke('stundenPlanung:delete', stundenplanId, wocheDatum),
     getVorhandeneWochen: () => invoke('planung:getVorhandeneWochen'),
+    checkMusizieren: (wocheDatum, klasseId, excludeStundenplanId) => invoke('stundenPlanung:checkMusizieren', wocheDatum, klasseId, excludeStundenplanId),
   },
 
   onedrive: {
@@ -103,6 +104,19 @@ contextBridge.exposeInMainWorld('api', {
   backup: {
     create: () => invoke('backup:create'),
     getList: () => invoke('backup:getList'),
+  },
+
+  db: {
+    saveAs: () => invoke('db:saveAs'),
+    open:   () => invoke('db:open'),
+  },
+
+  undo: {
+    execute:    () => invoke('undo:execute'),
+    redo:       () => invoke('undo:redo'),
+    state:      () => invoke('undo:state'),
+    onApplied:  (cb) => ipcRenderer.on('undo:applied', cb),
+    offApplied: (cb) => ipcRenderer.removeListener('undo:applied', cb),
   },
 
   dialog: {
@@ -135,17 +149,27 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   sitzplan: {
-    getTische: (klasseId) => invoke('sitzplan:getTische', klasseId),
-    createTisch: (klasseId, typ, x, y) => invoke('sitzplan:createTisch', klasseId, typ, x, y),
+    getTische: (fachId) => invoke('sitzplan:getTische', fachId),
+    createTisch: (fachId, typ, x, y) => invoke('sitzplan:createTisch', fachId, typ, x, y),
     deleteTisch: (tischId) => invoke('sitzplan:deleteTisch', tischId),
     moveTisch: (tischId, x, y) => invoke('sitzplan:moveTisch', tischId, x, y),
     assignSchueler: (sitzplatzId, schuelerId) => invoke('sitzplan:assignSchueler', sitzplatzId, schuelerId),
   },
 
+
+  termine: {
+    getAll:  (schuljahrId)   => invoke('termine:getAll', schuljahrId),
+    create:  (data)          => invoke('termine:create', data),
+    update:  (id, data)      => invoke('termine:update', id, data),
+    delete:  (id)            => invoke('termine:delete', id),
+  },
+
   jahresplanung: {
-    getAll:  (fachId) => invoke('jahresplanung:getAll', fachId),
-    create:  (data)   => invoke('jahresplanung:create', data),
-    update:  (id, d)  => invoke('jahresplanung:update', id, d),
-    delete:  (id)     => invoke('jahresplanung:delete', id),
+    getAll:            (fachId)                => invoke('jahresplanung:getAll', fachId),
+    create:            (data)                  => invoke('jahresplanung:create', data),
+    update:            (id, d)                 => invoke('jahresplanung:update', id, d),
+    delete:            (id)                    => invoke('jahresplanung:delete', id),
+    getFaecherMitPlan: ()                      => invoke('jahresplanung:getFaecherMitPlan'),
+    importVonFach:     (quellId, zielId)       => invoke('jahresplanung:importVonFach', quellId, zielId),
   },
 })
