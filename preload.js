@@ -54,6 +54,7 @@ contextBridge.exposeInMainWorld('api', {
   eintraege: {
     getAll: (fachId) => invoke('eintraege:getAll', fachId),
     set: (spalteId, schuelerId, wert) => invoke('eintraege:set', spalteId, schuelerId, wert),
+    setKommentar: (spalteId, schuelerId, kommentar) => invoke('eintraege:setKommentar', spalteId, schuelerId, kommentar),
   },
 
   zeugnisnoten: {
@@ -88,13 +89,25 @@ contextBridge.exposeInMainWorld('api', {
     update: (id, data) => invoke('stundenplan:update', id, data),
   },
 
+  supplierstunden: {
+    getWoche: (wocheDatum) => invoke('supplierstunden:getWoche', wocheDatum),
+    create:   (data)       => invoke('supplierstunden:create', data),
+    delete:   (id)         => invoke('supplierstunden:delete', id),
+    update:   (id, data)   => invoke('supplierstunden:update', id, data),
+  },
+
+  shell: {
+    open: (url) => invoke('shell:open', url),
+  },
+
   stundenPlanung: {
     get: (stundenplanId, wocheDatum) => invoke('stundenPlanung:get', stundenplanId, wocheDatum),
     getWoche: (wocheDatum) => invoke('stundenPlanung:getWoche', wocheDatum),
-    save: (stundenplanId, wocheDatum, titel, inhalt, musizieren) => invoke('stundenPlanung:save', stundenplanId, wocheDatum, titel, inhalt, musizieren),
+    save: (stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link) => invoke('stundenPlanung:save', stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link),
     delete: (stundenplanId, wocheDatum) => invoke('stundenPlanung:delete', stundenplanId, wocheDatum),
     getVorhandeneWochen: () => invoke('planung:getVorhandeneWochen'),
     checkMusizieren: (wocheDatum, klasseId, excludeStundenplanId) => invoke('stundenPlanung:checkMusizieren', wocheDatum, klasseId, excludeStundenplanId),
+    getHueWoche: (wocheDatum) => invoke('stundenPlanung:getHueWoche', wocheDatum),
   },
 
   onedrive: {

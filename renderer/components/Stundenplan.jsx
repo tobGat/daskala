@@ -52,6 +52,25 @@ function getKlasseFarbe(klasseId) {
   return KLASSE_FARBEN[klasseId % KLASSE_FARBEN.length]
 }
 
+function SupplierInhalt({ supplier }) {
+  return (
+    <div className="h-full rounded overflow-hidden border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 flex">
+      <div className="w-1 flex-shrink-0 bg-orange-400 dark:bg-orange-600" />
+      <div className="flex-1 px-1.5 py-1 min-w-0">
+        <div className="font-semibold text-xs truncate leading-tight text-orange-900 dark:text-orange-100">
+          {supplier.fach_text || '—'}
+        </div>
+        <div className="text-xs truncate leading-tight opacity-70 text-orange-800 dark:text-orange-200">
+          {supplier.klasse_text || ''}
+        </div>
+        <div className="text-[9px] font-bold text-orange-400 dark:text-orange-500 uppercase tracking-wide leading-tight">
+          Sup
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function SlotInhalt({ eintrag, planungTitel }) {
   const f = getKlasseFarbe(eintrag.klasse_id)
   return (
@@ -79,19 +98,22 @@ function aktuellerWochentag() {
   return d >= 1 && d <= 5 ? d : null
 }
 
-export default function Stundenplan() {
+export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const { klassen, todos, termine } = useStore()
 
   const [stundenzeiten, setStundenzeiten] = useState([])
   const [stundenplanEintraege, setStundenplanEintraege] = useState([])
   const [bearbeitungsModus, setBearbeitungsModus] = useState(false)
   const [slotModal, setSlotModal] = useState(null)
-  const [planungModal, setPlanungModal] = useState(null) // { eintrag, wocheDatum }
+  const [planungModal, setPlanungModal] = useState(null) // { eintrag, wocheDatum } or { supplier, wocheDatum, stunde }
   const [exportModal, setExportModal] = useState(false)
   const [alleFaecher, setAlleFaecher] = useState([])
   const [aktuelleWoche, setAktuelleWoche] = useState(0)
   const [kontextMenu, setKontextMenu] = useState(null)
-  const [planungen, setPlanungen] = useState([]) // [{ stundenplan_id, titel, ... }]
+  const [planungen, setPlanungen] = useState([])
+  const [supplierstunden, setSupplierstunden] = useState([])
+  const [supplierModal, setSupplierModal] = useState(null) // { wochentag, stunde, tagDatum }
+  const [hueEintraege, setHueEintraege] = useState([])
 
   const wocheDatum = getMontag(aktuelleWoche)
 
@@ -134,8 +156,14 @@ export default function Stundenplan() {
   const ladenPlanungen = async () => {
     try {
       const datum = getMontag(aktuelleWoche)
-      const pl = await window.api.stundenPlanung.getWoche(datum)
+      const [pl, sup, hue] = await Promise.all([
+        window.api.stundenPlanung.getWoche(datum),
+        window.api.supplierstunden.getWoche(datum),
+        window.api.stundenPlanung.getHueWoche(datum),
+      ])
       setPlanungen(pl)
+      setSupplierstunden(sup)
+      setHueEintraege(hue)
     } catch (e) {
       console.error('ladenPlanungen:', e)
     }
@@ -153,12 +181,18 @@ export default function Stundenplan() {
   const eintragFuerSlot = (wochentag, stundeId) =>
     stundenplanEintraege.find(e => e.wochentag === wochentag && e.stunde_id === stundeId)
 
+  const supplierFuerSlot = (wochentag, stundeId) =>
+    supplierstunden.find(s => s.wochentag === wochentag && s.stunde_id === stundeId)
+
   const handleSlotClick = (wochentag, stunde) => {
     const eintrag = eintragFuerSlot(wochentag, stunde.id)
+    const supplier = !eintrag ? supplierFuerSlot(wochentag, stunde.id) : null
     if (bearbeitungsModus) {
       setSlotModal({ wochentag, stundeId: stunde.id, eintrag })
     } else if (eintrag) {
       setPlanungModal({ eintrag, wocheDatum })
+    } else if (supplier) {
+      setPlanungModal({ supplier, wocheDatum, stunde })
     }
   }
 
@@ -166,7 +200,8 @@ export default function Stundenplan() {
     e.preventDefault()
     e.stopPropagation()
     const eintrag = eintragFuerSlot(wochentag, stunde.id)
-    setKontextMenu({ x: e.clientX, y: e.clientY, wochentag, stunde, eintrag })
+    const supplier = supplierFuerSlot(wochentag, stunde.id)
+    setKontextMenu({ x: e.clientX, y: e.clientY, wochentag, stunde, eintrag, supplier })
   }
 
   const navigiereZuNotentabelle = async (eintrag) => {
@@ -200,7 +235,7 @@ export default function Stundenplan() {
   }
 
   const handleKontextAktion = async (aktion) => {
-    const { wochentag, stunde, eintrag } = kontextMenu
+    const { wochentag, stunde, eintrag, supplier } = kontextMenu
     setKontextMenu(null)
     if (aktion === 'oeffnen' && eintrag) {
       navigiereZuNotentabelle(eintrag)
@@ -211,6 +246,11 @@ export default function Stundenplan() {
     } else if (aktion === 'entfernen' && eintrag) {
       await window.api.stundenplan.delete(eintrag.id)
       await laden()
+    } else if (aktion === 'supplier-erstellen') {
+      setSupplierModal({ wochentag, stunde, tagDatum: wochenDaten[wochentag - 1] })
+    } else if (aktion === 'supplier-loeschen' && supplier) {
+      await window.api.supplierstunden.delete(supplier.id)
+      await ladenPlanungen()
     }
   }
 
@@ -335,7 +375,7 @@ export default function Stundenplan() {
                       {badges.map(({ t, typ }) => (
                         <div
                           key={`${typ}-${t.id}`}
-                          className={`text-[9px] px-1.5 py-0.5 rounded font-medium truncate ${
+                          className={`text-[9px] px-1.5 py-0.5 rounded font-medium truncate cursor-pointer ${
                             typ === 'faellig'
                               ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                               : typ === 'erinnerung'
@@ -343,6 +383,11 @@ export default function Stundenplan() {
                               : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                           }`}
                           title={t.titel}
+                          onClick={e => {
+                            e.stopPropagation()
+                            if (typ === 'termin') onTerminBadgeClick?.(t.id)
+                            else onTodoBadgeClick?.(t.id)
+                          }}
                         >
                           {typ === 'faellig'
                             ? `✓ ${t.titel}`
@@ -407,7 +452,11 @@ export default function Stundenplan() {
                   {WOCHENTAGE.map((_, tagIdx) => {
                     const wochentag = tagIdx + 1
                     const eintrag = eintragFuerSlot(wochentag, stunde.id)
+                    const supplier = !eintrag ? supplierFuerSlot(wochentag, stunde.id) : null
                     const istAktuell = istAktuelleStunde && aktuelleWoche === 0 && aktTag === wochentag
+                    const planung = eintrag ? planungFuerEintrag(eintrag.id) : null
+                    const hueHier = hueEintraege.filter(h => h.wochentag === wochentag && h.stunde_id === stunde.id)
+                    const tooltipText = planung ? [planung.titel, planung.inhalt?.substring(0, 150)].filter(Boolean).join('\n') : ''
 
                     return (
                       <td
@@ -415,18 +464,34 @@ export default function Stundenplan() {
                         className={`px-1 py-1 h-14 align-top border border-zinc-200 dark:border-zinc-800 transition-colors
                           ${istAktuell ? 'ring-2 ring-indigo-400 ring-inset' : ''}
                           ${bearbeitungsModus ? 'cursor-pointer hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30' : ''}
-                          ${!bearbeitungsModus && eintrag ? 'cursor-pointer hover:opacity-80' : ''}`}
+                          ${!bearbeitungsModus && (eintrag || supplier) ? 'cursor-pointer hover:opacity-80' : ''}`}
                         onClick={() => handleSlotClick(wochentag, stunde)}
                         onContextMenu={e => handleSlotContextMenu(e, wochentag, stunde)}
+                        title={tooltipText}
                       >
                         {eintrag ? (
-                          <SlotInhalt eintrag={eintrag} planungTitel={planungFuerEintrag(eintrag.id)?.titel} />
+                          <SlotInhalt eintrag={eintrag} planungTitel={planung?.titel} />
+                        ) : supplier ? (
+                          <SupplierInhalt supplier={supplier} />
                         ) : (
                           bearbeitungsModus && (
                             <div className="h-full rounded border border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
                               <span className="text-zinc-300 dark:text-zinc-600 text-lg font-light">+</span>
                             </div>
                           )
+                        )}
+                        {hueHier.length > 0 && (
+                          <div className="flex gap-0.5 flex-wrap mt-0.5">
+                            {hueHier.map(h => (
+                              <span
+                                key={h.id}
+                                className="text-[8px] px-1 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 font-semibold leading-tight"
+                                title={h.hue_text}
+                              >
+                                HÜ
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </td>
                     )
@@ -483,9 +548,29 @@ export default function Stundenplan() {
                 <span>✕</span> Eintrag entfernen
               </div>
             </>
-          ) : (
+          ) : kontextMenu.supplier ? (
+            <>
+              <div className="px-3 py-1.5 mb-0.5">
+                <div className="text-xs font-semibold text-orange-700 dark:text-orange-300 truncate">
+                  {kontextMenu.supplier.fach_text || '—'}
+                </div>
+                <div className="text-xs text-zinc-400">{kontextMenu.supplier.klasse_text || 'Supplierstunde'}</div>
+              </div>
+              <div className="context-menu-separator" />
+              <div
+                className="context-menu-item text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+                onClick={() => handleKontextAktion('supplier-loeschen')}
+              >
+                <span>✕</span> Supplierstunde entfernen
+              </div>
+            </>
+          ) : bearbeitungsModus ? (
             <div className="context-menu-item" onClick={() => handleKontextAktion('bearbeiten')}>
               <span className="text-zinc-400">+</span> Stunde belegen
+            </div>
+          ) : (
+            <div className="context-menu-item" onClick={() => handleKontextAktion('supplier-erstellen')}>
+              <span className="text-orange-400">↔</span> Supplierstunde eintragen
             </div>
           )}
         </div>
@@ -503,9 +588,18 @@ export default function Stundenplan() {
       )}
 
       {/* Planungs-Modal */}
-      {planungModal && (
+      {planungModal && planungModal.eintrag && (
         <PlanungModal
           eintrag={planungModal.eintrag}
+          wocheDatum={planungModal.wocheDatum}
+          onClose={() => setPlanungModal(null)}
+          onGespeichert={ladenPlanungen}
+        />
+      )}
+      {planungModal && planungModal.supplier && (
+        <SupplierPlanungModal
+          supplier={planungModal.supplier}
+          stunde={planungModal.stunde}
           wocheDatum={planungModal.wocheDatum}
           onClose={() => setPlanungModal(null)}
           onGespeichert={ladenPlanungen}
@@ -516,8 +610,30 @@ export default function Stundenplan() {
       {exportModal && (
         <PlanungsExportModal onClose={() => setExportModal(false)} />
       )}
+
+      {/* Supplier-Modal */}
+      {supplierModal && (
+        <SupplierModal
+          wochentag={supplierModal.wochentag}
+          stunde={supplierModal.stunde}
+          tagDatum={supplierModal.tagDatum}
+          wocheDatum={wocheDatum}
+          onSpeichern={async (data) => {
+            await window.api.supplierstunden.create(data)
+            await ladenPlanungen()
+            setSupplierModal(null)
+          }}
+          onClose={() => setSupplierModal(null)}
+        />
+      )}
     </div>
   )
+}
+
+function berechneFristDatum(wocheDatum, wochentag, offsetWochen) {
+  const d = new Date(wocheDatum + 'T00:00:00')
+  d.setDate(d.getDate() + (wochentag - 1) + offsetWochen * 7)
+  return toLocalDateStr(d)
 }
 
 function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
@@ -527,6 +643,10 @@ function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
   const [musiziertWarnung, setMusiziertWarnung] = useState(false)
   const [laden, setLaden] = useState(true)
   const [jahresAbschnitte, setJahresAbschnitte] = useState([])
+  const [hueText, setHueText] = useState('')
+  const [hueFristOption, setHueFristOption] = useState('naechste')
+  const [hueFristDatum, setHueFristDatum] = useState('')
+  const [link, setLink] = useState('')
   const istMusik = eintrag.fach_name?.toLowerCase().includes('musik')
 
   useEffect(() => {
@@ -539,7 +659,20 @@ function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
       window.api.stundenPlanung.get(eintrag.id, wocheDatum),
       window.api.jahresplanung.getAll(eintrag.fach_id),
     ]).then(([plan, abschnitte]) => {
-      if (plan) { setTitel(plan.titel); setInhalt(plan.inhalt); setMusizieren(!!plan.musizieren) }
+      if (plan) {
+        setTitel(plan.titel)
+        setInhalt(plan.inhalt)
+        setMusizieren(!!plan.musizieren)
+        setHueText(plan.hue_text ?? '')
+        setLink(plan.link ?? '')
+        if (plan.hue_frist_datum) {
+          const naechste = berechneFristDatum(wocheDatum, eintrag.wochentag, 1)
+          const uebnaechste = berechneFristDatum(wocheDatum, eintrag.wochentag, 2)
+          if (plan.hue_frist_datum === naechste) setHueFristOption('naechste')
+          else if (plan.hue_frist_datum === uebnaechste) setHueFristOption('uebnaechste')
+          else { setHueFristOption('datum'); setHueFristDatum(plan.hue_frist_datum) }
+        }
+      }
       setJahresAbschnitte(abschnitte.filter(a => a.datum_bis >= datum && a.datum_von <= freitagStr))
     }).catch(e => console.error('PlanungModal laden:', e))
       .finally(() => setLaden(false))
@@ -557,9 +690,16 @@ function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
     setMusizieren(checked)
   }
 
+  const berechneHueFrist = () => {
+    if (!hueText) return null
+    if (hueFristOption === 'naechste') return berechneFristDatum(wocheDatum, eintrag.wochentag, 1)
+    if (hueFristOption === 'uebnaechste') return berechneFristDatum(wocheDatum, eintrag.wochentag, 2)
+    return hueFristDatum || null
+  }
+
   const speichern = async () => {
     try {
-      await window.api.stundenPlanung.save(eintrag.id, wocheDatum, titel, inhalt, musizieren)
+      await window.api.stundenPlanung.save(eintrag.id, wocheDatum, titel, inhalt, musizieren, hueText || null, berechneHueFrist(), link || null)
     } catch (e) {
       console.error('stundenPlanung.save Fehler:', e)
       alert('Fehler beim Speichern: ' + e.message)
@@ -689,6 +829,69 @@ function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
           onChange={e => setInhalt(e.target.value)}
         />
 
+        {/* Hausübung */}
+        <div className="mt-3 space-y-2">
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Hausübung <span className="font-normal">(optional)</span></label>
+            <textarea
+              className="input resize-none text-sm"
+              rows={2}
+              placeholder="Aufgabe…"
+              value={hueText}
+              onChange={e => setHueText(e.target.value)}
+            />
+          </div>
+          {hueText && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-zinc-500">Abgabe:</span>
+              {['naechste', 'uebnaechste', 'datum'].map(opt => (
+                <label key={opt} className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="hue-frist"
+                    value={opt}
+                    checked={hueFristOption === opt}
+                    onChange={() => setHueFristOption(opt)}
+                    className="accent-violet-600"
+                  />
+                  <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                    {opt === 'naechste' ? 'Nächste Stunde' : opt === 'uebnaechste' ? 'Übernächste' : 'Datum'}
+                  </span>
+                </label>
+              ))}
+              {hueFristOption === 'datum' && (
+                <input
+                  type="date"
+                  className="text-xs border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 bg-white dark:bg-zinc-800 dark:text-zinc-200"
+                  value={hueFristDatum}
+                  onChange={e => setHueFristDatum(e.target.value)}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Link */}
+        <div className="mt-3">
+          <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Link / Dateipfad <span className="font-normal">(optional)</span></label>
+          <div className="flex gap-2">
+            <input
+              className="input flex-1 text-sm"
+              placeholder="https://… oder C:\…"
+              value={link}
+              onChange={e => setLink(e.target.value)}
+            />
+            {link && (
+              <button
+                type="button"
+                className="btn-secondary text-xs px-2 py-1 flex-shrink-0"
+                onClick={() => window.api.shell?.open(link)}
+                title="Öffnen"
+              >↗</button>
+            )}
+          </div>
+        </div>
+
         {/* Musizieren-Checkbox (nur bei Musik) */}
         {istMusik && (
           <label className="flex items-center gap-2 mt-3 cursor-pointer select-none w-fit">
@@ -729,6 +932,129 @@ function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function SupplierPlanungModal({ supplier, stunde, wocheDatum, onClose, onGespeichert }) {
+  const [titel, setTitel] = useState(supplier.titel ?? '')
+  const [inhalt, setInhalt] = useState(supplier.inhalt ?? '')
+  const [hueText, setHueText] = useState(supplier.hue_text ?? '')
+  const [hueFristOption, setHueFristOption] = useState('naechste')
+  const [hueFristDatum, setHueFristDatum] = useState('')
+  const [link, setLink] = useState(supplier.link ?? '')
+
+  useEffect(() => {
+    if (supplier.hue_frist_datum) {
+      const naechste = berechneFristDatum(wocheDatum, supplier.wochentag, 1)
+      const uebnaechste = berechneFristDatum(wocheDatum, supplier.wochentag, 2)
+      if (supplier.hue_frist_datum === naechste) setHueFristOption('naechste')
+      else if (supplier.hue_frist_datum === uebnaechste) setHueFristOption('uebnaechste')
+      else { setHueFristOption('datum'); setHueFristDatum(supplier.hue_frist_datum) }
+    }
+  }, [])
+
+  const berechneHueFrist = () => {
+    if (!hueText) return null
+    if (hueFristOption === 'naechste') return berechneFristDatum(wocheDatum, supplier.wochentag, 1)
+    if (hueFristOption === 'uebnaechste') return berechneFristDatum(wocheDatum, supplier.wochentag, 2)
+    return hueFristDatum || null
+  }
+
+  const speichern = async () => {
+    await window.api.supplierstunden.update(supplier.id, {
+      fachText: supplier.fach_text,
+      klasseText: supplier.klasse_text,
+      notiz: supplier.notiz,
+      titel: titel || null,
+      inhalt: inhalt || null,
+      hueText: hueText || null,
+      hueFristDatum: berechneHueFrist(),
+      link: link || null,
+    })
+    await onGespeichert()
+    onClose()
+  }
+
+  const WOCHENTAG_NAME = ['', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
+  const datumStr = wocheDatum ? (() => {
+    const d = new Date(wocheDatum + 'T00:00:00')
+    d.setDate(d.getDate() + (supplier.wochentag - 1))
+    return d.toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })
+  })() : ''
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-box w-full max-w-xl"
+        style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="mb-4">
+          <span className="text-xs text-zinc-400">
+            {supplier.fach_text || '—'} · {supplier.klasse_text || 'Supplierstunde'} · {WOCHENTAG_NAME[supplier.wochentag]}, {datumStr}
+          </span>
+          <input
+            className="input text-base font-semibold mt-2"
+            placeholder="Titel der Stunde…"
+            value={titel}
+            onChange={e => setTitel(e.target.value)}
+            autoFocus
+          />
+        </div>
+
+        <textarea
+          className="input flex-1 resize-none font-mono text-sm leading-relaxed"
+          style={{ minHeight: 160 }}
+          placeholder="Unterrichtsinhalt…"
+          value={inhalt}
+          onChange={e => setInhalt(e.target.value)}
+        />
+
+        <div className="mt-3 space-y-2">
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Hausübung <span className="font-normal">(optional)</span></label>
+            <textarea
+              className="input resize-none text-sm"
+              rows={2}
+              placeholder="Aufgabe…"
+              value={hueText}
+              onChange={e => setHueText(e.target.value)}
+            />
+          </div>
+          {hueText && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-zinc-500">Abgabe:</span>
+              {['naechste', 'uebnaechste', 'datum'].map(opt => (
+                <label key={opt} className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="sup-hue-frist" value={opt} checked={hueFristOption === opt} onChange={() => setHueFristOption(opt)} className="accent-violet-600" />
+                  <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                    {opt === 'naechste' ? 'Nächste Stunde' : opt === 'uebnaechste' ? 'Übernächste' : 'Datum'}
+                  </span>
+                </label>
+              ))}
+              {hueFristOption === 'datum' && (
+                <input type="date" className="text-xs border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 bg-white dark:bg-zinc-800 dark:text-zinc-200" value={hueFristDatum} onChange={e => setHueFristDatum(e.target.value)} />
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3">
+          <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Link / Dateipfad <span className="font-normal">(optional)</span></label>
+          <div className="flex gap-2">
+            <input className="input flex-1 text-sm" placeholder="https://… oder C:\…" value={link} onChange={e => setLink(e.target.value)} />
+            {link && (
+              <button type="button" className="btn-secondary text-xs px-2 py-1 flex-shrink-0" onClick={() => window.api.shell?.open(link)} title="Öffnen">↗</button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-4">
+          <button className="btn-secondary flex-1" onClick={onClose}>Abbrechen</button>
+          <button className="btn-primary flex-1" onClick={speichern}>Speichern</button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -777,6 +1103,80 @@ function SlotModal({ slotModal, alleFaecher, klassen, onSpeichern, onClose }) {
             onClick={() => onSpeichern(gewaehltFachId ? parseInt(gewaehltFachId) : null)}
           >
             Speichern
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SupplierModal({ wochentag, stunde, tagDatum, wocheDatum, onSpeichern, onClose }) {
+  const [fachText, setFachText] = useState('')
+  const [klasseText, setKlasseText] = useState('')
+  const [notiz, setNotiz] = useState('')
+
+  const WOCHENTAG_NAME = ['', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
+  const datumAnzeige = new Date(tagDatum + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })
+
+  const speichern = async () => {
+    await onSpeichern({
+      wocheDatum,
+      wochentag,
+      stundeId: stunde.id,
+      klasseText: klasseText.trim(),
+      fachText: fachText.trim(),
+      notiz: notiz.trim() || null,
+    })
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box max-w-sm" onClick={e => e.stopPropagation()}>
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-white mb-1">Supplierstunde</h2>
+        <p className="text-xs text-zinc-400 mb-4">
+          {WOCHENTAG_NAME[wochentag]}, {datumAnzeige} · {stunde.stunde}. Stunde ({stunde.beginn})
+        </p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Fach</label>
+            <input
+              className="input"
+              value={fachText}
+              onChange={e => setFachText(e.target.value)}
+              placeholder="z.B. Mathematik"
+              autoFocus
+              onKeyDown={e => e.key === 'Enter' && speichern()}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Klasse</label>
+            <input
+              className="input"
+              value={klasseText}
+              onChange={e => setKlasseText(e.target.value)}
+              placeholder="z.B. 3A"
+              onKeyDown={e => e.key === 'Enter' && speichern()}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Notiz <span className="font-normal text-zinc-400">(optional)</span>
+            </label>
+            <input
+              className="input"
+              value={notiz}
+              onChange={e => setNotiz(e.target.value)}
+              placeholder="z.B. Vertretung für Mag. Muster"
+              onKeyDown={e => e.key === 'Enter' && speichern()}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-5">
+          <button className="btn-secondary flex-1" onClick={onClose}>Abbrechen</button>
+          <button className="btn-primary flex-1" onClick={speichern} disabled={!fachText.trim()}>
+            Eintragen
           </button>
         </div>
       </div>

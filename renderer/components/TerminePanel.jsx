@@ -95,7 +95,7 @@ function TerminForm({ initial, klassen, onSpeichern, onAbbrechen }) {
   )
 }
 
-function TerminKarte({ termin, klassen, onDelete, onEdit }) {
+function TerminKarte({ termin, klassen, onDelete, onEdit, flashRef, flashed }) {
   const [editModus, setEditModus] = useState(false)
   const heute = localDateStr(new Date())
   const vergangen = termin.datum < heute
@@ -112,7 +112,10 @@ function TerminKarte({ termin, klassen, onDelete, onEdit }) {
   }
 
   return (
-    <div className={`group flex items-start gap-2 p-2 rounded-lg bg-zinc-800 border border-zinc-700/60 ${vergangen ? 'opacity-50' : ''}`}>
+    <div
+      ref={flashRef}
+      className={`group flex items-start gap-2 p-2 rounded-lg bg-zinc-800 border transition-all ${vergangen ? 'opacity-50' : ''} ${flashed ? 'border-blue-400 ring-2 ring-blue-400/40' : 'border-zinc-700/60'}`}
+    >
       <div className="flex-shrink-0 text-center min-w-[36px]">
         <div className="text-[10px] font-semibold text-blue-400 leading-tight">
           {new Date(termin.datum + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
@@ -150,12 +153,28 @@ function TerminKarte({ termin, klassen, onDelete, onEdit }) {
   )
 }
 
-export default function TerminePanel({ hoehe = 256 }) {
+export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighlightCleared }) {
   const { termine, ladeTermine, klassen, aktuellesSchuljahr } = useStore()
   const [neueingabe, setNeueingabe] = useState(false)
   const [vergangeneOffen, setVergangeneOffen] = useState(false)
+  const [flashedId, setFlashedId] = useState(null)
+  const itemRefs = useRef({})
 
   useEffect(() => { ladeTermine() }, [])
+
+  useEffect(() => {
+    if (!highlightedTerminId) return
+    const termin = termine.find(t => t.id === highlightedTerminId)
+    if (!termin) return
+    const heute = localDateStr(new Date())
+    if (termin.datum < heute) setVergangeneOffen(true)
+    setFlashedId(highlightedTerminId)
+    setTimeout(() => {
+      itemRefs.current[highlightedTerminId]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 80)
+    const t = setTimeout(() => { setFlashedId(null); onHighlightCleared?.() }, 1800)
+    return () => clearTimeout(t)
+  }, [highlightedTerminId])
 
   const terminErstellen = async (data) => {
     if (!aktuellesSchuljahr) { console.warn('[TerminePanel] kein aktuellesSchuljahr'); return }
@@ -229,6 +248,8 @@ export default function TerminePanel({ hoehe = 256 }) {
               klassen={klassen}
               onDelete={terminLoeschen}
               onEdit={terminBearbeiten}
+              flashRef={el => { itemRefs.current[t.id] = el }}
+              flashed={flashedId === t.id}
             />
           ))}
 
@@ -250,6 +271,8 @@ export default function TerminePanel({ hoehe = 256 }) {
                       klassen={klassen}
                       onDelete={terminLoeschen}
                       onEdit={terminBearbeiten}
+                      flashRef={el => { itemRefs.current[t.id] = el }}
+                      flashed={flashedId === t.id}
                     />
                   ))}
                 </div>

@@ -56,7 +56,7 @@ function detectErinnerungOption(faelligkeit, erinnerung) {
 }
 
 
-function TodoKarte({ todo, faecher = [], onToggle, onDelete, onEditFull, kontextLabel }) {
+function TodoKarte({ todo, faecher = [], onToggle, onDelete, onEditFull, kontextLabel, flashRef, flashed }) {
   const [editModus, setEditModus] = useState(false)
   const [editTitel, setEditTitel] = useState('')
   const [editFaelligkeit, setEditFaelligkeit] = useState('')
@@ -184,7 +184,10 @@ function TodoKarte({ todo, faecher = [], onToggle, onDelete, onEditFull, kontext
   }
 
   return (
-    <div className={`group flex items-start gap-2 p-2.5 rounded-lg bg-zinc-800 border border-zinc-700/60 ${todo.erledigt ? 'opacity-40' : ''}`}>
+    <div
+      ref={flashRef}
+      className={`group flex items-start gap-2 p-2.5 rounded-lg bg-zinc-800 border transition-all ${todo.erledigt ? 'opacity-40' : ''} ${flashed ? 'border-indigo-400 ring-2 ring-indigo-400/40' : 'border-zinc-700/60'}`}
+    >
       <button
         className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
           todo.erledigt
@@ -364,7 +367,7 @@ function NeueingabeForm({ faecher, onSpeichern, onAbbrechen }) {
   )
 }
 
-function TodoListe({ todos, faecher = [], onToggle, onDelete, onEditFull }) {
+function TodoListe({ todos, faecher = [], onToggle, onDelete, onEditFull, itemRefs, flashedId }) {
   const offen = todos.filter(t => !t.erledigt)
   return (
     <>
@@ -376,20 +379,38 @@ function TodoListe({ todos, faecher = [], onToggle, onDelete, onEditFull }) {
           onToggle={onToggle}
           onDelete={onDelete}
           onEditFull={onEditFull}
+          flashRef={el => { if (itemRefs) itemRefs.current[todo.id] = el }}
+          flashed={flashedId === todo.id}
         />
       ))}
     </>
   )
 }
 
-export default function TodoBoard() {
+export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
   const { klassen, todos, ladeTodos } = useStore()
   const [klasseFaecher, setKlasseFaecher] = useState({})
   const [aufgeklappteKlasse, setAufgeklappteKlasse] = useState(null)
   const [neueingabeKolumne, setNeueingabeKolumne] = useState(null)
   const [erledigtOffen, setErledigtOffen] = useState(false)
+  const [flashedId, setFlashedId] = useState(null)
+  const itemRefs = useRef({})
 
   useEffect(() => { ladeTodos() }, [])
+
+  useEffect(() => {
+    if (!highlightedTodoId) return
+    const todo = todos.find(t => t.id === highlightedTodoId)
+    if (!todo) return
+    // Ensure the right section is open
+    if (todo.klasse_id) setAufgeklappteKlasse(todo.klasse_id)
+    setFlashedId(highlightedTodoId)
+    setTimeout(() => {
+      itemRefs.current[highlightedTodoId]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 80)
+    const t = setTimeout(() => { setFlashedId(null); onHighlightCleared?.() }, 1800)
+    return () => clearTimeout(t)
+  }, [highlightedTodoId])
 
   const ladeFaecher = async (klasseId) => {
     if (klasseFaecher[klasseId]) return
@@ -465,6 +486,8 @@ export default function TodoBoard() {
             onToggle={todoToggle}
             onDelete={todoLoeschen}
             onEditFull={todoBearbeiten}
+            itemRefs={itemRefs}
+            flashedId={flashedId}
           />
         </div>
         {neueingabeKolumne !== 'allgemein' && (
@@ -522,6 +545,8 @@ export default function TodoBoard() {
                     onToggle={todoToggle}
                     onDelete={todoLoeschen}
                     onEditFull={todoBearbeiten}
+                    itemRefs={itemRefs}
+                    flashedId={flashedId}
                   />
                   {neueingabeKolumne !== k.id && (
                     <button

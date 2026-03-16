@@ -49,6 +49,8 @@ export default function App() {
   const [termineHoehe, setTermineHoehe] = useState(() =>
     parseInt(localStorage.getItem('termine-panel-hoehe') ?? '256')
   )
+  const [highlightedTodoId, setHighlightedTodoId] = useState(null)
+  const [highlightedTerminId, setHighlightedTerminId] = useState(null)
 
   // Horizontaler Drag (Breite rechte Sidebar)
   const draggingH = useRef(false)
@@ -136,18 +138,18 @@ export default function App() {
       <div className="flex-1 overflow-hidden flex flex-col">
         {currentView === 'stundenplan' && (
           <div className="flex-1 overflow-hidden flex">
-            <div className="flex-1 overflow-hidden flex flex-col"><Stundenplan /></div>
+            <div className="flex-1 overflow-hidden flex flex-col"><Stundenplan onTodoBadgeClick={setHighlightedTodoId} onTerminBadgeClick={setHighlightedTerminId} /></div>
             <div
               className="w-1 flex-shrink-0 cursor-col-resize hover:bg-indigo-400 dark:hover:bg-indigo-600 bg-zinc-200 dark:bg-zinc-800 transition-colors"
               onMouseDown={onDragStart}
             />
             <div className="flex-shrink-0 h-full flex flex-col overflow-hidden" style={{ width: todoBreite }}>
-              <TodoBoard />
+              <TodoBoard highlightedTodoId={highlightedTodoId} onHighlightCleared={() => setHighlightedTodoId(null)} />
               <div
                 className="h-1 flex-shrink-0 cursor-row-resize hover:bg-indigo-400 dark:hover:bg-indigo-600 bg-zinc-700 transition-colors"
                 onMouseDown={onDragStartV}
               />
-              <TerminePanel hoehe={termineHoehe} />
+              <TerminePanel hoehe={termineHoehe} highlightedTerminId={highlightedTerminId} onHighlightCleared={() => setHighlightedTerminId(null)} />
             </div>
           </div>
         )}

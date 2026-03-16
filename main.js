@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
@@ -325,6 +325,16 @@ function initDB() {
   `)
   try { db.prepare('ALTER TABLE todos ADD COLUMN faelligkeit TEXT').run() } catch {}
   try { db.prepare('ALTER TABLE todos ADD COLUMN erinnerung TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE spalten ADD COLUMN notiz TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE eintraege ADD COLUMN kommentar TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN hue_text TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN hue_frist_datum TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN link TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN titel TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN inhalt TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN hue_text TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN hue_frist_datum TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN link TEXT').run() } catch {}
 
   // Termine
   db.exec(`
@@ -338,6 +348,20 @@ function initDB() {
       schuljahr_id INTEGER NOT NULL,
       FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE SET NULL,
       FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
+    )
+  `)
+
+  // Supplierstunden
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS supplierstunden (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      woche_datum TEXT NOT NULL,
+      wochentag INTEGER NOT NULL,
+      stunde_id INTEGER NOT NULL,
+      klasse_text TEXT NOT NULL DEFAULT '',
+      fach_text TEXT NOT NULL DEFAULT '',
+      notiz TEXT,
+      FOREIGN KEY (stunde_id) REFERENCES stundenzeiten(id) ON DELETE CASCADE
     )
   `)
 
@@ -804,9 +828,9 @@ function registerIPC() {
   ipcMain.handle('spalten:create', (_, data) => {
     const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM spalten WHERE fach_id = ? AND semester = ?').get(data.fachId, data.semester)?.m ?? 0
     const info = db.prepare(`
-      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1)
+      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null)
     return info.lastInsertRowid
   })
 
@@ -817,12 +841,12 @@ function registerIPC() {
   })
 
   ipcMain.handle('spalten:update', (_, id, data) => {
-    const old = db.prepare('SELECT kuerzel, datum FROM spalten WHERE id = ?').get(id)
-    db.prepare('UPDATE spalten SET kuerzel = ?, datum = ? WHERE id = ?').run(data.kuerzel, data.datum, id)
+    const old = db.prepare('SELECT kuerzel, datum, notiz FROM spalten WHERE id = ?').get(id)
+    db.prepare('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?').run(data.kuerzel, data.datum, data.notiz ?? null, id)
     if (old) pushUndo({
       description: 'Spalte umbenennen',
-      undo: () => db.prepare('UPDATE spalten SET kuerzel = ?, datum = ? WHERE id = ?').run(old.kuerzel, old.datum, id),
-      redo: () => db.prepare('UPDATE spalten SET kuerzel = ?, datum = ? WHERE id = ?').run(data.kuerzel, data.datum, id),
+      undo: () => db.prepare('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?').run(old.kuerzel, old.datum, old.notiz, id),
+      redo: () => db.prepare('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?').run(data.kuerzel, data.datum, data.notiz ?? null, id),
     })
     return true
   })
@@ -861,17 +885,33 @@ function registerIPC() {
   })
 
   ipcMain.handle('eintraege:set', (_, spalteId, schuelerId, wert) => {
-    const existing = db.prepare('SELECT wert FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').get(spalteId, schuelerId)
+    const existing = db.prepare('SELECT wert, kommentar FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').get(spalteId, schuelerId)
     const oldWert = existing ? existing.wert : null
     const apply = (w) => {
+      const hasKommentar = !!db.prepare('SELECT 1 FROM eintraege WHERE spalte_id = ? AND schueler_id = ? AND kommentar IS NOT NULL AND kommentar != ""').get(spalteId, schuelerId)
       if (w === '' || w === null) {
-        db.prepare('DELETE FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').run(spalteId, schuelerId)
+        if (hasKommentar) {
+          db.prepare('UPDATE eintraege SET wert = NULL WHERE spalte_id = ? AND schueler_id = ?').run(spalteId, schuelerId)
+        } else {
+          db.prepare('DELETE FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').run(spalteId, schuelerId)
+        }
       } else {
-        db.prepare('INSERT OR REPLACE INTO eintraege (spalte_id, schueler_id, wert) VALUES (?, ?, ?)').run(spalteId, schuelerId, w)
+        db.prepare('INSERT INTO eintraege (spalte_id, schueler_id, wert) VALUES (?, ?, ?) ON CONFLICT(spalte_id, schueler_id) DO UPDATE SET wert = excluded.wert').run(spalteId, schuelerId, w)
       }
     }
     apply(wert)
     pushUndo({ description: 'Eintrag', undo: () => apply(oldWert), redo: () => apply(wert) })
+    return true
+  })
+
+  ipcMain.handle('eintraege:setKommentar', (_, spalteId, schuelerId, kommentar) => {
+    const existing = db.prepare('SELECT wert FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').get(spalteId, schuelerId)
+    const k = kommentar?.trim() || null
+    if (existing) {
+      db.prepare('UPDATE eintraege SET kommentar = ? WHERE spalte_id = ? AND schueler_id = ?').run(k, spalteId, schuelerId)
+    } else if (k) {
+      db.prepare('INSERT INTO eintraege (spalte_id, schueler_id, wert, kommentar) VALUES (?, ?, NULL, ?)').run(spalteId, schuelerId, k)
+    }
     return true
   })
 
@@ -1043,19 +1083,66 @@ function registerIPC() {
     ).get(stundenplanId, wocheDatum) ?? null
   })
 
+  // ─── Supplierstunden ─────────────────────────────────────────────────────────
+  ipcMain.handle('supplierstunden:getWoche', (_, wocheDatum) =>
+    db.prepare('SELECT * FROM supplierstunden WHERE woche_datum = ?').all(wocheDatum)
+  )
+
+  ipcMain.handle('supplierstunden:create', (_, { wocheDatum, wochentag, stundeId, klasseText, fachText, notiz }) => {
+    const info = db.prepare(
+      'INSERT INTO supplierstunden (woche_datum, wochentag, stunde_id, klasse_text, fach_text, notiz) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(wocheDatum, wochentag, stundeId, klasseText, fachText, notiz ?? null)
+    return info.lastInsertRowid
+  })
+
+  ipcMain.handle('supplierstunden:delete', (_, id) => {
+    db.prepare('DELETE FROM supplierstunden WHERE id = ?').run(id)
+    return true
+  })
+
+  ipcMain.handle('supplierstunden:update', (_, id, { fachText, klasseText, notiz, titel, inhalt, hueText, hueFristDatum, link }) => {
+    db.prepare(`
+      UPDATE supplierstunden
+      SET fach_text = ?, klasse_text = ?, notiz = ?, titel = ?, inhalt = ?, hue_text = ?, hue_frist_datum = ?, link = ?
+      WHERE id = ?
+    `).run(fachText ?? '', klasseText ?? '', notiz ?? null, titel ?? null, inhalt ?? null, hueText ?? null, hueFristDatum ?? null, link ?? null, id)
+    return true
+  })
+
+  ipcMain.handle('shell:open', (_, url) => {
+    shell.openExternal(url)
+    return true
+  })
+
   ipcMain.handle('stundenPlanung:getWoche', (_, wocheDatum) => {
     return db.prepare(
       'SELECT * FROM stunden_planung WHERE woche_datum = ?'
     ).all(wocheDatum)
   })
 
-  ipcMain.handle('stundenPlanung:save', (_, stundenplanId, wocheDatum, titel, inhalt, musizieren) => {
+  ipcMain.handle('stundenPlanung:save', (_, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link) => {
     db.prepare(`
-      INSERT INTO stunden_planung (stundenplan_id, woche_datum, titel, inhalt, musizieren)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(stundenplan_id, woche_datum) DO UPDATE SET titel = excluded.titel, inhalt = excluded.inhalt, musizieren = excluded.musizieren
-    `).run(stundenplanId, wocheDatum, titel, inhalt, musizieren ? 1 : 0)
+      INSERT INTO stunden_planung (stundenplan_id, woche_datum, titel, inhalt, musizieren, hue_text, hue_frist_datum, link)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(stundenplan_id, woche_datum) DO UPDATE SET
+        titel = excluded.titel, inhalt = excluded.inhalt, musizieren = excluded.musizieren,
+        hue_text = excluded.hue_text, hue_frist_datum = excluded.hue_frist_datum, link = excluded.link
+    `).run(stundenplanId, wocheDatum, titel, inhalt, musizieren ? 1 : 0, hueText ?? null, hueFristDatum ?? null, link ?? null)
     return true
+  })
+
+  ipcMain.handle('stundenPlanung:getHueWoche', (_, wocheDatum) => {
+    const d = new Date(wocheDatum + 'T00:00:00')
+    const sonntag = new Date(d)
+    sonntag.setDate(d.getDate() + 6)
+    const sonntagStr = `${sonntag.getFullYear()}-${String(sonntag.getMonth()+1).padStart(2,'0')}-${String(sonntag.getDate()).padStart(2,'0')}`
+    return db.prepare(`
+      SELECT sp.*, s.wochentag, s.stunde_id
+      FROM stunden_planung sp
+      JOIN stundenplan s ON s.id = sp.stundenplan_id
+      WHERE sp.hue_frist_datum >= ? AND sp.hue_frist_datum <= ?
+        AND sp.hue_text IS NOT NULL AND sp.hue_text != ''
+    `).all(wocheDatum, sonntagStr)
   })
 
   ipcMain.handle('stundenPlanung:checkMusizieren', (_, wocheDatum, klasseId, excludeStundenplanId) => {
