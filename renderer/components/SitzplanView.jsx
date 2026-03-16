@@ -19,6 +19,7 @@ export default function SitzplanView() {
   const [eintragMenu, setEintragMenu] = useState(null)
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [selectionRect, setSelectionRect] = useState(null) // { x, y, w, h } in canvas coords
+  const [ghostTische, setGhostTische] = useState([]) // { tisch, x, y } — Vorschau beim Strg+Drag
 
   const dragRef = useRef(null)
   const canvasRef = useRef(null)
@@ -34,6 +35,7 @@ export default function SitzplanView() {
   useEffect(() => {
     setTische([])
     setSelectedIds(new Set())
+    setGhostTische([])
     ladeTische()
   }, [ladeTische])
 
@@ -69,18 +71,32 @@ export default function SitzplanView() {
       isCtrl,
       startX: e.clientX,
       startY: e.clientY,
-      tische: selected.map(t => ({ id: t.id, origX: t.x, origY: t.y })),
+      tische: selected.map(t => ({ id: t.id, origX: t.x, origY: t.y, tischObj: t })),
+    }
+
+    // Bei Strg: sofort Ghost-Kopien an Originalposition zeigen
+    if (isCtrl) {
+      setGhostTische(selected.map(t => ({ tisch: t, x: t.x, y: t.y })))
     }
 
     const onMove = (ev) => {
       if (!dragRef.current || dragRef.current.type !== 'move') return
       const dx = ev.clientX - dragRef.current.startX
       const dy = ev.clientY - dragRef.current.startY
-      setTische(prev => prev.map(t => {
-        const orig = dragRef.current.tische.find(dt => dt.id === t.id)
-        if (!orig) return t
-        return { ...t, x: Math.max(0, orig.origX + dx), y: Math.max(0, orig.origY + dy) }
-      }))
+      if (dragRef.current.isCtrl) {
+        // Originale bleiben – nur Ghosts bewegen
+        setGhostTische(dragRef.current.tische.map(orig => ({
+          tisch: orig.tischObj,
+          x: Math.max(0, orig.origX + dx),
+          y: Math.max(0, orig.origY + dy),
+        })))
+      } else {
+        setTische(prev => prev.map(t => {
+          const orig = dragRef.current.tische.find(dt => dt.id === t.id)
+          if (!orig) return t
+          return { ...t, x: Math.max(0, orig.origX + dx), y: Math.max(0, orig.origY + dy) }
+        }))
+      }
     }
 
     const onUp = async (ev) => {
@@ -93,12 +109,7 @@ export default function SitzplanView() {
       window.removeEventListener('mouseup', onUp)
 
       if (ctrl) {
-        // Originale Positionen wiederherstellen, neue Duplikate anlegen
-        setTische(prev => prev.map(t => {
-          const orig = origTische.find(dt => dt.id === t.id)
-          if (!orig) return t
-          return { ...t, x: orig.origX, y: orig.origY }
-        }))
+        setGhostTische([])
         for (const orig of origTische) {
           const nx = Math.max(0, orig.origX + dx)
           const ny = Math.max(0, orig.origY + dy)
@@ -316,6 +327,35 @@ export default function SitzplanView() {
             onSitzRechtsklick={handleSitzRechtsklick}
             onSitzKlick={handleSitzKlick}
           />
+        ))}
+
+        {/* Ghost-Tische beim Strg+Drag */}
+        {ghostTische.map((g, i) => (
+          <div
+            key={i}
+            className="absolute pointer-events-none"
+            style={{ left: g.x, top: g.y, width: tischBreite(g.tisch.typ), height: EINZEL_H, opacity: 0.65 }}
+          >
+            <div className="absolute inset-0 rounded-xl border-2 border-dashed border-indigo-500 bg-indigo-100 dark:bg-indigo-900/60" />
+            <div className="absolute inset-0 flex items-center justify-center gap-2 px-2">
+              {g.tisch.sitze.map(sitz => (
+                <div
+                  key={sitz.id}
+                  className="flex flex-col items-center justify-center rounded-lg border border-indigo-400 bg-indigo-50 dark:bg-indigo-900/50 overflow-hidden px-1"
+                  style={{ width: SITZ_W, height: 56 }}
+                >
+                  {sitz.schueler_id ? (
+                    <>
+                      <span className="text-[9px] font-semibold leading-tight truncate w-full text-center text-indigo-800 dark:text-indigo-200">{sitz.nachname}</span>
+                      <span className="text-[9px] leading-tight truncate w-full text-center opacity-80 text-indigo-700 dark:text-indigo-300">{sitz.vorname}</span>
+                    </>
+                  ) : (
+                    <span className="text-[10px] text-indigo-300 dark:text-indigo-600">frei</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         ))}
 
         {/* Rubber-band Auswahlrechteck */}
