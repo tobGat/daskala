@@ -1701,8 +1701,8 @@ function registerIPC() {
     ).run(fach.klasse_id, fachId, source.typ, x, y)
     const newTischId = tisch.lastInsertRowid
     for (const sitz of sourceSitze) {
-      db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position, schueler_id) VALUES (?, ?, ?)')
-        .run(newTischId, sitz.position, sitz.schueler_id ?? null)
+      db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position) VALUES (?, ?)')
+        .run(newTischId, sitz.position)
     }
     return newTischId
   })

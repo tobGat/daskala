@@ -341,17 +341,10 @@ export default function SitzplanView() {
               {g.tisch.sitze.map(sitz => (
                 <div
                   key={sitz.id}
-                  className="flex flex-col items-center justify-center rounded-lg border border-indigo-400 bg-indigo-50 dark:bg-indigo-900/50 overflow-hidden px-1"
+                  className="flex flex-col items-center justify-center rounded-lg border border-dashed border-indigo-400 bg-indigo-50/60 dark:bg-indigo-900/30"
                   style={{ width: SITZ_W, height: 56 }}
                 >
-                  {sitz.schueler_id ? (
-                    <>
-                      <span className="text-[9px] font-semibold leading-tight truncate w-full text-center text-indigo-800 dark:text-indigo-200">{sitz.nachname}</span>
-                      <span className="text-[9px] leading-tight truncate w-full text-center opacity-80 text-indigo-700 dark:text-indigo-300">{sitz.vorname}</span>
-                    </>
-                  ) : (
-                    <span className="text-[10px] text-indigo-300 dark:text-indigo-600">frei</span>
-                  )}
+                  <span className="text-[10px] text-indigo-300 dark:text-indigo-600">frei</span>
                 </div>
               ))}
             </div>
