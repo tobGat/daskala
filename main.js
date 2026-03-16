@@ -1692,6 +1692,21 @@ function registerIPC() {
     return true
   })
 
+  ipcMain.handle('sitzplan:duplicateTisch', (_, fachId, sourceTischId, x, y) => {
+    const source = db.prepare('SELECT * FROM sitzplan_tische WHERE id = ?').get(sourceTischId)
+    const sourceSitze = db.prepare('SELECT * FROM sitzplan_sitzplaetze WHERE tisch_id = ? ORDER BY position').all(sourceTischId)
+    const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(fachId)
+    const tisch = db.prepare(
+      'INSERT INTO sitzplan_tische (klasse_id, fach_id, typ, x, y) VALUES (?, ?, ?, ?, ?)'
+    ).run(fach.klasse_id, fachId, source.typ, x, y)
+    const newTischId = tisch.lastInsertRowid
+    for (const sitz of sourceSitze) {
+      db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position, schueler_id) VALUES (?, ?, ?)')
+        .run(newTischId, sitz.position, sitz.schueler_id ?? null)
+    }
+    return newTischId
+  })
+
   // ─── Termine ─────────────────────────────────────────────────────────────────
   ipcMain.handle('termine:getAll', (_, schuljahrId) =>
     db.prepare(`

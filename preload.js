@@ -167,6 +167,7 @@ contextBridge.exposeInMainWorld('api', {
     deleteTisch: (tischId) => invoke('sitzplan:deleteTisch', tischId),
     moveTisch: (tischId, x, y) => invoke('sitzplan:moveTisch', tischId, x, y),
     assignSchueler: (sitzplatzId, schuelerId) => invoke('sitzplan:assignSchueler', sitzplatzId, schuelerId),
+    duplicateTisch: (fachId, sourceTischId, x, y) => invoke('sitzplan:duplicateTisch', fachId, sourceTischId, x, y),
   },
 
 

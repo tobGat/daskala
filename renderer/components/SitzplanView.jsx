@@ -15,18 +15,25 @@ export default function SitzplanView() {
 
   const [tische, setTische] = useState([])
   const [bearbeitungsModus, setBearbeitungsModus] = useState(false)
-  const [contextMenu, setContextMenu] = useState(null) // { x, y, sitz }
-  const [eintragMenu, setEintragMenu] = useState(null) // { x, y, schueler_id }
+  const [contextMenu, setContextMenu] = useState(null)
+  const [eintragMenu, setEintragMenu] = useState(null)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [selectionRect, setSelectionRect] = useState(null) // { x, y, w, h } in canvas coords
+
   const dragRef = useRef(null)
   const canvasRef = useRef(null)
+  const tischeRef = useRef(tische)
+  useEffect(() => { tischeRef.current = tische }, [tische])
 
   const ladeTische = useCallback(async () => {
-    if (!aktiveKlasse) return
-    const data = await window.api.sitzplan.getTische(aktiveKlasse.id)
+    if (!aktivesFach) return
+    const data = await window.api.sitzplan.getTische(aktivesFach.id)
     setTische(data)
-  }, [aktiveKlasse?.id])
+  }, [aktivesFach?.id])
 
   useEffect(() => {
+    setTische([])
+    setSelectedIds(new Set())
     ladeTische()
   }, [ladeTische])
 
@@ -38,34 +45,141 @@ export default function SitzplanView() {
     return () => document.removeEventListener('click', handler)
   }, [contextMenu, eintragMenu])
 
-  // ─── Drag & Drop ───────────────────────────────────────────────────────────
+  // ─── Drag: Tisch bewegen / duplizieren ──────────────────────────────────────
   const onTischMouseDown = (e, tisch) => {
     if (!bearbeitungsModus) return
     e.preventDefault()
+    e.stopPropagation()
+
+    // Selektion aktualisieren
+    const isCtrl = e.ctrlKey
+    let newSel
+    if (selectedIds.has(tisch.id)) {
+      newSel = selectedIds
+    } else {
+      newSel = new Set([tisch.id])
+      setSelectedIds(newSel)
+    }
+
+    const cur = tischeRef.current
+    const selected = cur.filter(t => newSel.has(t.id))
+
     dragRef.current = {
-      tischId: tisch.id,
-      startX: e.clientX, startY: e.clientY,
-      origX: tisch.x, origY: tisch.y,
+      type: 'move',
+      isCtrl,
+      startX: e.clientX,
+      startY: e.clientY,
+      tische: selected.map(t => ({ id: t.id, origX: t.x, origY: t.y })),
     }
 
     const onMove = (ev) => {
-      if (!dragRef.current) return
+      if (!dragRef.current || dragRef.current.type !== 'move') return
       const dx = ev.clientX - dragRef.current.startX
       const dy = ev.clientY - dragRef.current.startY
-      const newX = Math.max(0, dragRef.current.origX + dx)
-      const newY = Math.max(0, dragRef.current.origY + dy)
-      setTische(prev => prev.map(t =>
-        t.id === dragRef.current.tischId ? { ...t, x: newX, y: newY } : t
-      ))
+      setTische(prev => prev.map(t => {
+        const orig = dragRef.current.tische.find(dt => dt.id === t.id)
+        if (!orig) return t
+        return { ...t, x: Math.max(0, orig.origX + dx), y: Math.max(0, orig.origY + dy) }
+      }))
     }
 
     const onUp = async (ev) => {
-      if (!dragRef.current) return
+      if (!dragRef.current || dragRef.current.type !== 'move') return
       const dx = ev.clientX - dragRef.current.startX
       const dy = ev.clientY - dragRef.current.startY
-      const newX = Math.max(0, dragRef.current.origX + dx)
-      const newY = Math.max(0, dragRef.current.origY + dy)
-      await window.api.sitzplan.moveTisch(dragRef.current.tischId, newX, newY)
+      const { isCtrl: ctrl, tische: origTische } = dragRef.current
+      dragRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+
+      if (ctrl) {
+        // Originale Positionen wiederherstellen, neue Duplikate anlegen
+        setTische(prev => prev.map(t => {
+          const orig = origTische.find(dt => dt.id === t.id)
+          if (!orig) return t
+          return { ...t, x: orig.origX, y: orig.origY }
+        }))
+        for (const orig of origTische) {
+          const nx = Math.max(0, orig.origX + dx)
+          const ny = Math.max(0, orig.origY + dy)
+          await window.api.sitzplan.duplicateTisch(aktivesFach.id, orig.id, nx, ny)
+        }
+        await ladeTische()
+      } else {
+        for (const orig of origTische) {
+          const nx = Math.max(0, orig.origX + dx)
+          const ny = Math.max(0, orig.origY + dy)
+          await window.api.sitzplan.moveTisch(orig.id, nx, ny)
+        }
+      }
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  // ─── Rubber-band Selektion auf Canvas ───────────────────────────────────────
+  const onCanvasMouseDown = (e) => {
+    if (!bearbeitungsModus) return
+    // Nur Linksklick auf Canvas-Hintergrund (nicht auf Tisch)
+    if (e.target !== canvasRef.current && !e.target.closest('[data-canvas-bg]')) {
+      // Klick auf Tisch – wird dort behandelt
+      return
+    }
+    e.preventDefault()
+    setSelectedIds(new Set())
+
+    const canvasEl = canvasRef.current
+    const rect = canvasEl.getBoundingClientRect()
+    const startCanvasX = e.clientX - rect.left + canvasEl.scrollLeft
+    const startCanvasY = e.clientY - rect.top + canvasEl.scrollTop
+
+    dragRef.current = {
+      type: 'rubberband',
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startCanvasX,
+      startCanvasY,
+      canvasRect: rect,
+    }
+
+    const onMove = (ev) => {
+      if (!dragRef.current || dragRef.current.type !== 'rubberband') return
+      const cur = dragRef.current
+      const canvasEl2 = canvasRef.current
+      const curX = ev.clientX - cur.canvasRect.left + canvasEl2.scrollLeft
+      const curY = ev.clientY - cur.canvasRect.top + canvasEl2.scrollTop
+      setSelectionRect({
+        x: Math.min(cur.startCanvasX, curX),
+        y: Math.min(cur.startCanvasY, curY),
+        w: Math.abs(curX - cur.startCanvasX),
+        h: Math.abs(curY - cur.startCanvasY),
+      })
+    }
+
+    const onUp = (ev) => {
+      if (!dragRef.current || dragRef.current.type !== 'rubberband') return
+      const cur = dragRef.current
+      const canvasEl2 = canvasRef.current
+      const curX = ev.clientX - cur.canvasRect.left + canvasEl2.scrollLeft
+      const curY = ev.clientY - cur.canvasRect.top + canvasEl2.scrollTop
+      const selX = Math.min(cur.startCanvasX, curX)
+      const selY = Math.min(cur.startCanvasY, curY)
+      const selW = Math.abs(curX - cur.startCanvasX)
+      const selH = Math.abs(curY - cur.startCanvasY)
+
+      if (selW > 5 || selH > 5) {
+        const newSel = new Set()
+        tischeRef.current.forEach(t => {
+          const tw = tischBreite(t.typ)
+          if (t.x < selX + selW && t.x + tw > selX && t.y < selY + selH && t.y + EINZEL_H > selY) {
+            newSel.add(t.id)
+          }
+        })
+        setSelectedIds(newSel)
+      }
+
+      setSelectionRect(null)
       dragRef.current = null
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
@@ -77,13 +191,12 @@ export default function SitzplanView() {
 
   // ─── Tisch hinzufügen ──────────────────────────────────────────────────────
   const handleAddTisch = async (typ) => {
-    if (!aktiveKlasse) return
-    // Neuen Tisch in der Mitte des sichtbaren Canvas platzieren
+    if (!aktivesFach) return
     const canvas = canvasRef.current
     const rect = canvas ? canvas.getBoundingClientRect() : { width: 800, height: 500 }
-    const x = rect.width / 2 - tischBreite(typ) / 2
-    const y = rect.height / 2 - EINZEL_H / 2
-    await window.api.sitzplan.createTisch(aktiveKlasse.id, typ, x, y)
+    const x = rect.width / 2 - tischBreite(typ) / 2 + canvas.scrollLeft
+    const y = rect.height / 2 - EINZEL_H / 2 + canvas.scrollTop
+    await window.api.sitzplan.createTisch(aktivesFach.id, typ, x, y)
     await ladeTische()
   }
 
@@ -91,9 +204,10 @@ export default function SitzplanView() {
   const handleDeleteTisch = async (tischId) => {
     await window.api.sitzplan.deleteTisch(tischId)
     setTische(prev => prev.filter(t => t.id !== tischId))
+    setSelectedIds(prev => { const n = new Set(prev); n.delete(tischId); return n })
   }
 
-  // ─── Sitz-Kontextmenü (Schüler:in zuweisen) ────────────────────────────────
+  // ─── Sitz-Kontextmenü ──────────────────────────────────────────────────────
   const handleSitzRechtsklick = (e, sitz) => {
     if (bearbeitungsModus) return
     e.preventDefault()
@@ -102,12 +216,12 @@ export default function SitzplanView() {
   }
 
   const handleAssign = async (sitz, schuelerId) => {
+    setContextMenu(null)
     await window.api.sitzplan.assignSchueler(sitz.id, schuelerId)
     await ladeTische()
-    setContextMenu(null)
   }
 
-  // ─── Sitz-Klick (Eintrag für heute) ────────────────────────────────────────
+  // ─── Sitz-Klick (Eintrag) ──────────────────────────────────────────────────
   const handleSitzKlick = (e, sitz) => {
     if (bearbeitungsModus) return
     if (!sitz.schueler_id) return
@@ -115,30 +229,16 @@ export default function SitzplanView() {
     setEintragMenu({ x: e.clientX, y: e.clientY, schueler_id: sitz.schueler_id })
   }
 
-  // ─── Heutige Spalten ───────────────────────────────────────────────────────
   const heute = new Date().toISOString().split('T')[0]
 
   const handleSitzEintrag = async (kategorie, wert) => {
-    // Frische Werte direkt aus dem Store holen (nicht aus der Closure)
     const { aktivesFach: fach, spalten: freshSpalten, aktiveSemester: sem, ladeFachDaten } = useStore.getState()
     if (!fach) return
-
     const schuelerId = eintragMenu.schueler_id
-
-    // Bestehende Spalte für heute suchen oder neue anlegen
-    const existing = freshSpalten.find(s =>
-      s.datum === heute && s.semester === sem && s.kategorie === kategorie
-    )
+    const existing = freshSpalten.find(s => s.datum === heute && s.semester === sem && s.kategorie === kategorie)
     const spalteId = existing
       ? existing.id
-      : await window.api.spalten.create({
-          fachId: fach.id,
-          semester: sem,
-          kategorie,
-          kuerzel: kategorie,
-          datum: heute,
-        })
-
+      : await window.api.spalten.create({ fachId: fach.id, semester: sem, kategorie, kuerzel: kategorie, datum: heute })
     await window.api.eintraege.set(spalteId, schuelerId, wert)
     await ladeFachDaten(fach.id)
   }
@@ -149,13 +249,12 @@ export default function SitzplanView() {
   }
 
   // ─── Rendering ─────────────────────────────────────────────────────────────
-  if (!aktiveKlasse) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-zinc-400 text-sm">
-        Keine Klasse ausgewählt
-      </div>
-    )
-  }
+  if (!aktiveKlasse) return (
+    <div className="flex-1 flex items-center justify-center text-zinc-400 text-sm">Keine Klasse ausgewählt</div>
+  )
+  if (!aktivesFach) return (
+    <div className="flex-1 flex items-center justify-center text-zinc-400 text-sm">Bitte Fach auswählen</div>
+  )
 
   return (
     <div className="flex flex-col h-full">
@@ -167,35 +266,38 @@ export default function SitzplanView() {
               ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
               : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
           }`}
-          onClick={() => setBearbeitungsModus(v => !v)}
+          onClick={() => { setBearbeitungsModus(v => !v); setSelectedIds(new Set()) }}
         >
           {bearbeitungsModus ? '✓ Bearbeiten' : 'Bearbeiten'}
         </button>
         {bearbeitungsModus && (
           <>
             <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700" />
-            <button className="btn-secondary text-xs" onClick={() => handleAddTisch('einzel')}>
-              + Einzeltisch
-            </button>
-            <button className="btn-secondary text-xs" onClick={() => handleAddTisch('doppel')}>
-              + Doppeltisch
-            </button>
-            <span className="text-xs text-zinc-400">Tische verschieben und löschen</span>
+            <button className="btn-secondary text-xs" onClick={() => handleAddTisch('einzel')}>+ Einzeltisch</button>
+            <button className="btn-secondary text-xs" onClick={() => handleAddTisch('doppel')}>+ Doppeltisch</button>
+            <span className="text-xs text-zinc-400">
+              Ziehen = verschieben · Strg+Ziehen = duplizieren · Ziehen auf leerem Bereich = Gruppe markieren
+            </span>
+            {selectedIds.size > 1 && (
+              <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                {selectedIds.size} Tische ausgewählt
+              </span>
+            )}
           </>
         )}
         {!bearbeitungsModus && tische.length > 0 && (
-          <span className="text-xs text-zinc-400">
-            Rechtsklick auf Sitzplatz → Schüler:in zuweisen · Klick auf belegten Sitz → Eintrag
-          </span>
+          <span className="text-xs text-zinc-400">Rechtsklick → Schüler:in · Klick → Eintrag</span>
         )}
       </div>
 
       {/* Canvas */}
       <div
         ref={canvasRef}
+        data-canvas-bg="1"
         className="flex-1 relative overflow-auto bg-zinc-50 dark:bg-zinc-950"
         style={{ backgroundImage: 'radial-gradient(circle, #d4d4d8 1px, transparent 1px)', backgroundSize: '24px 24px' }}
-        onClick={() => { setContextMenu(null); setEintragMenu(null) }}
+        onClick={() => { setContextMenu(null); setEintragMenu(null); if (bearbeitungsModus) setSelectedIds(new Set()) }}
+        onMouseDown={onCanvasMouseDown}
       >
         {tische.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-zinc-400 text-sm pointer-events-none">
@@ -208,12 +310,21 @@ export default function SitzplanView() {
             key={tisch.id}
             tisch={tisch}
             bearbeitungsModus={bearbeitungsModus}
+            selected={selectedIds.has(tisch.id)}
             onMouseDown={onTischMouseDown}
             onDelete={handleDeleteTisch}
             onSitzRechtsklick={handleSitzRechtsklick}
             onSitzKlick={handleSitzKlick}
           />
         ))}
+
+        {/* Rubber-band Auswahlrechteck */}
+        {selectionRect && (
+          <div
+            className="absolute pointer-events-none border-2 border-indigo-500 bg-indigo-500/10 rounded"
+            style={{ left: selectionRect.x, top: selectionRect.y, width: selectionRect.w, height: selectionRect.h }}
+          />
+        )}
       </div>
 
       {/* Rechtsklick-Menü: Schüler:in zuweisen */}
@@ -255,51 +366,40 @@ export default function SitzplanView() {
               const s = schueler.find(s => s.id === eintragMenu.schueler_id)
               return <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2">{s?.nachname} {s?.vorname}</p>
             })()}
-            {!aktivesFach && (
-              <p className="text-xs text-zinc-400">Kein Fach ausgewählt.</p>
-            )}
-            {aktivesFach && (
-              <div className="space-y-2">
-                {/* MA */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400 w-6">MA</span>
-                  {['+', '-'].map(wert => {
-                    const aktiv = getHeutigerWert('MA', eintragMenu.schueler_id) === wert
-                    return (
-                      <button
-                        key={wert}
-                        className={`w-8 h-8 rounded font-bold text-sm transition-colors
-                          ${aktiv
-                            ? wert === '+' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                            : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-600'}`}
-                        onClick={() => handleSitzEintrag('MA', wert)}
-                      >
-                        {wert}
-                      </button>
-                    )
-                  })}
-                </div>
-                {/* HÜ */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400 w-6">HÜ</span>
-                  {[['✓', 'green'], ['✗', 'red']].map(([wert, farbe]) => {
-                    const aktiv = getHeutigerWert('HÜ', eintragMenu.schueler_id) === wert
-                    return (
-                      <button
-                        key={wert}
-                        className={`w-8 h-8 rounded font-bold text-sm transition-colors
-                          ${aktiv
-                            ? farbe === 'green' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                            : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-600'}`}
-                        onClick={() => handleSitzEintrag('HÜ', wert)}
-                      >
-                        {wert}
-                      </button>
-                    )
-                  })}
-                </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 w-6">MA</span>
+                {['+', '-'].map(wert => {
+                  const aktiv = getHeutigerWert('MA', eintragMenu.schueler_id) === wert
+                  return (
+                    <button
+                      key={wert}
+                      className={`w-8 h-8 rounded font-bold text-sm transition-colors
+                        ${aktiv
+                          ? wert === '+' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                          : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-600'}`}
+                      onClick={() => handleSitzEintrag('MA', wert)}
+                    >{wert}</button>
+                  )
+                })}
               </div>
-            )}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 w-6">HÜ</span>
+                {[['✓', 'green'], ['✗', 'red']].map(([wert, farbe]) => {
+                  const aktiv = getHeutigerWert('HÜ', eintragMenu.schueler_id) === wert
+                  return (
+                    <button
+                      key={wert}
+                      className={`w-8 h-8 rounded font-bold text-sm transition-colors
+                        ${aktiv
+                          ? farbe === 'green' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                          : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-600'}`}
+                      onClick={() => handleSitzEintrag('HÜ', wert)}
+                    >{wert}</button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -307,7 +407,7 @@ export default function SitzplanView() {
   )
 }
 
-function Tisch({ tisch, bearbeitungsModus, onMouseDown, onDelete, onSitzRechtsklick, onSitzKlick }) {
+function Tisch({ tisch, bearbeitungsModus, selected, onMouseDown, onDelete, onSitzRechtsklick, onSitzKlick }) {
   const w = tischBreite(tisch.typ)
 
   return (
@@ -316,26 +416,23 @@ function Tisch({ tisch, bearbeitungsModus, onMouseDown, onDelete, onSitzRechtskl
       style={{ left: tisch.x, top: tisch.y, width: w, height: EINZEL_H }}
       onMouseDown={e => onMouseDown(e, tisch)}
     >
-      {/* Tisch-Fläche */}
       <div
         className={`absolute inset-0 rounded-xl border-2 transition-colors
-          ${bearbeitungsModus
+          ${selected
+            ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 ring-2 ring-indigo-400/40'
+            : bearbeitungsModus
             ? 'border-indigo-300 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40'
             : 'border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800'}`}
       />
 
-      {/* Löschen-Button im Bearbeitungsmodus */}
       {bearbeitungsModus && (
         <button
           className="absolute -top-2 -right-2 z-10 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600 shadow-sm"
           onMouseDown={e => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onDelete(tisch.id) }}
-        >
-          ✕
-        </button>
+        >✕</button>
       )}
 
-      {/* Sitzplätze */}
       <div className="absolute inset-0 flex items-center justify-center gap-2 px-2">
         {tisch.sitze.map(sitz => (
           <SitzPlatz
@@ -353,13 +450,10 @@ function Tisch({ tisch, bearbeitungsModus, onMouseDown, onDelete, onSitzRechtskl
 
 function SitzPlatz({ sitz, bearbeitungsModus, onRechtsklick, onKlick }) {
   const belegt = !!sitz.schueler_id
-  const kuerzel = belegt
-    ? `${sitz.nachname?.charAt(0) ?? ''}${sitz.vorname?.charAt(0) ?? ''}`
-    : ''
 
   return (
     <div
-      className={`flex items-center justify-center rounded-lg border transition-all text-xs font-bold
+      className={`flex flex-col items-center justify-center rounded-lg border transition-all text-center overflow-hidden px-1
         ${belegt
           ? bearbeitungsModus
             ? 'border-zinc-400 dark:border-zinc-500 bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200'
@@ -371,7 +465,12 @@ function SitzPlatz({ sitz, bearbeitungsModus, onRechtsklick, onKlick }) {
       onContextMenu={e => onRechtsklick(e, sitz)}
       onClick={e => onKlick(e, sitz)}
     >
-      {belegt ? kuerzel : (
+      {belegt ? (
+        <>
+          <span className="text-[9px] font-semibold leading-tight truncate w-full text-center">{sitz.nachname}</span>
+          <span className="text-[9px] leading-tight truncate w-full text-center opacity-80">{sitz.vorname}</span>
+        </>
+      ) : (
         <span className="text-[10px] font-normal text-zinc-300 dark:text-zinc-600">frei</span>
       )}
     </div>
