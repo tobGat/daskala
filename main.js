@@ -21,6 +21,124 @@ async function htmlZuPdf(htmlContent) {
   return pdfBuffer
 }
 
+// ─── Leistungsprofil-PDF-HTML ─────────────────────────────────────────────────
+function bauePdfHtml(profil, klassenname) {
+  const { schueler, faecher, zeugnisnoten, eintraege, notizen } = profil
+
+  function esc(t) {
+    return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  }
+  function noteColor(n) {
+    if (!n) return '#9ca3af'
+    if (n <= 1.5) return '#22c55e'
+    if (n <= 2.5) return '#84cc16'
+    if (n <= 3.5) return '#eab308'
+    if (n <= 4.5) return '#f97316'
+    return '#ef4444'
+  }
+
+  function buildSvg(fachEintr) {
+    const W = 480, H = 120
+    const padL = 25, padT = 14, padR = 10, padB = 14
+    const plotW = W - padL - padR
+    const plotH = H - padT - padB
+    const sa = fachEintr
+      .filter(e => e.kategorie === 'SA' && parseInt(e.wert) >= 1 && parseInt(e.wert) <= 5)
+      .sort((a, b) => a.semester - b.semester || a.reihenfolge - b.reihenfolge)
+    const t = fachEintr
+      .filter(e => e.kategorie === 'T' && parseInt(e.wert) >= 1 && parseInt(e.wert) <= 5)
+      .sort((a, b) => a.semester - b.semester || a.reihenfolge - b.reihenfolge)
+    if (!sa.length && !t.length) return ''
+    const all = [...sa.map(p => ({ p, typ: 'SA' })), ...t.map(p => ({ p, typ: 'T' }))]
+      .sort((a, b) => a.p.semester - b.p.semester || a.p.reihenfolge - b.p.reihenfolge)
+    const n = all.length
+    const positions = all.map((_, i) => padL + (n === 1 ? plotW / 2 : i / (n - 1) * plotW))
+    const idxMap = new Map(all.map((item, i) => [item, i]))
+    function xOf(item) { return positions[idxMap.get(item)] }
+    function yOf(note) { return padT + (+note - 1) / 4 * plotH }
+    const saItems = all.filter(it => it.typ === 'SA')
+    const tItems = all.filter(it => it.typ === 'T')
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%">`
+    for (let g = 1; g <= 5; g++) {
+      const y = yOf(g)
+      svg += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}" stroke="#e5e7eb" stroke-width="0.75"/>`
+      svg += `<text x="${padL - 3}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#9ca3af">${g}</text>`
+    }
+    if (saItems.length > 1) {
+      const pts = saItems.map(it => `${xOf(it).toFixed(1)},${yOf(it.p.wert).toFixed(1)}`).join(' ')
+      svg += `<polyline points="${pts}" fill="none" stroke="#f97316" stroke-width="1.5" stroke-opacity="0.5"/>`
+    }
+    saItems.forEach(it => {
+      const x = xOf(it).toFixed(1), y = yOf(it.p.wert).toFixed(1), yt = (yOf(it.p.wert) - 7).toFixed(1)
+      svg += `<circle cx="${x}" cy="${y}" r="4" fill="#f97316"/>`
+      svg += `<text x="${x}" y="${yt}" text-anchor="middle" font-size="8" fill="#f97316">${esc(it.p.kuerzel || 'SA')}</text>`
+    })
+    if (tItems.length > 1) {
+      const pts = tItems.map(it => `${xOf(it).toFixed(1)},${yOf(it.p.wert).toFixed(1)}`).join(' ')
+      svg += `<polyline points="${pts}" fill="none" stroke="#8b5cf6" stroke-width="1.5" stroke-opacity="0.5"/>`
+    }
+    tItems.forEach(it => {
+      const x = xOf(it).toFixed(1), y = yOf(it.p.wert).toFixed(1), yt = (yOf(it.p.wert) - 7).toFixed(1)
+      svg += `<circle cx="${x}" cy="${y}" r="3.5" fill="#8b5cf6"/>`
+      svg += `<text x="${x}" y="${yt}" text-anchor="middle" font-size="8" fill="#8b5cf6">${esc(it.p.kuerzel || 'T')}</text>`
+    })
+    svg += '</svg>'
+    return svg
+  }
+
+  let sectionsHtml = ''
+  for (const fach of faecher) {
+    const fachEintr = eintraege.filter(e => e.fach_id === fach.id)
+    const znS1 = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 1)
+    const znS2 = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 2)
+    const n1 = znS1?.note_manuell ?? (znS1?.note_berechnet ? Math.round(znS1.note_berechnet) : null)
+    const n2 = znS2?.note_manuell ?? (znS2?.note_berechnet ? Math.round(znS2.note_berechnet) : null)
+    const maEintr = fachEintr.filter(e => e.kategorie === 'MA' && e.wert)
+    const maPos = maEintr.filter(e => e.wert === '+').length
+    const maNeg = maEintr.filter(e => e.wert === '-').length
+    const maGes = maEintr.length
+    const hueEintr = fachEintr.filter(e => e.kategorie === 'HÜ' && e.wert)
+    const huePos = hueEintr.filter(e => e.wert === '✓').length
+    const hueGes = hueEintr.length
+    const fachNotizen = notizen.filter(n => n.fach_id === fach.id)
+    const znBadge = (n) => n !== null
+      ? `<span style="background:${noteColor(n)};color:#fff;padding:1px 7px;border-radius:10px;font-weight:700;font-size:11px">${n}</span>`
+      : `<span style="color:#9ca3af">—</span>`
+    const svg = buildSvg(fachEintr)
+    const hasDaten = svg || maGes > 0 || hueGes > 0 || fachNotizen.length > 0
+    let content = ''
+    if (svg) {
+      content += `<div style="background:#f9fafb;border-radius:6px;padding:6px 8px 4px;margin-top:6px">${svg}<div style="display:flex;gap:16px;margin-top:2px"><span style="font-size:8px;color:#9ca3af">● SA (orange)</span><span style="font-size:8px;color:#9ca3af">● Test (lila)</span></div></div>`
+    }
+    if (maGes > 0) {
+      const maPct = Math.round(maPos / maGes * 100)
+      const negPct = Math.round(maNeg / maGes * 100)
+      const leerPct = Math.max(0, 100 - maPct - negPct)
+      content += `<div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="width:22px;font-size:9px;color:#6b7280;font-weight:600">MA</span><div style="flex:1;height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;display:flex"><div style="width:${maPct}%;background:#22c55e;height:100%"></div><div style="width:${negPct}%;background:#ef4444;height:100%"></div><div style="width:${leerPct}%;height:100%"></div></div><span style="font-size:9px;color:#6b7280;white-space:nowrap">${maPos} pos. / ${maNeg} neg. / ${maGes} ges. (${maPct}%)</span></div>`
+    }
+    if (hueGes > 0) {
+      const huePct = Math.round(huePos / hueGes * 100)
+      content += `<div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="width:22px;font-size:9px;color:#6b7280;font-weight:600">HÜ</span><div style="flex:1;height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;display:flex"><div style="width:${huePct}%;background:#3b82f6;height:100%"></div><div style="width:${100 - huePct}%;height:100%"></div></div><span style="font-size:9px;color:#6b7280;white-space:nowrap">${huePos}/${hueGes} gemacht (${huePct}%)</span></div>`
+    }
+    if (fachNotizen.length > 0) {
+      content += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #f3f4f6">`
+      fachNotizen.forEach(n => { content += `<p style="font-size:9px;color:#6b7280;font-style:italic;line-height:1.5;margin:1px 0">${esc(n.text)}</p>` })
+      content += `</div>`
+    }
+    if (!hasDaten) content += `<p style="font-size:9px;color:#d1d5db;font-style:italic;margin-top:4px">Keine Daten vorhanden</p>`
+    sectionsHtml += `<div style="margin-bottom:14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:6px;page-break-inside:avoid"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:700;color:#4f46e5">${esc(fach.name)}</span><span style="display:flex;align-items:center;gap:5px"><span style="color:#9ca3af;font-size:9px">S1</span>${znBadge(n1)}<span style="color:#9ca3af;font-size:9px;margin-left:4px">S2</span>${znBadge(n2)}</span></div>${content}</div>`
+  }
+
+  const datum = new Date().toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const badges = [
+    schueler.lernschwaeche ? '<span style="background:#fef3c7;color:#92400e;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;margin-left:4px">LS</span>' : '',
+    schueler.legasthenie ? '<span style="background:#ede9fe;color:#5b21b6;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;margin-left:4px">LEG</span>' : '',
+    schueler.spf ? '<span style="background:#fee2e2;color:#991b1b;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;margin-left:4px">SPF</span>' : '',
+  ].join('')
+
+  return `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#1a1a1a;background:#fff}@page{size:A4 portrait;margin:1.5cm}</style></head><body><div style="margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #e5e7eb"><div style="display:flex;align-items:baseline;gap:4px;flex-wrap:wrap"><h1 style="font-size:20px;font-weight:700;color:#1a1a1a">${esc(schueler.nachname)} ${esc(schueler.vorname)}</h1>${badges}</div><div style="font-size:11px;color:#6b7280;margin-top:3px">${esc(klassenname)}</div><div style="font-size:10px;color:#9ca3af;margin-top:1px">Leistungsprofil · exportiert am ${datum} · Daskala</div></div>${sectionsHtml}</body></html>`
+}
+
 // ─── Pfade (lazy: werden in initPaths() nach app.whenReady gesetzt) ───────────
 let userDataPath, dbPath, backupDir
 
@@ -244,6 +362,19 @@ function initDB() {
       FOREIGN KEY (schueler_id) REFERENCES schueler(id)
     );
 
+    CREATE TABLE IF NOT EXISTS eintraege_verlauf (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      fach_id       INTEGER,
+      spalte_id     INTEGER NOT NULL,
+      schueler_id   INTEGER NOT NULL,
+      wert_alt      TEXT,
+      wert_neu      TEXT,
+      kommentar_alt TEXT,
+      kommentar_neu TEXT,
+      zeitstempel   TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      aktion        TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS zeugnisnoten (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       fach_id INTEGER NOT NULL,
@@ -330,11 +461,27 @@ function initDB() {
   try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN hue_text TEXT').run() } catch {}
   try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN hue_frist_datum TEXT').run() } catch {}
   try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN link TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN entfall INTEGER DEFAULT 0').run() } catch {}
   try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN titel TEXT').run() } catch {}
   try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN inhalt TEXT').run() } catch {}
   try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN hue_text TEXT').run() } catch {}
   try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN hue_frist_datum TEXT').run() } catch {}
   try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN link TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE termine ADD COLUMN stunde_id INTEGER').run() } catch {}
+  try { db.prepare('ALTER TABLE klassen ADD COLUMN teams_link TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE faecher ADD COLUMN benotungssystem TEXT DEFAULT \'standard\'').run() } catch {}
+
+  // Schüler-Niveau pro Fach (AHS/ST-Differenzierung)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schueler_niveau (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      niveau TEXT NOT NULL DEFAULT 'AHS',
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )
+  `)
 
   // Termine
   db.exec(`
@@ -348,6 +495,45 @@ function initDB() {
       schuljahr_id INTEGER NOT NULL,
       FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE SET NULL,
       FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
+    )
+  `)
+
+  // Benutzerdefinierte Ferien (Ergänzung/Überschreibung der berechneten Ferien)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS custom_ferien (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schuljahr_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      von TEXT NOT NULL,
+      bis TEXT NOT NULL,
+      FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
+    )
+  `)
+
+  // Kompetenzbereiche pro Fach
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS kompetenzbereiche (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fach_id INTEGER NOT NULL,
+      titel TEXT NOT NULL,
+      beschreibung TEXT,
+      reihenfolge INTEGER DEFAULT 0,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
+    )
+  `)
+
+  // Schüler:innen-Kompetenzen (Niveau pro Kompetenzbereich)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schueler_kompetenzen (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kompetenzbereich_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      niveau INTEGER NOT NULL DEFAULT 0,
+      notiz TEXT,
+      aktualisiert TEXT,
+      UNIQUE(kompetenzbereich_id, schueler_id),
+      FOREIGN KEY (kompetenzbereich_id) REFERENCES kompetenzbereiche(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
     )
   `)
 
@@ -372,12 +558,39 @@ function initDB() {
       fach_id INTEGER NOT NULL,
       titel TEXT NOT NULL DEFAULT '',
       inhalt TEXT DEFAULT '',
-      datum_von TEXT NOT NULL,
-      datum_bis TEXT NOT NULL,
+      datum_von TEXT,
+      datum_bis TEXT,
       farbe TEXT,
+      reihenfolge INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
     );
   `)
+  // Migration: datum_von/datum_bis nullable machen + reihenfolge hinzufügen
+  try { db.prepare('ALTER TABLE jahresplanung_abschnitte ADD COLUMN reihenfolge INTEGER NOT NULL DEFAULT 0').run() } catch {}
+  try {
+    // Prüfe ob datum_von noch NOT NULL ist (alte DBs)
+    const info = db.prepare("PRAGMA table_info(jahresplanung_abschnitte)").all()
+    const vonCol = info.find(c => c.name === 'datum_von')
+    if (vonCol && vonCol.notnull === 1) {
+      db.exec(`
+        CREATE TABLE jahresplanung_abschnitte_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          fach_id INTEGER NOT NULL,
+          titel TEXT NOT NULL DEFAULT '',
+          inhalt TEXT DEFAULT '',
+          datum_von TEXT,
+          datum_bis TEXT,
+          farbe TEXT,
+          reihenfolge INTEGER NOT NULL DEFAULT 0,
+          FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
+        );
+        INSERT INTO jahresplanung_abschnitte_new (id, fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge)
+          SELECT id, fach_id, titel, inhalt, datum_von, datum_bis, farbe, COALESCE(reihenfolge, 0) FROM jahresplanung_abschnitte;
+        DROP TABLE jahresplanung_abschnitte;
+        ALTER TABLE jahresplanung_abschnitte_new RENAME TO jahresplanung_abschnitte;
+      `)
+    }
+  } catch {}
 
   // Sitzplan-Tabellen
   db.exec(`
@@ -538,6 +751,32 @@ function createBackup() {
 }
 
 // ─── Zeugnisnoten-Berechnung ──────────────────────────────────────────────────
+// ─── Kompetenz-Vorlagen (Lehrplan NEU) ──────────────────────────────────────
+const KOMPETENZ_VORLAGEN = {
+  'deutsch': ['Zuhören und Sprechen', 'Lesen', 'Verfassen von Texten (Schreiben)', 'Sprachbewusstsein'],
+  'mathematik': ['Zahlen und Operationen', 'Größen und Messen', 'Raum und Form', 'Daten und Zufall', 'Funktionale Zusammenhänge'],
+  'englisch': ['Hören (Listening)', 'Lesen (Reading)', 'An Gesprächen teilnehmen', 'Zusammenhängendes Sprechen', 'Schreiben (Writing)'],
+  'biologie': ['Wissen organisieren', 'Erkenntnisse gewinnen', 'Schlüsse ziehen', 'Handeln'],
+  'geographie': ['Orientierungskompetenz', 'Synthesekompetenz', 'Methodenkompetenz', 'Handlungskompetenz'],
+  'geschichte': ['Historische Fragekompetenz', 'Historische Methodenkompetenz', 'Historische Sachkompetenz', 'Historische Orientierungskompetenz'],
+  'physik': ['Wissen organisieren', 'Erkenntnisse gewinnen', 'Schlüsse ziehen', 'Handeln'],
+  'chemie': ['Wissen organisieren', 'Erkenntnisse gewinnen', 'Schlüsse ziehen', 'Handeln'],
+  'musik': ['Singen und Musizieren', 'Hören und Erfassen', 'Bewegen und Darstellen', 'Wissen und Reflektieren'],
+  'bildnerische erziehung': ['Wahrnehmen', 'Gestalten', 'Reflektieren'],
+}
+
+function initKompetenzVorlagen(fachId, fachName) {
+  if (!fachName) return
+  const nameLower = fachName.toLowerCase()
+  const match = Object.keys(KOMPETENZ_VORLAGEN).find(key => nameLower.includes(key))
+  if (!match) return
+  const vorlagen = KOMPETENZ_VORLAGEN[match]
+  const existing = db.prepare('SELECT COUNT(*) as c FROM kompetenzbereiche WHERE fach_id = ?').get(fachId)
+  if (existing.c > 0) return // Bereits Kompetenzbereiche vorhanden
+  const insert = db.prepare('INSERT INTO kompetenzbereiche (fach_id, titel, reihenfolge) VALUES (?, ?, ?)')
+  vorlagen.forEach((titel, idx) => insert.run(fachId, titel, idx))
+}
+
 function berechneZeugnisnote(fachId, schuelerId, semester) {
   const fach = db.prepare('SELECT * FROM faecher WHERE id = ?').get(fachId)
   if (!fach) return { note: null, s1Eingerechnet: false }
@@ -562,27 +801,6 @@ function berechneZeugnisnote(fachId, schuelerId, semester) {
   const spalten = db.prepare(
     'SELECT * FROM spalten WHERE fach_id = ? AND semester = ?'
   ).all(fachId, semester)
-
-  if (spalten.length === 0) {
-    // Keine S2-Spalten – S1-ZN als Fallback wenn keine S1-Einträge vorhanden
-    if (semester === 2) {
-      const s1EintraegeAnzahl = db.prepare(`
-        SELECT COUNT(*) as cnt FROM eintraege e
-        JOIN spalten s ON e.spalte_id = s.id
-        WHERE s.fach_id = ? AND s.semester = 1 AND e.schueler_id = ? AND e.wert != ''
-      `).get(fachId, schuelerId)?.cnt ?? 0
-      if (s1EintraegeAnzahl === 0) {
-        const s1Zn = db.prepare(
-          'SELECT note_manuell, note_berechnet FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = 1'
-        ).get(fachId, schuelerId)
-        const s1Note = s1Zn?.note_manuell ?? s1Zn?.note_berechnet ?? null
-        if (s1Note !== null) {
-          return { note: s1Note, s1Eingerechnet: true }
-        }
-      }
-    }
-    return { note: null, s1Eingerechnet: false }
-  }
 
   // Einträge pro Kategorie sammeln
   const kategorieWerte = { SA: [], T: [], MA: [], HÜ: [], CUSTOM: [] }
@@ -610,6 +828,8 @@ function berechneZeugnisnote(fachId, schuelerId, semester) {
     }
   }
 
+  const maxNote = 5
+
   // Durchschnitt pro Kategorie
   let gewichtetesSumme = 0
   let gesamtGewichtung = 0
@@ -621,49 +841,79 @@ function berechneZeugnisnote(fachId, schuelerId, semester) {
 
     let avg
     if (kat === 'HÜ') {
-      // Prozentsatz positiver HÜs → Note 1-5
+      // Prozentsatz positiver HÜs → Note 1-maxNote
       const positiv = werte.filter(v => v === 1).length
       const ratio = positiv / werte.length
-      avg = 5 - ratio * 4 // 100% → 1, 0% → 5
+      avg = maxNote - ratio * (maxNote - 1) // 100% → 1, 0% → maxNote
     } else {
-      avg = werte.reduce((a, b) => a + b, 0) / werte.length
+      // Ungültige Noten (> maxNote) bei der Berechnung ignorieren
+      const gueltig = werte.filter(v => v <= maxNote)
+      if (gueltig.length === 0) continue
+      avg = gueltig.reduce((a, b) => a + b, 0) / gueltig.length
     }
 
     gewichtetesSumme += avg * w
     gesamtGewichtung += w
   }
 
-  // ── S1-ZN einbeziehen (nur Semester 2, wenn keine S1-Einträge vorhanden) ──
-  if (semester === 2) {
-    const s1EintraegeAnzahl = db.prepare(`
-      SELECT COUNT(*) as cnt FROM eintraege e
-      JOIN spalten s ON e.spalte_id = s.id
-      WHERE s.fach_id = ? AND s.semester = 1 AND e.schueler_id = ? AND e.wert != ''
-    `).get(fachId, schuelerId)?.cnt ?? 0
+  if (gesamtGewichtung === 0) return { note: null }
+  const note = Math.min(gewichtetesSumme / gesamtGewichtung, maxNote)
+  return { note: Math.round(note * 10) / 10 }
+}
 
-    if (s1EintraegeAnzahl === 0) {
-      const s1Zn = db.prepare(
-        'SELECT note_manuell, note_berechnet FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = 1'
-      ).get(fachId, schuelerId)
-      const s1Note = s1Zn?.note_manuell ?? s1Zn?.note_berechnet ?? null
+function berechneEndnote(fachId, schuelerId) {
+  const s1Zn = db.prepare('SELECT note_manuell, note_berechnet FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = 1').get(fachId, schuelerId)
+  const s2Zn = db.prepare('SELECT note_manuell, note_berechnet FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = 2').get(fachId, schuelerId)
+  const s1Note = s1Zn?.note_manuell ?? s1Zn?.note_berechnet ?? null
+  const s2Note = s2Zn?.note_manuell ?? s2Zn?.note_berechnet ?? null
+  if (s1Note !== null && s2Note !== null) {
+    const s1Gewicht = parseFloat(db.prepare("SELECT wert FROM einstellungen WHERE schluessel = 's1_gewichtung'").get()?.wert ?? '0.5')
+    return Math.round((s1Note * s1Gewicht + s2Note * (1 - s1Gewicht)) * 10) / 10
+  }
+  if (s1Note !== null) return s1Note
+  if (s2Note !== null) return s2Note
+  return null
+}
 
-      if (s1Note !== null) {
-        const s1GewichtStr = db.prepare("SELECT wert FROM einstellungen WHERE schluessel = 's1_gewichtung'").get()?.wert
-        const s1Gewicht = parseFloat(s1GewichtStr ?? '0.5')
-
-        if (gesamtGewichtung === 0) {
-          return { note: s1Note, s1Eingerechnet: true }
+// Alle Zeugnisnoten für ein Fach neu berechnen (alle aktiven Schüler:innen, S1+S2+Endnote)
+function berechneAlleFuerFach(fachId) {
+  const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(fachId)
+  if (!fach) return
+  const schueler = db.prepare('SELECT id FROM schueler WHERE klasse_id = ? AND aktiv = 1').all(fach.klasse_id)
+  if (!schueler.length) return
+  // Immer aktualisieren (auch wenn note=null), damit veraltete Werte überschrieben werden
+  const upsert = db.prepare(`
+    INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(fach_id, schueler_id, semester)
+    DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
+  `)
+  const updateOnly = db.prepare(`
+    UPDATE zeugnisnoten SET note_berechnet = ?, s1_eingerechnet = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?
+  `)
+  db.transaction(() => {
+    // Erst S1 und S2 berechnen
+    for (const s of schueler) {
+      for (const sem of [1, 2]) {
+        const { note } = berechneZeugnisnote(fachId, s.id, sem)
+        if (note !== null) {
+          upsert.run(fachId, s.id, sem, note, 0)
+        } else {
+          // Veralteten Wert löschen (falls Zeile existiert)
+          updateOnly.run(null, 0, fachId, s.id, sem)
         }
-        const s2Note = gewichtetesSumme / gesamtGewichtung
-        const jahresNote = s1Note * s1Gewicht + s2Note * (1 - s1Gewicht)
-        return { note: Math.round(jahresNote * 10) / 10, s1Eingerechnet: true }
       }
     }
-  }
-
-  if (gesamtGewichtung === 0) return { note: null, s1Eingerechnet: false }
-  const note = gewichtetesSumme / gesamtGewichtung
-  return { note: Math.round(note * 10) / 10, s1Eingerechnet: false }
+    // Dann Endnote (liest die eben gespeicherten S1/S2-Noten)
+    for (const s of schueler) {
+      const endnote = berechneEndnote(fachId, s.id)
+      if (endnote !== null) {
+        upsert.run(fachId, s.id, 3, endnote, 1)
+      } else {
+        updateOnly.run(null, 1, fachId, s.id, 3)
+      }
+    }
+  })()
 }
 
 // ─── IPC Handler registrieren ─────────────────────────────────────────────────
@@ -700,10 +950,15 @@ function registerIPC() {
     return db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? ORDER BY reihenfolge, name').all(schuljahrId)
   })
 
-  ipcMain.handle('klassen:create', (_, { schuljahrId, name, farbe }) => {
+  ipcMain.handle('klassen:create', (_, { schuljahrId, name, farbe, teamsLink }) => {
     const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM klassen WHERE schuljahr_id = ?').get(schuljahrId)?.m ?? 0
-    const info = db.prepare('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge) VALUES (?, ?, ?, ?)').run(schuljahrId, name, farbe ?? null, maxReihenfolge + 1)
+    const info = db.prepare('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link) VALUES (?, ?, ?, ?, ?)').run(schuljahrId, name, farbe ?? null, maxReihenfolge + 1, teamsLink ?? null)
     return info.lastInsertRowid
+  })
+
+  ipcMain.handle('klassen:setTeamsLink', (_, id, link) => {
+    db.prepare('UPDATE klassen SET teams_link = ? WHERE id = ?').run(link || null, id)
+    return true
   })
 
   ipcMain.handle('klassen:delete', (_, id) => {
@@ -726,9 +981,18 @@ function registerIPC() {
     return db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasseId)
   })
 
-  ipcMain.handle('faecher:create', (_, { klasseId, name, farbe }) => {
+  ipcMain.handle('faecher:create', (_, { klasseId, name, farbe, benotungssystem }) => {
     const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM faecher WHERE klasse_id = ?').get(klasseId)?.m ?? 0
-    const info = db.prepare('INSERT INTO faecher (klasse_id, name, farbe, reihenfolge) VALUES (?, ?, ?, ?)').run(klasseId, name, farbe ?? null, maxReihenfolge + 1)
+    const info = db.prepare('INSERT INTO faecher (klasse_id, name, farbe, reihenfolge, benotungssystem) VALUES (?, ?, ?, ?, ?)').run(klasseId, name, farbe ?? null, maxReihenfolge + 1, benotungssystem ?? 'standard')
+    // Bei differenziert: Default-Niveau für alle bestehenden Schüler:innen
+    if (benotungssystem === 'differenziert') {
+      const fachId = info.lastInsertRowid
+      const schuelerIds = db.prepare('SELECT id FROM schueler WHERE klasse_id = ? AND aktiv = 1').all(klasseId)
+      const insert = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
+      for (const s of schuelerIds) insert.run(fachId, s.id, 'AHS')
+    }
+    // Kompetenz-Vorlagen automatisch anlegen
+    initKompetenzVorlagen(info.lastInsertRowid, name)
     return info.lastInsertRowid
   })
 
@@ -757,11 +1021,95 @@ function registerIPC() {
         gewichtung_custom = ?
       WHERE id = ?
     `).run(data.sa ?? null, data.t ?? null, data.ma ?? null, data.hue ?? null, data.custom ?? null, id)
+    berechneAlleFuerFach(id)
     return true
   })
 
   ipcMain.handle('faecher:resetGewichtung', (_, id) => {
     db.prepare('UPDATE faecher SET gewichtung_sa = NULL, gewichtung_t = NULL, gewichtung_ma = NULL, gewichtung_hue = NULL, gewichtung_custom = NULL WHERE id = ?').run(id)
+    berechneAlleFuerFach(id)
+    return true
+  })
+
+  ipcMain.handle('faecher:setBenotungssystem', (_, id, system) => {
+    db.prepare('UPDATE faecher SET benotungssystem = ? WHERE id = ?').run(system, id)
+    if (system === 'differenziert') {
+      // Default-Niveau 'AHS' für alle Schüler:innen anlegen, die noch keins haben
+      const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(id)
+      if (fach) {
+        const schuelerIds = db.prepare('SELECT id FROM schueler WHERE klasse_id = ? AND aktiv = 1').all(fach.klasse_id)
+        const insert = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
+        for (const s of schuelerIds) {
+          insert.run(id, s.id, 'AHS')
+        }
+      }
+    }
+    berechneAlleFuerFach(id)
+    return true
+  })
+
+  // Niveau (AHS/ST-Differenzierung)
+  ipcMain.handle('niveau:get', (_, fachId) => {
+    const rows = db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fachId)
+    const map = {}
+    for (const r of rows) map[r.schueler_id] = r.niveau
+    return map
+  })
+
+  ipcMain.handle('niveau:set', (_, fachId, schuelerId, niveau) => {
+    db.prepare('INSERT INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?) ON CONFLICT(fach_id, schueler_id) DO UPDATE SET niveau = ?').run(fachId, schuelerId, niveau, niveau)
+    berechneAlleFuerFach(fachId)
+    return true
+  })
+
+  // ─── Kompetenzbereiche ──────────────────────────────────────────────────────
+  ipcMain.handle('kompetenzbereiche:getAll', (_, fachId) =>
+    db.prepare('SELECT * FROM kompetenzbereiche WHERE fach_id = ? ORDER BY reihenfolge, id').all(fachId)
+  )
+
+  ipcMain.handle('kompetenzbereiche:create', (_, fachId, titel, beschreibung) => {
+    const maxR = db.prepare('SELECT MAX(reihenfolge) as m FROM kompetenzbereiche WHERE fach_id = ?').get(fachId)?.m ?? 0
+    const info = db.prepare('INSERT INTO kompetenzbereiche (fach_id, titel, beschreibung, reihenfolge) VALUES (?, ?, ?, ?)').run(fachId, titel, beschreibung ?? null, maxR + 1)
+    return info.lastInsertRowid
+  })
+
+  ipcMain.handle('kompetenzbereiche:update', (_, id, { titel, beschreibung }) => {
+    db.prepare('UPDATE kompetenzbereiche SET titel = ?, beschreibung = ? WHERE id = ?').run(titel, beschreibung ?? null, id)
+    return true
+  })
+
+  ipcMain.handle('kompetenzbereiche:delete', (_, id) => {
+    db.prepare('DELETE FROM kompetenzbereiche WHERE id = ?').run(id)
+    return true
+  })
+
+  ipcMain.handle('kompetenzbereiche:reorder', (_, ids) => {
+    const stmt = db.prepare('UPDATE kompetenzbereiche SET reihenfolge = ? WHERE id = ?')
+    ids.forEach((id, idx) => stmt.run(idx, id))
+    return true
+  })
+
+  ipcMain.handle('kompetenzbereiche:initVorlagen', (_, fachId, fachName) => {
+    initKompetenzVorlagen(fachId, fachName)
+    return true
+  })
+
+  // ─── Schüler:innen-Kompetenzen ─────────────────────────────────────────────
+  ipcMain.handle('schuelerKompetenzen:getAll', (_, fachId) => {
+    return db.prepare(`
+      SELECT sk.* FROM schueler_kompetenzen sk
+      JOIN kompetenzbereiche kb ON kb.id = sk.kompetenzbereich_id
+      WHERE kb.fach_id = ?
+    `).all(fachId)
+  })
+
+  ipcMain.handle('schuelerKompetenzen:set', (_, kompetenzbereichId, schuelerId, niveau, notiz) => {
+    db.prepare(`
+      INSERT INTO schueler_kompetenzen (kompetenzbereich_id, schueler_id, niveau, notiz, aktualisiert)
+      VALUES (?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(kompetenzbereich_id, schueler_id) DO UPDATE SET
+        niveau = excluded.niveau, notiz = excluded.notiz, aktualisiert = excluded.aktualisiert
+    `).run(kompetenzbereichId, schuelerId, niveau, notiz ?? null)
     return true
   })
 
@@ -820,6 +1168,55 @@ function registerIPC() {
     return true
   })
 
+  ipcMain.handle('schueler:getLeistungsProfil', (_, schuelerId) => {
+    const schueler = db.prepare('SELECT * FROM schueler WHERE id = ?').get(schuelerId)
+    if (!schueler) return null
+    const faecher = db.prepare('SELECT f.* FROM faecher f WHERE f.klasse_id = ? ORDER BY f.reihenfolge').all(schueler.klasse_id)
+
+    // Zeugnisnoten aktuell berechnen, damit das Profil immer aktuelle Werte zeigt
+    const znStmt = db.prepare(`
+      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(fach_id, schueler_id, semester)
+      DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
+    `)
+    db.transaction(() => {
+      for (const fach of faecher) {
+        for (const sem of [1, 2]) {
+          const { note, s1Eingerechnet } = berechneZeugnisnote(fach.id, schuelerId, sem)
+          if (note !== null) znStmt.run(fach.id, schuelerId, sem, note, s1Eingerechnet ? 1 : 0)
+        }
+      }
+    })()
+
+    const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE schueler_id = ?').all(schuelerId)
+    const eintraege = db.prepare(`
+      SELECT e.wert, e.kommentar, s.kategorie, s.datum, s.kuerzel, s.semester, s.fach_id, s.reihenfolge
+      FROM eintraege e
+      JOIN spalten s ON e.spalte_id = s.id
+      WHERE e.schueler_id = ? AND e.wert IS NOT NULL
+      ORDER BY s.fach_id, s.semester, s.reihenfolge
+    `).all(schuelerId)
+    const notizen = db.prepare(`
+      SELECT n.schueler_id, n.fach_id, n.text, f.name AS fach_name FROM notizen n
+      JOIN faecher f ON n.fach_id = f.id
+      WHERE n.schueler_id = ? AND n.text IS NOT NULL AND n.text != ''
+    `).all(schuelerId)
+    return { schueler, faecher, zeugnisnoten, eintraege, notizen }
+  })
+
+  ipcMain.handle('schueler:exportProfilPDF', async (_, { profil, klassenname }) => {
+    const { filePath, canceled } = await dialog.showSaveDialog({
+      defaultPath: `Leistungsprofil_${profil.schueler.nachname}_${profil.schueler.vorname}.pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    })
+    if (canceled || !filePath) return false
+    const html = bauePdfHtml(profil, klassenname)
+    const buf = await htmlZuPdf(html)
+    fs.writeFileSync(filePath, buf)
+    return true
+  })
+
   // Spalten
   ipcMain.handle('spalten:getAll', (_, fachId) => {
     return db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge, datum').all(fachId)
@@ -835,6 +1232,19 @@ function registerIPC() {
   })
 
   ipcMain.handle('spalten:delete', (_, id) => {
+    const betroffene = db.prepare('SELECT spalte_id, schueler_id, wert, kommentar FROM eintraege WHERE spalte_id = ?').all(id)
+    if (betroffene.length > 0) {
+      const spalte = db.prepare('SELECT fach_id FROM spalten WHERE id = ?').get(id)
+      const verlaufStmt = db.prepare(`
+        INSERT INTO eintraege_verlauf (fach_id, spalte_id, schueler_id, wert_alt, wert_neu, kommentar_alt, kommentar_neu, aktion)
+        VALUES (?, ?, ?, ?, NULL, ?, NULL, 'spalte_geloescht')
+      `)
+      db.transaction(() => {
+        for (const e of betroffene) {
+          verlaufStmt.run(spalte?.fach_id ?? null, e.spalte_id, e.schueler_id, e.wert, e.kommentar)
+        }
+      })()
+    }
     db.prepare('DELETE FROM eintraege WHERE spalte_id = ?').run(id)
     db.prepare('DELETE FROM spalten WHERE id = ?').run(id)
     return true
@@ -887,8 +1297,18 @@ function registerIPC() {
   ipcMain.handle('eintraege:set', (_, spalteId, schuelerId, wert) => {
     const existing = db.prepare('SELECT wert, kommentar FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').get(spalteId, schuelerId)
     const oldWert = existing ? existing.wert : null
+    const wertAlt = existing?.wert ?? null
+    const wertNeu = wert || null
+    if (wertAlt !== wertNeu) {
+      const spalte = db.prepare('SELECT fach_id FROM spalten WHERE id = ?').get(spalteId)
+      const kommentarAlt = existing?.kommentar ?? null
+      db.prepare(`
+        INSERT INTO eintraege_verlauf (fach_id, spalte_id, schueler_id, wert_alt, wert_neu, kommentar_alt, kommentar_neu, aktion)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'aenderung')
+      `).run(spalte?.fach_id ?? null, spalteId, schuelerId, wertAlt, wertNeu, kommentarAlt, kommentarAlt)
+    }
     const apply = (w) => {
-      const hasKommentar = !!db.prepare('SELECT 1 FROM eintraege WHERE spalte_id = ? AND schueler_id = ? AND kommentar IS NOT NULL AND kommentar != ""').get(spalteId, schuelerId)
+      const hasKommentar = !!db.prepare("SELECT 1 FROM eintraege WHERE spalte_id = ? AND schueler_id = ? AND kommentar IS NOT NULL AND kommentar != ''").get(spalteId, schuelerId)
       if (w === '' || w === null) {
         if (hasKommentar) {
           db.prepare('UPDATE eintraege SET wert = NULL WHERE spalte_id = ? AND schueler_id = ?').run(spalteId, schuelerId)
@@ -915,20 +1335,37 @@ function registerIPC() {
     return true
   })
 
+  ipcMain.handle('verlauf:get', (_, schuelerId, fachId) => {
+    return db.prepare(`
+      SELECT
+        v.id, v.spalte_id, v.schueler_id,
+        v.wert_alt, v.wert_neu, v.kommentar_alt, v.kommentar_neu,
+        v.zeitstempel, v.aktion,
+        s.kategorie, s.kuerzel, s.datum
+      FROM eintraege_verlauf v
+      LEFT JOIN spalten s ON s.id = v.spalte_id
+      WHERE v.schueler_id = ? AND v.fach_id = ?
+      ORDER BY v.zeitstempel DESC
+      LIMIT 100
+    `).all(schuelerId, fachId)
+  })
+
   // Zeugnisnoten
   ipcMain.handle('zeugnisnoten:getAll', (_, fachId) => {
     return db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fachId)
   })
 
   ipcMain.handle('zeugnisnoten:berechne', (_, fachId, schuelerId, semester) => {
-    const { note, s1Eingerechnet } = berechneZeugnisnote(fachId, schuelerId, semester)
+    const note = semester === 3
+      ? berechneEndnote(fachId, schuelerId)
+      : berechneZeugnisnote(fachId, schuelerId, semester).note
     if (note !== null) {
       db.prepare(`
         INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
         VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(fach_id, schueler_id, semester)
         DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
-      `).run(fachId, schuelerId, semester, note, s1Eingerechnet ? 1 : 0)
+      `).run(fachId, schuelerId, semester, note, semester === 3 ? 1 : 0)
     }
     return note
   })
@@ -937,13 +1374,15 @@ function registerIPC() {
     const existing = db.prepare('SELECT note_manuell FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = ?').get(fachId, schuelerId, semester)
     const rowExisted = !!existing
     const oldManuell = existing ? existing.note_manuell : undefined
-    const { note: berechnet, s1Eingerechnet } = berechneZeugnisnote(fachId, schuelerId, semester)
+    const berechnet = semester === 3
+      ? berechneEndnote(fachId, schuelerId)
+      : berechneZeugnisnote(fachId, schuelerId, semester).note
     const upsert = (n) => db.prepare(`
       INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, note_manuell, s1_eingerechnet)
       VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(fach_id, schueler_id, semester)
       DO UPDATE SET note_berechnet = excluded.note_berechnet, note_manuell = excluded.note_manuell, s1_eingerechnet = excluded.s1_eingerechnet
-    `).run(fachId, schuelerId, semester, berechnet, n, s1Eingerechnet ? 1 : 0)
+    `).run(fachId, schuelerId, semester, berechnet, n, semester === 3 ? 1 : 0)
     upsert(note)
     pushUndo({
       description: 'Zeugnisnote',
@@ -972,26 +1411,39 @@ function registerIPC() {
   })
 
   ipcMain.handle('zeugnisnoten:berechneFach', (_, fachId) => {
-    // Alle Schüler:innen und beide Semester neu berechnen
+    // Alle Schüler:innen: S1, S2 und Endnote neu berechnen
     const fach = db.prepare('SELECT * FROM faecher WHERE id = ?').get(fachId)
     if (!fach) return false
     const schueler = db.prepare('SELECT id FROM schueler WHERE klasse_id = ? AND aktiv = 1').all(fach.klasse_id)
-    const tx = db.transaction(() => {
+    const upsert = db.prepare(`
+      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(fach_id, schueler_id, semester)
+      DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
+    `)
+    const updateOnly = db.prepare(`
+      UPDATE zeugnisnoten SET note_berechnet = ?, s1_eingerechnet = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?
+    `)
+    db.transaction(() => {
       for (const s of schueler) {
         for (const sem of [1, 2]) {
-          const { note, s1Eingerechnet } = berechneZeugnisnote(fachId, s.id, sem)
+          const { note } = berechneZeugnisnote(fachId, s.id, sem)
           if (note !== null) {
-            db.prepare(`
-              INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
-              VALUES (?, ?, ?, ?, ?)
-              ON CONFLICT(fach_id, schueler_id, semester)
-              DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
-            `).run(fachId, s.id, sem, note, s1Eingerechnet ? 1 : 0)
+            upsert.run(fachId, s.id, sem, note, 0)
+          } else {
+            updateOnly.run(null, 0, fachId, s.id, sem)
           }
         }
       }
-    })
-    tx()
+      for (const s of schueler) {
+        const endnote = berechneEndnote(fachId, s.id)
+        if (endnote !== null) {
+          upsert.run(fachId, s.id, 3, endnote, 1)
+        } else {
+          updateOnly.run(null, 1, fachId, s.id, 3)
+        }
+      }
+    })()
     return true
   })
 
@@ -1022,6 +1474,18 @@ function registerIPC() {
 
   ipcMain.handle('gewichtungGlobal:update', (_, kategorie, gewichtung) => {
     db.prepare('INSERT OR REPLACE INTO gewichtung_global (kategorie, gewichtung) VALUES (?, ?)').run(kategorie, gewichtung)
+    // Alle Fächer im aktiven Schuljahr neu berechnen, die keine fachspezifischen Gewichtungen haben
+    const aktuellesSchuljahr = db.prepare('SELECT id FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
+    if (aktuellesSchuljahr) {
+      const faecher = db.prepare(`
+        SELECT f.id FROM faecher f
+        JOIN klassen k ON f.klasse_id = k.id
+        WHERE k.schuljahr_id = ?
+          AND f.gewichtung_sa IS NULL AND f.gewichtung_t IS NULL
+          AND f.gewichtung_ma IS NULL AND f.gewichtung_hue IS NULL
+      `).all(aktuellesSchuljahr.id)
+      for (const f of faecher) berechneAlleFuerFach(f.id)
+    }
     return true
   })
 
@@ -1052,7 +1516,7 @@ function registerIPC() {
     return db.prepare(`
       SELECT sp.*, sz.stunde, sz.beginn, sz.ende,
              f.name AS fach_name, k.name AS klasse_name,
-             k.id AS klasse_id
+             k.id AS klasse_id, k.teams_link AS klasse_teams_link
       FROM stundenplan sp
       JOIN stundenzeiten sz ON sp.stunde_id = sz.id
       JOIN faecher f ON sp.fach_id = f.id
@@ -1074,6 +1538,54 @@ function registerIPC() {
   ipcMain.handle('stundenplan:update', (_, id, data) => {
     db.prepare('UPDATE stundenplan SET fach_id = ? WHERE id = ?').run(data.fachId, id)
     return true
+  })
+
+  ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => {
+    return db.prepare(`
+      SELECT sp.id, sp.wochentag, sp.stunde_id, sp.fach_id,
+             sz.stunde, sz.beginn, sz.ende,
+             f.name AS fach_name,
+             k.name AS klasse_name, k.id AS klasse_id, k.teams_link AS klasse_teams_link
+      FROM stundenplan sp
+      JOIN stundenzeiten sz ON sz.id = sp.stunde_id
+      JOIN faecher f ON f.id = sp.fach_id
+      JOIN klassen k ON k.id = f.klasse_id
+      WHERE k.id = ?
+      ORDER BY sp.wochentag, sz.stunde
+    `).all(klasseId)
+  })
+
+  ipcMain.handle('stundenplan:getParallelFach', (_, aktuelleKlasseId, fachName) => {
+    // Parallelklassen-Fächer finden (gleicher Name, anderes Klasse, selbes Schuljahr)
+    const parallelFaecher = db.prepare(`
+      SELECT f.id AS fach_id, f.name AS fach_name,
+             k.id AS klasse_id, k.name AS klasse_name, k.teams_link AS klasse_teams_link
+      FROM faecher f
+      JOIN klassen k ON f.klasse_id = k.id
+      WHERE f.name = ?
+        AND k.schuljahr_id = (SELECT schuljahr_id FROM klassen WHERE id = ?)
+        AND k.id != ?
+      ORDER BY k.name
+    `).all(fachName, aktuelleKlasseId, aktuelleKlasseId)
+
+    // Für jedes parallele Fach die Stundenplan-Slots laden
+    const slotsStmt = db.prepare(`
+      SELECT sp.id, sp.wochentag, sp.stunde_id, sp.fach_id,
+             sz.stunde, sz.beginn, sz.ende,
+             f.name AS fach_name,
+             k.name AS klasse_name, k.id AS klasse_id, k.teams_link AS klasse_teams_link
+      FROM stundenplan sp
+      JOIN stundenzeiten sz ON sz.id = sp.stunde_id
+      JOIN faecher f ON f.id = sp.fach_id
+      JOIN klassen k ON k.id = f.klasse_id
+      WHERE f.id = ?
+      ORDER BY sp.wochentag, sz.stunde
+    `)
+
+    return parallelFaecher.map(pf => ({
+      ...pf,
+      slots: slotsStmt.all(pf.fach_id),
+    }))
   })
 
   // Stunden-Planung
@@ -1136,13 +1648,26 @@ function registerIPC() {
     const sonntag = new Date(d)
     sonntag.setDate(d.getDate() + 6)
     const sonntagStr = `${sonntag.getFullYear()}-${String(sonntag.getMonth()+1).padStart(2,'0')}-${String(sonntag.getDate()).padStart(2,'0')}`
-    return db.prepare(`
-      SELECT sp.*, s.wochentag, s.stunde_id
+    const rows = db.prepare(`
+      SELECT sp.*, s.wochentag AS quell_wochentag, s.stunde_id, s.fach_id
       FROM stunden_planung sp
       JOIN stundenplan s ON s.id = sp.stundenplan_id
       WHERE sp.hue_frist_datum >= ? AND sp.hue_frist_datum <= ?
         AND sp.hue_text IS NOT NULL AND sp.hue_text != ''
     `).all(wocheDatum, sonntagStr)
+    // Wochentag aus dem Fristdatum ableiten (1=Mo..5=Fr)
+    // und den passenden Stundenplan-Slot für das Fach an diesem Tag finden
+    return rows.map(row => {
+      const fristDate = new Date(row.hue_frist_datum + 'T00:00:00')
+      const fristWochentag = fristDate.getDay() === 0 ? 7 : fristDate.getDay() // 1=Mo..7=So
+      // Finde den Stundenplan-Eintrag für dieses Fach am Frist-Wochentag
+      const zielSlot = db.prepare('SELECT stunde_id FROM stundenplan WHERE fach_id = ? AND wochentag = ? LIMIT 1').get(row.fach_id, fristWochentag)
+      return {
+        ...row,
+        wochentag: fristWochentag,
+        stunde_id: zielSlot?.stunde_id ?? row.stunde_id,
+      }
+    })
   })
 
   ipcMain.handle('stundenPlanung:checkMusizieren', (_, wocheDatum, klasseId, excludeStundenplanId) => {
@@ -1157,6 +1682,143 @@ function registerIPC() {
         AND LOWER(f.name) LIKE '%musik%'
     `).get(wocheDatum, klasseId, excludeStundenplanId)
     return !!row
+  })
+
+  ipcMain.handle('stundenPlanung:setEntfall', (_, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume) => {
+    // Entfall-Eintrag erstellen/aktualisieren
+    db.prepare(`
+      INSERT INTO stunden_planung (stundenplan_id, woche_datum, titel, inhalt, entfall)
+      VALUES (?, ?, '', '', 1)
+      ON CONFLICT(stundenplan_id, woche_datum) DO UPDATE SET entfall = 1
+    `).run(stundenplanId, wocheDatum)
+
+    if (vorruecken) {
+      // Vorrücken: Planungen ab dem Entfall-Slot um je eine Stunde IN DIE ZUKUNFT schieben.
+      // Ferien-Tage werden dabei übersprungen.
+      //
+      // 1. Fach-ID des entfallenen Slots ermitteln
+      const slot = db.prepare('SELECT * FROM stundenplan WHERE id = ?').get(stundenplanId)
+      if (!slot) return true
+
+      // 2. Alle wöchentlichen Slots für dieses Fach chronologisch laden
+      const alleSlots = db.prepare(`
+        SELECT sp.id, sp.wochentag, sz.stunde as stunde_nr
+        FROM stundenplan sp
+        JOIN stundenzeiten sz ON sz.id = sp.stunde_id
+        WHERE sp.fach_id = ?
+        ORDER BY sp.wochentag, sz.stunde
+      `).all(slot.fach_id)
+
+      if (alleSlots.length === 0) return true
+
+      const cancelIdx = alleSlots.findIndex(s => s.id === stundenplanId)
+      if (cancelIdx === -1) return true
+
+      function addWeeks(dateStr, weeks) {
+        const d = new Date(dateStr + 'T00:00:00')
+        d.setDate(d.getDate() + weeks * 7)
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      }
+
+      // Helper: Prüft ob ein bestimmter Wochentag in einer Woche ein Ferientag ist
+      function istFerientag(weekDatum, wochentag) {
+        if (!ferienZeitraeume || ferienZeitraeume.length === 0) return false
+        const d = new Date(weekDatum + 'T00:00:00')
+        d.setDate(d.getDate() + (wochentag - 1))
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        return ferienZeitraeume.some(f => dateStr >= f.von && dateStr <= f.bis)
+      }
+
+      // 3. Ab dem Entfall-Slot vorwärts wandern und ALLE Slots sammeln (auch leere),
+      //    Ferien-Tage überspringen. Wir sammeln: Entfall-Slot + alle folgenden mit Planung.
+      const slots = [] // { slotId, weekDatum, planning|null }
+      let curIdx = cancelIdx
+      let curWeek = wocheDatum
+
+      // Entfall-Slot selbst
+      const entfallPlanung = db.prepare(
+        'SELECT * FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ?'
+      ).get(stundenplanId, wocheDatum)
+      slots.push({ slotId: stundenplanId, weekDatum: wocheDatum, planning: entfallPlanung })
+
+      // Folgende Slots sammeln, solange sie eine Planung haben (Ferien überspringen)
+      const maxSteps = alleSlots.length * 52
+      for (let step = 0; step < maxSteps; step++) {
+        const atEndOfCycle = curIdx === alleSlots.length - 1
+        const nextIdx = (curIdx + 1) % alleSlots.length
+        const nextWeek = atEndOfCycle ? addWeeks(curWeek, 1) : curWeek
+
+        // Ferientag? → überspringen, aber weiterzählen
+        if (istFerientag(nextWeek, alleSlots[nextIdx].wochentag)) {
+          curIdx = nextIdx
+          curWeek = nextWeek
+          continue
+        }
+
+        const planning = db.prepare(
+          'SELECT * FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ? AND entfall = 0'
+        ).get(alleSlots[nextIdx].id, nextWeek)
+
+        slots.push({ slotId: alleSlots[nextIdx].id, weekDatum: nextWeek, planning: planning ?? null })
+
+        if (!planning) break // Erster leerer Slot → Ende der Kette
+
+        curIdx = nextIdx
+        curWeek = nextWeek
+      }
+
+      // 4. Planungen verschieben: Jeder Slot bekommt die Planung des vorherigen Slots.
+      //    slots[0] = Entfall (wird zum entfall markiert)
+      //    slots[1] bekommt Planung von slots[0]  (Di-Inhalt → Mi)
+      //    slots[2] bekommt Planung von slots[1]  (Mi-Inhalt → Do)
+      //    ...
+      //    slots[N] (letzter, war leer) bekommt Planung von slots[N-1]
+      if (slots.length >= 2) {
+        const vorrueckTransaction = db.transaction(() => {
+          // Von hinten nach vorne verschieben, um keine Daten zu überschreiben
+          for (let i = slots.length - 1; i >= 1; i--) {
+            const ziel = slots[i]       // Ziel-Slot (weiter in der Zukunft)
+            const quelle = slots[i - 1] // Quell-Slot (näher an der Gegenwart)
+
+            if (quelle.planning && (quelle.planning.titel || quelle.planning.inhalt || quelle.planning.hue_text || quelle.planning.link)) {
+              // Planung vom Quell-Slot in den Ziel-Slot kopieren
+              const p = quelle.planning
+              db.prepare(`
+                INSERT INTO stunden_planung (stundenplan_id, woche_datum, titel, inhalt, musizieren, hue_text, hue_frist_datum, link, entfall)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                ON CONFLICT(stundenplan_id, woche_datum) DO UPDATE SET
+                  titel = excluded.titel, inhalt = excluded.inhalt, musizieren = excluded.musizieren,
+                  hue_text = excluded.hue_text, hue_frist_datum = excluded.hue_frist_datum,
+                  link = excluded.link, entfall = 0
+              `).run(ziel.slotId, ziel.weekDatum, p.titel, p.inhalt, p.musizieren, p.hue_text, p.hue_frist_datum, p.link)
+            } else {
+              // Quell-Slot war leer → Ziel-Slot leeren
+              db.prepare('DELETE FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ? AND entfall = 0')
+                .run(ziel.slotId, ziel.weekDatum)
+            }
+          }
+          // Entfall-Slot als Entfall markieren (Inhalt wird geleert, entfall=1 bleibt)
+          db.prepare(`
+            UPDATE stunden_planung SET titel = '', inhalt = '', musizieren = 0,
+              hue_text = NULL, hue_frist_datum = NULL, link = NULL, entfall = 1
+            WHERE stundenplan_id = ? AND woche_datum = ?
+          `).run(stundenplanId, wocheDatum)
+        })
+        vorrueckTransaction()
+      }
+    }
+    return true
+  })
+
+  ipcMain.handle('stundenPlanung:removeEntfall', (_, stundenplanId, wocheDatum) => {
+    // Entfall aufheben – wenn keine anderen Inhalte vorhanden sind, Eintrag löschen
+    const existing = db.prepare('SELECT * FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ?').get(stundenplanId, wocheDatum)
+    if (existing && !existing.titel && !existing.inhalt && !existing.hue_text && !existing.link) {
+      db.prepare('DELETE FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ?').run(stundenplanId, wocheDatum)
+    } else {
+      db.prepare('UPDATE stunden_planung SET entfall = 0 WHERE stundenplan_id = ? AND woche_datum = ?').run(stundenplanId, wocheDatum)
+    }
+    return true
   })
 
   ipcMain.handle('stundenPlanung:delete', (_, stundenplanId, wocheDatum) => {
@@ -1514,6 +2176,129 @@ function registerIPC() {
     }
   })
 
+  // ─── Export: Fach-Planung als DOCX ────────────────────────────────────────
+  ipcMain.handle('export:fachPlanungDocx', async (_, fachId, fachName, klasseName, wochenDaten) => {
+    const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, BorderStyle, HeadingLevel } = require('docx')
+
+    const WOCHENTAGE = ['', 'Mo', 'Di', 'Mi', 'Do', 'Fr']
+
+    // Alle Stundenplan-Slots für dieses Fach
+    const fachSlots = db.prepare(`
+      SELECT st.id, st.wochentag, sz.stunde, sz.beginn, sz.ende
+      FROM stundenplan st
+      JOIN stundenzeiten sz ON sz.id = st.stunde_id
+      WHERE st.fach_id = ?
+      ORDER BY st.wochentag, sz.stunde
+    `).all(fachId)
+
+    if (fachSlots.length === 0) return false
+
+    const slotIds = fachSlots.map(s => s.id)
+
+    // Planungen für alle angefragten Wochen laden
+    const planStmt = db.prepare(`
+      SELECT sp.*, sp.stundenplan_id
+      FROM stunden_planung sp
+      WHERE sp.stundenplan_id IN (${slotIds.map(() => '?').join(',')})
+        AND sp.woche_datum = ?
+    `)
+
+    const noBorder = { style: BorderStyle.NONE, size: 0 }
+    const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder }
+    const thinBorder = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
+    const cellBorders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
+
+    const sections = []
+    const exportierteKWs = []
+
+    for (let wi = 0; wi < wochenDaten.length; wi++) {
+      const wd = wochenDaten[wi]
+      const planungen = planStmt.all(...slotIds, wd.wocheDatum)
+      const planMap = {}
+      for (const p of planungen) planMap[p.stundenplan_id] = p
+
+      // Nur Wochen mit mindestens einer Planung
+      const hatPlanung = fachSlots.some(s => planMap[s.id]?.titel || planMap[s.id]?.inhalt)
+      if (!hatPlanung) continue
+
+      // Tabellenzeilen: Header + je eine Zeile pro Slot
+      const headerRow = new TableRow({
+        tableHeader: true,
+        children: [
+          new TableCell({ width: { size: 1800, type: WidthType.DXA }, borders: cellBorders, shading: { fill: 'F3F4F6' },
+            children: [new Paragraph({ children: [new TextRun({ text: 'Stunde', bold: true, size: 18, font: 'Arial' })] })] }),
+          new TableCell({ width: { size: 2000, type: WidthType.DXA }, borders: cellBorders, shading: { fill: 'F3F4F6' },
+            children: [new Paragraph({ children: [new TextRun({ text: 'Thema', bold: true, size: 18, font: 'Arial' })] })] }),
+          new TableCell({ borders: cellBorders, shading: { fill: 'F3F4F6' },
+            children: [new Paragraph({ children: [new TextRun({ text: 'Inhalt', bold: true, size: 18, font: 'Arial' })] })] }),
+          new TableCell({ width: { size: 2000, type: WidthType.DXA }, borders: cellBorders, shading: { fill: 'F3F4F6' },
+            children: [new Paragraph({ children: [new TextRun({ text: 'HÜ', bold: true, size: 18, font: 'Arial' })] })] }),
+        ],
+      })
+
+      const dataRows = fachSlots.map(slot => {
+        const plan = planMap[slot.id]
+        const stundeText = `${WOCHENTAGE[slot.wochentag]} ${slot.stunde}. (${slot.beginn}–${slot.ende})`
+
+        const inhaltParas = (plan?.inhalt || '').split('\n').filter(l => l.trim()).map(line =>
+          new Paragraph({ children: [new TextRun({ text: line, size: 18, font: 'Arial' })] })
+        )
+        if (inhaltParas.length === 0) inhaltParas.push(new Paragraph({ children: [] }))
+
+        return new TableRow({
+          children: [
+            new TableCell({ width: { size: 1800, type: WidthType.DXA }, borders: cellBorders, verticalAlign: 'top',
+              children: [new Paragraph({ children: [new TextRun({ text: stundeText, size: 18, font: 'Arial', color: '666666' })] })] }),
+            new TableCell({ width: { size: 2000, type: WidthType.DXA }, borders: cellBorders, verticalAlign: 'top',
+              children: [new Paragraph({ children: [new TextRun({ text: plan?.titel || '', size: 18, font: 'Arial', bold: !!plan?.titel })] })] }),
+            new TableCell({ borders: cellBorders, verticalAlign: 'top', children: inhaltParas }),
+            new TableCell({ width: { size: 2000, type: WidthType.DXA }, borders: cellBorders, verticalAlign: 'top',
+              children: [new Paragraph({ children: [new TextRun({ text: plan?.hue_text || '', size: 18, font: 'Arial', italics: true })] })] }),
+          ],
+        })
+      })
+
+      const table = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [headerRow, ...dataRows],
+      })
+
+      exportierteKWs.push(wd.kw)
+      sections.push({
+        properties: wi > 0 ? { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } } : { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } },
+        children: [
+          ...(wi === 0 ? [
+            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `${fachName} – ${klasseName}`, font: 'Arial' })] }),
+            new Paragraph({ spacing: { after: 100 }, children: [new TextRun({ text: `Exportiert am ${new Date().toLocaleDateString('de-AT')}`, size: 18, font: 'Arial', color: '999999' })] }),
+          ] : []),
+          new Paragraph({ spacing: { before: 200, after: 100 },
+            children: [new TextRun({ text: `KW ${wd.kw} · ${wd.montagStr} – ${wd.freitagStr}${wd.jahr}`, bold: true, size: 22, font: 'Arial', color: '4F46E5' })] }),
+          table,
+        ],
+      })
+    }
+
+    if (sections.length === 0) {
+      dialog.showMessageBox({ type: 'info', message: 'Keine Planungsdaten zum Exportieren vorhanden.' })
+      return false
+    }
+
+    const doc = new Document({ sections })
+    const buf = await Packer.toBuffer(doc)
+
+    const kwMin = Math.min(...exportierteKWs)
+    const kwMax = Math.max(...exportierteKWs)
+    const kwLabel = kwMin === kwMax ? `KW${kwMin}` : `KW${kwMin}-${kwMax}`
+
+    const savePath = await dialog.showSaveDialog({
+      defaultPath: `planung_${fachName}_${klasseName}_${kwLabel}.docx`,
+      filters: [{ name: 'Word-Dokument', extensions: ['docx'] }],
+    })
+    if (savePath.canceled) return false
+    fs.writeFileSync(savePath.filePath, buf)
+    return true
+  })
+
   // ─── Export: Alle Schüler:innen Excel ─────────────────────────────────────
   ipcMain.handle('export:allSchuelerExcel', async () => {
     const XLSX = require('xlsx')
@@ -1707,6 +2492,27 @@ function registerIPC() {
     return newTischId
   })
 
+  // ─── Custom Ferien ───────────────────────────────────────────────────────────
+  ipcMain.handle('customFerien:getAll', (_, schuljahrId) =>
+    db.prepare('SELECT * FROM custom_ferien WHERE schuljahr_id = ? ORDER BY von').all(schuljahrId)
+  )
+
+  ipcMain.handle('customFerien:save', (_, schuljahrId, ferien) => {
+    // ferien = [{ id?, name, von, bis }, ...]
+    // Komplett ersetzen: alle löschen und neu einfügen
+    const transaction = db.transaction(() => {
+      db.prepare('DELETE FROM custom_ferien WHERE schuljahr_id = ?').run(schuljahrId)
+      const insert = db.prepare('INSERT INTO custom_ferien (schuljahr_id, name, von, bis) VALUES (?, ?, ?, ?)')
+      for (const f of ferien) {
+        if (f.name && f.von && f.bis) {
+          insert.run(schuljahrId, f.name, f.von, f.bis)
+        }
+      }
+    })
+    transaction()
+    return true
+  })
+
   // ─── Termine ─────────────────────────────────────────────────────────────────
   ipcMain.handle('termine:getAll', (_, schuljahrId) =>
     db.prepare(`
@@ -1718,18 +2524,18 @@ function registerIPC() {
     `).all(schuljahrId)
   )
 
-  ipcMain.handle('termine:create', (_, { titel, datum, uhrzeit, notiz, klasseId, schuljahrId }) => {
-    console.log('[main] termine:create', { titel, datum, uhrzeit, notiz, klasseId, schuljahrId })
+  ipcMain.handle('termine:create', (_, { titel, datum, uhrzeit, notiz, klasseId, schuljahrId, stundeId }) => {
+    console.log('[main] termine:create', { titel, datum, uhrzeit, notiz, klasseId, schuljahrId, stundeId })
     const info = db.prepare(
-      'INSERT INTO termine (titel, datum, uhrzeit, notiz, klasse_id, schuljahr_id) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(titel, datum, uhrzeit ?? null, notiz ?? null, klasseId ?? null, schuljahrId)
+      'INSERT INTO termine (titel, datum, uhrzeit, notiz, klasse_id, schuljahr_id, stunde_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(titel, datum, uhrzeit ?? null, notiz ?? null, klasseId ?? null, schuljahrId, stundeId ?? null)
     console.log('[main] termine:create → id', info.lastInsertRowid)
     return info.lastInsertRowid
   })
 
-  ipcMain.handle('termine:update', (_, id, { titel, datum, uhrzeit, notiz, klasseId }) => {
-    db.prepare('UPDATE termine SET titel = ?, datum = ?, uhrzeit = ?, notiz = ?, klasse_id = ? WHERE id = ?')
-      .run(titel, datum, uhrzeit ?? null, notiz ?? null, klasseId ?? null, id)
+  ipcMain.handle('termine:update', (_, id, { titel, datum, uhrzeit, notiz, klasseId, stundeId }) => {
+    db.prepare('UPDATE termine SET titel = ?, datum = ?, uhrzeit = ?, notiz = ?, klasse_id = ?, stunde_id = ? WHERE id = ?')
+      .run(titel, datum, uhrzeit ?? null, notiz ?? null, klasseId ?? null, stundeId ?? null, id)
     return true
   })
 
@@ -1740,13 +2546,14 @@ function registerIPC() {
 
   // ─── Jahresplanung ────────────────────────────────────────────────────────────
   ipcMain.handle('jahresplanung:getAll', (_, fachId) =>
-    db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY datum_von').all(fachId)
+    db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY reihenfolge, id').all(fachId)
   )
-  ipcMain.handle('jahresplanung:create', (_, d) =>
-    Number(db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe) VALUES (?,?,?,?,?,?)').run(d.fachId, d.titel, d.inhalt, d.datumVon, d.datumBis, d.farbe ?? null).lastInsertRowid)
-  )
+  ipcMain.handle('jahresplanung:create', (_, d) => {
+    const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(d.fachId).m
+    return Number(db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?)').run(d.fachId, d.titel, d.inhalt ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, maxOrd + 1).lastInsertRowid)
+  })
   ipcMain.handle('jahresplanung:update', (_, id, d) => {
-    db.prepare('UPDATE jahresplanung_abschnitte SET titel=?, inhalt=?, datum_von=?, datum_bis=?, farbe=? WHERE id=?').run(d.titel, d.inhalt, d.datumVon, d.datumBis, d.farbe ?? null, id)
+    db.prepare('UPDATE jahresplanung_abschnitte SET titel=?, inhalt=?, datum_von=?, datum_bis=?, farbe=? WHERE id=?').run(d.titel, d.inhalt ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, id)
     return true
   })
   ipcMain.handle('jahresplanung:delete', (_, id) => {
@@ -1766,9 +2573,21 @@ function registerIPC() {
   )
   ipcMain.handle('jahresplanung:importVonFach', (_, quellFachId, zielFachId) => {
     const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ?').all(quellFachId)
-    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe) VALUES (?,?,?,?,?,?)')
+    const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(zielFachId).m
+    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?)')
     db.transaction(() => {
-      for (const a of abschnitte) insert.run(zielFachId, a.titel, a.inhalt, a.datum_von, a.datum_bis, a.farbe)
+      abschnitte.forEach((a, i) => insert.run(zielFachId, a.titel, a.inhalt, a.datum_von, a.datum_bis, a.farbe, maxOrd + 1 + i))
+    })()
+    return true
+  })
+  ipcMain.handle('jahresplanung:swap', (_, idA, idB) => {
+    const a = db.prepare('SELECT datum_von, datum_bis, reihenfolge FROM jahresplanung_abschnitte WHERE id = ?').get(idA)
+    const b = db.prepare('SELECT datum_von, datum_bis, reihenfolge FROM jahresplanung_abschnitte WHERE id = ?').get(idB)
+    if (!a || !b) return false
+    const upd = db.prepare('UPDATE jahresplanung_abschnitte SET datum_von=?, datum_bis=?, reihenfolge=? WHERE id=?')
+    db.transaction(() => {
+      upd.run(b.datum_von, b.datum_bis, b.reihenfolge, idA)
+      upd.run(a.datum_von, a.datum_bis, a.reihenfolge, idB)
     })()
     return true
   })
@@ -1781,7 +2600,7 @@ function createWindow() {
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    icon: path.join(__dirname, 'logo.ico'),
+    icon: path.join(__dirname, 'daskalalogo.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

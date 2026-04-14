@@ -67,12 +67,15 @@ function noteKlasse(n) {
 
 // ─── Haupt-Zelle ─────────────────────────────────────────────────────────────
 const Zelle = memo(function Zelle({ spalte, schueler }) {
-  const { eintraege, setEintrag } = useStore()
+  const { eintraege, setEintrag, aktivesFach, niveaus } = useStore()
   const [popupOffen, setPopupOffen] = useState(false)
   const cellRef = useRef(null)
 
   const key = `${spalte.id}_${schueler.id}`
   const wert = eintraege[key] ?? ''
+
+  const isDifferenziert = aktivesFach?.benotungssystem === 'differenziert'
+  const niveau = isDifferenziert ? (niveaus[schueler.id] ?? 'AHS') : null
 
   const handleClick = () => {
     if (spalte.kategorie === 'MA') {
@@ -94,6 +97,7 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
   // Anzeige-Inhalt & Farbe
   let anzeigeText = wert
   let anzeigeKlasse = ''
+  let zeigeBadge = false
 
   if (spalte.kategorie === 'MA') {
     if (wert === '+') { anzeigeText = '+'; anzeigeKlasse = 'zelle-plus' }
@@ -104,6 +108,7 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
     else if (wert === '—') anzeigeKlasse = 'zelle-strich'
   } else if (wert) {
     anzeigeKlasse = noteKlasse(wert)
+    if (isDifferenziert) zeigeBadge = true
   }
 
   return (
@@ -114,7 +119,12 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
         onClick={handleClick}
         title={`${schueler.nachname} ${schueler.vorname} | ${spalte.kuerzel} ${spalte.datum ?? ''}`}
       >
-        {anzeigeText}
+        {zeigeBadge ? (
+          <span className="flex flex-col items-center leading-none gap-px">
+            <span>{anzeigeText}</span>
+            <span className="text-[7px] opacity-60 font-normal">{niveau}</span>
+          </span>
+        ) : anzeigeText}
       </div>
       {popupOffen && (
         <ZahlenPopup

@@ -40,15 +40,18 @@ const SpalteHeader = memo(function SpalteHeader({ spalte, onContextMenu }) {
 
   return (
     <th
-      className={`p-0 text-center cursor-pointer select-none group ${KAT_FARBE[spalte.kategorie] ?? KAT_FARBE.CUSTOM}`}
+      className={`p-0 text-center cursor-pointer select-none group relative ${KAT_FARBE[spalte.kategorie] ?? KAT_FARBE.CUSTOM}`}
       style={{ width: 36, minWidth: 36 }}
       onContextMenu={e => onContextMenu(e, spalte)}
-      title="Rechtsklick für Optionen"
+      title={spalte.notiz ?? 'Rechtsklick für Optionen'}
     >
       <div className="h-12 flex flex-col items-center justify-center px-0.5">
         <span className="font-semibold text-xs leading-tight">{spalte.kuerzel}</span>
         <span className="text-xs opacity-70 leading-tight">{datumAnzeige}</span>
       </div>
+      {spalte.notiz && (
+        <span className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-400 dark:bg-blue-500" />
+      )}
     </th>
   )
 })
@@ -65,6 +68,17 @@ function ZNHeader({ semester }) {
       <div className="h-12 flex flex-col items-center justify-center px-1">
         <span className="font-bold text-xs text-zinc-500 dark:text-zinc-400">ZN</span>
         <span className="text-xs text-zinc-400 dark:text-zinc-600">S{semester}</span>
+      </div>
+    </th>
+  )
+}
+
+// ─── EN-Spalten-Kopf ──────────────────────────────────────────────────────────
+function ENHeader() {
+  return (
+    <th className="bg-indigo-50 dark:bg-indigo-950/30 text-center" style={{ width: 42, minWidth: 42 }}>
+      <div className="h-12 flex flex-col items-center justify-center px-1">
+        <span className="font-bold text-xs text-indigo-600 dark:text-indigo-400">EN</span>
       </div>
     </th>
   )
@@ -107,9 +121,11 @@ export default function NotenTabelle() {
     aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt,
     setDetailSchueler, openModal,
     ladeSpalten, refreshZeugnisnoten,
+    niveaus, setNiveau,
   } = useStore()
 
   const [spaltenContextMenu, setSpaltenContextMenu] = useState(null)
+  const [spalteBearbeitenModal, setSpalteBearbeitenModal] = useState(null)
   const tableRef = useRef(null)
 
   const spaltenS1 = spalten.filter(s => s.semester === 1)
@@ -124,6 +140,17 @@ export default function NotenTabelle() {
     e.preventDefault()
     setSpaltenContextMenu({ x: e.clientX, y: e.clientY, spalte })
   }, [])
+
+  const handleSpalteBearbeiten = (spalte) => {
+    setSpaltenContextMenu(null)
+    setSpalteBearbeitenModal(spalte)
+  }
+
+  const handleSpalteBearbeitenSpeichern = async ({ kuerzel, datum, notiz }) => {
+    await window.api.spalten.update(spalteBearbeitenModal.id, { kuerzel, datum, notiz })
+    await ladeSpalten()
+    setSpalteBearbeitenModal(null)
+  }
 
   const handleSpalteLoeschen = async (spalteId) => {
     if (!confirm('Spalte und alle Einträge löschen?')) return
@@ -248,6 +275,9 @@ export default function NotenTabelle() {
               {/* ZN S2 */}
               {aktiveSemester === 2 && <ZNHeader semester={2} />}
 
+              {/* Endnote */}
+              {aktiveSemester === 2 && <ENHeader />}
+
               {/* Ghost-Spalte zum Hinzufügen */}
               <GhostSpalteHeader onClick={openSpalteModal} />
             </tr>
@@ -272,6 +302,23 @@ export default function NotenTabelle() {
                   {s.lernschwaeche ? <span title="Lernschwäche" className="ml-1.5 text-[9px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">LS</span> : null}
                   {s.legasthenie   ? <span title="Legasthenie"  className="ml-1 text-[9px] font-bold px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400">LEG</span> : null}
                   {s.spf           ? <span title="Sonderpädagogischer Förderbedarf" className="ml-1 text-[9px] font-bold px-1 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">SPF</span> : null}
+                  {aktivesFach?.benotungssystem === 'differenziert' && (
+                    <span
+                      title={`Klick: Niveau wechseln (${(niveaus[s.id] ?? 'AHS') === 'AHS' ? 'AHS → ST' : 'ST → AHS'})`}
+                      className={`ml-1.5 text-[9px] font-bold px-1 py-0.5 rounded cursor-pointer select-none transition-colors ${
+                        (niveaus[s.id] ?? 'AHS') === 'AHS'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/60'
+                      }`}
+                      onClick={e => {
+                        e.stopPropagation()
+                        const aktuell = niveaus[s.id] ?? 'AHS'
+                        setNiveau(s.id, aktuell === 'AHS' ? 'ST' : 'AHS')
+                      }}
+                    >
+                      {niveaus[s.id] ?? 'AHS'}
+                    </span>
+                  )}
                 </td>
 
                 {/* S1 Zellen */}
@@ -298,6 +345,9 @@ export default function NotenTabelle() {
                 {/* ZN S2 */}
                 {aktiveSemester === 2 && <ZeugnisnoteZelle schueler={s} semester={2} />}
 
+                {/* Endnote */}
+                {aktiveSemester === 2 && <ZeugnisnoteZelle schueler={s} semester={3} />}
+
                 {/* Ghost-Zelle */}
                 <GhostZelle onClick={openSpalteModal} />
               </tr>
@@ -305,6 +355,15 @@ export default function NotenTabelle() {
           </tbody>
         </table>
       </div>
+
+      {/* Spalte-Bearbeiten-Modal */}
+      {spalteBearbeitenModal && (
+        <SpalteBearbeitenModal
+          spalte={spalteBearbeitenModal}
+          onSpeichern={handleSpalteBearbeitenSpeichern}
+          onClose={() => setSpalteBearbeitenModal(null)}
+        />
+      )}
 
       {/* Spalten-Kontext-Menü */}
       {spaltenContextMenu && (
@@ -331,12 +390,90 @@ export default function NotenTabelle() {
               Nach Kategorie sortieren (S{spaltenContextMenu.spalte.semester})
             </div>
             <div className="context-menu-separator" />
+            <div className="context-menu-item" onClick={() => handleSpalteBearbeiten(spaltenContextMenu.spalte)}>
+              ✎ Spalte bearbeiten
+            </div>
+            <div className="context-menu-separator" />
             <div className="context-menu-item text-red-500" onClick={() => handleSpalteLoeschen(spaltenContextMenu.spalte.id)}>
               Spalte löschen
             </div>
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+const KATEGORIEN_LABEL = { MA: 'Mitarbeit', 'HÜ': 'Hausübung', T: 'Test', SA: 'Schularbeit', CUSTOM: 'Individuell' }
+
+function SpalteBearbeitenModal({ spalte, onSpeichern, onClose }) {
+  const [kuerzel, setKuerzel] = useState(spalte.kuerzel)
+  const [datum, setDatum] = useState(spalte.datum ?? '')
+  const [notiz, setNotiz] = useState(spalte.notiz ?? '')
+  const [loading, setLoading] = useState(false)
+
+  const speichern = async () => {
+    if (!kuerzel.trim()) return
+    setLoading(true)
+    try {
+      await onSpeichern({ kuerzel: kuerzel.trim(), datum: datum || null, notiz: notiz.trim() || null })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-sm">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Spalte bearbeiten</h2>
+        <p className="text-xs text-zinc-400 mb-4">{KATEGORIEN_LABEL[spalte.kategorie] ?? spalte.kategorie}</p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kürzel</label>
+            <input
+              className="input"
+              value={kuerzel}
+              onChange={e => setKuerzel(e.target.value)}
+              maxLength={10}
+              autoFocus
+              onKeyDown={e => e.key === 'Enter' && speichern()}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Datum</label>
+            <input
+              type="date"
+              className="input"
+              value={datum}
+              onChange={e => setDatum(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Notiz <span className="font-normal text-gray-400">(Tooltip am Spaltenkopf)</span>
+            </label>
+            <textarea
+              className="input resize-none"
+              rows={2}
+              value={notiz}
+              onChange={e => setNotiz(e.target.value)}
+              placeholder="z.B. Thema, Hinweise…"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-5">
+          <button className="btn-secondary flex-1" onClick={onClose}>Abbrechen</button>
+          <button
+            className="btn-primary flex-1"
+            onClick={speichern}
+            disabled={loading || !kuerzel.trim()}
+          >
+            {loading ? 'Speichern…' : 'Speichern'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

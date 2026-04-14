@@ -26,8 +26,12 @@ const useStore = create((set, get) => ({
   // ─── Daten ───────────────────────────────────────────────────────────────
   schueler: [],
   spalten: [],
-  eintraege: {},  // { spalte_id_schueler_id: wert }
+  eintraege: {},   // { spalte_id_schueler_id: wert }
+  kommentare: {},  // { spalte_id_schueler_id: kommentar }
   zeugnisnoten: {}, // { schueler_id_semester: { note_berechnet, note_manuell } }
+  niveaus: {},       // { schueler_id: 'AHS'|'ST' } – nur für aktives Fach
+  kompetenzbereiche: [],       // [{ id, fach_id, titel, beschreibung, reihenfolge }]
+  schuelerKompetenzen: {},     // { kompetenzbereichId_schuelerId: { niveau, notiz, aktualisiert } }
   todos: [],
   termine: [],
 
@@ -137,7 +141,7 @@ const useStore = create((set, get) => ({
     if (neueAktive) {
       await get().setAktiveKlasse(neueAktive)
     } else {
-      set({ aktiveKlasse: null, faecher: [], aktivesFach: null, schueler: [], spalten: [], eintraege: {}, zeugnisnoten: {} })
+      set({ aktiveKlasse: null, faecher: [], aktivesFach: null, schueler: [], spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {} })
     }
   },
 
@@ -152,7 +156,7 @@ const useStore = create((set, get) => ({
     if (aktivesFach) {
       await get().setAktivesFach(aktivesFach)
     } else {
-      set({ aktivesFach: null, spalten: [], eintraege: {}, zeugnisnoten: {} })
+      set({ aktivesFach: null, spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {} })
     }
   },
 
@@ -163,6 +167,7 @@ const useStore = create((set, get) => ({
   },
 
   ladeFachDaten: async (fachId) => {
+    const { aktivesFach } = get()
     const [spalten, eintraegeArr, zeugnisnotenArr] = await Promise.all([
       window.api.spalten.getAll(fachId),
       window.api.eintraege.getAll(fachId),
@@ -170,8 +175,10 @@ const useStore = create((set, get) => ({
     ])
 
     const eintraege = {}
+    const kommentare = {}
     eintraegeArr.forEach(e => {
       eintraege[`${e.spalte_id}_${e.schueler_id}`] = e.wert
+      if (e.kommentar) kommentare[`${e.spalte_id}_${e.schueler_id}`] = e.kommentar
     })
 
     const zeugnisnoten = {}
@@ -183,7 +190,28 @@ const useStore = create((set, get) => ({
       }
     })
 
-    set({ spalten, eintraege, zeugnisnoten })
+    // Niveaus laden wenn differenziert
+    let niveaus = {}
+    const fach = aktivesFach?.id === fachId ? aktivesFach : null
+    if (fach?.benotungssystem === 'differenziert') {
+      niveaus = await window.api.niveau.get(fachId)
+    }
+
+    // Kompetenzbereiche + Einstufungen laden
+    const [kompetenzbereiche, skArr] = await Promise.all([
+      window.api.kompetenzbereiche.getAll(fachId),
+      window.api.schuelerKompetenzen.getAll(fachId),
+    ])
+    const schuelerKompetenzen = {}
+    skArr.forEach(sk => {
+      schuelerKompetenzen[`${sk.kompetenzbereich_id}_${sk.schueler_id}`] = {
+        niveau: sk.niveau,
+        notiz: sk.notiz,
+        aktualisiert: sk.aktualisiert,
+      }
+    })
+
+    set({ spalten, eintraege, kommentare, zeugnisnoten, niveaus, kompetenzbereiche, schuelerKompetenzen })
   },
 
   // ─── Einträge setzen ──────────────────────────────────────────────────────
@@ -196,6 +224,42 @@ const useStore = create((set, get) => ({
     await window.api.eintraege.set(spalteId, schuelerId, wert)
     // ZN neu berechnen
     await get().refreshZeugnisnoten()
+  },
+
+  setKommentar: async (spalteId, schuelerId, kommentar) => {
+    const key = `${spalteId}_${schuelerId}`
+    set(state => ({
+      kommentare: { ...state.kommentare, [key]: kommentar || undefined }
+    }))
+    await window.api.eintraege.setKommentar(spalteId, schuelerId, kommentar)
+  },
+
+  // ─── Kompetenzen ─────────────────────────────────────────────────────────
+  ladeKompetenzen: async () => {
+    const { aktivesFach } = get()
+    if (!aktivesFach) return
+    const [kompetenzbereiche, skArr] = await Promise.all([
+      window.api.kompetenzbereiche.getAll(aktivesFach.id),
+      window.api.schuelerKompetenzen.getAll(aktivesFach.id),
+    ])
+    const schuelerKompetenzen = {}
+    skArr.forEach(sk => {
+      schuelerKompetenzen[`${sk.kompetenzbereich_id}_${sk.schueler_id}`] = {
+        niveau: sk.niveau, notiz: sk.notiz, aktualisiert: sk.aktualisiert,
+      }
+    })
+    set({ kompetenzbereiche, schuelerKompetenzen })
+  },
+
+  setKompetenzNiveau: async (kompetenzbereichId, schuelerId, niveau, notiz) => {
+    const key = `${kompetenzbereichId}_${schuelerId}`
+    set(state => ({
+      schuelerKompetenzen: {
+        ...state.schuelerKompetenzen,
+        [key]: { niveau, notiz: notiz ?? state.schuelerKompetenzen[key]?.notiz ?? null, aktualisiert: new Date().toISOString() }
+      }
+    }))
+    await window.api.schuelerKompetenzen.set(kompetenzbereichId, schuelerId, niveau, notiz)
   },
 
   refreshZeugnisnoten: async () => {
@@ -212,6 +276,28 @@ const useStore = create((set, get) => ({
       }
     })
     set({ zeugnisnoten })
+  },
+
+  // ─── Niveaus (AHS/ST) ────────────────────────────────────────────────────
+  ladeNiveaus: async () => {
+    const { aktivesFach } = get()
+    if (!aktivesFach || aktivesFach.benotungssystem !== 'differenziert') {
+      set({ niveaus: {} })
+      return
+    }
+    const niveaus = await window.api.niveau.get(aktivesFach.id)
+    set({ niveaus })
+  },
+
+  setNiveau: async (schuelerId, niveau) => {
+    const { aktivesFach } = get()
+    if (!aktivesFach) return
+    // Optimistisches Update
+    set(state => ({
+      niveaus: { ...state.niveaus, [schuelerId]: niveau }
+    }))
+    await window.api.niveau.set(aktivesFach.id, schuelerId, niveau)
+    await get().refreshZeugnisnoten()
   },
 
   // ─── Spalten ─────────────────────────────────────────────────────────────
