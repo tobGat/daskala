@@ -1,12 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import useStore from '../store/useStore'
-
-function toLocalDateStr(d) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+import PlanungModal, { toLocalDateStr, berechneFristDatum, naechsteLektionDatum, formatFristDatum } from './PlanungModal'
+import { berechneSchulferien, ferienFuerTag, mergeFerien } from '../utils/schulferien'
 
 function getMontag(wochenOffset) {
   const now = new Date()
@@ -39,7 +34,7 @@ function getKalenderwoche(datumStr) {
 }
 
 const KLASSE_FARBEN = [
-  { bg: 'bg-indigo-100 dark:bg-indigo-900',   text: 'text-indigo-900 dark:text-indigo-100',   border: 'border-indigo-400 dark:border-indigo-600',   accent: 'bg-indigo-400 dark:bg-indigo-500' },
+  { bg: 'bg-coral-100 dark:bg-coral-900',   text: 'text-coral-900 dark:text-coral-100',   border: 'border-coral-400 dark:border-coral-600',   accent: 'bg-coral-400 dark:bg-coral-500' },
   { bg: 'bg-emerald-100 dark:bg-emerald-900', text: 'text-emerald-900 dark:text-emerald-100', border: 'border-emerald-400 dark:border-emerald-600', accent: 'bg-emerald-400 dark:bg-emerald-500' },
   { bg: 'bg-violet-100 dark:bg-violet-900',   text: 'text-violet-900 dark:text-violet-100',   border: 'border-violet-400 dark:border-violet-600',   accent: 'bg-violet-400 dark:bg-violet-500' },
   { bg: 'bg-amber-100 dark:bg-amber-900',     text: 'text-amber-900 dark:text-amber-100',     border: 'border-amber-400 dark:border-amber-600',     accent: 'bg-amber-400 dark:bg-amber-500' },
@@ -63,16 +58,34 @@ function SupplierInhalt({ supplier }) {
         <div className="text-xs truncate leading-tight opacity-70 text-orange-800 dark:text-orange-200">
           {supplier.klasse_text || ''}
         </div>
-        <div className="text-[9px] font-bold text-orange-400 dark:text-orange-500 uppercase tracking-wide leading-tight">
-          Sup
-        </div>
+        {supplier.titel ? (
+          <div className="text-xs truncate leading-tight opacity-70 italic text-orange-800 dark:text-orange-200">
+            {supplier.titel}
+          </div>
+        ) : (
+          <div className="text-[9px] font-bold text-orange-400 dark:text-orange-500 uppercase tracking-wide leading-tight">
+            Sup
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-function SlotInhalt({ eintrag, planungTitel }) {
+function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall }) {
   const f = getKlasseFarbe(eintrag.klasse_id)
+  if (entfall) {
+    return (
+      <div className="h-full rounded overflow-hidden border border-paper-300 dark:border-ink-600 bg-paper-100 dark:bg-ink-800/60 flex relative">
+        <div className="w-1 flex-shrink-0 bg-red-400 dark:bg-red-600" />
+        <div className="flex-1 px-1.5 py-1 min-w-0 opacity-50">
+          <div className="font-semibold text-xs truncate leading-tight line-through text-ink-500 dark:text-ink-400 decoration-red-500 dark:decoration-red-400 decoration-2">{eintrag.fach_name}</div>
+          <div className="text-xs truncate leading-tight text-ink-400 dark:text-ink-500 line-through decoration-red-500 dark:decoration-red-400 decoration-2">{eintrag.klasse_name}</div>
+          <div className="text-[9px] font-bold text-red-500 dark:text-red-400 uppercase tracking-wide leading-tight mt-0.5">Entfall</div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex`}>
       <div className={`w-1 flex-shrink-0 ${f.accent}`} />
@@ -81,6 +94,12 @@ function SlotInhalt({ eintrag, planungTitel }) {
         <div className="text-xs truncate leading-tight opacity-60">{eintrag.klasse_name}</div>
         {planungTitel && (
           <div className="text-xs truncate opacity-70 mt-0.5 italic">{planungTitel}</div>
+        )}
+        {!planungTitel && planungNotiz && (
+          <div className="text-[10px] truncate opacity-70 mt-0.5 flex items-center gap-1">
+            <span aria-hidden>📝</span>
+            <span className="truncate">{planungNotiz}</span>
+          </div>
         )}
       </div>
     </div>
@@ -99,13 +118,15 @@ function aktuellerWochentag() {
 }
 
 export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
-  const { klassen, todos, termine } = useStore()
+  const { klassen, todos, termine, aktuellesSchuljahr, einstellungen } = useStore()
+  const planungAktiv = einstellungen?.planung_aktiv === '1'
 
   const [stundenzeiten, setStundenzeiten] = useState([])
   const [stundenplanEintraege, setStundenplanEintraege] = useState([])
   const [bearbeitungsModus, setBearbeitungsModus] = useState(false)
   const [slotModal, setSlotModal] = useState(null)
   const [planungModal, setPlanungModal] = useState(null) // { eintrag, wocheDatum } or { supplier, wocheDatum, stunde }
+  const [notizModal, setNotizModal] = useState(null) // { eintrag, wocheDatum, planung }
   const [exportModal, setExportModal] = useState(false)
   const [alleFaecher, setAlleFaecher] = useState([])
   const [aktuelleWoche, setAktuelleWoche] = useState(0)
@@ -114,6 +135,16 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const [supplierstunden, setSupplierstunden] = useState([])
   const [supplierModal, setSupplierModal] = useState(null) // { wochentag, stunde, tagDatum }
   const [hueEintraege, setHueEintraege] = useState([])
+  const [customFerien, setCustomFerien] = useState([])
+
+  // Schulferien berechnen (berechnete + benutzerdefinierte)
+  const schulferien = useMemo(() => {
+    const schuljahr = einstellungen?.schuljahr_aktuell ?? ''
+    const bundesland = einstellungen?.bundesland ?? ''
+    const berechnet = berechneSchulferien(schuljahr, bundesland)
+    if (customFerien.length > 0) return mergeFerien(berechnet, customFerien)
+    return berechnet
+  }, [einstellungen?.schuljahr_aktuell, einstellungen?.bundesland, customFerien])
 
   const wocheDatum = getMontag(aktuelleWoche)
 
@@ -126,7 +157,10 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
 
   useEffect(() => {
     laden()
-  }, [])
+    if (aktuellesSchuljahr) {
+      window.api.customFerien.getAll(aktuellesSchuljahr.id).then(setCustomFerien)
+    }
+  }, [aktuellesSchuljahr])
 
   useEffect(() => {
     ladenPlanungen()
@@ -190,7 +224,12 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
     if (bearbeitungsModus) {
       setSlotModal({ wochentag, stundeId: stunde.id, eintrag })
     } else if (eintrag) {
-      setPlanungModal({ eintrag, wocheDatum })
+      // Bei deaktivierter Planung nur ein schlankes Notiz-Modal — keine volle Planung
+      if (planungAktiv) {
+        setPlanungModal({ eintrag, wocheDatum })
+      } else {
+        setNotizModal({ eintrag, wocheDatum, wochentag })
+      }
     } else if (supplier) {
       setPlanungModal({ supplier, wocheDatum, stunde })
     }
@@ -237,10 +276,25 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const handleKontextAktion = async (aktion) => {
     const { wochentag, stunde, eintrag, supplier } = kontextMenu
     setKontextMenu(null)
-    if (aktion === 'oeffnen' && eintrag) {
+    if (aktion === 'entfall' && eintrag) {
+      const vorruecken = confirm('Sollen die Inhalte der nächsten Stunden vorgerückt werden?')
+      // Ferien-Zeiträume ans Backend übergeben für die Vorrückung
+      const ferienZeitraeume = schulferien ? [...(schulferien.ferien || []), ...(schulferien.feiertage || []).map(ft => ({ von: ft.datum, bis: ft.datum }))] : []
+      await window.api.stundenPlanung.setEntfall(eintrag.id, wocheDatum, vorruecken, ferienZeitraeume)
+      await ladenPlanungen()
+      return
+    } else if (aktion === 'entfall-aufheben' && eintrag) {
+      await window.api.stundenPlanung.removeEntfall(eintrag.id, wocheDatum)
+      await ladenPlanungen()
+      return
+    } else if (aktion === 'oeffnen' && eintrag) {
       navigiereZuNotentabelle(eintrag)
     } else if (aktion === 'planen' && eintrag) {
-      setPlanungModal({ eintrag, wocheDatum })
+      if (planungAktiv) {
+        setPlanungModal({ eintrag, wocheDatum })
+      } else {
+        setNotizModal({ eintrag, wocheDatum, wochentag })
+      }
     } else if (aktion === 'bearbeiten') {
       setSlotModal({ wochentag, stundeId: stunde.id, eintrag })
     } else if (aktion === 'entfernen' && eintrag) {
@@ -279,36 +333,36 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-zinc-950 border-b border-zinc-100 dark:border-zinc-800/60">
+      <div className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-ink-950 border-b border-paper-100 dark:border-ink-800/60">
         <div className="flex items-center gap-1">
           <button
-            className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 rounded-lg transition-colors"
             onClick={() => setAktuelleWoche(w => w - 1)}
             title="Vorherige Woche"
           >
             ‹
           </button>
           <button
-            className="px-2.5 py-1 text-xs text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+            className="px-2.5 py-1 text-xs text-ink-600 dark:text-ink-400 hover:bg-paper-100 dark:hover:bg-ink-800 rounded-lg transition-colors"
             onClick={() => setAktuelleWoche(0)}
           >
             Heute
           </button>
           <button
-            className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 rounded-lg transition-colors"
             onClick={() => setAktuelleWoche(w => w + 1)}
             title="Nächste Woche"
           >
             ›
           </button>
         </div>
-        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800">
+        <span className="text-xs font-semibold text-ink-500 dark:text-ink-400 px-2 py-0.5 rounded-md bg-paper-100 dark:bg-ink-800">
           KW {getKalenderwoche(wocheDatum)}
         </span>
 
         <div className="ml-auto flex items-center gap-2">
           <button
-            className="px-3 py-1.5 text-xs rounded-lg font-medium border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+            className="px-3 py-1.5 text-xs rounded-lg font-medium border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 transition-colors"
             onClick={() => setExportModal(true)}
           >
             PDF exportieren
@@ -316,8 +370,8 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           <button
             className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors
               ${bearbeitungsModus
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                : 'border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+                ? 'bg-coral-600 text-white hover:bg-coral-700'
+                : 'border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800'}`}
             onClick={() => setBearbeitungsModus(!bearbeitungsModus)}
           >
             {bearbeitungsModus ? '✓ Fertig' : 'Bearbeiten'}
@@ -326,7 +380,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
       </div>
 
       {/* Stundenplan-Raster */}
-      <div className="flex-1 overflow-auto p-4 bg-slate-50 dark:bg-zinc-950">
+      <div className="flex-1 overflow-auto p-4 bg-paper-50 dark:bg-ink-950">
         <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: bearbeitungsModus ? 100 : 72 }} />
@@ -335,19 +389,20 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           <thead>
             {/* Zeile 1: Wochentag + Datum */}
             <tr>
-              <th className="text-left px-2 py-2 text-xs font-medium text-zinc-400 dark:text-zinc-600">
+              <th className="text-left px-2 py-2 text-xs font-medium text-ink-400 dark:text-ink-600">
                 {bearbeitungsModus && (
-                  <span className="text-xs text-zinc-400 dark:text-zinc-600">Zeiten</span>
+                  <span className="text-xs text-ink-400 dark:text-ink-600">Zeiten</span>
                 )}
               </th>
               {WOCHENTAGE.map((tag, i) => {
                 const istHeute = aktuelleWoche === 0 && aktTag === i + 1
+                const headerFerien = schulferien ? ferienFuerTag(wochenDaten[i], schulferien) : null
                 return (
                   <th
                     key={i}
-                    className={`px-2 py-2 text-center ${istHeute ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-400'}`}
+                    className={`px-2 py-2 text-center ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
                   >
-                    <div className={`text-sm font-semibold ${istHeute ? 'underline underline-offset-4 decoration-indigo-400' : ''}`}>
+                    <div className={`text-sm font-semibold ${istHeute && !headerFerien ? 'underline underline-offset-4 decoration-coral-400' : ''}`}>
                       {tag}
                     </div>
                     <div className="text-[11px] font-normal opacity-70 mt-0.5">
@@ -380,7 +435,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                               ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                               : typ === 'erinnerung'
                               ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
-                              : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                              : 'bg-coral-100 dark:bg-coral-900/30 text-coral-600 dark:text-coral-400'
                           }`}
                           title={t.titel}
                           onClick={e => {
@@ -393,7 +448,12 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                             ? `✓ ${t.titel}`
                             : typ === 'erinnerung'
                             ? `🔔 ${t.titel} – ${faelligkeitRelativ(t.faelligkeit, tagDatum)}`
-                            : `◆ ${t.uhrzeit ? t.uhrzeit + ' ' : ''}${t.titel}`}
+                            : (() => {
+                                const stHinweis = t.stunde_id
+                                  ? (stundenzeiten.find(s => s.id === t.stunde_id)?.stunde + '. Std ')
+                                  : (t.uhrzeit ? t.uhrzeit + ' ' : '')
+                                return `◆ ${stHinweis ?? ''}${t.titel}`
+                              })()}
                         </div>
                       ))}
                     </div>
@@ -406,17 +466,17 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
             {stundenzeiten.map(stunde => {
               const istAktuelleStunde = aktuelleWoche === 0 && aktStunde?.id === stunde.id
               return (
-                <tr key={stunde.id} className="border-t border-zinc-200 dark:border-zinc-800">
+                <tr key={stunde.id} className="border-t border-paper-200 dark:border-ink-800">
                   {/* Zeit-Spalte */}
                   <td className="px-2 py-1 align-top">
                     {bearbeitungsModus ? (
                       <div className="flex flex-col gap-0.5 py-0.5">
                         <div className="flex items-center justify-between mb-0.5">
-                          <span className={`text-xs font-medium ${istAktuelleStunde ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>
+                          <span className={`text-xs font-medium ${istAktuelleStunde ? 'text-coral-600 dark:text-coral-400' : 'text-ink-400'}`}>
                             {stunde.stunde}. Std
                           </span>
                           <button
-                            className="text-zinc-300 dark:text-zinc-600 hover:text-red-400 dark:hover:text-red-400 text-xs leading-none transition-colors"
+                            className="text-ink-600 dark:text-paper-300 dark:text-ink-600 hover:text-red-400 dark:hover:text-red-400 text-xs leading-none transition-colors"
                             title="Stunde entfernen"
                             onClick={() => handleStundeLoeschen(stunde.id)}
                           >
@@ -425,14 +485,14 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                         </div>
                         <input
                           type="time"
-                          className="text-xs border border-zinc-200 dark:border-zinc-700 rounded px-1 py-0.5 bg-white dark:bg-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-indigo-400 w-full"
+                          className="text-xs border border-paper-200 dark:border-ink-700 rounded px-1 py-0.5 bg-white dark:bg-ink-800 dark:text-paper-200 focus:outline-none focus:border-coral-400 w-full"
                           value={stunde.beginn}
                           onChange={e => handleZeitChange(stunde.id, 'beginn', e.target.value)}
                           onBlur={() => handleZeitBlur(stunde.id)}
                         />
                         <input
                           type="time"
-                          className="text-xs border border-zinc-200 dark:border-zinc-700 rounded px-1 py-0.5 bg-white dark:bg-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-indigo-400 w-full"
+                          className="text-xs border border-paper-200 dark:border-ink-700 rounded px-1 py-0.5 bg-white dark:bg-ink-800 dark:text-paper-200 focus:outline-none focus:border-coral-400 w-full"
                           value={stunde.ende}
                           onChange={e => handleZeitChange(stunde.id, 'ende', e.target.value)}
                           onBlur={() => handleZeitBlur(stunde.id)}
@@ -440,10 +500,10 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                       </div>
                     ) : (
                       <div className="text-right">
-                        <div className={`text-xs font-medium ${istAktuelleStunde ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-500'}`}>
+                        <div className={`text-xs font-medium ${istAktuelleStunde ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-500'}`}>
                           {stunde.stunde}. Std
                         </div>
-                        <div className="text-xs text-zinc-400">{stunde.beginn}</div>
+                        <div className="text-xs text-ink-400">{stunde.beginn}</div>
                       </div>
                     )}
                   </td>
@@ -456,27 +516,43 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                     const istAktuell = istAktuelleStunde && aktuelleWoche === 0 && aktTag === wochentag
                     const planung = eintrag ? planungFuerEintrag(eintrag.id) : null
                     const hueHier = hueEintraege.filter(h => h.wochentag === wochentag && h.stunde_id === stunde.id)
-                    const tooltipText = planung ? [planung.titel, planung.inhalt?.substring(0, 150)].filter(Boolean).join('\n') : ''
+                    const stripMd = (s) => s?.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/^---+$/gm, '—').replace(/^- /gm, '• ')
+                    const tooltipText = planung ? [planung.titel, planung.inhalt?.substring(0, 150)].filter(Boolean).map(stripMd).join('\n') : ''
+
+                    // Ferien-Prüfung
+                    const tagDatum = wochenDaten[tagIdx]
+                    const ferienInfo = schulferien ? ferienFuerTag(tagDatum, schulferien) : null
+                    const istFerien = !!ferienInfo
 
                     return (
                       <td
                         key={tagIdx}
-                        className={`px-1 py-1 h-14 align-top border border-zinc-200 dark:border-zinc-800 transition-colors
-                          ${istAktuell ? 'ring-2 ring-indigo-400 ring-inset' : ''}
-                          ${bearbeitungsModus ? 'cursor-pointer hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30' : ''}
-                          ${!bearbeitungsModus && (eintrag || supplier) ? 'cursor-pointer hover:opacity-80' : ''}`}
-                        onClick={() => handleSlotClick(wochentag, stunde)}
-                        onContextMenu={e => handleSlotContextMenu(e, wochentag, stunde)}
-                        title={tooltipText}
+                        className={`px-1 py-1 h-14 align-top border border-paper-200 dark:border-ink-800 transition-colors
+                          ${istFerien ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''}
+                          ${istAktuell && !istFerien ? 'ring-2 ring-coral-400 ring-inset' : ''}
+                          ${!istFerien && bearbeitungsModus ? 'cursor-pointer hover:bg-coral-50/50 dark:hover:bg-coral-900/30' : ''}
+                          ${!istFerien && !bearbeitungsModus && (eintrag || supplier) ? 'cursor-pointer hover:opacity-80' : ''}`}
+                        onClick={() => !istFerien && handleSlotClick(wochentag, stunde)}
+                        onContextMenu={e => istFerien ? e.preventDefault() : handleSlotContextMenu(e, wochentag, stunde)}
+                        title={istFerien ? ferienInfo.name : tooltipText}
                       >
-                        {eintrag ? (
-                          <SlotInhalt eintrag={eintrag} planungTitel={planung?.titel} />
+                        {istFerien ? (
+                          <div className="h-full flex items-center justify-center">
+                            <span className="text-[10px] font-medium text-rose-400 dark:text-rose-500 text-center leading-tight px-1">{ferienInfo.name}</span>
+                          </div>
+                        ) : eintrag ? (
+                          <SlotInhalt
+                            eintrag={eintrag}
+                            planungTitel={planung?.titel}
+                            planungNotiz={planung?.inhalt ? stripMd(planung.inhalt).split('\n').filter(Boolean)[0] : null}
+                            entfall={!!planung?.entfall}
+                          />
                         ) : supplier ? (
                           <SupplierInhalt supplier={supplier} />
                         ) : (
                           bearbeitungsModus && (
-                            <div className="h-full rounded border border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
-                              <span className="text-zinc-300 dark:text-zinc-600 text-lg font-light">+</span>
+                            <div className="h-full rounded border border-dashed border-paper-200 dark:border-ink-700 flex items-center justify-center">
+                              <span className="text-ink-600 dark:text-paper-300 dark:text-ink-600 text-lg font-light">+</span>
                             </div>
                           )
                         )}
@@ -500,10 +576,10 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
               )
             })}
             {bearbeitungsModus && (
-              <tr className="border-t border-zinc-200 dark:border-zinc-800">
+              <tr className="border-t border-paper-200 dark:border-ink-800">
                 <td colSpan={6} className="px-2 py-1">
                   <button
-                    className="text-xs text-zinc-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg px-3 py-1.5 transition-colors w-full text-left"
+                    className="text-xs text-ink-400 dark:text-ink-500 hover:text-coral-600 dark:hover:text-coral-400 hover:bg-coral-50 dark:hover:bg-coral-900/30 rounded-lg px-3 py-1.5 transition-colors w-full text-left"
                     onClick={handleStundeHinzufuegen}
                   >
                     + Stunde hinzufügen
@@ -525,20 +601,32 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           {kontextMenu.eintrag ? (
             <>
               <div className="px-3 py-1.5 mb-0.5">
-                <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                <div className="text-xs font-semibold text-ink-900 dark:text-paper-100 truncate">
                   {kontextMenu.eintrag.fach_name}
                 </div>
-                <div className="text-xs text-zinc-400">{kontextMenu.eintrag.klasse_name}</div>
+                <div className="text-xs text-ink-400">{kontextMenu.eintrag.klasse_name}</div>
               </div>
               <div className="context-menu-separator" />
+              {(() => {
+                const pl = planungFuerEintrag(kontextMenu.eintrag.id)
+                return pl?.entfall ? (
+                  <div className="context-menu-item" onClick={() => handleKontextAktion('entfall-aufheben')}>
+                    <span className="text-green-500">↩</span> Entfall aufheben
+                  </div>
+                ) : (
+                  <div className="context-menu-item text-red-600 dark:text-red-400" onClick={() => handleKontextAktion('entfall')}>
+                    <span>⊘</span> Entfall
+                  </div>
+                )
+              })()}
               <div className="context-menu-item" onClick={() => handleKontextAktion('planen')}>
-                <span className="text-zinc-400">📋</span> Stunde planen
+                <span className="text-ink-400">{planungAktiv ? '📋' : '📝'}</span> {planungAktiv ? 'Stunde planen' : 'Notiz hinzufügen'}
               </div>
               <div className="context-menu-item" onClick={() => handleKontextAktion('oeffnen')}>
-                <span className="text-zinc-400">→</span> Zur Notentabelle
+                <span className="text-ink-400">→</span> Zur Notentabelle
               </div>
               <div className="context-menu-item" onClick={() => handleKontextAktion('bearbeiten')}>
-                <span className="text-zinc-400">✎</span> Fach ändern
+                <span className="text-ink-400">✎</span> Fach ändern
               </div>
               <div className="context-menu-separator" />
               <div
@@ -554,7 +642,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                 <div className="text-xs font-semibold text-orange-700 dark:text-orange-300 truncate">
                   {kontextMenu.supplier.fach_text || '—'}
                 </div>
-                <div className="text-xs text-zinc-400">{kontextMenu.supplier.klasse_text || 'Supplierstunde'}</div>
+                <div className="text-xs text-ink-400">{kontextMenu.supplier.klasse_text || 'Supplierstunde'}</div>
               </div>
               <div className="context-menu-separator" />
               <div
@@ -566,7 +654,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
             </>
           ) : bearbeitungsModus ? (
             <div className="context-menu-item" onClick={() => handleKontextAktion('bearbeiten')}>
-              <span className="text-zinc-400">+</span> Stunde belegen
+              <span className="text-ink-400">+</span> Stunde belegen
             </div>
           ) : (
             <div className="context-menu-item" onClick={() => handleKontextAktion('supplier-erstellen')}>
@@ -587,13 +675,30 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
         />
       )}
 
-      {/* Planungs-Modal */}
-      {planungModal && planungModal.eintrag && (
+      {/* Planungs-Modal — nur wenn Planungsmodul aktiv */}
+      {planungAktiv && planungModal && planungModal.eintrag && (
         <PlanungModal
           eintrag={planungModal.eintrag}
           wocheDatum={planungModal.wocheDatum}
+          fachWochentage={stundenplanEintraege.filter(e => e.fach_id === planungModal.eintrag.fach_id).map(e => e.wochentag)}
           onClose={() => setPlanungModal(null)}
           onGespeichert={ladenPlanungen}
+        />
+      )}
+
+      {/* Notiz-Modal — bei deaktiviertem Planungsmodul */}
+      {notizModal && (
+        <NotizModal
+          eintrag={notizModal.eintrag}
+          wochentag={notizModal.wochentag}
+          wocheDatum={notizModal.wocheDatum}
+          wochenDaten={wochenDaten}
+          stundenzeiten={stundenzeiten}
+          alleFaecher={alleFaecher}
+          klassen={klassen}
+          aktuelleplanung={planungFuerEintrag(notizModal.eintrag.id)}
+          onClose={() => setNotizModal(null)}
+          onGespeichert={async () => { await ladenPlanungen(); setNotizModal(null) }}
         />
       )}
       {planungModal && planungModal.supplier && (
@@ -630,308 +735,93 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   )
 }
 
-function berechneFristDatum(wocheDatum, wochentag, offsetWochen) {
-  const d = new Date(wocheDatum + 'T00:00:00')
-  d.setDate(d.getDate() + (wochentag - 1) + offsetWochen * 7)
-  return toLocalDateStr(d)
-}
+// ─── Schlankes Notiz-Modal (bei deaktiviertem Planungsmodul) ─────────────────
+function NotizModal({ eintrag, wochentag, wocheDatum, wochenDaten, stundenzeiten, alleFaecher, klassen, aktuelleplanung, onClose, onGespeichert }) {
+  const fach    = alleFaecher.find(f => f.id === eintrag.fach_id)
+  const klasse  = klassen.find(k => k.id === eintrag.klasse_id)
+  const stunde  = stundenzeiten.find(s => s.id === eintrag.stunde_id)
+  const tagDatum = wochenDaten?.[wochentag - 1]
+  const farben  = getKlasseFarbe(eintrag.klasse_id)
 
-function PlanungModal({ eintrag, wocheDatum, onClose, onGespeichert }) {
-  const [titel, setTitel] = useState('')
-  const [inhalt, setInhalt] = useState('')
-  const [musizieren, setMusizieren] = useState(false)
-  const [musiziertWarnung, setMusiziertWarnung] = useState(false)
-  const [laden, setLaden] = useState(true)
-  const [jahresAbschnitte, setJahresAbschnitte] = useState([])
-  const [hueText, setHueText] = useState('')
-  const [hueFristOption, setHueFristOption] = useState('naechste')
-  const [hueFristDatum, setHueFristDatum] = useState('')
-  const [link, setLink] = useState('')
-  const istMusik = eintrag.fach_name?.toLowerCase().includes('musik')
+  const [notiz, setNotiz] = useState(aktuelleplanung?.inhalt ?? '')
+  const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    const [datum] = wocheDatum.split('T')
-    const freitag = new Date(datum)
-    freitag.setDate(freitag.getDate() + 4)
-    const freitagStr = freitag.toISOString().split('T')[0]
-
-    Promise.all([
-      window.api.stundenPlanung.get(eintrag.id, wocheDatum),
-      window.api.jahresplanung.getAll(eintrag.fach_id),
-    ]).then(([plan, abschnitte]) => {
-      if (plan) {
-        setTitel(plan.titel)
-        setInhalt(plan.inhalt)
-        setMusizieren(!!plan.musizieren)
-        setHueText(plan.hue_text ?? '')
-        setLink(plan.link ?? '')
-        if (plan.hue_frist_datum) {
-          const naechste = berechneFristDatum(wocheDatum, eintrag.wochentag, 1)
-          const uebnaechste = berechneFristDatum(wocheDatum, eintrag.wochentag, 2)
-          if (plan.hue_frist_datum === naechste) setHueFristOption('naechste')
-          else if (plan.hue_frist_datum === uebnaechste) setHueFristOption('uebnaechste')
-          else { setHueFristOption('datum'); setHueFristDatum(plan.hue_frist_datum) }
-        }
-      }
-      setJahresAbschnitte(abschnitte.filter(a => a.datum_bis >= datum && a.datum_von <= freitagStr))
-    }).catch(e => console.error('PlanungModal laden:', e))
-      .finally(() => setLaden(false))
-  }, [])
-
-  const handleMusiziertChange = async (checked) => {
-    if (checked) {
-      try {
-        const konflikt = await window.api.stundenPlanung.checkMusizieren?.(wocheDatum, eintrag.klasse_id, eintrag.id)
-        if (konflikt) { setMusizieren(true); setMusiziertWarnung(true); return }
-      } catch (e) {
-        console.error('checkMusizieren:', e)
-      }
-    }
-    setMusizieren(checked)
-  }
-
-  const berechneHueFrist = () => {
-    if (!hueText) return null
-    if (hueFristOption === 'naechste') return berechneFristDatum(wocheDatum, eintrag.wochentag, 1)
-    if (hueFristOption === 'uebnaechste') return berechneFristDatum(wocheDatum, eintrag.wochentag, 2)
-    return hueFristDatum || null
-  }
+  const datumLabel = tagDatum
+    ? new Date(tagDatum + 'T00:00:00').toLocaleDateString('de-AT', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })
+    : ''
 
   const speichern = async () => {
+    setSaving(true)
     try {
-      await window.api.stundenPlanung.save(eintrag.id, wocheDatum, titel, inhalt, musizieren, hueText || null, berechneHueFrist(), link || null)
-    } catch (e) {
-      console.error('stundenPlanung.save Fehler:', e)
-      alert('Fehler beim Speichern: ' + e.message)
-      return
+      // Bestehende Werte (Titel, HÜ, Link etc.) erhalten — wir aktualisieren nur das Inhalt-Feld
+      await window.api.stundenPlanung.save(
+        eintrag.id,
+        wocheDatum,
+        aktuelleplanung?.titel ?? '',
+        notiz.trim(),
+        aktuelleplanung?.musizieren ? 1 : 0,
+        aktuelleplanung?.hue_text ?? '',
+        aktuelleplanung?.hue_frist_datum ?? null,
+        aktuelleplanung?.link ?? '',
+      )
+      onGespeichert?.()
+    } finally {
+      setSaving(false)
     }
-    await onGespeichert()
-    onClose()
   }
 
-  const loeschen = async () => {
-    await window.api.stundenPlanung.delete(eintrag.id, wocheDatum)
-    await onGespeichert()
-    onClose()
+  const handleKey = (e) => {
+    if (e.key === 'Escape') onClose()
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) speichern()
   }
-
-  const formatierung = (typ) => {
-    const ta = document.getElementById('planung-inhalt')
-    if (!ta) return
-    const start = ta.selectionStart
-    const end = ta.selectionEnd
-    const sel = inhalt.slice(start, end)
-    let neu = inhalt
-    let cursorDelta = 0
-    if (typ === 'fett') {
-      neu = inhalt.slice(0, start) + `**${sel}**` + inhalt.slice(end)
-      cursorDelta = sel ? 4 : 2
-    } else if (typ === 'kursiv') {
-      neu = inhalt.slice(0, start) + `*${sel}*` + inhalt.slice(end)
-      cursorDelta = sel ? 2 : 1
-    } else if (typ === 'aufzaehlung') {
-      const zeileStart = inhalt.lastIndexOf('\n', start - 1) + 1
-      neu = inhalt.slice(0, zeileStart) + '- ' + inhalt.slice(zeileStart)
-      cursorDelta = 2
-    } else if (typ === 'trennlinie') {
-      neu = inhalt.slice(0, start) + '\n---\n' + inhalt.slice(end)
-      cursorDelta = 5
-    }
-    setInhalt(neu)
-    setTimeout(() => {
-      ta.focus()
-      const pos = end + cursorDelta
-      ta.setSelectionRange(pos, pos)
-    }, 0)
-  }
-
-  const [datum] = wocheDatum.split('T')
-  const wocheAnzeige = (() => {
-    const d = new Date(datum)
-    const fr = new Date(d); fr.setDate(d.getDate() + 4)
-    return `${d.getDate()}.${d.getMonth()+1}. – ${fr.getDate()}.${fr.getMonth()+1}.${fr.getFullYear()}`
-  })()
-
-  if (laden) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-box w-full max-w-xl"
-        style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-zinc-400">{eintrag.fach_name} · {eintrag.klasse_name} · {wocheAnzeige}</span>
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-sm">
+        {/* Kopf: Klasse + Fach + Datum */}
+        <div className="flex items-start gap-3 mb-4">
+          <div
+            className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold ${farben.bg} ${farben.text} flex-shrink-0`}
+          >
+            {(klasse?.name?.[0] ?? '?').toUpperCase()}
           </div>
-          <input
-            className="input text-base font-semibold"
-            placeholder="Titel der Stunde…"
-            value={titel}
-            onChange={e => setTitel(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && e.preventDefault()}
-            autoFocus
-          />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-ink-900 dark:text-white truncate">
+              {klasse?.name ?? '—'}{fach && <span className="text-ink-500 font-normal"> · {fach.name}</span>}
+            </p>
+            <p className="text-xs text-ink-500 dark:text-ink-400 truncate">
+              {datumLabel}{stunde && ` · ${stunde.stunde}. Stunde${stunde.beginn ? ` (${stunde.beginn})` : ''}`}
+            </p>
+          </div>
         </div>
 
-        {/* Jahresplanung-Referenz */}
-        {jahresAbschnitte.length > 0 && (
-          <div className="mb-3 rounded-lg border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/60 dark:bg-indigo-950/30 px-3 py-2 flex flex-col gap-1.5">
-            <span className="text-[10px] font-semibold text-indigo-400 dark:text-indigo-500 uppercase tracking-wide">Jahresplanung</span>
-            {jahresAbschnitte.map(a => (
-              <div key={a.id}>
-                <div className="flex items-center gap-2">
-                  {a.farbe && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: a.farbe }} />}
-                  <span className="text-xs font-medium text-indigo-800 dark:text-indigo-200">{a.titel}</span>
-                  <span className="text-[10px] text-indigo-400 dark:text-indigo-500 ml-auto whitespace-nowrap">
-                    {a.datum_von.split('-').reverse().slice(0,2).join('.')}. – {a.datum_bis.split('-').reverse().slice(0,2).join('.')}.
-                  </span>
-                </div>
-                {a.inhalt && (
-                  <p className="text-[11px] text-indigo-600 dark:text-indigo-400 mt-0.5 ml-4 whitespace-pre-wrap line-clamp-3">{a.inhalt}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Formatierungs-Toolbar */}
-        <div className="flex items-center gap-1 mb-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
-          {[
-            { label: 'B', title: 'Fett (**text**)', aktion: 'fett', cls: 'font-bold' },
-            { label: 'I', title: 'Kursiv (*text*)', aktion: 'kursiv', cls: 'italic' },
-            { label: '—', title: 'Trennlinie (---)', aktion: 'trennlinie', cls: '' },
-            { label: '•', title: 'Aufzählung (- )', aktion: 'aufzaehlung', cls: '' },
-          ].map(btn => (
-            <button
-              key={btn.aktion}
-              type="button"
-              title={btn.title}
-              tabIndex={-1}
-              className={`w-7 h-7 flex items-center justify-center text-sm rounded border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${btn.cls}`}
-              onMouseDown={e => { e.preventDefault(); formatierung(btn.aktion) }}
-            >
-              {btn.label}
-            </button>
-          ))}
-          <span className="ml-2 text-xs text-zinc-400">Markdown</span>
-        </div>
-
-        {/* Inhalt */}
+        <label className="block text-xs font-medium text-ink-600 dark:text-ink-400 mb-1.5">Notiz</label>
         <textarea
-          id="planung-inhalt"
-          className="input flex-1 resize-none font-mono text-sm leading-relaxed"
-          style={{ minHeight: 200 }}
-          placeholder="Unterrichtsinhalt, Materialien, Ziele…"
-          value={inhalt}
-          onChange={e => setInhalt(e.target.value)}
+          className="input resize-none"
+          rows={4}
+          value={notiz}
+          onChange={e => setNotiz(e.target.value)}
+          placeholder="Kurze Notiz zu dieser Stunde…"
+          autoFocus
+          onKeyDown={handleKey}
         />
+        <p className="text-[10px] text-ink-400 mt-1.5 mb-4">
+          ⌘/Strg + Enter zum Speichern · Esc zum Schließen
+        </p>
 
-        {/* Hausübung */}
-        <div className="mt-3 space-y-2">
-          <div>
-            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Hausübung <span className="font-normal">(optional)</span></label>
-            <textarea
-              className="input resize-none text-sm"
-              rows={2}
-              placeholder="Aufgabe…"
-              value={hueText}
-              onChange={e => setHueText(e.target.value)}
-            />
-          </div>
-          {hueText && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-zinc-500">Abgabe:</span>
-              {['naechste', 'uebnaechste', 'datum'].map(opt => (
-                <label key={opt} className="flex items-center gap-1 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="hue-frist"
-                    value={opt}
-                    checked={hueFristOption === opt}
-                    onChange={() => setHueFristOption(opt)}
-                    className="accent-violet-600"
-                  />
-                  <span className="text-xs text-zinc-600 dark:text-zinc-400">
-                    {opt === 'naechste' ? 'Nächste Stunde' : opt === 'uebnaechste' ? 'Übernächste' : 'Datum'}
-                  </span>
-                </label>
-              ))}
-              {hueFristOption === 'datum' && (
-                <input
-                  type="date"
-                  className="text-xs border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 bg-white dark:bg-zinc-800 dark:text-zinc-200"
-                  value={hueFristDatum}
-                  onChange={e => setHueFristDatum(e.target.value)}
-                />
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Link */}
-        <div className="mt-3">
-          <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Link / Dateipfad <span className="font-normal">(optional)</span></label>
-          <div className="flex gap-2">
-            <input
-              className="input flex-1 text-sm"
-              placeholder="https://… oder C:\…"
-              value={link}
-              onChange={e => setLink(e.target.value)}
-            />
-            {link && (
-              <button
-                type="button"
-                className="btn-secondary text-xs px-2 py-1 flex-shrink-0"
-                onClick={() => window.api.shell?.open(link)}
-                title="Öffnen"
-              >↗</button>
-            )}
-          </div>
-        </div>
-
-        {/* Musizieren-Checkbox (nur bei Musik) */}
-        {istMusik && (
-          <label className="flex items-center gap-2 mt-3 cursor-pointer select-none w-fit">
-            <input
-              type="checkbox"
-              checked={musizieren}
-              onChange={e => handleMusiziertChange(e.target.checked)}
-              className="accent-indigo-600 w-4 h-4"
-            />
-            <span className="text-sm text-zinc-700 dark:text-zinc-300">Musizieren</span>
-          </label>
-        )}
-
-        {/* Aktionen */}
-        <div className="flex gap-3 mt-4">
-          <button className="btn-secondary flex-1" onClick={onClose}>Abbrechen</button>
-          <button className="btn-danger" onClick={loeschen} title="Planung für diese Woche löschen">Löschen</button>
-          <button className="btn-primary flex-1" onClick={speichern}>Speichern</button>
+        <div className="flex gap-2">
+          <button className="btn-secondary flex-1" onClick={onClose} disabled={saving}>
+            Abbrechen
+          </button>
+          <button
+            className="btn-primary flex-1"
+            onClick={speichern}
+            disabled={saving}
+          >
+            {saving ? 'Speichern…' : 'Speichern'}
+          </button>
         </div>
       </div>
-
-      {/* Musizieren-Warnungsmodal */}
-      {musiziertWarnung && (
-        <div className="modal-overlay" onClick={e => e.stopPropagation()}>
-          <div className="modal-box max-w-sm" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-2">Bereits musiziert</h3>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-5">
-              Mit dieser Klasse wurde in dieser Woche bereits musiziert.
-            </p>
-            <div className="flex gap-3">
-              <button className="btn-secondary flex-1" onClick={() => { setMusizieren(false); setMusiziertWarnung(false) }}>
-                Haken entfernen
-              </button>
-              <button className="btn-primary flex-1" onClick={() => setMusiziertWarnung(false)}>
-                Ignorieren
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -984,14 +874,13 @@ function SupplierPlanungModal({ supplier, stunde, wocheDatum, onClose, onGespeic
   })() : ''
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div
         className="modal-box w-full max-w-xl"
         style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
-        onClick={e => e.stopPropagation()}
       >
         <div className="mb-4">
-          <span className="text-xs text-zinc-400">
+          <span className="text-xs text-ink-400">
             {supplier.fach_text || '—'} · {supplier.klasse_text || 'Supplierstunde'} · {WOCHENTAG_NAME[supplier.wochentag]}, {datumStr}
           </span>
           <input
@@ -1013,7 +902,7 @@ function SupplierPlanungModal({ supplier, stunde, wocheDatum, onClose, onGespeic
 
         <div className="mt-3 space-y-2">
           <div>
-            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Hausübung <span className="font-normal">(optional)</span></label>
+            <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Hausübung <span className="font-normal">(optional)</span></label>
             <textarea
               className="input resize-none text-sm"
               rows={2}
@@ -1024,26 +913,27 @@ function SupplierPlanungModal({ supplier, stunde, wocheDatum, onClose, onGespeic
           </div>
           {hueText && (
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-zinc-500">Abgabe:</span>
+              <span className="text-xs text-ink-500">Abgabe:</span>
               {['naechste', 'uebnaechste', 'datum'].map(opt => (
                 <label key={opt} className="flex items-center gap-1 cursor-pointer">
                   <input type="radio" name="sup-hue-frist" value={opt} checked={hueFristOption === opt} onChange={() => setHueFristOption(opt)} className="accent-violet-600" />
-                  <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                  <span className="text-xs text-ink-600 dark:text-ink-400">
                     {opt === 'naechste' ? 'Nächste Stunde' : opt === 'uebnaechste' ? 'Übernächste' : 'Datum'}
                   </span>
                 </label>
               ))}
               {hueFristOption === 'datum' && (
-                <input type="date" className="text-xs border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 bg-white dark:bg-zinc-800 dark:text-zinc-200" value={hueFristDatum} onChange={e => setHueFristDatum(e.target.value)} />
+                <input type="date" className="text-xs border border-paper-300 dark:border-ink-700 rounded px-1.5 py-0.5 bg-white dark:bg-ink-800 dark:text-paper-200" value={hueFristDatum} onChange={e => setHueFristDatum(e.target.value)} />
               )}
             </div>
           )}
         </div>
 
         <div className="mt-3">
-          <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Link / Dateipfad <span className="font-normal">(optional)</span></label>
+          <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Link / Dateipfad <span className="font-normal">(optional)</span></label>
           <div className="flex gap-2">
             <input className="input flex-1 text-sm" placeholder="https://… oder C:\…" value={link} onChange={e => setLink(e.target.value)} />
+            <button type="button" className="btn-secondary text-xs px-2 py-1 flex-shrink-0" onClick={async () => { const p = await window.api.dialog.openFile([]); if (p) setLink(p) }} title="Datei auswählen">📂</button>
             {link && (
               <button type="button" className="btn-secondary text-xs px-2 py-1 flex-shrink-0" onClick={() => window.api.shell?.open(link)} title="Öffnen">↗</button>
             )}
@@ -1069,14 +959,14 @@ function SlotModal({ slotModal, alleFaecher, klassen, onSpeichern, onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={e => e.stopPropagation()}>
-        <h2 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box">
+        <h2 className="text-base font-semibold text-ink-900 dark:text-white mb-4">
           {slotModal.eintrag ? 'Stunde bearbeiten' : 'Stunde belegen'}
         </h2>
 
         <div className="mb-5">
-          <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">Fach & Klasse</label>
+          <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 uppercase tracking-wide mb-2">Fach & Klasse</label>
           <select
             className="input"
             value={gewaehltFachId}
@@ -1130,16 +1020,16 @@ function SupplierModal({ wochentag, stunde, tagDatum, wocheDatum, onSpeichern, o
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box max-w-sm" onClick={e => e.stopPropagation()}>
-        <h2 className="text-base font-semibold text-zinc-900 dark:text-white mb-1">Supplierstunde</h2>
-        <p className="text-xs text-zinc-400 mb-4">
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-sm">
+        <h2 className="text-base font-semibold text-ink-900 dark:text-white mb-1">Supplierstunde</h2>
+        <p className="text-xs text-ink-400 mb-4">
           {WOCHENTAG_NAME[wochentag]}, {datumAnzeige} · {stunde.stunde}. Stunde ({stunde.beginn})
         </p>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Fach</label>
+            <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Fach</label>
             <input
               className="input"
               value={fachText}
@@ -1150,7 +1040,7 @@ function SupplierModal({ wochentag, stunde, tagDatum, wocheDatum, onSpeichern, o
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Klasse</label>
+            <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Klasse</label>
             <input
               className="input"
               value={klasseText}
@@ -1160,8 +1050,8 @@ function SupplierModal({ wochentag, stunde, tagDatum, wocheDatum, onSpeichern, o
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
-              Notiz <span className="font-normal text-zinc-400">(optional)</span>
+            <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">
+              Notiz <span className="font-normal text-ink-400">(optional)</span>
             </label>
             <input
               className="input"
@@ -1231,43 +1121,43 @@ function PlanungsExportModal({ onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box max-w-md" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-md">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Planung als PDF exportieren</h2>
-          <button className="text-zinc-400 hover:text-zinc-600 text-xl" onClick={onClose}>✕</button>
+          <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Planung als PDF exportieren</h2>
+          <button className="text-ink-400 hover:text-ink-600 text-xl" onClick={onClose}>✕</button>
         </div>
 
         {laden ? (
-          <p className="text-sm text-zinc-400 text-center py-6">Laden…</p>
+          <p className="text-sm text-ink-400 text-center py-6">Laden…</p>
         ) : wochen.length === 0 ? (
-          <p className="text-sm text-zinc-400 text-center py-6">Keine Planungen vorhanden.</p>
+          <p className="text-sm text-ink-400 text-center py-6">Keine Planungen vorhanden.</p>
         ) : (
           <>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Wochen</span>
+              <span className="text-xs font-medium text-ink-500 uppercase tracking-wide">Wochen</span>
               <div className="flex gap-2">
-                <button className="text-xs text-indigo-500 hover:text-indigo-700" onClick={() => setAusgewaehlt(wochen)}>Alle</button>
-                <button className="text-xs text-zinc-400 hover:text-zinc-600" onClick={() => setAusgewaehlt([])}>Keine</button>
+                <button className="text-xs text-coral-500 hover:text-coral-700" onClick={() => setAusgewaehlt(wochen)}>Alle</button>
+                <button className="text-xs text-ink-400 hover:text-ink-600" onClick={() => setAusgewaehlt([])}>Keine</button>
               </div>
             </div>
 
-            <div className="max-h-52 overflow-y-auto space-y-1 mb-4 border border-zinc-100 dark:border-zinc-800 rounded-lg p-2">
+            <div className="max-h-52 overflow-y-auto space-y-1 mb-4 border border-paper-100 dark:border-ink-800 rounded-lg p-2">
               {wochen.map(datum => (
-                <label key={datum} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer">
+                <label key={datum} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-paper-50 dark:hover:bg-ink-800 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={ausgewaehlt.includes(datum)}
                     onChange={() => toggleWoche(datum)}
-                    className="accent-indigo-600"
+                    className="accent-coral-600"
                   />
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">{wocheLabel(datum)}</span>
+                  <span className="text-sm text-ink-700 dark:text-paper-300">{wocheLabel(datum)}</span>
                 </label>
               ))}
             </div>
 
             <div className="mb-5">
-              <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide block mb-2">Format</span>
+              <span className="text-xs font-medium text-ink-500 uppercase tracking-wide block mb-2">Format</span>
               <div className="flex gap-2">
                 {[
                   { val: false, label: 'Alle Wochen in einer PDF' },
@@ -1278,8 +1168,8 @@ function PlanungsExportModal({ onClose }) {
                     onClick={() => setEinzeln(opt.val)}
                     className={`flex-1 py-2 text-xs rounded-lg border font-medium transition-colors ${
                       einzeln === opt.val
-                        ? 'border-indigo-400 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
-                        : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-zinc-300'
+                        ? 'border-coral-400 bg-coral-50 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300'
+                        : 'border-paper-200 dark:border-ink-700 text-ink-500 hover:border-paper-300'
                     }`}
                   >
                     {opt.label}

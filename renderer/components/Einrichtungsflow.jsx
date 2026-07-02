@@ -8,12 +8,16 @@ function SchrittIndikator({ aktuell }) {
     <div className="flex items-center justify-center gap-2 mb-8">
       {SCHRITTE.slice(1, -1).map((name, i) => (
         <React.Fragment key={i}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors
-            ${i + 1 < aktuell ? 'bg-blue-600 text-white' : i + 1 === aktuell ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'bg-gray-200 text-gray-500'}`}>
+          <div className={`w-9 h-9 rounded-2xl flex items-center justify-center text-sm font-bold transition-all
+            ${i + 1 < aktuell
+              ? 'bg-coral-500 text-white shadow-soft'
+              : i + 1 === aktuell
+                ? 'bg-coral-500 text-white shadow-glow ring-2 ring-coral-200 dark:ring-coral-900 scale-110'
+                : 'bg-paper-200 dark:bg-ink-800 text-ink-400'}`}>
             {i + 1 < aktuell ? '✓' : i + 1}
           </div>
           {i < SCHRITTE.length - 3 && (
-            <div className={`h-0.5 w-12 transition-colors ${i + 1 < aktuell ? 'bg-blue-600' : 'bg-gray-200'}`} />
+            <div className={`h-1 w-12 rounded-full transition-colors ${i + 1 < aktuell ? 'bg-coral-500' : 'bg-paper-200 dark:bg-ink-800'}`} />
           )}
         </React.Fragment>
       ))}
@@ -141,32 +145,37 @@ export default function Einrichtungsflow() {
   }
 
   return (
-    <div className="fixed inset-0 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center">
+    <div className="fixed inset-0 bg-paper-50 dark:bg-ink-950 flex items-center justify-center">
       <div className="w-full max-w-lg mx-auto px-6">
 
         {/* Schritt 0: Willkommen */}
         {schritt === 0 && (
-          <div className="text-center">
-            <h1 className="text-4xl font-light text-gray-900 mb-3 tracking-tight">Daskala</h1>
-            <p className="text-gray-500 mb-12 text-lg">Dein digitales Notenbuch.</p>
-            <button className="btn-primary text-base px-8 py-3" onClick={weiter}>
-              Einrichtung starten
+          <div className="text-center animate-fade-up">
+            <div className="text-7xl mb-6 animate-gentle-bounce">👋</div>
+            <h1 className="text-5xl font-bold text-ink-800 dark:text-paper-100 mb-3 tracking-tight font-display">Hallo!</h1>
+            <p className="text-ink-500 dark:text-ink-400 mb-2 text-xl">Willkommen bei Daskala</p>
+            <p className="text-ink-400 dark:text-ink-500 mb-10 text-sm">Dein freundliches digitales Notenbuch ☕</p>
+            <button className="btn-primary text-base px-8 py-3 group" onClick={weiter}>
+              Los geht's
+              <svg className="w-4 h-4 ml-1.5 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
             </button>
           </div>
         )}
 
         {/* Schritte 1-3 */}
         {schritt >= 1 && schritt <= 3 && (
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 border border-zinc-100 dark:border-zinc-800" style={{boxShadow: '0 24px 64px -12px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.03)'}}>
+          <div className="bg-white dark:bg-ink-900 rounded-2xl p-8 border border-paper-100 dark:border-ink-800" style={{boxShadow: '0 24px 64px -12px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.03)'}}>
             <SchrittIndikator aktuell={schritt} />
 
             {/* Schritt 1: Schuljahr */}
             {schritt === 1 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Schuljahr & Semester</h2>
+                <h2 className="text-xl font-semibold text-ink-900 mb-6">Schuljahr & Semester</h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Schuljahr</label>
+                    <label className="block text-sm font-medium text-ink-700 mb-1">Schuljahr</label>
                     <input
                       className="input"
                       value={schuljahr}
@@ -176,7 +185,7 @@ export default function Einrichtungsflow() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
+                    <label className="block text-sm font-medium text-ink-700 mb-2">Semester</label>
                     <div className="flex gap-3">
                       {[1, 2].map(s => (
                         <button
@@ -184,8 +193,8 @@ export default function Einrichtungsflow() {
                           onClick={() => setSemester(s)}
                           className={`flex-1 py-2 rounded-lg border-2 font-medium text-sm transition-colors
                             ${semester === s
-                              ? 'border-blue-600 bg-blue-50 text-blue-700'
-                              : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                              ? 'border-coral-500 bg-coral-50 text-coral-600'
+                              : 'border-paper-200 text-ink-600 hover:border-paper-300'}`}
                         >
                           Semester {s}
                         </button>
@@ -204,10 +213,10 @@ export default function Einrichtungsflow() {
             {/* Schritt 2: Klasse & Fach */}
             {schritt === 2 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Erste Klasse & Fach</h2>
+                <h2 className="text-xl font-semibold text-ink-900 mb-6">Erste Klasse & Fach</h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Klasse</label>
+                    <label className="block text-sm font-medium text-ink-700 mb-1">Klasse</label>
                     <input
                       className="input"
                       value={klasse}
@@ -217,7 +226,7 @@ export default function Einrichtungsflow() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Erstes Fach</label>
+                    <label className="block text-sm font-medium text-ink-700 mb-1">Erstes Fach</label>
                     <input
                       className="input"
                       value={fach}
@@ -225,7 +234,7 @@ export default function Einrichtungsflow() {
                       placeholder="z.B. Deutsch"
                     />
                   </div>
-                  <p className="text-xs text-gray-500">Weitere Klassen und Fächer kannst du jederzeit hinzufügen.</p>
+                  <p className="text-xs text-ink-500">Weitere Klassen und Fächer kannst du jederzeit hinzufügen.</p>
                 </div>
                 {fehler && <p className="text-red-500 text-sm mt-3">{fehler}</p>}
                 <div className="flex gap-3 mt-8">
@@ -240,8 +249,8 @@ export default function Einrichtungsflow() {
             {/* Schritt 3: Schüler:innen */}
             {schritt === 3 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Schüler:innen</h2>
-                <p className="text-sm text-gray-500 mb-5">Du kannst Schüler:innen auch später hinzufügen.</p>
+                <h2 className="text-xl font-semibold text-ink-900 mb-2">Schüler:innen</h2>
+                <p className="text-sm text-ink-500 mb-5">Du kannst Schüler:innen auch später hinzufügen.</p>
 
                 {importListe.length > 0 ? (
                   <div className="border border-green-200 bg-green-50 rounded-lg p-3 mb-4">
@@ -256,8 +265,8 @@ export default function Einrichtungsflow() {
                 ) : (
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Manuell eingeben <span className="text-gray-400">(Vorname Nachname, eine Person pro Zeile)</span>
+                      <label className="block text-sm font-medium text-ink-700 mb-1">
+                        Manuell eingeben <span className="text-ink-400">(Vorname Nachname, eine Person pro Zeile)</span>
                       </label>
                       <textarea
                         className="input resize-none"
@@ -268,9 +277,9 @@ export default function Einrichtungsflow() {
                       />
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-px bg-gray-200" />
-                      <span className="text-xs text-gray-400">oder</span>
-                      <div className="flex-1 h-px bg-gray-200" />
+                      <div className="flex-1 h-px bg-paper-200" />
+                      <span className="text-xs text-ink-400">oder</span>
+                      <div className="flex-1 h-px bg-paper-200" />
                     </div>
                     <button className="btn-secondary w-full" onClick={dateiImportieren}>
                       CSV / Excel importieren
@@ -293,12 +302,12 @@ export default function Einrichtungsflow() {
 
         {/* Schritt 4: Fertig */}
         {schritt === 4 && (
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 text-center border border-zinc-100 dark:border-zinc-800" style={{boxShadow: '0 24px 64px -12px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.03)'}}>
+          <div className="bg-white dark:bg-ink-900 rounded-2xl p-8 text-center border border-paper-100 dark:border-ink-800" style={{boxShadow: '0 24px 64px -12px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.03)'}}>
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">✓</span>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Alles bereit!</h2>
-            <p className="text-gray-500 mb-8">
+            <h2 className="text-xl font-semibold text-ink-900 mb-2">Alles bereit!</h2>
+            <p className="text-ink-500 mb-8">
               Klasse <strong>{klasse}</strong>, Fach <strong>{fach}</strong> – los geht's.
             </p>
             <button className="btn-primary px-8 py-3 text-base" onClick={abschliessen} disabled={loading}>

@@ -16,21 +16,35 @@ const FARB_PALETTE = [
   '#cbd5e1', '#64748b', '#334155',
 ]
 
+const ALLE_KLASSEN_VIEWS = [
+  { id: 'notentabelle',    label: 'Noten',       planungOnly: false },
+  { id: 'kompetenzen',     label: 'Kompetenzen', planungOnly: false },
+  { id: 'klassenplanung',  label: 'Planung',     planungOnly: true  },
+  { id: 'sitzplan',        label: 'Sitzplan',    planungOnly: false },
+  { id: 'jahresplanung',   label: 'Jahresplan',  planungOnly: true  },
+]
+
 export default function KlassenTabs() {
   const {
     klassen, aktiveKlasse, setAktiveKlasse,
     schuljahre, aktuellesSchuljahr, setAktuellesSchuljahr,
     openModal, ladeKlassen,
     currentView, setCurrentView,
+    einstellungen,
   } = useStore()
+  const planungAktiv = einstellungen?.planung_aktiv === '1'
+  const KLASSEN_VIEWS = ALLE_KLASSEN_VIEWS.filter(v => !v.planungOnly || planungAktiv)
 
   const [renameId, setRenameId] = useState(null)
   const [renameWert, setRenameWert] = useState('')
   const renameInputRef = useRef(null)
   const [farbMenuKlasse, setFarbMenuKlasse] = useState(null)
+  const [klasseDropdown, setKlasseDropdown] = useState(null) // { klasse, x, y }
+  const [klasseContextMenu, setKlasseContextMenu] = useState(null) // { klasse, x, y }
+  const [teamsLinkModal, setTeamsLinkModal] = useState(null) // { id, wert }
+  const [loeschModal, setLoeschModal] = useState(null) // { klasse, stats }
 
-  const renameStarten = (klasse, e) => {
-    e.preventDefault()
+  const renameStarten = (klasse) => {
     setRenameId(klasse.id)
     setRenameWert(klasse.name)
     setTimeout(() => renameInputRef.current?.focus(), 50)
@@ -49,34 +63,38 @@ export default function KlassenTabs() {
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-950 border-b border-zinc-800 dark:border-zinc-800/60">
+    <div className="flex items-center gap-2 px-3 py-2 bg-paper-100 dark:bg-ink-900 border-b border-paper-200 dark:border-ink-800">
 
-      {/* View-Toggle: Stundenplan / ToDos */}
-      <div className="flex items-center gap-0.5 bg-zinc-800 dark:bg-zinc-800 rounded-lg p-0.5 flex-shrink-0">
+      {/* Dashboard-Button (Stundenplan + Übersicht) */}
+      <button
+        className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all
+          ${currentView === 'stundenplan'
+            ? 'bg-white dark:bg-ink-800 text-coral-600 dark:text-coral-300 shadow-soft'
+            : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
+        onClick={() => setCurrentView('stundenplan')}
+        title="Dashboard mit Stundenplan, Aufgaben und Terminen"
+      >
+        <span aria-hidden>🗓️</span>
+        Dashboard
+      </button>
+
+      {/* KV-Button (nur sichtbar wenn mindestens eine KV-Klasse existiert) */}
+      {klassen.some(k => k.ist_kv) && (
         <button
-          className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all whitespace-nowrap
-            ${currentView === 'stundenplan'
-              ? 'bg-zinc-600 dark:bg-zinc-700 text-white dark:text-zinc-100 shadow-sm'
-              : 'text-zinc-400 dark:text-zinc-400 hover:text-zinc-200 dark:hover:text-zinc-200'}`}
-          onClick={() => setCurrentView('stundenplan')}
-          title="Stundenplan"
+          className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all
+            ${currentView === 'kv'
+              ? 'bg-white dark:bg-ink-800 text-coral-600 dark:text-coral-300 shadow-soft'
+              : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
+          onClick={() => setCurrentView('kv')}
+          title="Klassenvorstand: Jahresplaner, Wochenroutine, Trigger"
         >
-          ◫ Plan
+          <span aria-hidden>📜</span>
+          KV
         </button>
-        <button
-          className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all whitespace-nowrap
-            ${currentView === 'todos'
-              ? 'bg-zinc-600 dark:bg-zinc-700 text-white dark:text-zinc-100 shadow-sm'
-              : 'text-zinc-400 dark:text-zinc-400 hover:text-zinc-200 dark:hover:text-zinc-200'}`}
-          onClick={() => setCurrentView('todos')}
-          title="ToDo-Board"
-        >
-          ToDos
-        </button>
-      </div>
+      )}
 
       {/* Trennlinie */}
-      <div className="w-px h-5 bg-zinc-700 dark:bg-zinc-700 flex-shrink-0" />
+      <div className="w-px h-5 bg-paper-300 dark:bg-ink-700 flex-shrink-0" />
 
       {/* Klassen-Tabs */}
       <div className="flex items-center gap-0.5 flex-1 overflow-x-auto">
@@ -85,7 +103,7 @@ export default function KlassenTabs() {
             {renameId === k.id ? (
               <input
                 ref={renameInputRef}
-                className="px-3 py-1 text-sm border border-indigo-400 rounded-full outline-none bg-zinc-800 text-white w-24 focus:ring-2 focus:ring-indigo-500/30"
+                className="px-3 py-1 text-sm border border-coral-400 rounded-full outline-none bg-white dark:bg-ink-800 text-ink-900 dark:text-white w-24 focus:ring-2 focus:ring-coral-500/30"
                 value={renameWert}
                 onChange={e => setRenameWert(e.target.value)}
                 onBlur={renameSpeichern}
@@ -96,38 +114,60 @@ export default function KlassenTabs() {
               />
             ) : (
               <button
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full transition-all whitespace-nowrap
-                  ${aktiveKlasse?.id === k.id
-                    ? 'bg-white dark:bg-white text-zinc-900 dark:text-zinc-900'
-                    : 'text-zinc-400 dark:text-zinc-400 hover:text-zinc-100 dark:hover:text-zinc-200 hover:bg-zinc-800 dark:hover:bg-zinc-800'}`}
-                onClick={() => setAktiveKlasse(k)}
-                onDoubleClick={e => renameStarten(k, e)}
-                onContextMenu={e => { e.preventDefault(); setFarbMenuKlasse(k) }}
-                title="Doppelklick zum Umbenennen | Rechtsklick für Farbe"
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-semibold rounded-2xl whitespace-nowrap transition-all duration-150
+                  ${aktiveKlasse?.id === k.id && currentView !== 'stundenplan'
+                    ? 'bg-white dark:bg-ink-800 text-ink-900 dark:text-paper-100 shadow-soft'
+                    : 'text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-200 hover:bg-paper-200/70 dark:hover:bg-ink-800/70'}`}
+                onClick={e => {
+                  if (currentView === 'stundenplan') {
+                    setAktiveKlasse(k)
+                    setKlasseDropdown(null)
+                    setCurrentView('notentabelle')
+                  } else if (aktiveKlasse?.id !== k.id) {
+                    setAktiveKlasse(k)
+                    setKlasseDropdown(null)
+                  } else {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    setKlasseDropdown(prev =>
+                      prev?.klasse.id === k.id ? null : { klasse: k, x: rect.left, y: rect.bottom + 4 }
+                    )
+                  }
+                }}
+                onContextMenu={e => { e.preventDefault(); setKlasseDropdown(null); setKlasseContextMenu({ klasse: k, x: e.clientX, y: e.clientY }) }}
+                title="Klick: Ansicht wählen · Rechtsklick: Optionen"
               >
                 {k.farbe && (
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: k.farbe }} />
                 )}
                 {k.name}
+                {aktiveKlasse?.id === k.id && currentView !== 'stundenplan' && KLASSEN_VIEWS.find(v => v.id === currentView) && (
+                  <span className="text-ink-500 font-normal text-xs">
+                    · {KLASSEN_VIEWS.find(v => v.id === currentView).label}
+                  </span>
+                )}
+                <span className="text-ink-500 text-[10px]">▾</span>
               </button>
             )}
           </div>
         ))}
 
         <button
-          className="flex-shrink-0 px-3 py-1.5 text-sm text-zinc-600 dark:text-zinc-500 hover:text-zinc-300 dark:hover:text-zinc-300 hover:bg-zinc-800 dark:hover:bg-zinc-800 rounded-full transition-colors"
+          className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-ink-500 dark:text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-coral-50 dark:hover:bg-coral-900/30 rounded-2xl transition-all"
           onClick={() => openModal('klasseHinzufuegen')}
           title="Neue Klasse"
         >
-          + Klasse
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Klasse
         </button>
       </div>
 
       {/* Schuljahr + Aktionen rechts */}
       <div className="flex items-center gap-1 flex-shrink-0">
         <select
-          className="text-xs bg-zinc-800 dark:bg-transparent border border-zinc-700 dark:border-zinc-700 rounded-lg px-2 py-1 cursor-pointer
-            text-zinc-300 dark:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/40 transition-colors"
+          className="text-xs font-medium bg-white dark:bg-ink-800 border border-paper-300 dark:border-ink-700 rounded-xl px-2.5 py-1.5 cursor-pointer
+            text-ink-700 dark:text-ink-300 focus:outline-none focus:ring-2 focus:ring-coral-400/30 focus:border-coral-400 transition-all"
           value={aktuellesSchuljahr?.id ?? ''}
           onChange={schuljahrWechseln}
         >
@@ -137,7 +177,7 @@ export default function KlassenTabs() {
         </select>
 
         <button
-          className="text-xs text-zinc-500 hover:text-zinc-200 dark:hover:text-zinc-200 px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-800 transition-colors"
+          className="text-xs font-medium text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-200 px-3 py-1.5 rounded-xl hover:bg-paper-200 dark:hover:bg-ink-800 transition-all"
           onClick={() => openModal('archiv')}
           title="Archiv"
         >
@@ -145,34 +185,158 @@ export default function KlassenTabs() {
         </button>
 
         <button
-          className="text-zinc-500 hover:text-zinc-200 dark:hover:text-zinc-200 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-800 transition-colors text-base"
+          className="text-ink-500 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-paper-200 dark:hover:bg-ink-800 transition-all"
           onClick={() => openModal('einstellungen')}
           title="Einstellungen"
         >
-          ⚙
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
         </button>
 
         <button
-          className="text-zinc-500 hover:text-zinc-200 dark:hover:text-zinc-200 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-800 transition-colors text-sm"
+          className="text-ink-500 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-paper-200 dark:hover:bg-ink-800 transition-all"
           onClick={() => openModal('exportieren')}
           title="Exportieren"
         >
-          ↓
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+          </svg>
         </button>
       </div>
+
+      {/* Ansichts-Dropdown für Klasse */}
+      {klasseDropdown && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setKlasseDropdown(null)} />
+          <div className="fixed z-50 bg-white dark:bg-ink-800 rounded-xl border border-paper-200 dark:border-ink-700 shadow-xl py-1 min-w-[140px]"
+            style={{ left: klasseDropdown.x, top: klasseDropdown.y }}>
+            {KLASSEN_VIEWS.map(v => (
+              <button
+                key={v.id}
+                className={`w-full text-left px-4 py-2 text-sm transition-colors
+                  ${currentView === v.id
+                    ? 'text-ink-900 dark:text-white font-semibold bg-paper-100 dark:bg-ink-700'
+                    : 'text-ink-700 dark:text-ink-300 hover:bg-paper-100 dark:hover:bg-paper-200 dark:hover:bg-ink-700 hover:text-ink-900 dark:hover:text-white'}`}
+                onClick={() => { setCurrentView(v.id); setKlasseDropdown(null) }}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Kontextmenü für Klasse */}
+      {klasseContextMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setKlasseContextMenu(null)} />
+          <div className="context-menu" style={{ left: klasseContextMenu.x, top: klasseContextMenu.y, position: 'fixed' }}>
+            <div className="context-menu-item" onClick={() => { renameStarten(klasseContextMenu.klasse); setKlasseContextMenu(null) }}>
+              Umbenennen
+            </div>
+            <div className="context-menu-item" onClick={() => { setFarbMenuKlasse(klasseContextMenu.klasse); setKlasseContextMenu(null) }}>
+              Farbe ändern
+            </div>
+            <div className="context-menu-item" onClick={() => { setTeamsLinkModal({ id: klasseContextMenu.klasse.id, wert: klasseContextMenu.klasse.teams_link ?? '' }); setKlasseContextMenu(null) }}>
+              Teams-Link {klasseContextMenu.klasse.teams_link ? 'bearbeiten' : 'hinzufügen'}
+            </div>
+            <div
+              className="context-menu-item"
+              onClick={async () => {
+                const klasse = klasseContextMenu.klasse
+                setKlasseContextMenu(null)
+                await window.api.klassen.setIstKv(klasse.id, !klasse.ist_kv)
+                await ladeKlassen(aktuellesSchuljahr.id)
+              }}
+            >
+              <span aria-hidden>{klasseContextMenu.klasse.ist_kv ? '📜' : '◯'}</span>
+              {klasseContextMenu.klasse.ist_kv ? 'KV-Markierung entfernen' : 'Als KV-Klasse markieren'}
+            </div>
+            <div className="context-menu-separator" />
+            <div
+              className="context-menu-item text-red-600 dark:text-red-400 hover:!bg-red-50 dark:hover:!bg-red-900/30"
+              onClick={async () => {
+                const klasse = klasseContextMenu.klasse
+                setKlasseContextMenu(null)
+                const stats = await window.api.klassen.getDeleteStats(klasse.id)
+                setLoeschModal({ klasse, stats })
+              }}
+            >
+              Klasse löschen…
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Lösch-Bestätigungs-Modal */}
+      {loeschModal && (
+        <KlasseLoeschenModal
+          klasse={loeschModal.klasse}
+          stats={loeschModal.stats}
+          onConfirm={async () => {
+            await window.api.klassen.delete(loeschModal.klasse.id)
+            await ladeKlassen(aktuellesSchuljahr.id)
+            setLoeschModal(null)
+          }}
+          onClose={() => setLoeschModal(null)}
+        />
+      )}
+
+      {/* Teams-Link Modal */}
+      {teamsLinkModal && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setTeamsLinkModal(null)} />
+          <div className="fixed z-50 bg-white dark:bg-ink-800 rounded-xl border border-paper-200 dark:border-ink-700 shadow-xl p-4 w-96"
+            style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
+            <p className="text-sm font-medium text-ink-700 dark:text-ink-200 mb-3">Teams-Kanal-Link</p>
+            <input
+              className="input w-full mb-3 text-sm"
+              placeholder="https://teams.microsoft.com/l/channel/…"
+              value={teamsLinkModal.wert}
+              onChange={e => setTeamsLinkModal(prev => ({ ...prev, wert: e.target.value }))}
+              autoFocus
+              onKeyDown={async e => {
+                if (e.key === 'Enter') {
+                  await window.api.klassen.setTeamsLink(teamsLinkModal.id, teamsLinkModal.wert.trim() || null)
+                  await ladeKlassen(aktuellesSchuljahr.id)
+                  setTeamsLinkModal(null)
+                }
+                if (e.key === 'Escape') setTeamsLinkModal(null)
+              }}
+            />
+            <div className="flex gap-2">
+              <button className="btn-secondary flex-1 text-sm" onClick={() => setTeamsLinkModal(null)}>Abbrechen</button>
+              {teamsLinkModal.wert && (
+                <button className="btn-danger text-sm" onClick={async () => {
+                  await window.api.klassen.setTeamsLink(teamsLinkModal.id, null)
+                  await ladeKlassen(aktuellesSchuljahr.id)
+                  setTeamsLinkModal(null)
+                }}>Entfernen</button>
+              )}
+              <button className="btn-primary flex-1 text-sm" onClick={async () => {
+                await window.api.klassen.setTeamsLink(teamsLinkModal.id, teamsLinkModal.wert.trim() || null)
+                await ladeKlassen(aktuellesSchuljahr.id)
+                setTeamsLinkModal(null)
+              }}>Speichern</button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Farb-Picker für Klasse */}
       {farbMenuKlasse && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setFarbMenuKlasse(null)} />
-          <div className="fixed z-50 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-xl p-3"
+          <div className="fixed z-50 bg-white dark:bg-ink-800 rounded-xl border border-paper-200 dark:border-ink-700 shadow-xl p-3"
             style={{ left: 80, top: 44 }}>
-            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">Farbe für „{farbMenuKlasse.name}"</p>
+            <p className="text-xs font-medium text-ink-500 dark:text-ink-400 mb-2">Farbe für „{farbMenuKlasse.name}"</p>
             <div className="grid gap-1 mb-1" style={{ gridTemplateColumns: 'repeat(12, 1fr)' }}>
               {FARB_PALETTE.map(farbe => (
                 <button
                   key={farbe}
-                  className={`w-5 h-5 rounded-full transition-transform hover:scale-110 ${farbMenuKlasse.farbe === farbe ? 'ring-2 ring-offset-1 ring-zinc-400' : ''}`}
+                  className={`w-5 h-5 rounded-full transition-transform hover:scale-110 ${farbMenuKlasse.farbe === farbe ? 'ring-2 ring-offset-1 ring-ink-400' : ''}`}
                   style={{ backgroundColor: farbe }}
                   onClick={async () => {
                     await window.api.klassen.setFarbe(farbMenuKlasse.id, farbe)
@@ -182,7 +346,7 @@ export default function KlassenTabs() {
                 />
               ))}
               <button
-                className="w-5 h-5 rounded-full border-2 border-dashed border-zinc-300 dark:border-zinc-600 flex items-center justify-center text-zinc-400 text-[9px] hover:border-zinc-400 transition-colors"
+                className="w-5 h-5 rounded-full border-2 border-dashed border-paper-300 dark:border-ink-600 flex items-center justify-center text-ink-400 text-[9px] hover:border-ink-400 transition-colors"
                 onClick={async () => {
                   await window.api.klassen.setFarbe(farbMenuKlasse.id, null)
                   await ladeKlassen(aktuellesSchuljahr.id)
@@ -194,6 +358,104 @@ export default function KlassenTabs() {
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+// ─── Klasse löschen Modal ─────────────────────────────────────────────────────
+function KlasseLoeschenModal({ klasse, stats, onConfirm, onClose }) {
+  const [confirmText, setConfirmText] = useState('')
+  const [loading, setLoading] = useState(false)
+  const erwartet = klasse.name.trim()
+  const istBestaetigt = confirmText.trim() === erwartet
+
+  const handleConfirm = async () => {
+    if (!istBestaetigt) return
+    setLoading(true)
+    try { await onConfirm() } finally { setLoading(false) }
+  }
+
+  const hatDaten = stats && (stats.fachCount > 0 || stats.schuelerCount > 0 || stats.noteCount > 0 || stats.todoCount > 0)
+
+  return (
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-md">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-2xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-xl flex-shrink-0">
+            ⚠️
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-bold text-ink-900 dark:text-white leading-tight">Klasse löschen</h2>
+            <p className="text-xs text-ink-500 dark:text-ink-400 mt-0.5">
+              Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+          </div>
+        </div>
+
+        <p className="text-sm text-ink-700 dark:text-paper-200 mb-3">
+          Die Klasse <span className="font-bold text-ink-900 dark:text-white">„{klasse.name}"</span> wird endgültig gelöscht.
+        </p>
+
+        {hatDaten && (
+          <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-xl p-3 mb-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 mb-2">Mit gelöscht werden</p>
+            <ul className="space-y-1 text-sm text-ink-700 dark:text-paper-200">
+              {stats.schuelerCount > 0 && (
+                <li className="flex items-center gap-2"><span aria-hidden>🙋</span> {stats.schuelerCount} Schüler:in{stats.schuelerCount === 1 ? '' : 'nen'}</li>
+              )}
+              {stats.fachCount > 0 && (
+                <li className="flex items-center gap-2"><span aria-hidden>📚</span> {stats.fachCount} Fach{stats.fachCount === 1 ? '' : 'er'}</li>
+              )}
+              {stats.noteCount > 0 && (
+                <li className="flex items-center gap-2"><span aria-hidden>✍️</span> {stats.noteCount} eingetragene Note{stats.noteCount === 1 ? '' : 'n'}</li>
+              )}
+              {stats.todoCount > 0 && (
+                <li className="flex items-center gap-2"><span aria-hidden>✏️</span> {stats.todoCount} ToDo{stats.todoCount === 1 ? '' : 's'}</li>
+              )}
+              {stats.terminCount > 0 && (
+                <li className="flex items-center gap-2 text-ink-500 text-xs"><span aria-hidden>📅</span> {stats.terminCount} Termin{stats.terminCount === 1 ? '' : 'e'} verlieren die Klassen-Zuordnung</li>
+              )}
+              {stats.kvAktenvermerkeCount > 0 && (
+                <li className="flex items-center gap-2"><span aria-hidden>📋</span> {stats.kvAktenvermerkeCount} Aktenvermerk{stats.kvAktenvermerkeCount === 1 ? '' : 'e'}</li>
+              )}
+              {stats.kvElternkontakteCount > 0 && (
+                <li className="flex items-center gap-2"><span aria-hidden>📞</span> {stats.kvElternkontakteCount} Elternkontakt{stats.kvElternkontakteCount === 1 ? '' : 'e'}</li>
+              )}
+              {stats.kvFehlstundenCount > 0 && (
+                <li className="flex items-center gap-2"><span aria-hidden>📆</span> {stats.kvFehlstundenCount} Fehlstunden-Eintr{stats.kvFehlstundenCount === 1 ? 'ag' : 'äge'}</li>
+              )}
+              {stats.kvTriggerCount > 0 && (
+                <li className="flex items-center gap-2"><span aria-hidden>⚠️</span> {stats.kvTriggerCount} KV-Trigger</li>
+              )}
+            </ul>
+          </div>
+        )}
+
+        <label className="block text-xs font-medium text-ink-600 dark:text-ink-400 mb-1">
+          Tippe <span className="font-mono font-bold text-ink-800 dark:text-paper-100">{erwartet}</span> zum Bestätigen
+        </label>
+        <input
+          className="input mb-4"
+          value={confirmText}
+          onChange={e => setConfirmText(e.target.value)}
+          placeholder={erwartet}
+          autoFocus
+          onKeyDown={e => { if (e.key === 'Enter' && istBestaetigt) handleConfirm() }}
+        />
+
+        <div className="flex gap-2">
+          <button className="btn-secondary flex-1" onClick={onClose} disabled={loading}>
+            Abbrechen
+          </button>
+          <button
+            className="btn-danger flex-1 disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={handleConfirm}
+            disabled={!istBestaetigt || loading}
+          >
+            {loading ? 'Lösche…' : 'Endgültig löschen'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

@@ -16,17 +16,10 @@ const FARB_PALETTE = [
   '#cbd5e1', '#64748b', '#334155',
 ]
 
-const KLASSEN_VIEWS = [
-  { id: 'notentabelle',  label: 'Noten' },
-  { id: 'sitzplan',      label: 'Sitzplan' },
-  { id: 'jahresplanung', label: 'Jahresplan' },
-]
-
 export default function FachTabs() {
   const {
     faecher, aktivesFach, setAktivesFach,
     aktiveKlasse, openModal, ladeKlassen, aktuellesSchuljahr,
-    currentView, setCurrentView,
   } = useStore()
 
   const [renameId, setRenameId] = useState(null)
@@ -34,6 +27,7 @@ export default function FachTabs() {
   const renameInputRef = useRef(null)
   const [contextMenu, setContextMenu] = useState(null)
   const [farbMenuFach, setFarbMenuFach] = useState(null)
+  const [benotungMenuFach, setBenotungMenuFach] = useState(null)
 
   const fachHatCustomGewichtung = (fach) =>
     fach.gewichtung_sa !== null || fach.gewichtung_t !== null ||
@@ -62,28 +56,11 @@ export default function FachTabs() {
     await window.api.export.toExcel(aktivesFach.id)
   }
 
-  const istKlassenView = KLASSEN_VIEWS.some(v => v.id === currentView)
-
   return (
-    <div className="flex items-center px-3 bg-white dark:bg-zinc-900 border-b border-zinc-300 dark:border-zinc-700/80">
-      {/* View-Selector: klassenspezifische Ansichten */}
-      <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 flex-shrink-0 mr-3">
-        {KLASSEN_VIEWS.map(v => (
-          <button
-            key={v.id}
-            className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all whitespace-nowrap
-              ${currentView === v.id
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}
-            onClick={() => setCurrentView(v.id)}
-          >
-            {v.label}
-          </button>
-        ))}
-      </div>
+    <div className="flex items-center px-3 bg-white dark:bg-ink-900 border-b border-paper-300 dark:border-ink-700/80">
 
-      {/* Fach-Tabs (Connected-Tab-Stil) – nur in klassenspezifischen Views */}
-      {istKlassenView && <div className="flex items-center flex-1 overflow-x-auto gap-0.5 pt-1.5">
+      {/* Fach-Tabs */}
+      <div className="flex items-center flex-1 overflow-x-auto gap-0.5 pt-1.5">
         {faecher.map(f => {
           const aktiv = aktivesFach?.id === f.id
           const akzentFarbe = f.farbe ?? '#6366f1'
@@ -92,7 +69,7 @@ export default function FachTabs() {
             {renameId === f.id ? (
               <input
                 ref={renameInputRef}
-                className="px-3 py-1 text-sm border border-indigo-300 rounded outline-none bg-white dark:bg-zinc-800 dark:text-white w-32 mb-1"
+                className="px-3 py-1 text-sm border border-coral-300 rounded outline-none bg-white dark:bg-ink-800 dark:text-white w-32 mb-1"
                 value={renameWert}
                 onChange={e => setRenameWert(e.target.value)}
                 onBlur={renameSpeichern}
@@ -105,21 +82,20 @@ export default function FachTabs() {
               <button
                 className={`relative flex items-center gap-1.5 px-4 py-2 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors
                   ${aktiv
-                    ? 'bg-white dark:bg-zinc-950 border border-b-0 border-zinc-300 dark:border-zinc-700/80 -mb-px text-zinc-900 dark:text-zinc-100 shadow-sm'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'}`}
+                    ? 'bg-white dark:bg-ink-950 border border-b-0 border-paper-300 dark:border-ink-700/80 -mb-px text-ink-900 dark:text-paper-100 shadow-sm'
+                    : 'text-ink-500 dark:text-ink-400 hover:text-ink-800 dark:hover:text-ink-900 dark:hover:text-paper-200 hover:bg-paper-100 dark:hover:bg-ink-800/60'}`}
                 onClick={() => setAktivesFach(f)}
                 onDoubleClick={() => renameStarten(f)}
                 onContextMenu={e => handleContextMenu(e, f)}
                 title="Doppelklick zum Umbenennen | Rechtsklick für Optionen"
               >
-                {/* Farbiger Akzentstreifen oben beim aktiven Tab */}
                 {aktiv && (
                   <span
                     className="absolute inset-x-0 top-0 h-0.5 rounded-t-lg"
                     style={{ backgroundColor: akzentFarbe }}
                   />
                 )}
-                {f.farbe && !aktiv && (
+                {f.farbe && (
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: f.farbe }} />
                 )}
                 {f.name}
@@ -134,20 +110,20 @@ export default function FachTabs() {
 
         {aktiveKlasse && (
           <button
-            className="flex-shrink-0 px-3 py-2 text-sm text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+            className="flex-shrink-0 px-3 py-2 text-sm text-ink-400 dark:text-ink-500 hover:text-ink-600 dark:hover:text-ink-900 dark:hover:text-paper-300 transition-colors"
             onClick={() => openModal('fachHinzufuegen')}
           >
             + Fach
           </button>
         )}
-      </div>}
+      </div>
 
-      {/* Aktionen rechts – visuell getrennt vom Tab-Bereich */}
-      {istKlassenView && (aktiveKlasse || aktivesFach) && (
-        <div className="flex items-center gap-1 ml-2 pl-3 py-1 flex-shrink-0 border-l border-zinc-300 dark:border-zinc-700">
+      {/* Aktionen rechts */}
+      {(aktiveKlasse || aktivesFach) && (
+        <div className="flex items-center gap-1 ml-2 pl-3 py-1 flex-shrink-0 border-l border-paper-300 dark:border-ink-700">
           {aktiveKlasse && (
             <button
-              className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
+              className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 hover:border-paper-300 dark:hover:border-ink-600 transition-colors"
               onClick={() => openModal('schuelerVerwalten')}
             >
               Schüler:innen
@@ -155,7 +131,7 @@ export default function FachTabs() {
           )}
           {aktivesFach && (
             <button
-              className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
+              className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 hover:border-paper-300 dark:hover:border-ink-600 transition-colors"
               onClick={handleExport}
               title="Als Excel exportieren"
             >
@@ -185,6 +161,12 @@ export default function FachTabs() {
             }}>
               Gewichtung anpassen
             </div>
+            <div className="context-menu-item" onClick={() => {
+              setBenotungMenuFach(contextMenu.fach)
+              setContextMenu(null)
+            }}>
+              Benotungssystem {contextMenu.fach.benotungssystem === 'differenziert' ? '(AHS/ST)' : '(Standard)'}
+            </div>
             <div className="context-menu-separator" />
             <div className="context-menu-item text-red-500" onClick={async () => {
               if (confirm(`Fach „${contextMenu.fach.name}" wirklich löschen?`)) {
@@ -203,14 +185,14 @@ export default function FachTabs() {
       {farbMenuFach && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setFarbMenuFach(null)} />
-          <div className="fixed z-50 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-xl p-3"
+          <div className="fixed z-50 bg-white dark:bg-ink-800 rounded-xl border border-paper-200 dark:border-ink-700 shadow-xl p-3"
             style={{ left: 200, top: 48 }}>
-            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">Farbe für „{farbMenuFach.name}"</p>
+            <p className="text-xs font-medium text-ink-500 dark:text-ink-400 mb-2">Farbe für „{farbMenuFach.name}"</p>
             <div className="grid gap-1 mb-2" style={{ gridTemplateColumns: 'repeat(12, 1fr)' }}>
               {FARB_PALETTE.map(farbe => (
                 <button
                   key={farbe}
-                  className={`w-5 h-5 rounded-full transition-transform hover:scale-110 ${farbMenuFach.farbe === farbe ? 'ring-2 ring-offset-1 ring-zinc-400' : ''}`}
+                  className={`w-5 h-5 rounded-full transition-transform hover:scale-110 ${farbMenuFach.farbe === farbe ? 'ring-2 ring-offset-1 ring-ink-400' : ''}`}
                   style={{ backgroundColor: farbe }}
                   onClick={async () => {
                     await window.api.faecher.setFarbe(farbMenuFach.id, farbe)
@@ -220,7 +202,7 @@ export default function FachTabs() {
                 />
               ))}
               <button
-                className="w-5 h-5 rounded-full border-2 border-dashed border-zinc-300 dark:border-zinc-600 flex items-center justify-center text-zinc-400 text-[9px] hover:border-zinc-400 transition-colors"
+                className="w-5 h-5 rounded-full border-2 border-dashed border-paper-300 dark:border-ink-600 flex items-center justify-center text-ink-400 text-[9px] hover:border-ink-400 transition-colors"
                 onClick={async () => {
                   await window.api.faecher.setFarbe(farbMenuFach.id, null)
                   await ladeKlassen(aktuellesSchuljahr.id)
@@ -228,6 +210,49 @@ export default function FachTabs() {
                 }}
                 title="Keine Farbe"
               >✕</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Benotungssystem-Popup */}
+      {benotungMenuFach && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setBenotungMenuFach(null)} />
+          <div className="fixed z-50 bg-white dark:bg-ink-800 rounded-xl border border-paper-200 dark:border-ink-700 shadow-xl p-3"
+            style={{ left: 200, top: 48 }}>
+            <p className="text-xs font-medium text-ink-500 dark:text-ink-400 mb-2">Benotungssystem für „{benotungMenuFach.name}"</p>
+            <div className="flex gap-2">
+              <button
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  benotungMenuFach.benotungssystem !== 'differenziert'
+                    ? 'border-coral-500 bg-coral-50 text-coral-700 dark:bg-coral-900 dark:text-coral-300 dark:border-coral-600'
+                    : 'border-paper-200 dark:border-ink-700 text-ink-600 dark:text-ink-400 hover:bg-paper-50 dark:hover:bg-ink-800'
+                }`}
+                onClick={async () => {
+                  await window.api.faecher.setBenotungssystem(benotungMenuFach.id, 'standard')
+                  await ladeKlassen(aktuellesSchuljahr.id)
+                  setBenotungMenuFach(null)
+                }}
+              >
+                <div>Standard</div>
+                <div className="text-xs opacity-70 mt-0.5">Noten 1–5</div>
+              </button>
+              <button
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  benotungMenuFach.benotungssystem === 'differenziert'
+                    ? 'border-coral-500 bg-coral-50 text-coral-700 dark:bg-coral-900 dark:text-coral-300 dark:border-coral-600'
+                    : 'border-paper-200 dark:border-ink-700 text-ink-600 dark:text-ink-400 hover:bg-paper-50 dark:hover:bg-ink-800'
+                }`}
+                onClick={async () => {
+                  await window.api.faecher.setBenotungssystem(benotungMenuFach.id, 'differenziert')
+                  await ladeKlassen(aktuellesSchuljahr.id)
+                  setBenotungMenuFach(null)
+                }}
+              >
+                <div>AHS / ST</div>
+                <div className="text-xs opacity-70 mt-0.5">Differenziert</div>
+              </button>
             </div>
           </div>
         </>

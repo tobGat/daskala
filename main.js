@@ -471,7 +471,7 @@ function initDB() {
   try { db.prepare('ALTER TABLE klassen ADD COLUMN teams_link TEXT').run() } catch {}
   try { db.prepare('ALTER TABLE faecher ADD COLUMN benotungssystem TEXT DEFAULT \'standard\'').run() } catch {}
 
-  // Schüler-Niveau pro Fach (AHS/ST-Differenzierung)
+  // Schüler-Niveau pro Fach (AHS/ST-Differenzierung) — aktueller Stand
   db.exec(`
     CREATE TABLE IF NOT EXISTS schueler_niveau (
       fach_id INTEGER NOT NULL,
@@ -482,6 +482,25 @@ function initDB() {
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
     )
   `)
+
+  // Niveau-Historie: Verlauf der Wechsel mit Gültigkeitsdatum
+  // Pro Wechsel ein Eintrag mit gueltig_ab (TEXT 'YYYY-MM-DD').
+  // Das aktuelle Niveau ist der jüngste Eintrag mit gueltig_ab <= heute.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schueler_niveau_historie (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      niveau TEXT NOT NULL,
+      gueltig_ab TEXT NOT NULL,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )
+  `)
+  try {
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_niveau_historie_lookup
+      ON schueler_niveau_historie (fach_id, schueler_id, gueltig_ab)`).run()
+  } catch {}
 
   // Termine
   db.exec(`
@@ -628,15 +647,203 @@ function initDB() {
   `)
   try { db.prepare('ALTER TABLE sitzplan_tische ADD COLUMN fach_id INTEGER').run() } catch {}
 
-  // Standard-Gewichtungen
+  // ─── KV-Modul (Klassenvorstand) ──────────────────────────────────────────────
+  try { db.prepare('ALTER TABLE klassen ADD COLUMN ist_kv INTEGER DEFAULT 0').run() } catch {}
+  try { db.prepare('ALTER TABLE schuljahre ADD COLUMN start_datum TEXT').run() } catch {}
+  try { db.prepare('ALTER TABLE schuljahre ADD COLUMN end_datum TEXT').run() } catch {}
+  // Sub-Aufgaben: parent_id auf eigene Tabelle, NULL = Top-Level
+  try { db.prepare('ALTER TABLE kv_jahresaufgaben ADD COLUMN parent_id INTEGER REFERENCES kv_jahresaufgaben(id) ON DELETE CASCADE').run() } catch {}
+
+  db.exec(`
+    -- Jahresaufgaben-Templates
+    CREATE TABLE IF NOT EXISTS kv_jahresaufgaben (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      monat        INTEGER NOT NULL,
+      titel        TEXT NOT NULL,
+      beschreibung TEXT,
+      rechtsbezug  TEXT,
+      kategorie    TEXT,
+      sortierung   INTEGER DEFAULT 0
+    );
+
+    -- Erledigungs-Status pro Klasse + Schuljahr
+    CREATE TABLE IF NOT EXISTS kv_jahresaufgaben_status (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      aufgabe_id   INTEGER NOT NULL REFERENCES kv_jahresaufgaben(id) ON DELETE CASCADE,
+      schuljahr_id INTEGER NOT NULL REFERENCES schuljahre(id) ON DELETE CASCADE,
+      klasse_id    INTEGER NOT NULL REFERENCES klassen(id) ON DELETE CASCADE,
+      erledigt_am  TEXT,
+      notiz        TEXT,
+      UNIQUE(aufgabe_id, schuljahr_id, klasse_id)
+    );
+
+    -- Wochenaufgaben-Templates
+    CREATE TABLE IF NOT EXISTS kv_wochenaufgaben (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      titel       TEXT NOT NULL,
+      rechtsbezug TEXT,
+      sortierung  INTEGER DEFAULT 0,
+      aktiv       INTEGER DEFAULT 1
+    );
+
+    -- Wochenaufgaben-Status pro Klasse + KW
+    CREATE TABLE IF NOT EXISTS kv_wochenaufgaben_status (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      aufgabe_id    INTEGER NOT NULL REFERENCES kv_wochenaufgaben(id) ON DELETE CASCADE,
+      schuljahr_id  INTEGER NOT NULL REFERENCES schuljahre(id) ON DELETE CASCADE,
+      klasse_id     INTEGER NOT NULL REFERENCES klassen(id) ON DELETE CASCADE,
+      kalenderwoche INTEGER NOT NULL,
+      jahr          INTEGER NOT NULL,
+      erledigt_am   TEXT,
+      notiz         TEXT,
+      UNIQUE(aufgabe_id, klasse_id, kalenderwoche, jahr)
+    );
+
+    -- Trigger-Events (manuell + automatisch)
+    CREATE TABLE IF NOT EXISTS kv_trigger (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      klasse_id    INTEGER NOT NULL REFERENCES klassen(id) ON DELETE CASCADE,
+      schueler_id  INTEGER REFERENCES schueler(id) ON DELETE CASCADE,
+      typ          TEXT NOT NULL,
+      schweregrad  TEXT NOT NULL DEFAULT 'info',
+      ausloeser    TEXT,
+      beschreibung TEXT,
+      erstellt_am  TEXT DEFAULT (datetime('now', 'localtime')),
+      reagiert_am  TEXT,
+      reaktion     TEXT,
+      archiviert   INTEGER DEFAULT 0
+    );
+
+    -- Aktenvermerke
+    CREATE TABLE IF NOT EXISTS kv_aktenvermerke (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      schueler_id    INTEGER REFERENCES schueler(id) ON DELETE CASCADE,
+      klasse_id      INTEGER NOT NULL REFERENCES klassen(id) ON DELETE CASCADE,
+      datum          TEXT NOT NULL,
+      typ            TEXT NOT NULL,
+      titel          TEXT NOT NULL,
+      beschreibung   TEXT NOT NULL,
+      zeugen         TEXT,
+      folgemassnahme TEXT,
+      erstellt_am    TEXT DEFAULT (datetime('now', 'localtime'))
+    );
+
+    -- Elternkontakte
+    CREATE TABLE IF NOT EXISTS kv_elternkontakte (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      schueler_id INTEGER NOT NULL REFERENCES schueler(id) ON DELETE CASCADE,
+      datum       TEXT NOT NULL,
+      art         TEXT NOT NULL,
+      initiator   TEXT NOT NULL,
+      thema       TEXT NOT NULL,
+      inhalt      TEXT,
+      erledigt    INTEGER DEFAULT 1
+    );
+
+    -- Fehlstunden
+    CREATE TABLE IF NOT EXISTS kv_fehlstunden (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      schueler_id  INTEGER NOT NULL REFERENCES schueler(id) ON DELETE CASCADE,
+      datum        TEXT NOT NULL,
+      stunden      INTEGER NOT NULL,
+      entschuldigt INTEGER NOT NULL DEFAULT 0,
+      grund        TEXT
+    );
+  `)
+
+  try {
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_kv_trigger_klasse_archiv ON kv_trigger (klasse_id, archiviert)`).run()
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_kv_aktenvermerke_klasse ON kv_aktenvermerke (klasse_id, datum DESC)`).run()
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_kv_fehlstunden_schueler ON kv_fehlstunden (schueler_id, datum)`).run()
+  } catch {}
+
+  // ─── KV-Seed-Daten (nur bei leeren Tabellen) ────────────────────────────────
+  if (db.prepare('SELECT COUNT(*) as c FROM kv_jahresaufgaben').get().c === 0) {
+    const ja = db.prepare('INSERT INTO kv_jahresaufgaben (monat, titel, beschreibung, rechtsbezug, kategorie, sortierung) VALUES (?, ?, ?, ?, ?, ?)')
+    // Monat (1..12 Kalender), Titel, Beschreibung, Rechtsbezug, Kategorie, Sortierung
+    const seeds = [
+      // September — Schulbeginn, Organisation
+      [9, 'Klassenliste & Sitzplan',         'Aktuelle Klassenliste prüfen, Sitzplan festlegen.', null,          'organisation', 1],
+      [9, 'Begrüßung & Klassenregeln',       'Erste Klassenstunde, Regeln gemeinsam besprechen.', null,          'organisation', 2],
+      [9, 'Belehrungen durchführen',         'Hausordnung, Brandschutz, Verhalten bei Unfällen.', '§ 47 SchUG',   'doku',         3],
+      [9, 'Notfallkontakte einholen',        'Telefon- und Mailadressen der Eltern aktualisieren.', null,        'doku',         4],
+      [9, 'Klassendienste verteilen',        'Tafeldienst, Garderobendienst, Klassenbuchführung.', null,         'organisation', 5],
+      [9, 'Termin Klassenforum festlegen',   'Datum für das Klassenforum vorbereiten.',          '§ 63a SchUG',  'elternarbeit', 6],
+      // Oktober — Elternarbeit, Beobachtung
+      [10, 'Klassenforum durchführen',       'Wahl Elternvertretung, Information über Vorhaben.','§ 63a SchUG', 'elternarbeit', 1],
+      [10, 'Erste Elterngespräche',          'Persönlicher Kontakt zu allen Familien herstellen.', null,        'elternarbeit', 2],
+      [10, 'Klassendynamik beobachten',      'Erste Aktenvermerke zu auffälligem Verhalten.',     null,         'doku',         3],
+      [10, 'Schulveranstaltungen planen',    'Wandertage, Projekttage langfristig vorbereiten.',  null,         'organisation', 4],
+      // November — Leistungsstand
+      [11, 'Leistungsstand erheben',         'Mit Fachlehrer:innen Rücksprache halten.',          '§ 54 SchUG', 'doku',         1],
+      [11, 'Elternsprechtag',                'Vorbereitung & Durchführung.',                       null,        'elternarbeit', 2],
+      [11, 'Frühwarnungen vorbereiten',      'Schüler:innen mit Gefährdung dokumentieren.',       '§ 19 SchUG','doku',         3],
+      [11, 'Aktenvermerke aktualisieren',    'Beobachtungen verschriftlichen.',                    null,        'doku',         4],
+      // Dezember — Frühwarnungen, Konferenz
+      [12, 'Frühwarnungen versenden',        'Schriftliche Verständigung Eltern + Bestätigung.', '§ 19 Abs. 4 SchUG','doku',  1],
+      [12, 'Konferenzanträge einbringen',    'Vorbereitung Notenkonferenz Semester 1.',           null,        'konferenz',    2],
+      [12, 'Verhaltensbeurteilung vorbereiten','Vorschläge zur Verhaltensnote.',                  '§ 20 SchUG', 'konferenz',    3],
+      [12, 'Weihnachtsfeier organisieren',   'Klassenaktion zum Semesterende.',                    null,        'organisation', 4],
+      // Jänner — Semester 1 abschließen
+      [1, 'Notenkonferenz Sem. 1',           'Teilnahme + Protokollführung.',                      '§ 20 SchUG', 'konferenz',    1],
+      [1, 'Schulnachrichten ausgeben',       'Verteilung und Empfangsbestätigung.',                '§ 19 SchUG', 'doku',         2],
+      [1, 'Elterngespräche bei Gefährdung',  'Persönliche Rücksprache bei NG/Frühwarnung.',        null,        'elternarbeit', 3],
+      [1, 'Aktenvermerke verifizieren',      'Vollständigkeit aller Vorfälle prüfen.',             null,        'doku',         4],
+      // Februar — Semester 2 startet
+      [2, 'Semester 2 — Zielvereinbarungen', 'Mit der Klasse neue Ziele formulieren.',             null,        'organisation', 1],
+      [2, 'Schulveranstaltungen Sem.2',      'Sportwoche, Projekttage anmelden + genehmigen.',     null,        'organisation', 2],
+      [2, 'Fehlstundenkonto prüfen',         'Grenzen 5/15/30 Stunden im Auge behalten.',          '§ 45 SchUG','doku',         3],
+      // März — Standortbestimmung
+      [3, 'Leistungsstand erheben',          'Zweite Rücksprache mit Fachlehrer:innen.',           '§ 54 SchUG','doku',         1],
+      [3, 'Elternsprechtag',                 'Frühjahrs-Sprechtag durchführen.',                   null,        'elternarbeit', 2],
+      [3, 'Aktenvermerke aktualisieren',     'Quartalsweise Sichtung.',                            null,        'doku',         3],
+      [3, 'Berufsorientierung planen',       'Falls altersrelevant: BO-Termine festlegen.',        null,        'organisation', 4],
+      // April — Frühwarnungen 2
+      [4, 'Frühwarnungen Sem. 2 versenden',  'Schriftliche Verständigung bei Gefährdung.',         '§ 19 SchUG','doku',         1],
+      [4, 'Elterngespräche bei NG-Gefahr',   'Persönlicher Kontakt + Folgemaßnahmen.',             null,        'elternarbeit', 2],
+      [4, 'Schulveranstaltungs-Check',       'Genehmigungsstatus aller geplanten Aktionen.',       null,        'organisation', 3],
+      // Mai — Endphase Vorbereitung
+      [5, 'Konferenzanträge einbringen',     'Vorbereitung Schlusskonferenz, Verhaltensnoten.',    '§ 20 SchUG','konferenz',    1],
+      [5, 'Verhaltensbeurteilung finalisieren','Endbewertung Verhalten.',                          '§ 20 SchUG','konferenz',    2],
+      [5, 'Aktenvermerke schließen',         'Offene Vorfälle dokumentieren und abschließen.',     null,        'doku',         3],
+      [5, 'Klassenausflug organisieren',     'Letzte Aktion vor Schulschluss.',                    null,        'organisation', 4],
+      // Juni — Abschluss
+      [6, 'Notenkonferenz Schulschluss',     'Teilnahme + Beschluss Aufstiegsentscheidungen.',     '§ 20 SchUG','konferenz',    1],
+      [6, 'Zeugnisse vorbereiten',           'Zeugnisformulare, Vermerke, Unterschriften.',        null,        'doku',         2],
+      [6, 'Zeugnisverteilung',               'Persönliche Übergabe + Abschluss.',                  null,        'organisation', 3],
+      [6, 'Klassendokumentation archivieren','KV-Akten ordentlich ablegen.',                        null,        'doku',         4],
+      [6, 'Rückmeldung an Direktion',        'KV-Jahresbericht (kurz).',                            null,        'doku',         5],
+      // Juli / August — Nachhol, Wiederholungsprüfungen
+      [7, 'Wiederholungsprüfungen begleiten','Termine kommunizieren, organisatorische Unterstützung.','§ 23 SchUG','organisation',1],
+      [8, 'Vorbereitung neues Schuljahr',    'Klassenliste sichten, Sitzplan-Entwurf, To-Dos sammeln.',null,    'organisation', 1],
+    ]
+    for (const s of seeds) ja.run(...s)
+  }
+
+  if (db.prepare('SELECT COUNT(*) as c FROM kv_wochenaufgaben').get().c === 0) {
+    const wa = db.prepare('INSERT INTO kv_wochenaufgaben (titel, rechtsbezug, sortierung) VALUES (?, ?, ?)')
+    const wseeds = [
+      ['Klassenbuch durchgesehen',                  '§ 54 SchUG', 1],
+      ['Entschuldigungen eingesammelt',             '§ 45 SchUG', 2],
+      ['Fehlstundenkonto geprüft (5/15/30 h)',      null,         3],
+      ['Rückmeldungen vom Lehrer:innenteam',        '§ 54 SchUG', 4],
+      ['Aktenvermerke nachgezogen',                 null,         5],
+      ['Offene Eltern-Rückrufe/Mails',              '§ 48 SchUG', 6],
+      ['Wochenausblick (Termine, Veranstaltungen)', null,         7],
+    ]
+    for (const w of wseeds) wa.run(...w)
+  }
+
+  // Standard-Gewichtungen (Summe = 100 %)
+  // Nur bei frischer DB werden alle eingefügt; bestehende Werte bleiben unangetastet.
   const insertGewichtung = db.prepare(
     'INSERT OR IGNORE INTO gewichtung_global (kategorie, gewichtung) VALUES (?, ?)'
   )
-  insertGewichtung.run('SA', 0.4)
-  insertGewichtung.run('T', 0.3)
-  insertGewichtung.run('MA', 0.2)
-  insertGewichtung.run('HÜ', 0.1)
-  insertGewichtung.run('CUSTOM', 0.0)
+  insertGewichtung.run('SA', 0.35)
+  insertGewichtung.run('T', 0.25)
+  insertGewichtung.run('MA', 0.20)
+  insertGewichtung.run('HÜ', 0.10)
+  insertGewichtung.run('CUSTOM', 0.10)
 
   // Duplikate in stundenzeiten bereinigen (fehlerhafter INSERT OR IGNORE ohne UNIQUE)
   db.prepare(`
@@ -676,6 +883,10 @@ function initDB() {
   insertEinstellung.run('ma_minus_wert', '5')
   insertEinstellung.run('semester2_monat', '2')
   insertEinstellung.run('onedrive_backup_aktiv', '0')
+  // Planungs-Features (Stundenplan, Jahres-/Klassenplanung) — default aus.
+  // Wer die Planung in Daskala separat zu einem Tool wie Teachino nutzen möchte,
+  // schaltet das in den Einstellungen ein.
+  insertEinstellung.run('planung_aktiv', '0')
 
   // Aktuelles Schuljahr ermitteln
   const now = new Date()
@@ -777,9 +988,44 @@ function initKompetenzVorlagen(fachId, fachName) {
   vorlagen.forEach((titel, idx) => insert.run(fachId, titel, idx))
 }
 
+// Niveau-Auflösung für ein Datum aus der Historie. niveauHist absteigend sortiert nach gueltig_ab.
+// Fallback: aktuelles Niveau (jüngster Eintrag bzw. übergebener Default).
+function niveauZurZeit(niveauHist, datum, fallback) {
+  if (!niveauHist || niveauHist.length === 0) return fallback
+  if (!datum) return niveauHist[0].niveau
+  for (const h of niveauHist) {
+    if (h.gueltig_ab <= datum) return h.niveau
+  }
+  // Datum vor erstem Historien-Eintrag → ältestes bekanntes Niveau
+  return niveauHist[niveauHist.length - 1].niveau
+}
+
+// Offset für interne 1-7-Skala bei differenzierten Fächern. AHS → 0, ST → +2.
+function niveauOffset(niveau) { return niveau === 'ST' ? 2 : 0 }
+
 function berechneZeugnisnote(fachId, schuelerId, semester) {
   const fach = db.prepare('SELECT * FROM faecher WHERE id = ?').get(fachId)
-  if (!fach) return { note: null, s1Eingerechnet: false }
+  if (!fach) return { note: null }
+
+  const istDifferenziert = fach.benotungssystem === 'differenziert'
+  const maxNote = istDifferenziert ? 7 : 5
+
+  // Niveau-Historie laden (nur bei differenzierten Fächern relevant)
+  let niveauHist = []
+  let niveauFallback = 'AHS'
+  if (istDifferenziert) {
+    niveauHist = db.prepare(`
+      SELECT niveau, gueltig_ab FROM schueler_niveau_historie
+      WHERE fach_id = ? AND schueler_id = ?
+      ORDER BY gueltig_ab DESC, id DESC
+    `).all(fachId, schuelerId)
+    niveauFallback = db.prepare(
+      'SELECT niveau FROM schueler_niveau WHERE fach_id = ? AND schueler_id = ?'
+    ).get(fachId, schuelerId)?.niveau ?? 'AHS'
+  }
+  const offsetFor = (datum) => istDifferenziert
+    ? niveauOffset(niveauZurZeit(niveauHist, datum, niveauFallback))
+    : 0
 
   // Gewichtungen ermitteln (fach-spezifisch oder global)
   const globaleGewichtung = {}
@@ -797,12 +1043,12 @@ function berechneZeugnisnote(fachId, schuelerId, semester) {
   const maPlusWert = parseFloat(db.prepare("SELECT wert FROM einstellungen WHERE schluessel = 'ma_plus_wert'").get()?.wert ?? '1')
   const maMinusWert = parseFloat(db.prepare("SELECT wert FROM einstellungen WHERE schluessel = 'ma_minus_wert'").get()?.wert ?? '5')
 
-  // Spalten für dieses Fach + Semester
+  // Spalten für dieses Fach + Semester (mit Datum für Niveau-Lookup)
   const spalten = db.prepare(
     'SELECT * FROM spalten WHERE fach_id = ? AND semester = ?'
   ).all(fachId, semester)
 
-  // Einträge pro Kategorie sammeln
+  // Einträge pro Kategorie sammeln — Werte bereits in interner 1-7-Skala (bzw. 1-5 bei Standard)
   const kategorieWerte = { SA: [], T: [], MA: [], HÜ: [], CUSTOM: [] }
 
   for (const spalte of spalten) {
@@ -813,24 +1059,25 @@ function berechneZeugnisnote(fachId, schuelerId, semester) {
     const wert = eintrag?.wert ?? ''
     if (!wert || wert === '') continue
 
+    const off = offsetFor(spalte.datum)
+
     if (spalte.kategorie === 'MA') {
-      if (wert === '+') kategorieWerte.MA.push(maPlusWert)
-      else if (wert === '-') kategorieWerte.MA.push(maMinusWert)
+      if (wert === '+') kategorieWerte.MA.push(maPlusWert + off)
+      else if (wert === '-') kategorieWerte.MA.push(maMinusWert + off)
     } else if (spalte.kategorie === 'HÜ') {
-      if (wert === '✓') kategorieWerte['HÜ'].push(1)
-      else if (wert === '✗' || wert === '—') kategorieWerte['HÜ'].push(0)
+      // ✓ = "voll erledigt" (intern 1+offset), ✗/— = "nicht erledigt" (intern 5+offset)
+      if (wert === '✓') kategorieWerte['HÜ'].push(1 + off)
+      else if (wert === '✗' || wert === '—') kategorieWerte['HÜ'].push(5 + off)
     } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
       const n = parseInt(wert)
-      if (n >= 1 && n <= 5) kategorieWerte[spalte.kategorie].push(n)
+      if (n >= 1 && n <= 5) kategorieWerte[spalte.kategorie].push(n + off)
     } else if (spalte.kategorie === 'CUSTOM') {
       const n = parseInt(wert)
-      if (!isNaN(n) && n >= 1 && n <= 5) kategorieWerte.CUSTOM.push(n)
+      if (!isNaN(n) && n >= 1 && n <= 5) kategorieWerte.CUSTOM.push(n + off)
     }
   }
 
-  const maxNote = 5
-
-  // Durchschnitt pro Kategorie
+  // Durchschnitt pro Kategorie (alle Werte schon in 1..maxNote)
   let gewichtetesSumme = 0
   let gesamtGewichtung = 0
 
@@ -839,18 +1086,9 @@ function berechneZeugnisnote(fachId, schuelerId, semester) {
     const w = gew[kat] ?? 0
     if (w === 0) continue
 
-    let avg
-    if (kat === 'HÜ') {
-      // Prozentsatz positiver HÜs → Note 1-maxNote
-      const positiv = werte.filter(v => v === 1).length
-      const ratio = positiv / werte.length
-      avg = maxNote - ratio * (maxNote - 1) // 100% → 1, 0% → maxNote
-    } else {
-      // Ungültige Noten (> maxNote) bei der Berechnung ignorieren
-      const gueltig = werte.filter(v => v <= maxNote)
-      if (gueltig.length === 0) continue
-      avg = gueltig.reduce((a, b) => a + b, 0) / gueltig.length
-    }
+    const gueltig = werte.filter(v => v >= 1 && v <= maxNote)
+    if (gueltig.length === 0) continue
+    const avg = gueltig.reduce((a, b) => a + b, 0) / gueltig.length
 
     gewichtetesSumme += avg * w
     gesamtGewichtung += w
@@ -873,6 +1111,17 @@ function berechneEndnote(fachId, schuelerId) {
   if (s1Note !== null) return s1Note
   if (s2Note !== null) return s2Note
   return null
+}
+
+// Alle Fächer im angegebenen Schuljahr neu berechnen
+function berechneAlleFuerSchuljahr(schuljahrId) {
+  if (!schuljahrId) return
+  const faecher = db.prepare(`
+    SELECT f.id FROM faecher f
+    JOIN klassen k ON f.klasse_id = k.id
+    WHERE k.schuljahr_id = ?
+  `).all(schuljahrId)
+  for (const f of faecher) berechneAlleFuerFach(f.id)
 }
 
 // Alle Zeugnisnoten für ein Fach neu berechnen (alle aktiven Schüler:innen, S1+S2+Endnote)
@@ -914,6 +1163,79 @@ function berechneAlleFuerFach(fachId) {
       }
     }
   })()
+}
+
+// ─── KV-Trigger-Helper ────────────────────────────────────────────────────────
+// Erzeugt einen Trigger, falls noch kein offener gleicher Art für die Person/Klasse existiert.
+function erzeugeTrigger(klasseId, schuelerId, typ, schweregrad, ausloeser, beschreibung) {
+  const existing = db.prepare(`
+    SELECT id FROM kv_trigger
+    WHERE klasse_id = ?
+      AND COALESCE(schueler_id, -1) = COALESCE(?, -1)
+      AND typ = ?
+      AND archiviert = 0
+  `).get(klasseId, schuelerId ?? null, typ)
+  if (existing) return existing.id
+  const info = db.prepare(`
+    INSERT INTO kv_trigger (klasse_id, schueler_id, typ, schweregrad, ausloeser, beschreibung)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(klasseId, schuelerId ?? null, typ, schweregrad, ausloeser ?? null, beschreibung ?? null)
+  return info.lastInsertRowid
+}
+
+// Prüft Fehlstunden-Schwellen für einen Schüler (≥15 warn, ≥30 critical).
+// Archiviert auch wieder, wenn unter Schwelle gefallen.
+function pruefeFehlstundenSchwellen(schuelerId) {
+  const schueler = db.prepare('SELECT id, klasse_id FROM schueler WHERE id = ?').get(schuelerId)
+  if (!schueler) return
+  const klasse = db.prepare('SELECT ist_kv FROM klassen WHERE id = ?').get(schueler.klasse_id)
+  if (!klasse?.ist_kv) return  // Trigger nur bei KV-Klassen
+  const summe = db.prepare(`
+    SELECT COALESCE(SUM(stunden), 0) AS s FROM kv_fehlstunden
+    WHERE schueler_id = ? AND entschuldigt = 0
+  `).get(schuelerId).s
+
+  const setzeOderArchiviereTrigger = (typ, schweregrad, schwelle, label) => {
+    if (summe >= schwelle) {
+      erzeugeTrigger(schueler.klasse_id, schuelerId, typ, schweregrad,
+        `${summe} unentschuldigte Fehlstunden (Schwelle ${schwelle})`, label)
+    } else {
+      // Archivieren wenn unter Schwelle und offen
+      db.prepare(`
+        UPDATE kv_trigger SET archiviert = 1, reagiert_am = datetime('now','localtime'),
+          reaktion = COALESCE(reaktion, 'Schwelle unterschritten')
+        WHERE klasse_id = ? AND schueler_id = ? AND typ = ? AND archiviert = 0
+      `).run(schueler.klasse_id, schuelerId, typ)
+    }
+  }
+  setzeOderArchiviereTrigger('fehlstunden_30', 'critical', 30, '§ 45 SchUG — Schulpflichtverletzung')
+  setzeOderArchiviereTrigger('fehlstunden_15', 'warn',     15, '§ 45 SchUG — frühzeitige Warnung')
+}
+
+// Prüft, ob nach einem Note-Eintrag eine Frühwarnung erzeugt werden soll.
+function pruefeNotenTrigger(spalteId, schuelerId, wertNeu, wertAlt) {
+  if (!wertNeu) return
+  // Nur SA/T/CUSTOM-Noten (1..5) sind relevant
+  const n = parseInt(wertNeu)
+  if (!(n >= 1 && n <= 5)) return
+  const spalte = db.prepare('SELECT s.kategorie, s.fach_id, f.klasse_id, f.name AS fach_name FROM spalten s JOIN faecher f ON f.id = s.fach_id WHERE s.id = ?').get(spalteId)
+  if (!spalte) return
+  if (!['SA', 'T', 'CUSTOM'].includes(spalte.kategorie)) return
+  const klasse = db.prepare('SELECT ist_kv FROM klassen WHERE id = ?').get(spalte.klasse_id)
+  if (!klasse?.ist_kv) return
+
+  let warnung = null
+  if (n === 5) {
+    warnung = { ausloeser: `Note 5 in ${spalte.fach_name}`, grund: 'Nicht Genügend eingetragen' }
+  } else if (wertAlt) {
+    const a = parseInt(wertAlt)
+    if (a >= 1 && a <= 5 && (n - a) >= 2) {
+      warnung = { ausloeser: `Note ${a} → ${n} in ${spalte.fach_name}`, grund: 'Verschlechterung um ≥ 2 Stufen' }
+    }
+  }
+  if (warnung) {
+    erzeugeTrigger(spalte.klasse_id, schuelerId, 'fruehwarnung', 'warn', warnung.ausloeser, warnung.grund)
+  }
 }
 
 // ─── IPC Handler registrieren ─────────────────────────────────────────────────
@@ -961,8 +1283,76 @@ function registerIPC() {
     return true
   })
 
+  ipcMain.handle('klassen:setIstKv', (_, id, istKv) => {
+    db.prepare('UPDATE klassen SET ist_kv = ? WHERE id = ?').run(istKv ? 1 : 0, id)
+    return true
+  })
+
+  // Vorschau auf eine Klassen-Löschung: zählt alle abhängigen Datensätze.
+  // Wird vom UI vor dem eigentlichen Löschen aufgerufen, damit der User sieht,
+  // was alles verschwindet (Schüler:innen, Fächer, eingetragene Noten etc.).
+  ipcMain.handle('klassen:getDeleteStats', (_, id) => {
+    const klasse = db.prepare('SELECT * FROM klassen WHERE id = ?').get(id)
+    if (!klasse) return null
+    const fachCount    = db.prepare('SELECT COUNT(*) AS c FROM faecher WHERE klasse_id = ?').get(id).c
+    const schuelerCount = db.prepare('SELECT COUNT(*) AS c FROM schueler WHERE klasse_id = ?').get(id).c
+    const noteCount    = db.prepare(`
+      SELECT COUNT(*) AS c FROM eintraege e
+      JOIN spalten s ON e.spalte_id = s.id
+      JOIN faecher f ON s.fach_id = f.id
+      WHERE f.klasse_id = ? AND e.wert IS NOT NULL AND e.wert != ''
+    `).get(id).c
+    const todoCount    = db.prepare('SELECT COUNT(*) AS c FROM todos WHERE klasse_id = ?').get(id).c
+    const terminCount  = db.prepare('SELECT COUNT(*) AS c FROM termine WHERE klasse_id = ?').get(id).c
+    // KV-Daten (alle haben ON DELETE CASCADE — verschwinden automatisch)
+    let kvAktenvermerkeCount = 0, kvElternkontakteCount = 0, kvFehlstundenCount = 0, kvTriggerCount = 0
+    try {
+      kvAktenvermerkeCount  = db.prepare('SELECT COUNT(*) AS c FROM kv_aktenvermerke WHERE klasse_id = ?').get(id).c
+      kvElternkontakteCount = db.prepare(`SELECT COUNT(*) AS c FROM kv_elternkontakte WHERE schueler_id IN (SELECT id FROM schueler WHERE klasse_id = ?)`).get(id).c
+      kvFehlstundenCount    = db.prepare(`SELECT COUNT(*) AS c FROM kv_fehlstunden WHERE schueler_id IN (SELECT id FROM schueler WHERE klasse_id = ?)`).get(id).c
+      kvTriggerCount        = db.prepare('SELECT COUNT(*) AS c FROM kv_trigger WHERE klasse_id = ?').get(id).c
+    } catch {}
+    return { klasse, fachCount, schuelerCount, noteCount, todoCount, terminCount, kvAktenvermerkeCount, kvElternkontakteCount, kvFehlstundenCount, kvTriggerCount }
+  })
+
+  // Klasse vollständig löschen (kaskadierend in Transaktion).
+  // Räumt Tabellen ohne ON DELETE CASCADE manuell auf.
   ipcMain.handle('klassen:delete', (_, id) => {
-    db.prepare('DELETE FROM klassen WHERE id = ?').run(id)
+    const tx = db.transaction(() => {
+      // Alle abhängigen Fach-IDs und Schüler-IDs für diese Klasse einsammeln
+      const fachIds    = db.prepare('SELECT id FROM faecher WHERE klasse_id = ?').all(id).map(r => r.id)
+      const schuelerIds = db.prepare('SELECT id FROM schueler WHERE klasse_id = ?').all(id).map(r => r.id)
+
+      if (fachIds.length > 0) {
+        const fachPh = fachIds.map(() => '?').join(',')
+        // Notenraster: Einträge + Historie + Spalten (kein CASCADE)
+        db.prepare(`DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id IN (${fachPh}))`).run(...fachIds)
+        try { db.prepare(`DELETE FROM eintraege_verlauf WHERE fach_id IN (${fachPh})`).run(...fachIds) } catch {}
+        db.prepare(`DELETE FROM spalten WHERE fach_id IN (${fachPh})`).run(...fachIds)
+        // Zeugnisnoten, Notizen (kein CASCADE)
+        db.prepare(`DELETE FROM zeugnisnoten WHERE fach_id IN (${fachPh})`).run(...fachIds)
+        db.prepare(`DELETE FROM notizen WHERE fach_id IN (${fachPh})`).run(...fachIds)
+        // Stundenplan-Einträge (kein CASCADE auf fach)
+        try { db.prepare(`DELETE FROM stunden_planung WHERE stundenplan_id IN (SELECT id FROM stundenplan WHERE fach_id IN (${fachPh}))`).run(...fachIds) } catch {}
+        db.prepare(`DELETE FROM stundenplan WHERE fach_id IN (${fachPh})`).run(...fachIds)
+      }
+
+      if (schuelerIds.length > 0) {
+        const schuelerPh = schuelerIds.map(() => '?').join(',')
+        // Restliche schüler-bezogene Daten, die nicht über die Fach-IDs erfasst wurden
+        db.prepare(`DELETE FROM eintraege WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
+        db.prepare(`DELETE FROM zeugnisnoten WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
+        db.prepare(`DELETE FROM notizen WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
+        try { db.prepare(`DELETE FROM eintraege_verlauf WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds) } catch {}
+      }
+
+      // Faecher + Schüler (kein CASCADE auf klassen)
+      db.prepare('DELETE FROM faecher WHERE klasse_id = ?').run(id)
+      db.prepare('DELETE FROM schueler WHERE klasse_id = ?').run(id)
+      // Die Klasse selbst (CASCADE räumt todos / sitzplan_tische auf; termine.klasse_id → NULL)
+      db.prepare('DELETE FROM klassen WHERE id = ?').run(id)
+    })
+    tx()
     return true
   })
 
@@ -1034,13 +1424,21 @@ function registerIPC() {
   ipcMain.handle('faecher:setBenotungssystem', (_, id, system) => {
     db.prepare('UPDATE faecher SET benotungssystem = ? WHERE id = ?').run(system, id)
     if (system === 'differenziert') {
-      // Default-Niveau 'AHS' für alle Schüler:innen anlegen, die noch keins haben
+      // Default-Niveau 'AHS' für alle Schüler:innen + Initial-Historien-Eintrag
       const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(id)
       if (fach) {
         const schuelerIds = db.prepare('SELECT id FROM schueler WHERE klasse_id = ? AND aktiv = 1').all(fach.klasse_id)
-        const insert = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
+        const insertNiveau = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
+        const insertHist = db.prepare(`
+          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
+          SELECT ?, ?, ?, ?
+          WHERE NOT EXISTS (
+            SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?
+          )
+        `)
         for (const s of schuelerIds) {
-          insert.run(id, s.id, 'AHS')
+          insertNiveau.run(id, s.id, 'AHS')
+          insertHist.run(id, s.id, 'AHS', '1900-01-01', id, s.id)
         }
       }
     }
@@ -1056,8 +1454,87 @@ function registerIPC() {
     return map
   })
 
-  ipcMain.handle('niveau:set', (_, fachId, schuelerId, niveau) => {
-    db.prepare('INSERT INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?) ON CONFLICT(fach_id, schueler_id) DO UPDATE SET niveau = ?').run(fachId, schuelerId, niveau, niveau)
+  // Niveau setzen — mit optionalem Datum für rückwirkenden oder zukünftigen Wechsel.
+  // Ohne datum: gilt ab heute. Schreibt in beide Tabellen (aktueller Stand + Historie).
+  ipcMain.handle('niveau:set', (_, fachId, schuelerId, niveau, datum) => {
+    const gueltigAb = datum || new Date().toISOString().slice(0, 10)
+    db.transaction(() => {
+      // Aktuellen Stand aktualisieren (nur wenn der Wechsel "jetzt oder früher" gilt)
+      const heute = new Date().toISOString().slice(0, 10)
+      if (gueltigAb <= heute) {
+        db.prepare(`
+          INSERT INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)
+          ON CONFLICT(fach_id, schueler_id) DO UPDATE SET niveau = excluded.niveau
+        `).run(fachId, schuelerId, niveau)
+      }
+      // Sicherstellen, dass es einen Initial-Historien-Eintrag gibt (1900-01-01) — sonst
+      // wären Einträge vor dem Wechseldatum ohne Niveau-Zuordnung.
+      const hatInitial = db.prepare(`
+        SELECT 1 FROM schueler_niveau_historie
+        WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = '1900-01-01'
+      `).get(fachId, schuelerId)
+      if (!hatInitial) {
+        // Erst-Wechsel: vorheriges Niveau (Default AHS) als Initial setzen
+        const altNiveau = niveau === 'AHS' ? 'ST' : 'AHS'
+        db.prepare(`
+          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
+          VALUES (?, ?, ?, '1900-01-01')
+        `).run(fachId, schuelerId, altNiveau)
+      }
+      // Existierenden Eintrag mit dem gleichen gueltig_ab überschreiben (idempotent)
+      const existiert = db.prepare(`
+        SELECT id FROM schueler_niveau_historie
+        WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = ?
+      `).get(fachId, schuelerId, gueltigAb)
+      if (existiert) {
+        db.prepare('UPDATE schueler_niveau_historie SET niveau = ? WHERE id = ?').run(niveau, existiert.id)
+      } else {
+        db.prepare(`
+          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
+          VALUES (?, ?, ?, ?)
+        `).run(fachId, schuelerId, niveau, gueltigAb)
+      }
+    })()
+    berechneAlleFuerFach(fachId)
+    return true
+  })
+
+  // Historie aller Niveau-Wechsel für ein Fach (für Renderer: Zellen-Hintergrundfarbe)
+  // Rückgabe: { schuelerId: [{ niveau, gueltig_ab }, ...] } absteigend nach Datum
+  ipcMain.handle('niveau:getHistorie', (_, fachId) => {
+    const rows = db.prepare(`
+      SELECT schueler_id, niveau, gueltig_ab FROM schueler_niveau_historie
+      WHERE fach_id = ?
+      ORDER BY schueler_id, gueltig_ab DESC, id DESC
+    `).all(fachId)
+    const map = {}
+    for (const r of rows) {
+      if (!map[r.schueler_id]) map[r.schueler_id] = []
+      map[r.schueler_id].push({ niveau: r.niveau, gueltig_ab: r.gueltig_ab })
+    }
+    return map
+  })
+
+  // Einen einzelnen Historien-Eintrag löschen (z.B. versehentlich erstellter Wechsel)
+  ipcMain.handle('niveau:deleteHistorie', (_, fachId, schuelerId, gueltigAb) => {
+    // Initial-Eintrag '1900-01-01' nicht löschbar — er ist der Anker
+    if (gueltigAb === '1900-01-01') return false
+    db.prepare(`
+      DELETE FROM schueler_niveau_historie
+      WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = ?
+    `).run(fachId, schuelerId, gueltigAb)
+    // Aktuellen Stand neu setzen aus dem jüngsten verbleibenden Eintrag
+    const aktuell = db.prepare(`
+      SELECT niveau FROM schueler_niveau_historie
+      WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab <= ?
+      ORDER BY gueltig_ab DESC, id DESC LIMIT 1
+    `).get(fachId, schuelerId, new Date().toISOString().slice(0, 10))
+    if (aktuell) {
+      db.prepare(`
+        INSERT INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)
+        ON CONFLICT(fach_id, schueler_id) DO UPDATE SET niveau = excluded.niveau
+      `).run(fachId, schuelerId, aktuell.niveau)
+    }
     berechneAlleFuerFach(fachId)
     return true
   })
@@ -1173,21 +1650,8 @@ function registerIPC() {
     if (!schueler) return null
     const faecher = db.prepare('SELECT f.* FROM faecher f WHERE f.klasse_id = ? ORDER BY f.reihenfolge').all(schueler.klasse_id)
 
-    // Zeugnisnoten aktuell berechnen, damit das Profil immer aktuelle Werte zeigt
-    const znStmt = db.prepare(`
-      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(fach_id, schueler_id, semester)
-      DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
-    `)
-    db.transaction(() => {
-      for (const fach of faecher) {
-        for (const sem of [1, 2]) {
-          const { note, s1Eingerechnet } = berechneZeugnisnote(fach.id, schuelerId, sem)
-          if (note !== null) znStmt.run(fach.id, schuelerId, sem, note, s1Eingerechnet ? 1 : 0)
-        }
-      }
-    })()
+    // Zeugnisnoten aktuell berechnen (S1, S2 und Endnote), damit das Profil immer aktuelle Werte zeigt
+    for (const fach of faecher) berechneAlleFuerFach(fach.id)
 
     const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE schueler_id = ?').all(schuelerId)
     const eintraege = db.prepare(`
@@ -1321,6 +1785,10 @@ function registerIPC() {
     }
     apply(wert)
     pushUndo({ description: 'Eintrag', undo: () => apply(oldWert), redo: () => apply(wert) })
+    // KV-Trigger-Hook: nur wenn sich der Wert geändert hat
+    if (wertAlt !== wertNeu) {
+      try { pruefeNotenTrigger(spalteId, schuelerId, wertNeu, wertAlt) } catch (e) { console.error('[KV] pruefeNotenTrigger:', e) }
+    }
     return true
   })
 
@@ -1474,18 +1942,17 @@ function registerIPC() {
 
   ipcMain.handle('gewichtungGlobal:update', (_, kategorie, gewichtung) => {
     db.prepare('INSERT OR REPLACE INTO gewichtung_global (kategorie, gewichtung) VALUES (?, ?)').run(kategorie, gewichtung)
-    // Alle Fächer im aktiven Schuljahr neu berechnen, die keine fachspezifischen Gewichtungen haben
+    // Alle Fächer im aktiven Schuljahr neu berechnen (auch teilweise globale Gewichtungen sind betroffen)
     const aktuellesSchuljahr = db.prepare('SELECT id FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
-    if (aktuellesSchuljahr) {
-      const faecher = db.prepare(`
-        SELECT f.id FROM faecher f
-        JOIN klassen k ON f.klasse_id = k.id
-        WHERE k.schuljahr_id = ?
-          AND f.gewichtung_sa IS NULL AND f.gewichtung_t IS NULL
-          AND f.gewichtung_ma IS NULL AND f.gewichtung_hue IS NULL
-      `).all(aktuellesSchuljahr.id)
-      for (const f of faecher) berechneAlleFuerFach(f.id)
-    }
+    berechneAlleFuerSchuljahr(aktuellesSchuljahr?.id)
+    return true
+  })
+
+  // Alle Zeugnisnoten im aktuellen Schuljahr neu berechnen
+  // (z.B. nach Änderung von s1_gewichtung, ma_plus_wert, ma_minus_wert)
+  ipcMain.handle('noten:rechneAllesNeu', () => {
+    const aktuellesSchuljahr = db.prepare('SELECT id FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
+    berechneAlleFuerSchuljahr(aktuellesSchuljahr?.id)
     return true
   })
 
@@ -2590,6 +3057,309 @@ function registerIPC() {
       upd.run(a.datum_von, a.datum_bis, a.reihenfolge, idB)
     })()
     return true
+  })
+
+  // ─── KV-Modul (Klassenvorstand) ──────────────────────────────────────────────
+
+  // Jahresaufgaben: Template + Status per Klasse + Schuljahr (LEFT JOIN)
+  // Liefert auch parent_id (NULL = Top-Level, sonst Sub-Aufgabe)
+  ipcMain.handle('kv:jahresaufgaben:getAlle', (_, klasseId, schuljahrId) => {
+    return db.prepare(`
+      SELECT
+        a.id, a.monat, a.titel, a.beschreibung, a.rechtsbezug, a.kategorie, a.sortierung, a.parent_id,
+        s.id AS status_id, s.erledigt_am, s.notiz
+      FROM kv_jahresaufgaben a
+      LEFT JOIN kv_jahresaufgaben_status s
+        ON s.aufgabe_id = a.id AND s.klasse_id = ? AND s.schuljahr_id = ?
+      ORDER BY a.monat, a.sortierung, a.id
+    `).all(klasseId, schuljahrId)
+  })
+
+  // Jahresaufgaben — Template-CRUD
+  // Bei parent_id wird die Sub-Aufgabe an die Parent-Aufgabe gehängt; sie erbt den Monat des Parents
+  // (und kann optional eigene Sortierung am Ende der Geschwister-Subs).
+  ipcMain.handle('kv:jahresaufgaben:createTemplate', (_, data) => {
+    let monat = data.monat
+    if (data.parentId) {
+      const parent = db.prepare('SELECT monat FROM kv_jahresaufgaben WHERE id = ?').get(data.parentId)
+      if (parent) monat = parent.monat
+    }
+    const maxSort = data.parentId
+      ? db.prepare('SELECT COALESCE(MAX(sortierung), 0) AS m FROM kv_jahresaufgaben WHERE parent_id = ?').get(data.parentId).m
+      : db.prepare('SELECT COALESCE(MAX(sortierung), 0) AS m FROM kv_jahresaufgaben WHERE monat = ? AND parent_id IS NULL').get(monat).m
+    const info = db.prepare(`
+      INSERT INTO kv_jahresaufgaben (monat, titel, beschreibung, rechtsbezug, kategorie, sortierung, parent_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(monat, data.titel, data.beschreibung ?? null, data.rechtsbezug ?? null, data.kategorie ?? null, maxSort + 1, data.parentId ?? null)
+    return info.lastInsertRowid
+  })
+
+  ipcMain.handle('kv:jahresaufgaben:updateTemplate', (_, id, data) => {
+    // Wenn Sub-Aufgabe: Monat & Kategorie kommen vom Parent — wir lassen sie aber updatebar
+    db.prepare(`
+      UPDATE kv_jahresaufgaben
+      SET monat = ?, titel = ?, beschreibung = ?, rechtsbezug = ?, kategorie = ?
+      WHERE id = ?
+    `).run(data.monat, data.titel, data.beschreibung ?? null, data.rechtsbezug ?? null, data.kategorie ?? null, id)
+    return true
+  })
+
+  ipcMain.handle('kv:jahresaufgaben:deleteTemplate', (_, id) => {
+    // Status-Einträge kaskadieren via ON DELETE CASCADE weg
+    db.prepare('DELETE FROM kv_jahresaufgaben WHERE id = ?').run(id)
+    return true
+  })
+
+  ipcMain.handle('kv:jahresaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, erledigtAm, notiz) => {
+    db.prepare(`
+      INSERT INTO kv_jahresaufgaben_status (aufgabe_id, schuljahr_id, klasse_id, erledigt_am, notiz)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(aufgabe_id, schuljahr_id, klasse_id) DO UPDATE SET
+        erledigt_am = excluded.erledigt_am,
+        notiz       = excluded.notiz
+    `).run(aufgabeId, schuljahrId, klasseId, erledigtAm ?? null, notiz ?? null)
+    return true
+  })
+
+  // Wochenaufgaben
+  ipcMain.handle('kv:wochenaufgaben:getAlle', () => {
+    return db.prepare('SELECT * FROM kv_wochenaufgaben WHERE aktiv = 1 ORDER BY sortierung, id').all()
+  })
+
+  // Wochenaufgaben — Template-CRUD
+  ipcMain.handle('kv:wochenaufgaben:createTemplate', (_, data) => {
+    const maxSort = db.prepare('SELECT COALESCE(MAX(sortierung), 0) AS m FROM kv_wochenaufgaben').get().m
+    const info = db.prepare(`
+      INSERT INTO kv_wochenaufgaben (titel, rechtsbezug, sortierung, aktiv)
+      VALUES (?, ?, ?, 1)
+    `).run(data.titel, data.rechtsbezug ?? null, maxSort + 1)
+    return info.lastInsertRowid
+  })
+
+  ipcMain.handle('kv:wochenaufgaben:updateTemplate', (_, id, data) => {
+    db.prepare(`
+      UPDATE kv_wochenaufgaben SET titel = ?, rechtsbezug = ? WHERE id = ?
+    `).run(data.titel, data.rechtsbezug ?? null, id)
+    return true
+  })
+
+  ipcMain.handle('kv:wochenaufgaben:deleteTemplate', (_, id) => {
+    // Status-Einträge kaskadieren weg
+    db.prepare('DELETE FROM kv_wochenaufgaben WHERE id = ?').run(id)
+    return true
+  })
+
+  // Status für mehrere Wochen (für die Tabellen-Ansicht)
+  // wochen: Array von { kw, jahr }
+  ipcMain.handle('kv:wochenaufgaben:getStatusFuerWochen', (_, klasseId, schuljahrId, wochen) => {
+    if (!Array.isArray(wochen) || wochen.length === 0) return []
+    // Bauen ein OR-Konstrukt — bei 10 Wochen × 1 Klasse völlig OK
+    const conditions = wochen.map(() => '(kalenderwoche = ? AND jahr = ?)').join(' OR ')
+    const params = [klasseId, schuljahrId, ...wochen.flatMap(w => [w.kw, w.jahr])]
+    return db.prepare(`
+      SELECT * FROM kv_wochenaufgaben_status
+      WHERE klasse_id = ? AND schuljahr_id = ? AND (${conditions})
+    `).all(...params)
+  })
+
+  ipcMain.handle('kv:wochenaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz) => {
+    db.prepare(`
+      INSERT INTO kv_wochenaufgaben_status (aufgabe_id, schuljahr_id, klasse_id, kalenderwoche, jahr, erledigt_am, notiz)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(aufgabe_id, klasse_id, kalenderwoche, jahr) DO UPDATE SET
+        erledigt_am = excluded.erledigt_am,
+        notiz       = excluded.notiz
+    `).run(aufgabeId, schuljahrId, klasseId, kw, jahr, erledigtAm ?? null, notiz ?? null)
+    return true
+  })
+
+  // Trigger — gefiltert (offene / archivierte / nach Schweregrad)
+  ipcMain.handle('kv:trigger:getAlle', (_, klasseId, opts = {}) => {
+    const { archiviert = 0, schweregrad } = opts
+    const wheres = ['klasse_id = ?', 'archiviert = ?']
+    const params = [klasseId, archiviert ? 1 : 0]
+    if (schweregrad) { wheres.push('schweregrad = ?'); params.push(schweregrad) }
+    return db.prepare(`
+      SELECT t.*, s.vorname AS schueler_vorname, s.nachname AS schueler_nachname
+      FROM kv_trigger t
+      LEFT JOIN schueler s ON s.id = t.schueler_id
+      WHERE ${wheres.join(' AND ')}
+      ORDER BY
+        CASE schweregrad WHEN 'critical' THEN 0 WHEN 'warn' THEN 1 ELSE 2 END,
+        erstellt_am DESC
+    `).all(...params)
+  })
+
+  ipcMain.handle('kv:trigger:getAlleFuerSchueler', (_, schuelerId) => {
+    return db.prepare(`
+      SELECT * FROM kv_trigger WHERE schueler_id = ? ORDER BY erstellt_am DESC
+    `).all(schuelerId)
+  })
+
+  ipcMain.handle('kv:trigger:reagieren', (_, id, reaktion) => {
+    db.prepare(`
+      UPDATE kv_trigger
+      SET reagiert_am = datetime('now','localtime'), reaktion = ?, archiviert = 1
+      WHERE id = ?
+    `).run(reaktion ?? null, id)
+    return true
+  })
+
+  ipcMain.handle('kv:trigger:create', (_, { klasseId, schuelerId, typ, schweregrad, ausloeser, beschreibung }) => {
+    return erzeugeTrigger(klasseId, schuelerId ?? null, typ, schweregrad ?? 'info', ausloeser ?? null, beschreibung ?? null)
+  })
+
+  ipcMain.handle('kv:trigger:delete', (_, id) => {
+    db.prepare('DELETE FROM kv_trigger WHERE id = ?').run(id)
+    return true
+  })
+
+  // Aktenvermerke
+  ipcMain.handle('kv:aktenvermerke:getAlleFuerKlasse', (_, klasseId) => {
+    return db.prepare(`
+      SELECT a.*, s.vorname AS schueler_vorname, s.nachname AS schueler_nachname
+      FROM kv_aktenvermerke a
+      LEFT JOIN schueler s ON s.id = a.schueler_id
+      WHERE a.klasse_id = ?
+      ORDER BY a.datum DESC, a.id DESC
+    `).all(klasseId)
+  })
+
+  ipcMain.handle('kv:aktenvermerke:getAlleFuerSchueler', (_, schuelerId) => {
+    return db.prepare('SELECT * FROM kv_aktenvermerke WHERE schueler_id = ? ORDER BY datum DESC, id DESC').all(schuelerId)
+  })
+
+  ipcMain.handle('kv:aktenvermerke:create', (_, data) => {
+    const info = db.prepare(`
+      INSERT INTO kv_aktenvermerke (schueler_id, klasse_id, datum, typ, titel, beschreibung, zeugen, folgemassnahme)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      data.schuelerId ?? null, data.klasseId, data.datum, data.typ,
+      data.titel, data.beschreibung, data.zeugen ?? null, data.folgemassnahme ?? null
+    )
+    // Trigger auto: Bei Typ "vorfall" → info-Trigger
+    if (data.typ === 'vorfall') {
+      erzeugeTrigger(
+        data.klasseId, data.schuelerId ?? null, 'vorfall', 'info',
+        `Aktenvermerk: ${data.titel}`,
+        data.beschreibung
+      )
+    }
+    return info.lastInsertRowid
+  })
+
+  ipcMain.handle('kv:aktenvermerke:update', (_, id, data) => {
+    db.prepare(`
+      UPDATE kv_aktenvermerke
+      SET datum = ?, typ = ?, titel = ?, beschreibung = ?, zeugen = ?, folgemassnahme = ?
+      WHERE id = ?
+    `).run(data.datum, data.typ, data.titel, data.beschreibung, data.zeugen ?? null, data.folgemassnahme ?? null, id)
+    return true
+  })
+
+  ipcMain.handle('kv:aktenvermerke:delete', (_, id) => {
+    db.prepare('DELETE FROM kv_aktenvermerke WHERE id = ?').run(id)
+    return true
+  })
+
+  // Elternkontakte
+  ipcMain.handle('kv:elternkontakte:getAlleFuerSchueler', (_, schuelerId) => {
+    return db.prepare(`
+      SELECT * FROM kv_elternkontakte WHERE schueler_id = ?
+      ORDER BY erledigt ASC, datum DESC, id DESC
+    `).all(schuelerId)
+  })
+
+  ipcMain.handle('kv:elternkontakte:getOffeneFuerKlasse', (_, klasseId) => {
+    return db.prepare(`
+      SELECT e.*, s.vorname AS schueler_vorname, s.nachname AS schueler_nachname
+      FROM kv_elternkontakte e
+      JOIN schueler s ON s.id = e.schueler_id
+      WHERE s.klasse_id = ? AND e.erledigt = 0
+      ORDER BY e.datum ASC
+    `).all(klasseId)
+  })
+
+  ipcMain.handle('kv:elternkontakte:create', (_, data) => {
+    const info = db.prepare(`
+      INSERT INTO kv_elternkontakte (schueler_id, datum, art, initiator, thema, inhalt, erledigt)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(data.schuelerId, data.datum, data.art, data.initiator, data.thema, data.inhalt ?? null, data.erledigt ? 1 : 0)
+    return info.lastInsertRowid
+  })
+
+  ipcMain.handle('kv:elternkontakte:update', (_, id, data) => {
+    db.prepare(`
+      UPDATE kv_elternkontakte
+      SET datum = ?, art = ?, initiator = ?, thema = ?, inhalt = ?, erledigt = ?
+      WHERE id = ?
+    `).run(data.datum, data.art, data.initiator, data.thema, data.inhalt ?? null, data.erledigt ? 1 : 0, id)
+    return true
+  })
+
+  ipcMain.handle('kv:elternkontakte:setErledigt', (_, id, erledigt) => {
+    db.prepare('UPDATE kv_elternkontakte SET erledigt = ? WHERE id = ?').run(erledigt ? 1 : 0, id)
+    return true
+  })
+
+  ipcMain.handle('kv:elternkontakte:delete', (_, id) => {
+    db.prepare('DELETE FROM kv_elternkontakte WHERE id = ?').run(id)
+    return true
+  })
+
+  // Fehlstunden
+  ipcMain.handle('kv:fehlstunden:getAlleFuerSchueler', (_, schuelerId, schuljahrId) => {
+    // Schuljahr-Filterung: Wir kennen kein start/end pro Datensatz; nutze Bezeichnung
+    // → Pragmatic: alle Fehlstunden zurückgeben (das Frontend kann filtern wenn nötig)
+    return db.prepare('SELECT * FROM kv_fehlstunden WHERE schueler_id = ? ORDER BY datum DESC, id DESC').all(schuelerId)
+  })
+
+  ipcMain.handle('kv:fehlstunden:create', (_, data) => {
+    const info = db.prepare(`
+      INSERT INTO kv_fehlstunden (schueler_id, datum, stunden, entschuldigt, grund)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(data.schuelerId, data.datum, data.stunden, data.entschuldigt ? 1 : 0, data.grund ?? null)
+    // Trigger-Schwellen prüfen
+    pruefeFehlstundenSchwellen(data.schuelerId)
+    return info.lastInsertRowid
+  })
+
+  ipcMain.handle('kv:fehlstunden:update', (_, id, data) => {
+    db.prepare(`
+      UPDATE kv_fehlstunden SET datum = ?, stunden = ?, entschuldigt = ?, grund = ? WHERE id = ?
+    `).run(data.datum, data.stunden, data.entschuldigt ? 1 : 0, data.grund ?? null, id)
+    const row = db.prepare('SELECT schueler_id FROM kv_fehlstunden WHERE id = ?').get(id)
+    if (row) pruefeFehlstundenSchwellen(row.schueler_id)
+    return true
+  })
+
+  ipcMain.handle('kv:fehlstunden:delete', (_, id) => {
+    const row = db.prepare('SELECT schueler_id FROM kv_fehlstunden WHERE id = ?').get(id)
+    db.prepare('DELETE FROM kv_fehlstunden WHERE id = ?').run(id)
+    if (row) pruefeFehlstundenSchwellen(row.schueler_id)
+    return true
+  })
+
+  // Periodische Prüfung: offene Eltern-Rückrufe älter als 3 Tage → Trigger
+  ipcMain.handle('kv:pruefeOffeneRueckrufe', () => {
+    const heute = new Date()
+    const dreiTageZurueck = new Date(heute.getTime() - 3 * 86400000)
+    const cutoff = `${dreiTageZurueck.getFullYear()}-${String(dreiTageZurueck.getMonth() + 1).padStart(2, '0')}-${String(dreiTageZurueck.getDate()).padStart(2, '0')}`
+    const offene = db.prepare(`
+      SELECT e.id, e.thema, e.datum, s.id AS schueler_id, s.klasse_id, s.vorname, s.nachname
+      FROM kv_elternkontakte e
+      JOIN schueler s ON s.id = e.schueler_id
+      JOIN klassen k ON k.id = s.klasse_id
+      WHERE e.erledigt = 0 AND e.datum <= ? AND k.ist_kv = 1
+    `).all(cutoff)
+    for (const o of offene) {
+      erzeugeTrigger(
+        o.klasse_id, o.schueler_id, 'elternkontakt', 'warn',
+        `Offener Rückruf seit ${o.datum}`,
+        `Thema: ${o.thema}`
+      )
+    }
+    return offene.length
   })
 }
 

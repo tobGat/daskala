@@ -9,6 +9,7 @@ export default function Einstellungen({ onClose }) {
     T: (gewichtungGlobal['T'] ?? 0.3) * 100,
     MA: (gewichtungGlobal['MA'] ?? 0.2) * 100,
     HÜ: (gewichtungGlobal['HÜ'] ?? 0.1) * 100,
+    CUSTOM: (gewichtungGlobal['CUSTOM'] ?? 0.1) * 100,
   })
   const [maPlusWert, setMaPlusWert] = useState(einstellungen['ma_plus_wert'] ?? '1')
   const [maMinusWert, setMaMinusWert] = useState(einstellungen['ma_minus_wert'] ?? '5')
@@ -17,7 +18,9 @@ export default function Einstellungen({ onClose }) {
   const [loading, setLoading] = useState(false)
   const [fehler, setFehler] = useState('')
   const [erfolg, setErfolg] = useState(false)
+  const [bundesland, setBundesland] = useState(einstellungen['bundesland'] ?? '')
   const [onedriveAktiv, setOnedriveAktiv] = useState(einstellungen['onedrive_backup_aktiv'] === '1')
+  const [planungAktiv, setPlanungAktiv] = useState(einstellungen['planung_aktiv'] === '1')
   const [onedriveInfo, setOnedriveInfo] = useState(null) // { pfad, verfuegbar }
 
   useEffect(() => {
@@ -48,7 +51,13 @@ export default function Einstellungen({ onClose }) {
       await window.api.einstellungen.set('ma_minus_wert', maMinusWert)
       await window.api.einstellungen.set('semester2_monat', semester2Monat)
       await window.api.einstellungen.set('s1_gewichtung', String(s1Gewichtung / 100))
+      await window.api.einstellungen.set('bundesland', bundesland)
       await window.api.einstellungen.set('onedrive_backup_aktiv', onedriveAktiv ? '1' : '0')
+      await window.api.einstellungen.set('planung_aktiv', planungAktiv ? '1' : '0')
+
+      // Notenrelevante Einstellungen (MA+/-, s1_gewichtung) wirken sich auf gespeicherte ZN aus
+      // → alle Zeugnisnoten im aktuellen Schuljahr neu berechnen
+      await window.api.zeugnisnoten.rechneAllesNeu()
 
       // Store aktualisieren
       const gRows = await window.api.gewichtungGlobal.getAll()
@@ -58,6 +67,10 @@ export default function Einstellungen({ onClose }) {
 
       const alleEinst = await window.api.einstellungen.getAll()
       useStore.setState({ einstellungen: alleEinst })
+
+      // ZN im Store fürs aktive Fach neu laden, damit die UI die neuen Werte zeigt
+      const { aktivesFach, ladeFachDaten } = useStore.getState()
+      if (aktivesFach) await ladeFachDaten(aktivesFach.id)
 
       setErfolg(true)
       setTimeout(() => setErfolg(false), 2000)
@@ -72,14 +85,26 @@ export default function Einstellungen({ onClose }) {
     else alert('Backup fehlgeschlagen.')
   }
 
-  const katLabel = { SA: 'Schularbeiten', T: 'Tests', MA: 'Mitarbeit', 'HÜ': 'Hausübungen' }
+  const handleSaveAs = async () => {
+    const pfad = await window.api.db.saveAs()
+    if (pfad) alert(`Gespeichert unter:\n${pfad}`)
+    else if (pfad === null) alert('Speichern fehlgeschlagen.')
+  }
+
+  const handleOpen = async () => {
+    if (!confirm('Die aktuellen Daten werden ersetzt und die App startet neu. Fortfahren?')) return
+    const ok = await window.api.db.open()
+    if (ok === null) alert('Öffnen fehlgeschlagen.')
+  }
+
+  const katLabel = { SA: 'Schularbeiten', T: 'Tests', MA: 'Mitarbeit', 'HÜ': 'Hausübungen', CUSTOM: 'Individuell' }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Einstellungen</h2>
-          <button className="text-zinc-400 hover:text-zinc-600 text-xl" onClick={onClose}>✕</button>
+          <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Einstellungen</h2>
+          <button className="text-ink-400 hover:text-ink-600 text-xl" onClick={onClose}>✕</button>
         </div>
 
         {/* Zweispaltiges Grid */}
@@ -89,11 +114,11 @@ export default function Einstellungen({ onClose }) {
           <div>
             {/* Gewichtungen */}
             <section className="mb-6">
-              <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Globale Notengewichtung</h3>
+              <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Globale Notengewichtung</h3>
               <div className="space-y-3">
                 {Object.entries(katLabel).map(([kat, label]) => (
                   <div key={kat} className="flex items-center gap-3">
-                    <span className="text-sm text-zinc-600 dark:text-zinc-400 w-24">{label}</span>
+                    <span className="text-sm text-ink-600 dark:text-ink-400 w-24">{label}</span>
                     <input
                       type="range"
                       min="0"
@@ -103,7 +128,7 @@ export default function Einstellungen({ onClose }) {
                       value={gew[kat]}
                       onChange={e => handleGewChange(kat, e.target.value)}
                     />
-                    <span className={`text-sm font-medium w-10 text-right ${gew[kat] === 0 ? 'text-zinc-400' : 'text-zinc-900 dark:text-white'}`}>
+                    <span className={`text-sm font-medium w-10 text-right ${gew[kat] === 0 ? 'text-ink-400' : 'text-ink-900 dark:text-white'}`}>
                       {gew[kat]}%
                     </span>
                   </div>
@@ -116,16 +141,16 @@ export default function Einstellungen({ onClose }) {
 
             {/* MA-Bewertung */}
             <section className="mb-6">
-              <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Mitarbeit-Bewertung</h3>
+              <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Mitarbeit-Bewertung</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-zinc-500 mb-1">„+" entspricht Note</label>
+                  <label className="block text-xs text-ink-500 mb-1">„+" entspricht Note</label>
                   <select className="input" value={maPlusWert} onChange={e => setMaPlusWert(e.target.value)}>
                     {[1, 2].map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-zinc-500 mb-1">„−" entspricht Note</label>
+                  <label className="block text-xs text-ink-500 mb-1">„−" entspricht Note</label>
                   <select className="input" value={maMinusWert} onChange={e => setMaMinusWert(e.target.value)}>
                     {[4, 5].map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
@@ -138,9 +163,9 @@ export default function Einstellungen({ onClose }) {
           <div>
             {/* Schuljahr */}
             <section className="mb-6">
-              <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Schuljahr</h3>
+              <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Schuljahr</h3>
               <div>
-                <label className="block text-xs text-zinc-500 mb-1">Semester 2 beginnt im Monat</label>
+                <label className="block text-xs text-ink-500 mb-1">Semester 2 beginnt im Monat</label>
                 <select className="input" value={semester2Monat} onChange={e => setSemester2Monat(e.target.value)}>
                   {[
                     [1, 'Jänner'], [2, 'Februar'], [3, 'März']
@@ -151,15 +176,60 @@ export default function Einstellungen({ onClose }) {
               </div>
             </section>
 
-            {/* Jahresberechnung */}
+            {/* Bundesland */}
             <section className="mb-6">
-              <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Jahresberechnung</h3>
-              <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">
-                Wenn im 1. Semester keine Einträge vorhanden sind, aber eine S1-Zeugnisnote gesetzt wurde,
-                fließt diese automatisch in die S2-Zeugnisnote ein.
+              <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Bundesland</h3>
+              <p className="text-xs text-ink-400 dark:text-ink-500 mb-2">
+                Wird für die automatische Anzeige der Schulferien im Jahresplanungs-Kalender verwendet.
+              </p>
+              <select className="input mb-2" value={bundesland} onChange={e => setBundesland(e.target.value)}>
+                <option value="">– Bitte wählen –</option>
+                {['Wien', 'Niederösterreich', 'Burgenland', 'Oberösterreich', 'Steiermark', 'Kärnten', 'Salzburg', 'Tirol', 'Vorarlberg'].map(bl => (
+                  <option key={bl} value={bl}>{bl}</option>
+                ))}
+              </select>
+              <button
+                className="text-xs text-coral-600 dark:text-coral-400 hover:underline"
+                onClick={() => {
+                  onClose()
+                  useStore.getState().openModal('ferien')
+                }}
+              >
+                Ferien & Feiertage bearbeiten…
+              </button>
+            </section>
+
+            {/* Module */}
+            <section className="mb-6">
+              <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Module</h3>
+              <p className="text-xs text-ink-400 dark:text-ink-500 mb-2">
+                Der Stundenplan ist immer im Dashboard sichtbar. Detaillierte Unterrichtsplanung pro Stunde kannst du hier aktivieren — oder ausschalten, wenn du dafür ein anderes Tool (z.B. Teachino) nutzt.
+              </p>
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={planungAktiv}
+                  onChange={e => setPlanungAktiv(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <div>
+                  <span className="text-sm text-ink-700 dark:text-paper-200">Unterrichtsplanung aktivieren</span>
+                  <p className="text-[11px] text-ink-400 leading-snug">
+                    Jahres- und Klassenplanung als Klassen-Tabs verfügbar. Stundenplan bleibt unabhängig davon sichtbar.
+                  </p>
+                </div>
+              </label>
+            </section>
+
+            {/* Endnote */}
+            <section className="mb-6">
+              <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Endnote</h3>
+              <p className="text-xs text-ink-400 dark:text-ink-500 mb-3">
+                Gewichtung der S1-Semesternote in der Endnote (EN).
+                50% = S1 und S2 gleichwertig. Ist nur S1 vorhanden, wird S1 direkt als Endnote übernommen.
               </p>
               <div className="flex items-center gap-3">
-                <span className="text-sm text-zinc-600 dark:text-zinc-400 w-24">S1-Gewichtung</span>
+                <span className="text-sm text-ink-600 dark:text-ink-400 w-24">S1-Gewichtung</span>
                 <input
                   type="range"
                   min="0"
@@ -169,11 +239,11 @@ export default function Einstellungen({ onClose }) {
                   value={s1Gewichtung}
                   onChange={e => setS1Gewichtung(parseInt(e.target.value))}
                 />
-                <span className="text-sm font-medium w-10 text-right text-zinc-900 dark:text-white">
+                <span className="text-sm font-medium w-10 text-right text-ink-900 dark:text-white">
                   {s1Gewichtung}%
                 </span>
               </div>
-              <div className="flex justify-between text-xs text-zinc-400 mt-1">
+              <div className="flex justify-between text-xs text-ink-400 mt-1">
                 <span>nur S2</span>
                 <span>S2 {100 - s1Gewichtung}% + S1 {s1Gewichtung}%</span>
                 <span>nur S1</span>
@@ -182,15 +252,15 @@ export default function Einstellungen({ onClose }) {
 
             {/* Design */}
             <section className="mb-6">
-              <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Design</h3>
+              <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Design</h3>
               <div className="flex gap-3">
                 {[['hell', 'Hell ☀'], ['dunkel', 'Dunkel 🌙']].map(([val, label]) => (
                   <button
                     key={val}
                     className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium transition-colors
                       ${theme === val
-                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
-                        : 'border-gray-200 dark:border-gray-700 text-zinc-600 dark:text-zinc-400 hover:border-gray-300'}`}
+                        ? 'border-coral-500 bg-coral-50 dark:bg-coral-900 text-coral-700 dark:text-coral-300'
+                        : 'border-paper-200 dark:border-ink-700 text-ink-600 dark:text-ink-400 hover:border-paper-300'}`}
                     onClick={() => setTheme(val)}
                   >
                     {label}
@@ -202,30 +272,36 @@ export default function Einstellungen({ onClose }) {
         </div>
 
         {/* Volle Breite: Datensicherung */}
-        <section className="mb-6 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-          <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Datensicherung</h3>
+        <section className="mb-6 pt-4 border-t border-paper-100 dark:border-ink-800">
+          <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Datei</h3>
+          <div className="flex gap-3 mb-6">
+            <button className="btn-secondary" onClick={handleOpen}>Öffnen...</button>
+            <button className="btn-secondary" onClick={handleSaveAs}>Speichern unter...</button>
+          </div>
+
+          <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Datensicherung</h3>
           <div className="grid grid-cols-2 gap-4 items-start">
             <div className="flex gap-3">
               <button className="btn-secondary" onClick={handleBackup}>Backup erstellen</button>
               <button className="btn-secondary" onClick={() => window.api.export.toJson()}>JSON-Export</button>
             </div>
             {/* OneDrive */}
-            <div className={`rounded-xl border p-3 ${onedriveInfo?.verfuegbar ? 'border-zinc-200 dark:border-zinc-700' : 'border-zinc-100 dark:border-zinc-800'}`}>
+            <div className={`rounded-xl border p-3 ${onedriveInfo?.verfuegbar ? 'border-paper-200 dark:border-ink-700' : 'border-paper-100 dark:border-ink-800'}`}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">OneDrive-Backup</span>
+                    <span className="text-sm font-medium text-ink-700 dark:text-paper-300">OneDrive-Backup</span>
                     {onedriveInfo?.verfuegbar
                       ? <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">gefunden</span>
-                      : <span className="text-xs text-zinc-400">nicht gefunden</span>}
+                      : <span className="text-xs text-ink-400">nicht gefunden</span>}
                   </div>
                   {onedriveInfo?.pfad && (
-                    <div className="text-xs text-zinc-400 truncate mt-0.5" title={onedriveInfo.pfad}>
+                    <div className="text-xs text-ink-400 truncate mt-0.5" title={onedriveInfo.pfad}>
                       {onedriveInfo.pfad}/Daskala/backups/
                     </div>
                   )}
                   {!onedriveInfo?.verfuegbar && (
-                    <div className="text-xs text-zinc-400 mt-0.5">OneDrive ist auf diesem PC nicht installiert.</div>
+                    <div className="text-xs text-ink-400 mt-0.5">OneDrive ist auf diesem PC nicht installiert.</div>
                   )}
                 </div>
                 <button
@@ -234,8 +310,8 @@ export default function Einstellungen({ onClose }) {
                   onClick={() => setOnedriveAktiv(v => !v)}
                   className={`relative flex-shrink-0 w-10 h-6 rounded-full transition-colors focus:outline-none
                     ${onedriveAktiv && onedriveInfo?.verfuegbar
-                      ? 'bg-indigo-600'
-                      : 'bg-zinc-200 dark:bg-zinc-700'}
+                      ? 'bg-coral-600'
+                      : 'bg-paper-200 dark:bg-ink-700'}
                     ${!onedriveInfo?.verfuegbar ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform
@@ -243,7 +319,7 @@ export default function Einstellungen({ onClose }) {
                 </button>
               </div>
               {onedriveAktiv && onedriveInfo?.verfuegbar && (
-                <p className="text-xs text-zinc-400 mt-2">
+                <p className="text-xs text-ink-400 mt-2">
                   Beim nächsten Start wird täglich ein Backup in deinen OneDrive-Ordner kopiert.
                 </p>
               )}
@@ -253,7 +329,7 @@ export default function Einstellungen({ onClose }) {
 
         {/* Jahresabschluss */}
         <section className="mb-6">
-          <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Jahresabschluss</h3>
+          <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Jahresabschluss</h3>
           <button
             className="btn-secondary w-full"
             onClick={() => {

@@ -13,37 +13,68 @@
   }
 
   body {
-    @apply bg-slate-100 text-zinc-900 font-sans;
+    @apply bg-paper-100 text-ink-800 font-sans;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     user-select: none;
+    font-feature-settings: 'cv02', 'cv11', 'ss01';
+    letter-spacing: -0.005em;
   }
 
   .dark body {
-    @apply bg-zinc-950 text-zinc-100;
+    @apply bg-ink-950 text-ink-100;
+  }
+
+  /* Sanfte Standard-Übergänge auf interaktiven Elementen */
+  button, a, input, select, textarea {
+    @apply transition-colors duration-150 ease-out;
+  }
+
+  /* Headlines etwas freundlicher */
+  h1, h2, h3, h4 {
+    letter-spacing: -0.02em;
   }
 }
 
 @layer components {
   /* ─── Tabelle ─────────────────────────────────────────────── */
   .noten-tabelle-container {
-    @apply overflow-auto flex-1;
+    @apply overflow-auto flex-1 bg-white dark:bg-ink-950;
     scroll-behavior: auto;
   }
 
   .noten-tabelle {
     border-collapse: collapse;
     white-space: nowrap;
+    width: 100%;
+  }
+
+  /* Row striping: dezent für bessere Lesbarkeit bei vielen Schüler:innen */
+  .noten-tabelle tbody tr:nth-child(even) > td {
+    background-color: rgba(254, 249, 243, 0.5);  /* paper-100 mit Alpha */
+  }
+  .dark .noten-tabelle tbody tr:nth-child(even) > td {
+    background-color: rgba(244, 243, 241, 0.025);  /* ink-100 mit sehr leichter Alpha */
+  }
+  /* Sticky-Name-Spalte überschreibt das striping fü eine saubere Linie */
+  .noten-tabelle tbody tr:nth-child(even) > td:first-child {
+    background-color: #ffffff;
+  }
+  .dark .noten-tabelle tbody tr:nth-child(even) > td:first-child {
+    background-color: rgb(14 13 12);
   }
 
   .noten-tabelle th {
-    @apply bg-slate-50 text-zinc-500 font-semibold text-xs tracking-wide uppercase;
+    @apply bg-paper-50 text-ink-500 font-semibold text-xs tracking-wide uppercase;
     position: sticky;
     top: 0;
     z-index: 5;
+    box-shadow: 0 1px 0 0 rgb(230 227 223 / 1);
   }
 
   .dark .noten-tabelle th {
-    @apply bg-zinc-950 text-zinc-500;
+    @apply bg-ink-900 text-ink-400;
+    box-shadow: 0 1px 0 0 rgb(46 42 38 / 1);
   }
 
   .noten-tabelle th.name-header {
@@ -53,65 +84,73 @@
   /* Sticky Namenspalte */
   .noten-tabelle th:first-child,
   .noten-tabelle td:first-child {
-    @apply sticky left-0 z-10 bg-white border-r border-zinc-100;
+    @apply sticky left-0 z-10 bg-white border-r border-paper-200;
     min-width: 160px;
     max-width: 180px;
   }
 
   .dark .noten-tabelle th:first-child,
   .dark .noten-tabelle td:first-child {
-    @apply bg-zinc-950;
+    @apply bg-ink-950 border-ink-800;
   }
 
-  /* Row hover */
+  /* Row hover — Coral-Glow statt Indigo */
   .noten-tabelle tr:hover td {
-    background: rgba(99, 102, 241, 0.04);
+    background: rgba(251, 105, 54, 0.05);
   }
 
   .dark .noten-tabelle tr:hover td {
-    background: rgba(99, 102, 241, 0.06);
+    background: rgba(251, 105, 54, 0.08);
   }
 
   /* ─── Zellen ──────────────────────────────────────────────── */
+  /* w-full + h-9 → übernimmt die Breite vom umgebenden <td>; konsistente Höhe 36px */
   .zelle {
-    @apply w-9 h-9 flex items-center justify-center text-sm font-medium cursor-pointer select-none;
-    @apply border-b border-zinc-200 transition-colors duration-75;
-    min-width: 36px;
+    @apply relative w-full h-9 flex items-center justify-center text-sm font-medium cursor-pointer select-none;
+    @apply border-b border-paper-200 transition-all duration-150;
   }
 
   .zelle:hover {
-    @apply bg-indigo-50;
+    @apply bg-coral-50;
+    transform: scale(1.06);
+    z-index: 2;
   }
 
   .dark .zelle {
-    @apply border-zinc-800/60;
+    @apply border-ink-800/60;
   }
 
   .dark .zelle:hover {
-    @apply bg-indigo-950/60;
+    @apply bg-coral-900/30;
   }
 
-  /* ZN-Zelle */
+  /* ZN-Zelle: gleicher Mechanismus, breiterer Container (vom td gesteuert) */
   .zn-zelle {
-    @apply w-10 h-9 flex items-center justify-center text-sm font-bold cursor-pointer;
-    @apply border-l border-zinc-200;
+    @apply w-full h-9 flex items-center justify-center text-sm font-bold cursor-pointer transition-transform duration-150;
+    @apply border-l border-paper-200;
+  }
+
+  .zn-zelle:hover {
+    transform: scale(1.06);
+    z-index: 2;
   }
 
   .dark .zn-zelle {
-    @apply border-zinc-800/60;
+    @apply border-ink-800/60;
   }
 
   /* ─── MA / HÜ Farben ──────────────────────────────────────── */
-  .zelle-plus { @apply text-emerald-600 bg-emerald-50; }
-  .zelle-minus { @apply text-red-500 bg-red-50; }
-  .dark .zelle-plus { @apply text-emerald-400 bg-emerald-950/60; }
-  .dark .zelle-minus { @apply text-red-400 bg-red-950/60; }
+  .zelle-plus { @apply text-mint-600 bg-mint-50; }
+  .zelle-minus { @apply text-coral-600 bg-coral-50; }
+  .dark .zelle-plus { @apply text-mint-300 bg-mint-900/30; }
+  .dark .zelle-minus { @apply text-coral-300 bg-coral-900/30; }
 
-  .zelle-haken { @apply text-emerald-600; }
-  .zelle-kreuz { @apply text-red-500; }
-  .zelle-strich { @apply text-zinc-300 dark:text-zinc-600; }
+  .zelle-haken { @apply text-mint-600; }
+  .zelle-kreuz { @apply text-coral-500; }
+  .zelle-strich { @apply text-ink-300 dark:text-ink-600; }
 
-  /* ─── Note-Farben ─────────────────────────────────────────── */
+
+  /* ─── Note-Farben (Lesbarkeit bleibt!) ────────────────────── */
   .note-1 { @apply text-emerald-600 font-bold; }
   .note-2 { @apply text-emerald-500; }
   .note-3 { @apply text-amber-500; }
@@ -119,8 +158,15 @@
   .note-5 { @apply text-red-500 font-bold; }
 
   /* Manuell überschriebene ZN */
-  .zn-manuell { @apply bg-amber-50; }
-  .dark .zn-manuell { @apply bg-amber-950/40; }
+  .zn-manuell { @apply bg-lavender-50; }
+  .dark .zn-manuell { @apply bg-lavender-900/30; }
+
+  /* ─── Niveau-Hintergrund (AHS/ST) ─────────────────────────── */
+  /* Subtil, nur als Indikator. Auf Hover/Selection durch andere Klassen überschreibbar. */
+  .niveau-bg-ahs { background-color: rgba(34, 197, 94, 0.08); }   /* grünlich (emerald-500/8%) */
+  .niveau-bg-st  { background-color: rgba(234, 179, 8, 0.10); }   /* gelblich (yellow-500/10%) */
+  .dark .niveau-bg-ahs { background-color: rgba(34, 197, 94, 0.10); }
+  .dark .niveau-bg-st  { background-color: rgba(234, 179, 8, 0.12); }
 
   /* Eingeklappte Spalte */
   .spalte-eingeklappt {
@@ -129,123 +175,137 @@
   }
 
   /* ─── Scrollbar ───────────────────────────────────────────── */
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { @apply bg-transparent; }
-  ::-webkit-scrollbar-thumb { @apply bg-zinc-200 rounded-full; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-zinc-300; }
-  .dark ::-webkit-scrollbar-thumb { @apply bg-zinc-700; }
+  ::-webkit-scrollbar-thumb { @apply bg-paper-300 rounded-full border-2 border-solid border-transparent bg-clip-padding; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-paper-400; }
+  .dark ::-webkit-scrollbar-thumb { @apply bg-ink-700; }
+  .dark ::-webkit-scrollbar-thumb:hover { @apply bg-ink-600; }
 
   /* ─── Context Menu ────────────────────────────────────────── */
   .context-menu {
-    @apply absolute z-50 bg-white border border-zinc-100 rounded-xl shadow-2xl py-1.5 min-w-52;
-    @apply text-sm text-zinc-700;
-    box-shadow: 0 10px 40px -5px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+    @apply absolute z-50 bg-white border border-paper-200 rounded-2xl py-1.5 min-w-52;
+    @apply text-sm text-ink-700 shadow-pop;
+    animation: popIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
 
   .dark .context-menu {
-    @apply bg-zinc-900 border-zinc-800 text-zinc-200;
-    box-shadow: 0 10px 40px -5px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+    @apply bg-ink-900 border-ink-800 text-ink-200;
   }
 
   .context-menu-item {
-    @apply px-3 py-1.5 cursor-pointer transition-colors flex items-center gap-2 mx-1 rounded-lg;
+    @apply px-3 py-2 cursor-pointer flex items-center gap-2 mx-1 rounded-xl transition-colors;
   }
 
   .context-menu-item:hover {
-    @apply bg-zinc-50;
+    @apply bg-coral-50 text-ink-900;
   }
 
   .dark .context-menu-item:hover {
-    @apply bg-zinc-800;
+    @apply bg-ink-800 text-ink-100;
   }
 
   .context-menu-separator {
-    @apply border-t border-zinc-100 my-1;
+    @apply border-t border-paper-200 my-1.5;
   }
 
   .dark .context-menu-separator {
-    @apply border-zinc-800;
+    @apply border-ink-800;
   }
 
   /* ─── Modal ───────────────────────────────────────────────── */
   .modal-overlay {
     @apply fixed inset-0 flex items-center justify-center z-50;
-    background: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(46, 42, 38, 0.32);
+    backdrop-filter: blur(12px) saturate(120%);
+    -webkit-backdrop-filter: blur(12px) saturate(120%);
+    animation: fadeIn 0.18s ease-out both;
   }
 
   .modal-box {
-    @apply bg-white rounded-2xl w-full max-w-md p-6;
-    @apply border border-zinc-200;
-    box-shadow: 0 24px 64px -12px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.06);
+    @apply bg-white rounded-3xl w-full max-w-md p-6;
+    @apply border border-paper-200 shadow-pop;
+    animation: popIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
 
   .dark .modal-box {
-    @apply bg-zinc-900 border-zinc-800;
-    box-shadow: 0 24px 64px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+    @apply bg-ink-900 border-ink-800;
   }
 
   /* ─── Slide-Over ──────────────────────────────────────────── */
   .slide-over {
     @apply fixed top-0 right-0 h-full bg-white z-40;
     width: 360px;
-    box-shadow: -16px 0 48px -8px rgba(0,0,0,0.08), -1px 0 0 rgba(0,0,0,0.04);
+    box-shadow: -16px 0 48px -8px rgba(46,42,38,0.10), -1px 0 0 rgba(46,42,38,0.04);
     @apply transform transition-transform;
   }
 
   .dark .slide-over {
-    @apply bg-zinc-900;
+    @apply bg-ink-900;
     box-shadow: -16px 0 48px -8px rgba(0,0,0,0.4), -1px 0 0 rgba(255,255,255,0.04);
   }
 
   /* ─── Buttons ─────────────────────────────────────────────── */
   .btn-primary {
-    @apply inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm;
-    @apply hover:bg-indigo-700 active:bg-indigo-800 transition-colors;
-    @apply disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center px-5 py-2.5 bg-coral-500 text-white rounded-2xl font-semibold text-sm;
+    @apply hover:bg-coral-600 active:bg-coral-700 active:scale-[0.98] transition-all duration-150 shadow-soft;
+    @apply disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center px-4 py-2 text-zinc-700 rounded-lg font-medium text-sm;
-    @apply border border-zinc-300 bg-white;
-    @apply hover:bg-zinc-50 hover:border-zinc-400 active:bg-zinc-100 transition-colors;
+    @apply inline-flex items-center justify-center px-5 py-2.5 text-ink-700 rounded-2xl font-semibold text-sm;
+    @apply border border-paper-300 bg-white;
+    @apply hover:bg-paper-50 hover:border-paper-400 active:scale-[0.98] transition-all duration-150;
     @apply disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .dark .btn-secondary {
-    @apply text-zinc-300 border-zinc-700 bg-transparent hover:bg-zinc-800;
+    @apply text-ink-200 border-ink-700 bg-ink-900/40 hover:bg-ink-800;
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center px-4 py-2 bg-red-500 text-white rounded-lg font-medium text-sm;
-    @apply hover:bg-red-600 active:bg-red-700 transition-colors;
+    @apply inline-flex items-center justify-center px-5 py-2.5 bg-coral-600 text-white rounded-2xl font-semibold text-sm;
+    @apply hover:bg-coral-700 active:bg-coral-800 active:scale-[0.98] transition-all duration-150 shadow-soft;
+  }
+
+  .btn-soft {
+    @apply inline-flex items-center justify-center px-4 py-2 text-coral-700 rounded-2xl font-medium text-sm;
+    @apply bg-coral-50 hover:bg-coral-100 active:scale-[0.98] transition-all duration-150;
   }
 
   /* ─── Input ───────────────────────────────────────────────── */
   .input {
-    @apply w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm bg-white;
-    @apply focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
-    @apply transition-colors placeholder:text-zinc-400;
+    @apply w-full px-3.5 py-2.5 border border-paper-300 rounded-2xl text-sm bg-white text-ink-800;
+    @apply focus:outline-none focus:ring-2 focus:ring-coral-400/30 focus:border-coral-400;
+    @apply transition-all placeholder:text-ink-400;
   }
 
   .dark .input {
-    @apply bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500;
-    @apply focus:border-indigo-500;
+    @apply bg-ink-800 border-ink-700 text-white placeholder:text-ink-500;
+    @apply focus:border-coral-400 focus:ring-coral-400/20;
   }
 
   /* ─── Stundenplan ─────────────────────────────────────────── */
   .stundenplan-slot {
-    @apply h-16 border border-zinc-200 cursor-pointer transition-all duration-100;
-    @apply hover:bg-indigo-50/60 hover:border-indigo-200;
+    @apply h-16 border border-paper-200 cursor-pointer transition-all duration-150;
+    @apply hover:bg-coral-50/60 hover:border-coral-200;
   }
 
   .dark .stundenplan-slot {
-    @apply border-zinc-800 hover:bg-indigo-950/30 hover:border-indigo-900;
+    @apply border-ink-800 hover:bg-coral-950/30 hover:border-coral-900;
   }
 
   .stundenplan-slot.belegt {
-    @apply rounded-lg px-1.5 py-1 text-xs font-medium border-0;
+    @apply rounded-xl px-1.5 py-1 text-xs font-medium border-0;
+  }
+
+  /* ─── Card (für Übersichten, Hero-Sektionen) ──────────────── */
+  .daskala-card {
+    @apply bg-white border border-paper-200 rounded-3xl shadow-soft;
+  }
+
+  .dark .daskala-card {
+    @apply bg-ink-900 border-ink-800;
   }
 }
 

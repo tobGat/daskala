@@ -15,6 +15,10 @@ const useStore = create((set, get) => ({
   klassen: [],
   aktiveKlasse: null,
 
+  // ─── KV (Klassenvorstand) ────────────────────────────────────────────────
+  aktiveKVKlasse: null,             // separate Auswahl im KV-Bereich
+  setAktiveKVKlasse: (klasse) => set({ aktiveKVKlasse: klasse }),
+
   // ─── Fächer ──────────────────────────────────────────────────────────────
   faecher: [],
   aktivesFach: null,
@@ -29,7 +33,8 @@ const useStore = create((set, get) => ({
   eintraege: {},   // { spalte_id_schueler_id: wert }
   kommentare: {},  // { spalte_id_schueler_id: kommentar }
   zeugnisnoten: {}, // { schueler_id_semester: { note_berechnet, note_manuell } }
-  niveaus: {},       // { schueler_id: 'AHS'|'ST' } – nur für aktives Fach
+  niveaus: {},       // { schueler_id: 'AHS'|'ST' } – aktueller Stand für aktives Fach
+  niveauHistorie: {}, // { schueler_id: [{ niveau, gueltig_ab }, ...] } – Verlauf, desc nach Datum
   kompetenzbereiche: [],       // [{ id, fach_id, titel, beschreibung, reihenfolge }]
   schuelerKompetenzen: {},     // { kompetenzbereichId_schuelerId: { niveau, notiz, aktualisiert } }
   todos: [],
@@ -190,11 +195,17 @@ const useStore = create((set, get) => ({
       }
     })
 
-    // Niveaus laden wenn differenziert
+    // Niveaus + Historie laden wenn differenziert
     let niveaus = {}
+    let niveauHistorie = {}
     const fach = aktivesFach?.id === fachId ? aktivesFach : null
     if (fach?.benotungssystem === 'differenziert') {
-      niveaus = await window.api.niveau.get(fachId)
+      const [n, h] = await Promise.all([
+        window.api.niveau.get(fachId),
+        window.api.niveau.getHistorie(fachId),
+      ])
+      niveaus = n
+      niveauHistorie = h
     }
 
     // Kompetenzbereiche + Einstufungen laden
@@ -211,7 +222,7 @@ const useStore = create((set, get) => ({
       }
     })
 
-    set({ spalten, eintraege, kommentare, zeugnisnoten, niveaus, kompetenzbereiche, schuelerKompetenzen })
+    set({ spalten, eintraege, kommentare, zeugnisnoten, niveaus, niveauHistorie, kompetenzbereiche, schuelerKompetenzen })
   },
 
   // ─── Einträge setzen ──────────────────────────────────────────────────────
@@ -282,21 +293,38 @@ const useStore = create((set, get) => ({
   ladeNiveaus: async () => {
     const { aktivesFach } = get()
     if (!aktivesFach || aktivesFach.benotungssystem !== 'differenziert') {
-      set({ niveaus: {} })
+      set({ niveaus: {}, niveauHistorie: {} })
       return
     }
-    const niveaus = await window.api.niveau.get(aktivesFach.id)
-    set({ niveaus })
+    const [niveaus, niveauHistorie] = await Promise.all([
+      window.api.niveau.get(aktivesFach.id),
+      window.api.niveau.getHistorie(aktivesFach.id),
+    ])
+    set({ niveaus, niveauHistorie })
   },
 
-  setNiveau: async (schuelerId, niveau) => {
+  // Niveau-Wechsel; datum optional ('YYYY-MM-DD'), default heute
+  setNiveau: async (schuelerId, niveau, datum) => {
     const { aktivesFach } = get()
     if (!aktivesFach) return
-    // Optimistisches Update
-    set(state => ({
-      niveaus: { ...state.niveaus, [schuelerId]: niveau }
-    }))
-    await window.api.niveau.set(aktivesFach.id, schuelerId, niveau)
+    const heute = new Date().toISOString().slice(0, 10)
+    const gueltigAb = datum || heute
+    // Optimistisches Update des aktuellen Stands (nur wenn Wechsel jetzt/früher gilt)
+    if (gueltigAb <= heute) {
+      set(state => ({
+        niveaus: { ...state.niveaus, [schuelerId]: niveau }
+      }))
+    }
+    await window.api.niveau.set(aktivesFach.id, schuelerId, niveau, gueltigAb)
+    await get().ladeNiveaus()
+    await get().refreshZeugnisnoten()
+  },
+
+  deleteNiveauHistorie: async (schuelerId, gueltigAb) => {
+    const { aktivesFach } = get()
+    if (!aktivesFach) return
+    await window.api.niveau.deleteHistorie(aktivesFach.id, schuelerId, gueltigAb)
+    await get().ladeNiveaus()
     await get().refreshZeugnisnoten()
   },
 

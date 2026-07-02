@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect } from 'react'
 import useStore from './store/useStore'
 
 import Einrichtungsflow from './components/Einrichtungsflow'
@@ -6,13 +6,14 @@ import KlassenTabs from './components/KlassenTabs'
 import FachTabs from './components/FachTabs'
 import NotenTabelle from './components/NotenTabelle'
 import SchuelerDetail from './components/SchuelerDetail'
-import Stundenplan from './components/Stundenplan'
-import TodoBoard from './components/TodoBoard'
-import TerminePanel from './components/TerminePanel'
 import SpalteHinzufuegen from './components/SpalteHinzufuegen'
 import Einstellungen from './components/Einstellungen'
 import SitzplanView from './components/SitzplanView'
 import JahresplanungView from './components/JahresplanungView'
+import KlassenplanungView from './components/KlassenplanungView'
+import KompetenzrasterView from './components/KompetenzrasterView'
+import UebersichtView from './components/UebersichtView'
+import KVView from './components/KVView'
 import {
   KlasseHinzufuegenModal,
   FachHinzufuegenModal,
@@ -21,13 +22,14 @@ import {
   SchuljahrwechselModal,
   ArchivModal,
   ExportierenModal,
+  FerienModal,
 } from './components/Modals'
 
 function LoadingScreen() {
   return (
-    <div className="fixed inset-0 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center">
+    <div className="fixed inset-0 bg-paper-50 dark:bg-ink-950 flex items-center justify-center">
       <div className="text-center">
-        <h1 className="text-2xl font-light text-zinc-300 dark:text-zinc-700 tracking-widest uppercase text-xs">Daskala</h1>
+        <h1 className="text-2xl font-light text-paper-300 dark:text-ink-700 tracking-widest uppercase text-xs">Daskala</h1>
       </div>
     </div>
   )
@@ -36,80 +38,21 @@ function LoadingScreen() {
 export default function App() {
   const {
     initialized, erststart,
-    currentView,
+    currentView, setCurrentView,
     activeModal, closeModal,
     detailSchueler,
-    aktiveKlasse,
+    einstellungen,
     init,
   } = useStore()
 
-  const [todoBreite, setTodoBreite] = useState(() =>
-    parseInt(localStorage.getItem('todo-panel-breite') ?? '288')
-  )
-  const [termineHoehe, setTermineHoehe] = useState(() =>
-    parseInt(localStorage.getItem('termine-panel-hoehe') ?? '256')
-  )
-  const [highlightedTodoId, setHighlightedTodoId] = useState(null)
-  const [highlightedTerminId, setHighlightedTerminId] = useState(null)
+  const planungAktiv = einstellungen?.planung_aktiv === '1'
 
-  // Horizontaler Drag (Breite rechte Sidebar)
-  const draggingH = useRef(false)
-  const startX = useRef(0)
-  const startBreite = useRef(0)
-
-  const onDragStart = useCallback((e) => {
-    draggingH.current = true
-    startX.current = e.clientX
-    startBreite.current = todoBreite
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-  }, [todoBreite])
-
-  // Vertikaler Drag (Höhe Termine-Panel)
-  const draggingV = useRef(false)
-  const startY = useRef(0)
-  const startHoehe = useRef(0)
-
-  const onDragStartV = useCallback((e) => {
-    draggingV.current = true
-    startY.current = e.clientY
-    startHoehe.current = termineHoehe
-    document.body.style.cursor = 'row-resize'
-    document.body.style.userSelect = 'none'
-  }, [termineHoehe])
-
+  // Falls Planung deaktiviert, aber aktuell eine Planungs-View aktiv ist → umschalten
   useEffect(() => {
-    const onMove = (e) => {
-      if (draggingH.current) {
-        const delta = startX.current - e.clientX
-        setTodoBreite(Math.min(600, Math.max(200, startBreite.current + delta)))
-      }
-      if (draggingV.current) {
-        const delta = e.clientY - startY.current
-        setTermineHoehe(Math.min(500, Math.max(80, startHoehe.current - delta)))
-      }
+    if (!planungAktiv && (currentView === 'jahresplanung' || currentView === 'klassenplanung')) {
+      setCurrentView('notentabelle')
     }
-    const onUp = () => {
-      if (draggingH.current) {
-        draggingH.current = false
-        document.body.style.cursor = ''
-        document.body.style.userSelect = ''
-        setTodoBreite(prev => { localStorage.setItem('todo-panel-breite', String(prev)); return prev })
-      }
-      if (draggingV.current) {
-        draggingV.current = false
-        document.body.style.cursor = ''
-        document.body.style.userSelect = ''
-        setTermineHoehe(prev => { localStorage.setItem('termine-panel-hoehe', String(prev)); return prev })
-      }
-    }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-    return () => {
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
-    }
-  }, [])
+  }, [planungAktiv, currentView])
 
   useEffect(() => {
     init()
@@ -128,34 +71,21 @@ export default function App() {
   if (erststart) return <Einrichtungsflow />
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex flex-col h-screen bg-paper-50 dark:bg-ink-950">
 
       {/* Immer sichtbare Navigation */}
       <KlassenTabs />
-      {['notentabelle', 'sitzplan', 'jahresplanung'].includes(currentView) && <FachTabs />}
+      {['notentabelle', 'kompetenzen', 'sitzplan', ...(planungAktiv ? ['jahresplanung'] : [])].includes(currentView) && <FachTabs />}
 
       {/* Haupt-Inhalt */}
       <div className="flex-1 overflow-hidden flex flex-col">
-        {currentView === 'stundenplan' && (
-          <div className="flex-1 overflow-hidden flex">
-            <div className="flex-1 overflow-hidden flex flex-col"><Stundenplan onTodoBadgeClick={setHighlightedTodoId} onTerminBadgeClick={setHighlightedTerminId} /></div>
-            <div
-              className="w-1 flex-shrink-0 cursor-col-resize hover:bg-indigo-400 dark:hover:bg-indigo-600 bg-zinc-200 dark:bg-zinc-800 transition-colors"
-              onMouseDown={onDragStart}
-            />
-            <div className="flex-shrink-0 h-full flex flex-col overflow-hidden" style={{ width: todoBreite }}>
-              <TodoBoard highlightedTodoId={highlightedTodoId} onHighlightCleared={() => setHighlightedTodoId(null)} />
-              <div
-                className="h-1 flex-shrink-0 cursor-row-resize hover:bg-indigo-400 dark:hover:bg-indigo-600 bg-zinc-700 transition-colors"
-                onMouseDown={onDragStartV}
-              />
-              <TerminePanel hoehe={termineHoehe} highlightedTerminId={highlightedTerminId} onHighlightCleared={() => setHighlightedTerminId(null)} />
-            </div>
-          </div>
-        )}
+        {currentView === 'stundenplan' && <UebersichtView />}
+        {currentView === 'kv' && <KVView />}
         {currentView === 'notentabelle' && <NotenTabelle />}
+        {currentView === 'kompetenzen' && <KompetenzrasterView />}
         {currentView === 'sitzplan' && <SitzplanView />}
-        {currentView === 'jahresplanung' && <JahresplanungView />}
+        {planungAktiv && currentView === 'jahresplanung' && <JahresplanungView />}
+        {planungAktiv && currentView === 'klassenplanung' && <KlassenplanungView />}
       </div>
 
       {/* Schüler:innen Slide-over */}
@@ -171,6 +101,7 @@ export default function App() {
       {activeModal === 'schuljahreswechsel' && <SchuljahrwechselModal />}
       {activeModal === 'archiv' && <ArchivModal />}
       {activeModal === 'exportieren' && <ExportierenModal />}
+      {activeModal === 'ferien' && <FerienModal />}
     </div>
   )
 }

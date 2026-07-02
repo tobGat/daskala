@@ -20,7 +20,7 @@ function datumsAnzeige(datum) {
     klasse = 'text-yellow-600 dark:text-yellow-400'
   } else {
     text = d.toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' })
-    klasse = 'text-zinc-400 dark:text-zinc-500'
+    klasse = 'text-ink-400 dark:text-ink-500'
   }
   return { text, klasse }
 }
@@ -56,7 +56,7 @@ function detectErinnerungOption(faelligkeit, erinnerung) {
 }
 
 
-function TodoKarte({ todo, faecher = [], onToggle, onDelete, onEditFull, kontextLabel, flashRef, flashed }) {
+function TodoKarte({ todo, klassen = [], faecher = [], onToggle, onDelete, onEditFull, flashRef, flashed }) {
   const [editModus, setEditModus] = useState(false)
   const [editTitel, setEditTitel] = useState('')
   const [editFaelligkeit, setEditFaelligkeit] = useState('')
@@ -105,13 +105,14 @@ function TodoKarte({ todo, faecher = [], onToggle, onDelete, onEditFull, kontext
 
   const faelligkeit = datumsAnzeige(todo.faelligkeit)
   const erinnerung  = datumsAnzeige(todo.erinnerung)
+  const klasse = klassen.find(k => k.id === todo.klasse_id)
 
   if (editModus) {
     return (
-      <div className="space-y-1.5 bg-zinc-800 rounded-lg p-2.5 border border-indigo-700/60">
+      <div className="space-y-2 bg-coral-50 dark:bg-ink-800 rounded-2xl p-3 border border-coral-200 dark:border-coral-700/60 shadow-softer animate-pop-in">
         <input
           ref={titelInputRef}
-          className="w-full text-sm bg-transparent outline-none text-zinc-100 placeholder:text-zinc-500 border-b border-zinc-700 pb-1"
+          className="w-full text-sm bg-transparent outline-none text-ink-800 dark:text-paper-100 placeholder:text-ink-400 dark:placeholder:text-ink-500 border-b border-coral-200 dark:border-ink-700 pb-1 font-medium"
           value={editTitel}
           onChange={e => setEditTitel(e.target.value)}
           onKeyDown={e => {
@@ -120,18 +121,18 @@ function TodoKarte({ todo, faecher = [], onToggle, onDelete, onEditFull, kontext
           }}
         />
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-zinc-500 flex-shrink-0">Fällig:</span>
+          <span className="text-[10px] text-ink-500 flex-shrink-0">📅 Fällig:</span>
           <input
             type="date"
-            className="flex-1 text-xs bg-transparent outline-none text-zinc-400 cursor-pointer"
+            className="flex-1 text-xs bg-transparent outline-none text-ink-700 dark:text-ink-300 cursor-pointer"
             value={editFaelligkeit}
             onChange={e => handleFaelligkeitChange(e.target.value)}
           />
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-zinc-500 flex-shrink-0">🔔</span>
+          <span className="text-[10px] text-ink-500 flex-shrink-0">🔔</span>
           <select
-            className="flex-1 text-xs bg-zinc-800 outline-none text-zinc-400 cursor-pointer"
+            className="flex-1 text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 cursor-pointer border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-0.5"
             value={editErinnerungOption}
             onChange={e => handleErinnerungOptionChange(e.target.value)}
           >
@@ -144,20 +145,20 @@ function TodoKarte({ todo, faecher = [], onToggle, onDelete, onEditFull, kontext
           <div className="flex items-center gap-1.5 pl-3.5">
             <input
               type="date"
-              className="flex-1 text-xs bg-transparent outline-none text-zinc-400 cursor-pointer"
+              className="flex-1 text-xs bg-transparent outline-none text-ink-700 dark:text-ink-300 cursor-pointer"
               value={editErinnerungDatum}
               onChange={e => setEditErinnerungDatum(e.target.value)}
             />
           </div>
         )}
         {editErinnerungOption && editErinnerungOption !== 'custom' && editErinnerungDatum && (
-          <div className="pl-3.5 text-[10px] text-amber-500 dark:text-amber-400">
+          <div className="pl-3.5 text-[10px] text-amber-600 dark:text-amber-400">
             {new Date(editErinnerungDatum + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
           </div>
         )}
         {faecher.length > 0 && (
           <select
-            className="w-full text-xs bg-zinc-800 outline-none text-zinc-400 border-t border-zinc-700 pt-1.5 mt-0.5"
+            className="w-full text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-0.5"
             value={editFachId}
             onChange={e => setEditFachId(e.target.value)}
           >
@@ -167,13 +168,13 @@ function TodoKarte({ todo, faecher = [], onToggle, onDelete, onEditFull, kontext
         )}
         <div className="flex gap-1.5 pt-0.5">
           <button
-            className="flex-1 text-xs py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium"
+            className="flex-1 text-xs py-1.5 rounded-xl bg-coral-500 text-white hover:bg-coral-600 active:scale-[0.98] transition-all font-semibold shadow-softer"
             onClick={speichernEdit}
           >
             Speichern
           </button>
           <button
-            className="text-xs px-2 py-1 rounded-md text-zinc-500 hover:bg-zinc-700 transition-colors"
+            className="text-xs px-2.5 py-1.5 rounded-xl text-ink-500 hover:bg-paper-200 dark:hover:bg-ink-700 transition-colors"
             onClick={() => setEditModus(false)}
           >
             ✕
@@ -183,77 +184,82 @@ function TodoKarte({ todo, faecher = [], onToggle, onDelete, onEditFull, kontext
     )
   }
 
+  // Hintergrund- und Border-Farbe: Klassenfarbe (subtil) oder Coral-Fallback
+  const bgColor  = klasse?.farbe ? klasse.farbe + '1a' : 'rgb(251 105 54 / 0.06)'
+  const leftCol  = klasse?.farbe ?? '#fb6936'
+
   return (
     <div
       ref={flashRef}
-      className={`group flex items-start gap-2 p-2.5 rounded-lg bg-zinc-800 border transition-all ${todo.erledigt ? 'opacity-40' : ''} ${flashed ? 'border-indigo-400 ring-2 ring-indigo-400/40' : 'border-zinc-700/60'}`}
+      className={`group flex items-center gap-2 px-2.5 py-1.5 rounded-xl border transition-all hover:shadow-soft ${todo.erledigt ? 'opacity-50' : ''} ${flashed ? 'border-coral-400 ring-2 ring-coral-400/40 animate-pop-in' : 'border-transparent'}`}
+      style={{ backgroundColor: bgColor, borderLeftColor: leftCol, borderLeftWidth: 3 }}
     >
       <button
-        className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+        className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all active:scale-90 ${
           todo.erledigt
-            ? 'bg-indigo-500 border-indigo-500 text-white'
-            : 'border-zinc-600 hover:border-indigo-400 hover:bg-indigo-950/40'
+            ? 'bg-coral-500 border-coral-500 text-white'
+            : 'border-ink-400 dark:border-ink-500 hover:border-coral-500 hover:bg-coral-50 dark:hover:bg-coral-900/40'
         }`}
         onClick={() => onToggle(todo.id)}
       >
         {!!todo.erledigt && (
-          <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+          <svg className="w-2.5 h-2.5" viewBox="0 0 12 12" fill="none">
             <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         )}
       </button>
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm text-zinc-200 leading-snug ${todo.erledigt ? 'line-through' : ''}`}>
+      <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
+        <span className={`text-sm font-medium text-ink-800 dark:text-paper-200 leading-snug ${todo.erledigt ? 'line-through' : ''}`}>
           {todo.titel}
-        </p>
-        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-          {kontextLabel && (
-            <span className="text-[10px] font-medium px-1 py-0.5 rounded bg-zinc-700 text-zinc-400">
-              {kontextLabel}
-            </span>
-          )}
-          {todo.fach_name && (
-            <span className="text-[10px] font-medium px-1 py-0.5 rounded bg-indigo-900/50 text-indigo-400">
-              {todo.fach_name}
-            </span>
-          )}
-          {faelligkeit && (
-            <span className={`text-[10px] font-medium ${faelligkeit.klasse}`}>
-              ✓ {faelligkeit.text}
-            </span>
-          )}
-          {erinnerung && (
-            <span className="text-[10px] font-medium text-amber-500 dark:text-amber-400"
-              title={`Erinnerung: ${todo.erinnerung}`}>
-              🔔 {erinnerung.text}
-            </span>
-          )}
-        </div>
+        </span>
+        {klasse && (
+          <span
+            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none flex-shrink-0"
+            style={klasse.farbe
+              ? { backgroundColor: klasse.farbe + '33', color: klasse.farbe }
+              : { backgroundColor: 'rgb(251 105 54 / 0.18)', color: '#c43a14' }}
+          >
+            {klasse.name}
+          </span>
+        )}
+        {todo.fach_name && (
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-coral-100 dark:bg-coral-900/40 text-coral-700 dark:text-coral-400 leading-none flex-shrink-0">
+            {todo.fach_name}
+          </span>
+        )}
+        {faelligkeit && (
+          <span className={`text-[10px] font-semibold leading-none flex-shrink-0 ${faelligkeit.klasse}`}>
+            📅 {faelligkeit.text}
+          </span>
+        )}
+        {erinnerung && (
+          <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 leading-none flex-shrink-0"
+            title={`Erinnerung: ${todo.erinnerung}`}>
+            🔔 {erinnerung.text}
+          </span>
+        )}
       </div>
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 mt-0.5">
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
         {!todo.erledigt && (
           <button
-            className="text-zinc-600 hover:text-zinc-300 text-xs w-5 h-5 flex items-center justify-center rounded transition-colors"
+            className="text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 text-xs w-5 h-5 flex items-center justify-center rounded transition-colors"
             onClick={startEdit}
             title="Bearbeiten"
-          >
-            ✎
-          </button>
+          >✎</button>
         )}
         <button
-          className="text-zinc-600 hover:text-red-400 text-xs w-5 h-5 flex items-center justify-center rounded transition-colors"
+          className="text-ink-500 hover:text-red-500 text-xs w-5 h-5 flex items-center justify-center rounded transition-colors"
           onClick={() => onDelete(todo.id)}
           title="Löschen"
-        >
-          ✕
-        </button>
+        >✕</button>
       </div>
     </div>
   )
 }
 
-function NeueingabeForm({ faecher, onSpeichern, onAbbrechen }) {
+function NeueingabeForm({ klassen, faecher = [], onSpeichern, onAbbrechen }) {
   const [titel, setTitel] = useState('')
+  const [klasseId, setKlasseId] = useState('')
   const [fachId, setFachId] = useState('')
   const [faelligkeit, setFaelligkeit] = useState('')
   const [erinnerungOption, setErinnerungOption] = useState('')
@@ -280,21 +286,18 @@ function NeueingabeForm({ faecher, onSpeichern, onAbbrechen }) {
     }
   }
 
-  const erinnerung = erinnerungOption === '' ? null : (erinnerungDatum || null)
-
   const speichern = async () => {
     const t = titel.trim()
     const er = erinnerungOption === '' ? null : (erinnerungDatum || null)
-    console.log('[TodoBoard] speichern:', { titel: t, faelligkeit, erinnerungOption, erinnerungDatum, er })
-    if (t) await onSpeichern(t, fachId ? parseInt(fachId) : null, faelligkeit || null, er)
+    if (t) await onSpeichern(t, klasseId ? parseInt(klasseId) : null, fachId ? parseInt(fachId) : null, faelligkeit || null, er)
     onAbbrechen()
   }
 
   return (
-    <div className="space-y-1.5 bg-zinc-800 rounded-lg p-2.5 border border-indigo-700/60">
+    <div className="space-y-2 bg-coral-50 dark:bg-ink-800 rounded-2xl p-3 border border-coral-200 dark:border-coral-700/60 shadow-softer animate-pop-in">
       <input
         ref={inputRef}
-        className="w-full text-sm bg-transparent outline-none text-zinc-100 placeholder:text-zinc-500"
+        className="w-full text-sm bg-transparent outline-none text-ink-800 dark:text-paper-100 placeholder:text-ink-400 dark:placeholder:text-ink-500 border-b border-coral-200 dark:border-ink-700 pb-1 font-medium"
         placeholder="Titel…"
         value={titel}
         onChange={e => setTitel(e.target.value)}
@@ -303,19 +306,29 @@ function NeueingabeForm({ faecher, onSpeichern, onAbbrechen }) {
           if (e.key === 'Escape') onAbbrechen()
         }}
       />
+      {klassen.length > 0 && (
+        <select
+          className="w-full text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-1"
+          value={klasseId}
+          onChange={e => { setKlasseId(e.target.value); setFachId('') }}
+        >
+          <option value="">Keine Klasse</option>
+          {klassen.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
+        </select>
+      )}
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-zinc-500 flex-shrink-0">Fällig:</span>
+        <span className="text-[10px] text-ink-500 flex-shrink-0">📅 Fällig:</span>
         <input
           type="date"
-          className="flex-1 text-xs bg-transparent outline-none text-zinc-400 cursor-pointer"
+          className="flex-1 text-xs bg-transparent outline-none text-ink-700 dark:text-ink-300 cursor-pointer"
           value={faelligkeit}
           onChange={e => handleFaelligkeitChange(e.target.value)}
         />
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-zinc-500 flex-shrink-0">🔔</span>
+        <span className="text-[10px] text-ink-500 flex-shrink-0">🔔</span>
         <select
-          className="flex-1 text-xs bg-zinc-800 outline-none text-zinc-400 cursor-pointer"
+          className="flex-1 text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 cursor-pointer border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-0.5"
           value={erinnerungOption}
           onChange={e => handleErinnerungOptionChange(e.target.value)}
         >
@@ -328,20 +341,20 @@ function NeueingabeForm({ faecher, onSpeichern, onAbbrechen }) {
         <div className="flex items-center gap-1.5 pl-3.5">
           <input
             type="date"
-            className="flex-1 text-xs bg-transparent outline-none text-zinc-400 cursor-pointer"
+            className="flex-1 text-xs bg-transparent outline-none text-ink-700 dark:text-ink-300 cursor-pointer"
             value={erinnerungDatum}
             onChange={e => setErinnerungDatum(e.target.value)}
           />
         </div>
       )}
       {erinnerungOption && erinnerungOption !== 'custom' && erinnerungDatum && (
-        <div className="pl-3.5 text-[10px] text-amber-500 dark:text-amber-400">
+        <div className="pl-3.5 text-[10px] text-amber-600 dark:text-amber-400">
           {new Date(erinnerungDatum + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
         </div>
       )}
       {faecher.length > 0 && (
         <select
-          className="w-full text-xs bg-zinc-800 outline-none text-zinc-400 border-t border-zinc-700 pt-1.5 mt-0.5"
+          className="w-full text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-1 mt-0.5"
           value={fachId}
           onChange={e => setFachId(e.target.value)}
         >
@@ -351,13 +364,13 @@ function NeueingabeForm({ faecher, onSpeichern, onAbbrechen }) {
       )}
       <div className="flex gap-1.5 pt-0.5">
         <button
-          className="flex-1 text-xs py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium"
+          className="flex-1 text-xs py-1.5 rounded-xl bg-coral-500 text-white hover:bg-coral-600 active:scale-[0.98] transition-all font-semibold shadow-softer"
           onClick={speichern}
         >
           Hinzufügen
         </button>
         <button
-          className="text-xs px-2 py-1 rounded-md text-zinc-500 hover:bg-zinc-700 transition-colors"
+          className="text-xs px-2.5 py-1.5 rounded-xl text-ink-500 hover:bg-paper-200 dark:hover:bg-ink-700 transition-colors"
           onClick={onAbbrechen}
         >
           ✕
@@ -367,31 +380,9 @@ function NeueingabeForm({ faecher, onSpeichern, onAbbrechen }) {
   )
 }
 
-function TodoListe({ todos, faecher = [], onToggle, onDelete, onEditFull, itemRefs, flashedId }) {
-  const offen = todos.filter(t => !t.erledigt)
-  return (
-    <>
-      {offen.map(todo => (
-        <TodoKarte
-          key={todo.id}
-          todo={todo}
-          faecher={faecher}
-          onToggle={onToggle}
-          onDelete={onDelete}
-          onEditFull={onEditFull}
-          flashRef={el => { if (itemRefs) itemRefs.current[todo.id] = el }}
-          flashed={flashedId === todo.id}
-        />
-      ))}
-    </>
-  )
-}
-
 export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
   const { klassen, todos, ladeTodos } = useStore()
-  const [klasseFaecher, setKlasseFaecher] = useState({})
-  const [aufgeklappteKlasse, setAufgeklappteKlasse] = useState(null)
-  const [neueingabeKolumne, setNeueingabeKolumne] = useState(null)
+  const [neueingabe, setNeueingabe] = useState(false)
   const [erledigtOffen, setErledigtOffen] = useState(false)
   const [flashedId, setFlashedId] = useState(null)
   const itemRefs = useRef({})
@@ -402,8 +393,6 @@ export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
     if (!highlightedTodoId) return
     const todo = todos.find(t => t.id === highlightedTodoId)
     if (!todo) return
-    // Ensure the right section is open
-    if (todo.klasse_id) setAufgeklappteKlasse(todo.klasse_id)
     setFlashedId(highlightedTodoId)
     setTimeout(() => {
       itemRefs.current[highlightedTodoId]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -412,14 +401,7 @@ export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
     return () => clearTimeout(t)
   }, [highlightedTodoId])
 
-  const ladeFaecher = async (klasseId) => {
-    if (klasseFaecher[klasseId]) return
-    const f = await window.api.faecher.getAll(klasseId)
-    setKlasseFaecher(prev => ({ ...prev, [klasseId]: f }))
-  }
-
-  const todoErstellen = async (kolumneId, titel, fachId, faelligkeit, erinnerung) => {
-    const klasseId = kolumneId === 'allgemein' ? null : kolumneId
+  const todoErstellen = async (titel, klasseId, fachId, faelligkeit, erinnerung) => {
     await window.api.todos?.create({ titel, klasseId, fachId, faelligkeit, erinnerung })
     await ladeTodos()
   }
@@ -439,159 +421,110 @@ export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
     await ladeTodos()
   }
 
-  const toggleKlasse = (klasseId) => {
-    setAufgeklappteKlasse(prev => prev === klasseId ? null : klasseId)
-    setNeueingabeKolumne(null)
-  }
-
-  const startNeueingabe = async (kolumneId, e) => {
-    e?.stopPropagation()
-    if (kolumneId !== 'allgemein') await ladeFaecher(kolumneId)
-    setNeueingabeKolumne(kolumneId)
-  }
-
-  const allgemeinTodos = todos.filter(t => !t.klasse_id)
-  const allgemeinOffen = allgemeinTodos.filter(t => !t.erledigt)
+  const offen = todos
+    .filter(t => !t.erledigt)
+    .sort((a, b) => {
+      if (!a.faelligkeit && !b.faelligkeit) return 0
+      if (!a.faelligkeit) return 1
+      if (!b.faelligkeit) return -1
+      return a.faelligkeit.localeCompare(b.faelligkeit)
+    })
   const alleErledigt = todos.filter(t => t.erledigt)
-  const klassenMap = Object.fromEntries(klassen.map(k => [k.id, k.name]))
+
+  // Fächer pro Klasse für Edit-Modus laden (lazy)
+  const [klasseFaecher, setKlasseFaecher] = useState({})
+  const ladeFaecher = async (klasseId) => {
+    if (!klasseId || klasseFaecher[klasseId]) return klasseFaecher[klasseId] ?? []
+    const f = await window.api.faecher.getAll(klasseId)
+    setKlasseFaecher(prev => ({ ...prev, [klasseId]: f }))
+    return f
+  }
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-zinc-800">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white dark:bg-ink-900">
 
-      {/* Panel-Header */}
-      <div className="px-3 py-2 border-b border-zinc-800 flex-shrink-0">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">ToDos</span>
+      {/* Panel-Header — analog zu TerminePanel */}
+      <div className="px-4 py-3 border-b border-paper-200 dark:border-ink-800 flex items-center justify-between flex-shrink-0">
+        <span className="text-sm font-bold text-ink-800 dark:text-paper-100 flex items-center gap-2">
+          <span aria-hidden>✏️</span> ToDos
+        </span>
+        <button
+          className="text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 w-7 h-7 flex items-center justify-center rounded-xl hover:bg-coral-50 dark:hover:bg-coral-900/30 transition-all active:scale-95"
+          onClick={() => setNeueingabe(v => !v)}
+          title="ToDo hinzufügen"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
       </div>
 
-      {/* Allgemein – immer ausgeklappt */}
-      <div className="flex-shrink-0 border-b border-zinc-800">
-        <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
-          <span className="text-xs font-semibold text-zinc-400">Allgemein</span>
-          {allgemeinOffen.length > 0 && (
-            <span className="text-xs bg-zinc-700 text-zinc-400 rounded-full px-1.5 font-medium">
-              {allgemeinOffen.length}
-            </span>
-          )}
-        </div>
-        <div className="px-3 space-y-2 max-h-56 overflow-y-auto">
-          {neueingabeKolumne === 'allgemein' && (
+      {/* Liste */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-3 py-3 space-y-1.5">
+          {neueingabe && (
             <NeueingabeForm
+              klassen={klassen}
               faecher={[]}
-              onSpeichern={(t, f, fa, er) => todoErstellen('allgemein', t, f, fa, er)}
-              onAbbrechen={() => setNeueingabeKolumne(null)}
+              onSpeichern={todoErstellen}
+              onAbbrechen={() => setNeueingabe(false)}
             />
           )}
-          <TodoListe
-            todos={allgemeinTodos}
-            onToggle={todoToggle}
-            onDelete={todoLoeschen}
-            onEditFull={todoBearbeiten}
-            itemRefs={itemRefs}
-            flashedId={flashedId}
-          />
-        </div>
-        {neueingabeKolumne !== 'allgemein' && (
-          <button
-            className="w-full text-xs text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 py-1.5 transition-colors text-left px-3 flex items-center gap-1 border-t border-zinc-800/60 mt-1"
-            onClick={e => startNeueingabe('allgemein', e)}
-          >
-            <span className="text-base leading-none">+</span> Hinzufügen
-          </button>
-        )}
-      </div>
 
-      {/* Klassen-Accordion */}
-      <div className="flex-1 overflow-y-auto divide-y divide-zinc-800/60">
-        {klassen.map(k => {
-          const ktodos = todos.filter(t => t.klasse_id === k.id)
-          const offen = ktodos.filter(t => !t.erledigt)
-          const isOpen = aufgeklappteKlasse === k.id
-          const faecher = klasseFaecher[k.id] ?? []
+          {offen.length === 0 && !neueingabe && (
+            <div className="text-center py-8 text-ink-400">
+              <div className="text-3xl mb-2">🌿</div>
+              <p className="text-xs">Keine offenen ToDos — gute Arbeit!</p>
+            </div>
+          )}
 
-          return (
-            <div key={k.id}>
-              <div
-                className="flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-zinc-800 transition-colors select-none"
-                onClick={() => toggleKlasse(k.id)}
+          {offen.map(todo => (
+            <TodoKarte
+              key={todo.id}
+              todo={todo}
+              klassen={klassen}
+              faecher={klasseFaecher[todo.klasse_id] ?? []}
+              onToggle={todoToggle}
+              onDelete={todoLoeschen}
+              onEditFull={async (id, data) => {
+                await ladeFaecher(todo.klasse_id)
+                await todoBearbeiten(id, data)
+              }}
+              flashRef={el => { itemRefs.current[todo.id] = el }}
+              flashed={flashedId === todo.id}
+            />
+          ))}
+
+          {/* Erledigt */}
+          {alleErledigt.length > 0 && (
+            <div className="border-t border-paper-200 dark:border-ink-800 pt-1.5 mt-1.5">
+              <button
+                className="w-full text-left text-[11px] text-ink-500 hover:text-ink-700 dark:hover:text-ink-300 py-1 flex items-center gap-1 transition-colors"
+                onClick={() => setErledigtOffen(o => !o)}
               >
-                <div className="flex items-center gap-1.5">
-                  {k.farbe && (
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: k.farbe }} />
-                  )}
-                  <span className="text-sm font-medium text-zinc-300">{k.name}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {offen.length > 0 && (
-                    <span className="text-xs bg-indigo-900/50 text-indigo-400 rounded-full px-1.5 font-medium">
-                      {offen.length}
-                    </span>
-                  )}
-                  <span className="text-zinc-600 text-[10px]">{isOpen ? '▾' : '▸'}</span>
-                </div>
-              </div>
-
-              {isOpen && (
-                <div className="px-3 pb-3 space-y-2 bg-zinc-950/40">
-                  {neueingabeKolumne === k.id && (
-                    <NeueingabeForm
-                      faecher={faecher}
-                      onSpeichern={(t, f, fa, er) => todoErstellen(k.id, t, f, fa, er)}
-                      onAbbrechen={() => setNeueingabeKolumne(null)}
+                <span>{erledigtOffen ? '▾' : '▸'}</span>
+                Erledigt ({alleErledigt.length})
+              </button>
+              {erledigtOffen && (
+                <div className="space-y-1.5 mt-1">
+                  {alleErledigt.map(todo => (
+                    <TodoKarte
+                      key={todo.id}
+                      todo={todo}
+                      klassen={klassen}
+                      onToggle={todoToggle}
+                      onDelete={todoLoeschen}
+                      onEditFull={todoBearbeiten}
+                      flashRef={el => { itemRefs.current[todo.id] = el }}
+                      flashed={flashedId === todo.id}
                     />
-                  )}
-                  <TodoListe
-                    todos={ktodos}
-                    faecher={faecher}
-                    onToggle={todoToggle}
-                    onDelete={todoLoeschen}
-                    onEditFull={todoBearbeiten}
-                    itemRefs={itemRefs}
-                    flashedId={flashedId}
-                  />
-                  {neueingabeKolumne !== k.id && (
-                    <button
-                      className="w-full text-xs text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 py-1 transition-colors text-left flex items-center gap-1 rounded-lg px-1.5"
-                      onClick={e => startNeueingabe(k.id, e)}
-                    >
-                      <span className="text-base leading-none">+</span> Hinzufügen
-                    </button>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
-          )
-        })}
-      </div>
-
-      {/* Globaler Erledigt-Block */}
-      {alleErledigt.length > 0 && (
-        <div className="border-t border-zinc-800 flex-shrink-0">
-          <div
-            className="flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-zinc-800 transition-colors select-none"
-            onClick={() => setErledigtOffen(o => !o)}
-          >
-            <span className="text-xs font-semibold text-zinc-500">Erledigt</span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs bg-zinc-700 text-zinc-500 rounded-full px-1.5 font-medium">{alleErledigt.length}</span>
-              <span className="text-zinc-600 text-[10px]">{erledigtOffen ? '▾' : '▸'}</span>
-            </div>
-          </div>
-          {erledigtOffen && (
-            <div className="px-3 pb-3 space-y-2 max-h-64 overflow-y-auto bg-zinc-950/40">
-              {alleErledigt.map(todo => (
-                <TodoKarte
-                  key={todo.id}
-                  todo={todo}
-                  onToggle={todoToggle}
-                  onDelete={todoLoeschen}
-                  onEditFull={todoBearbeiten}
-                  kontextLabel={todo.klasse_id ? klassenMap[todo.klasse_id] : 'Allgemein'}
-                />
-              ))}
-            </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

@@ -18,8 +18,62 @@ contextBridge.exposeInMainWorld('api', {
     getAll: (schuljahrId) => invoke('klassen:getAll', schuljahrId),
     create: (data) => invoke('klassen:create', data),
     delete: (id) => invoke('klassen:delete', id),
+    getDeleteStats: (id) => invoke('klassen:getDeleteStats', id),
     rename: (id, name) => invoke('klassen:rename', id, name),
     setFarbe: (id, farbe) => invoke('klassen:setFarbe', id, farbe),
+    setTeamsLink: (id, link) => invoke('klassen:setTeamsLink', id, link),
+    setIstKv: (id, istKv) => invoke('klassen:setIstKv', id, istKv),
+  },
+
+  kv: {
+    jahresaufgaben: {
+      getAlle: (klasseId, schuljahrId) => invoke('kv:jahresaufgaben:getAlle', klasseId, schuljahrId),
+      setStatus: (aufgabeId, klasseId, schuljahrId, erledigtAm, notiz) =>
+        invoke('kv:jahresaufgaben:setStatus', aufgabeId, klasseId, schuljahrId, erledigtAm, notiz),
+      createTemplate: (data) => invoke('kv:jahresaufgaben:createTemplate', data),
+      updateTemplate: (id, data) => invoke('kv:jahresaufgaben:updateTemplate', id, data),
+      deleteTemplate: (id) => invoke('kv:jahresaufgaben:deleteTemplate', id),
+    },
+    wochenaufgaben: {
+      getAlle: () => invoke('kv:wochenaufgaben:getAlle'),
+      getStatusFuerWochen: (klasseId, schuljahrId, wochen) =>
+        invoke('kv:wochenaufgaben:getStatusFuerWochen', klasseId, schuljahrId, wochen),
+      setStatus: (aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz) =>
+        invoke('kv:wochenaufgaben:setStatus', aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz),
+      createTemplate: (data) => invoke('kv:wochenaufgaben:createTemplate', data),
+      updateTemplate: (id, data) => invoke('kv:wochenaufgaben:updateTemplate', id, data),
+      deleteTemplate: (id) => invoke('kv:wochenaufgaben:deleteTemplate', id),
+    },
+    trigger: {
+      getAlle: (klasseId, opts) => invoke('kv:trigger:getAlle', klasseId, opts),
+      getAlleFuerSchueler: (schuelerId) => invoke('kv:trigger:getAlleFuerSchueler', schuelerId),
+      reagieren: (id, reaktion) => invoke('kv:trigger:reagieren', id, reaktion),
+      create: (data) => invoke('kv:trigger:create', data),
+      delete: (id) => invoke('kv:trigger:delete', id),
+    },
+    aktenvermerke: {
+      getAlleFuerKlasse: (klasseId) => invoke('kv:aktenvermerke:getAlleFuerKlasse', klasseId),
+      getAlleFuerSchueler: (schuelerId) => invoke('kv:aktenvermerke:getAlleFuerSchueler', schuelerId),
+      create: (data) => invoke('kv:aktenvermerke:create', data),
+      update: (id, data) => invoke('kv:aktenvermerke:update', id, data),
+      delete: (id) => invoke('kv:aktenvermerke:delete', id),
+    },
+    elternkontakte: {
+      getAlleFuerSchueler: (schuelerId) => invoke('kv:elternkontakte:getAlleFuerSchueler', schuelerId),
+      getOffeneFuerKlasse: (klasseId) => invoke('kv:elternkontakte:getOffeneFuerKlasse', klasseId),
+      create: (data) => invoke('kv:elternkontakte:create', data),
+      update: (id, data) => invoke('kv:elternkontakte:update', id, data),
+      setErledigt: (id, erledigt) => invoke('kv:elternkontakte:setErledigt', id, erledigt),
+      delete: (id) => invoke('kv:elternkontakte:delete', id),
+    },
+    fehlstunden: {
+      getAlleFuerSchueler: (schuelerId, schuljahrId) =>
+        invoke('kv:fehlstunden:getAlleFuerSchueler', schuelerId, schuljahrId),
+      create: (data) => invoke('kv:fehlstunden:create', data),
+      update: (id, data) => invoke('kv:fehlstunden:update', id, data),
+      delete: (id) => invoke('kv:fehlstunden:delete', id),
+    },
+    pruefeOffeneRueckrufe: () => invoke('kv:pruefeOffeneRueckrufe'),
   },
 
   faecher: {
@@ -30,6 +84,14 @@ contextBridge.exposeInMainWorld('api', {
     setFarbe: (id, farbe) => invoke('faecher:setFarbe', id, farbe),
     updateGewichtung: (id, data) => invoke('faecher:updateGewichtung', id, data),
     resetGewichtung: (id) => invoke('faecher:resetGewichtung', id),
+    setBenotungssystem: (id, system) => invoke('faecher:setBenotungssystem', id, system),
+  },
+
+  niveau: {
+    get: (fachId) => invoke('niveau:get', fachId),
+    set: (fachId, schuelerId, niveau, datum) => invoke('niveau:set', fachId, schuelerId, niveau, datum),
+    getHistorie: (fachId) => invoke('niveau:getHistorie', fachId),
+    deleteHistorie: (fachId, schuelerId, gueltigAb) => invoke('niveau:deleteHistorie', fachId, schuelerId, gueltigAb),
   },
 
   schueler: {
@@ -39,6 +101,8 @@ contextBridge.exposeInMainWorld('api', {
     update: (id, data) => invoke('schueler:update', id, data),
     reorder: (updates) => invoke('schueler:reorder', updates),
     importBatch: (klasseId, list) => invoke('schueler:importBatch', klasseId, list),
+    getLeistungsProfil: (id) => invoke('schueler:getLeistungsProfil', id),
+    exportProfilPDF: (data) => invoke('schueler:exportProfilPDF', data),
   },
 
   spalten: {
@@ -57,10 +121,15 @@ contextBridge.exposeInMainWorld('api', {
     setKommentar: (spalteId, schuelerId, kommentar) => invoke('eintraege:setKommentar', spalteId, schuelerId, kommentar),
   },
 
+  verlauf: {
+    get: (schuelerId, fachId) => invoke('verlauf:get', schuelerId, fachId),
+  },
+
   zeugnisnoten: {
     getAll: (fachId) => invoke('zeugnisnoten:getAll', fachId),
     berechne: (fachId, schuelerId, semester) => invoke('zeugnisnoten:berechne', fachId, schuelerId, semester),
     berechneFach: (fachId) => invoke('zeugnisnoten:berechneFach', fachId),
+    rechneAllesNeu: () => invoke('noten:rechneAllesNeu'),
     setManuell: (fachId, schuelerId, semester, note) => invoke('zeugnisnoten:setManuell', fachId, schuelerId, semester, note),
     clearManuell: (fachId, schuelerId, semester) => invoke('zeugnisnoten:clearManuell', fachId, schuelerId, semester),
   },
@@ -84,6 +153,8 @@ contextBridge.exposeInMainWorld('api', {
 
   stundenplan: {
     getAll: () => invoke('stundenplan:getAll'),
+    getByKlasse: (klasseId) => invoke('stundenplan:getByKlasse', klasseId),
+    getParallelFach: (klasseId, fachName) => invoke('stundenplan:getParallelFach', klasseId, fachName),
     create: (data) => invoke('stundenplan:create', data),
     delete: (id) => invoke('stundenplan:delete', id),
     update: (id, data) => invoke('stundenplan:update', id, data),
@@ -100,11 +171,32 @@ contextBridge.exposeInMainWorld('api', {
     open: (url) => invoke('shell:open', url),
   },
 
+  kompetenzbereiche: {
+    getAll: (fachId) => invoke('kompetenzbereiche:getAll', fachId),
+    create: (fachId, titel, beschreibung) => invoke('kompetenzbereiche:create', fachId, titel, beschreibung),
+    update: (id, data) => invoke('kompetenzbereiche:update', id, data),
+    delete: (id) => invoke('kompetenzbereiche:delete', id),
+    reorder: (ids) => invoke('kompetenzbereiche:reorder', ids),
+    initVorlagen: (fachId, fachName) => invoke('kompetenzbereiche:initVorlagen', fachId, fachName),
+  },
+
+  schuelerKompetenzen: {
+    getAll: (fachId) => invoke('schuelerKompetenzen:getAll', fachId),
+    set: (kompetenzbereichId, schuelerId, niveau, notiz) => invoke('schuelerKompetenzen:set', kompetenzbereichId, schuelerId, niveau, notiz),
+  },
+
+  customFerien: {
+    getAll: (schuljahrId) => invoke('customFerien:getAll', schuljahrId),
+    save: (schuljahrId, ferien) => invoke('customFerien:save', schuljahrId, ferien),
+  },
+
   stundenPlanung: {
     get: (stundenplanId, wocheDatum) => invoke('stundenPlanung:get', stundenplanId, wocheDatum),
     getWoche: (wocheDatum) => invoke('stundenPlanung:getWoche', wocheDatum),
     save: (stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link) => invoke('stundenPlanung:save', stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link),
     delete: (stundenplanId, wocheDatum) => invoke('stundenPlanung:delete', stundenplanId, wocheDatum),
+    setEntfall: (stundenplanId, wocheDatum, vorruecken, ferienZeitraeume) => invoke('stundenPlanung:setEntfall', stundenplanId, wocheDatum, vorruecken, ferienZeitraeume),
+    removeEntfall: (stundenplanId, wocheDatum) => invoke('stundenPlanung:removeEntfall', stundenplanId, wocheDatum),
     getVorhandeneWochen: () => invoke('planung:getVorhandeneWochen'),
     checkMusizieren: (wocheDatum, klasseId, excludeStundenplanId) => invoke('stundenPlanung:checkMusizieren', wocheDatum, klasseId, excludeStundenplanId),
     getHueWoche: (wocheDatum) => invoke('stundenPlanung:getHueWoche', wocheDatum),
@@ -143,6 +235,7 @@ contextBridge.exposeInMainWorld('api', {
     planungPdf: (wochen, einzeln) => invoke('export:planungPdf', wochen, einzeln),
     allSchuelerExcel: () => invoke('export:allSchuelerExcel'),
     allSchuelerPdf: () => invoke('export:allSchuelerPdf'),
+    fachPlanungDocx: (fachId, fachName, klasseName, wochenDaten) => invoke('export:fachPlanungDocx', fachId, fachName, klasseName, wochenDaten),
   },
 
   import: {
@@ -185,5 +278,6 @@ contextBridge.exposeInMainWorld('api', {
     delete:            (id)                    => invoke('jahresplanung:delete', id),
     getFaecherMitPlan: ()                      => invoke('jahresplanung:getFaecherMitPlan'),
     importVonFach:     (quellId, zielId)       => invoke('jahresplanung:importVonFach', quellId, zielId),
+    swap:              (idA, idB)              => invoke('jahresplanung:swap', idA, idB),
   },
 })

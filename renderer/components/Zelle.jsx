@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, memo } from 'react'
 import useStore from '../store/useStore'
+import { niveauZurZeit, niveauBgKlasse } from '../utils/niveau'
 
 // ─── Klick-Cycle-Werte ────────────────────────────────────────────────────────
 const MA_CYCLE = ['+', '-', '']
@@ -28,7 +29,7 @@ function ZahlenPopup({ wert, onSelect, onClose, anchorRef }) {
   return (
     <div
       ref={popupRef}
-      className="absolute z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-1 flex gap-1"
+      className="absolute z-50 bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg shadow-xl p-1 flex gap-1"
       style={{ top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 2 }}
     >
       {[1, 2, 3, 4, 5].map(n => (
@@ -36,15 +37,15 @@ function ZahlenPopup({ wert, onSelect, onClose, anchorRef }) {
           key={n}
           className={`w-8 h-8 rounded font-bold text-sm transition-colors
             ${wert === String(n)
-              ? 'bg-blue-600 text-white'
-              : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+              ? 'bg-coral-600 text-white'
+              : 'hover:bg-paper-100 dark:hover:bg-paper-200 dark:hover:bg-ink-700 text-ink-700 dark:text-paper-300'}`}
           onClick={() => onSelect(String(n))}
         >
           {n}
         </button>
       ))}
       <button
-        className="w-8 h-8 rounded text-xs text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="w-8 h-8 rounded text-xs text-ink-400 hover:bg-paper-100 dark:hover:bg-paper-200 dark:hover:bg-ink-700 transition-colors"
         onClick={() => onSelect('')}
         title="Leeren"
       >
@@ -67,7 +68,7 @@ function noteKlasse(n) {
 
 // ─── Haupt-Zelle ─────────────────────────────────────────────────────────────
 const Zelle = memo(function Zelle({ spalte, schueler }) {
-  const { eintraege, setEintrag, aktivesFach, niveaus } = useStore()
+  const { eintraege, setEintrag, aktivesFach, niveaus, niveauHistorie } = useStore()
   const [popupOffen, setPopupOffen] = useState(false)
   const cellRef = useRef(null)
 
@@ -75,7 +76,11 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
   const wert = eintraege[key] ?? ''
 
   const isDifferenziert = aktivesFach?.benotungssystem === 'differenziert'
-  const niveau = isDifferenziert ? (niveaus[schueler.id] ?? 'AHS') : null
+  // Niveau zur Zeit der Eintragung: nutze Spalten-Datum + Historie
+  // Fallback: aktuelles Niveau aus niveaus-Map
+  const niveauHier = isDifferenziert
+    ? niveauZurZeit(niveauHistorie?.[schueler.id], spalte.datum, niveaus[schueler.id] ?? 'AHS')
+    : null
 
   const handleClick = () => {
     if (spalte.kategorie === 'MA') {
@@ -97,7 +102,6 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
   // Anzeige-Inhalt & Farbe
   let anzeigeText = wert
   let anzeigeKlasse = ''
-  let zeigeBadge = false
 
   if (spalte.kategorie === 'MA') {
     if (wert === '+') { anzeigeText = '+'; anzeigeKlasse = 'zelle-plus' }
@@ -108,23 +112,26 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
     else if (wert === '—') anzeigeKlasse = 'zelle-strich'
   } else if (wert) {
     anzeigeKlasse = noteKlasse(wert)
-    if (isDifferenziert) zeigeBadge = true
   }
 
+  // Niveau-Hintergrund (grünlich AHS / gelblich ST) — Note hat Vorrang bei MA-Farben
+  const niveauKlasse = isDifferenziert && !anzeigeKlasse.startsWith('zelle-')
+    ? niveauBgKlasse(niveauHier)
+    : ''
+
+  const titleStr = isDifferenziert
+    ? `${schueler.nachname} ${schueler.vorname} | ${spalte.kuerzel} ${spalte.datum ?? ''} · Niveau: ${niveauHier}`
+    : `${schueler.nachname} ${schueler.vorname} | ${spalte.kuerzel} ${spalte.datum ?? ''}`
+
   return (
-    <td className="p-0 relative" style={{ width: 36, minWidth: 36 }}>
+    <td className="p-0 relative" style={{ width: 38, minWidth: 38 }}>
       <div
         ref={cellRef}
-        className={`zelle ${anzeigeKlasse}`}
+        className={`zelle ${niveauKlasse} ${anzeigeKlasse}`}
         onClick={handleClick}
-        title={`${schueler.nachname} ${schueler.vorname} | ${spalte.kuerzel} ${spalte.datum ?? ''}`}
+        title={titleStr}
       >
-        {zeigeBadge ? (
-          <span className="flex flex-col items-center leading-none gap-px">
-            <span>{anzeigeText}</span>
-            <span className="text-[7px] opacity-60 font-normal">{niveau}</span>
-          </span>
-        ) : anzeigeText}
+        {anzeigeText}
       </div>
       {popupOffen && (
         <ZahlenPopup

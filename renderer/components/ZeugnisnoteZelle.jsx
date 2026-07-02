@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react'
 import ReactDOM from 'react-dom'
 import useStore from '../store/useStore'
+import { niveauOffset, niveauZurZeit, niveauBgKlasse } from '../utils/niveau'
 
 function noteKlasse(n) {
   const num = Math.round(n)
@@ -34,11 +35,18 @@ function TooltipPortal({ anchorRef, children }) {
   )
 }
 
-function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal) {
+function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus) {
   return useMemo(() => {
     if (semester === 3) return null
     const fachSpalten = spalten.filter(s => s.semester === semester)
     if (!fachSpalten.length) return null
+
+    const istDifferenziert = aktivesFach?.benotungssystem === 'differenziert'
+    const maxNote = istDifferenziert ? 7 : 5
+    const niveauFallback = niveaus?.[schuelerId] ?? 'AHS'
+    const offsetFor = (datum) => istDifferenziert
+      ? niveauOffset(niveauZurZeit(niveauHistorie?.[schuelerId], datum, niveauFallback))
+      : 0
 
     const maPlusWert  = parseFloat(einstellungen?.ma_plus_wert  ?? '1')
     const maMinusWert = parseFloat(einstellungen?.ma_minus_wert ?? '5')
@@ -51,22 +59,24 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
       CUSTOM: aktivesFach?.gewichtung_custom ?? gewichtungGlobal?.CUSTOM ?? 0.0,
     }
 
+    // Interne 1..maxNote-Werte pro Kategorie (mit Niveau-Offset bei differenziert)
     const raw = { SA: [], T: [], MA: { plus: 0, minus: 0, werte: [] }, 'HÜ': { pos: 0, ges: 0, werte: [] }, CUSTOM: [] }
 
     for (const spalte of fachSpalten) {
       const wert = eintraege[`${spalte.id}_${schuelerId}`] ?? ''
       if (!wert) continue
+      const off = offsetFor(spalte.datum)
       if (spalte.kategorie === 'MA') {
-        if      (wert === '+') { raw.MA.plus++;  raw.MA.werte.push(maPlusWert) }
-        else if (wert === '-') { raw.MA.minus++; raw.MA.werte.push(maMinusWert) }
+        if      (wert === '+') { raw.MA.plus++;  raw.MA.werte.push(maPlusWert + off) }
+        else if (wert === '-') { raw.MA.minus++; raw.MA.werte.push(maMinusWert + off) }
       } else if (spalte.kategorie === 'HÜ') {
         raw['HÜ'].ges++
-        if      (wert === '✓')              { raw['HÜ'].pos++; raw['HÜ'].werte.push(1) }
-        else if (wert === '✗' || wert === '—') { raw['HÜ'].werte.push(0) }
+        if      (wert === '✓')              { raw['HÜ'].pos++; raw['HÜ'].werte.push(1 + off) }
+        else if (wert === '✗' || wert === '—') { raw['HÜ'].werte.push(5 + off) }
       } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
-        const n = parseInt(wert); if (n >= 1 && n <= 5) raw[spalte.kategorie].push(n)
+        const n = parseInt(wert); if (n >= 1 && n <= 5) raw[spalte.kategorie].push(n + off)
       } else if (spalte.kategorie === 'CUSTOM') {
-        const n = parseInt(wert); if (!isNaN(n) && n >= 1 && n <= 5) raw.CUSTOM.push(n)
+        const n = parseInt(wert); if (!isNaN(n) && n >= 1 && n <= 5) raw.CUSTOM.push(n + off)
       }
     }
 
@@ -79,8 +89,7 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
       gesamtGewichtung += gew.MA
     }
     if (raw['HÜ'].werte.length > 0 && gew['HÜ'] > 0) {
-      const ratio = raw['HÜ'].pos / raw['HÜ'].ges
-      const avg = 5 - ratio * 4
+      const avg = raw['HÜ'].werte.reduce((a, b) => a + b, 0) / raw['HÜ'].werte.length
       beitraege.push({ kat: 'HÜ', detail: `${raw['HÜ'].pos}/${raw['HÜ'].ges} gemacht`, avg, w: gew['HÜ'] })
       gesamtGewichtung += gew['HÜ']
     }
@@ -94,26 +103,38 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
       beitraege.push({ kat: 'T', detail: raw.T.join(', '), avg, w: gew.T })
       gesamtGewichtung += gew.T
     }
-    if (raw.CUSTOM.length > 0 && gew.CUSTOM > 0) {
+    if (raw.CUSTOM.length > 0) {
       const avg = raw.CUSTOM.reduce((a, b) => a + b, 0) / raw.CUSTOM.length
-      beitraege.push({ kat: 'Ind.', detail: raw.CUSTOM.join(', '), avg, w: gew.CUSTOM })
-      gesamtGewichtung += gew.CUSTOM
+      // Bei 0 % Gewicht trotzdem anzeigen — als Warnung, dass die Einträge nicht zählen
+      beitraege.push({ kat: 'Ind.', detail: raw.CUSTOM.join(', '), avg, w: gew.CUSTOM, warnNullGewicht: gew.CUSTOM === 0 })
+      if (gew.CUSTOM > 0) gesamtGewichtung += gew.CUSTOM
     }
 
-    return { beitraege, gesamtGewichtung }
-  }, [semester, schuelerId, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal])
+    return { beitraege, gesamtGewichtung, maxNote }
+  }, [semester, schuelerId, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus])
 }
 
 export default function ZeugnisnoteZelle({ schueler, semester }) {
   const {
     zeugnisnoten, aktivesFach, refreshZeugnisnoten,
     einstellungen, spalten, eintraege, gewichtungGlobal,
-    niveaus,
+    niveaus, niveauHistorie,
   } = useStore()
 
   const isDifferenziert = aktivesFach?.benotungssystem === 'differenziert'
   const niveau = isDifferenziert ? (niveaus[schueler.id] ?? 'AHS') : null
+  const offset = niveauOffset(niveau)
+  // Skala der angezeigten Auswahl im Manuell-Popup: bei standard 1-5, bei differenziert ebenfalls 1-5 (auf Niveau)
   const maxNote = 5
+
+  // Mappt internen Wert (1-7 bei differenziert) auf angezeigte Note (1-5) mit Deckelung.
+  const internZuAnzeige = (intern) => {
+    if (intern == null) return null
+    const a = intern - offset
+    if (a < 1) return 1
+    if (a > 5) return 5
+    return a
+  }
 
   const [contextMenu, setContextMenu] = useState(null)
   const [manuellPopup, setManuellPopup] = useState(false)
@@ -122,28 +143,44 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
 
   const key = `${schueler.id}_${semester}`
   const zn = zeugnisnoten[key]
-  const noteBerechnet = zn?.note_berechnet
-  const noteManuell   = zn?.note_manuell
+  const noteBerechnet = zn?.note_berechnet          // intern 1-7 bei differenziert
+  const noteManuell   = zn?.note_manuell            // intern 1-7 bei differenziert
   const istManuell    = noteManuell !== null && noteManuell !== undefined
+
+  // Angezeigte Werte (auf aktuellem Niveau)
+  const noteBerechnetAnzeige = noteBerechnet != null ? noteBerechnet - offset : null
+  const noteManuellAnzeige = istManuell ? internZuAnzeige(noteManuell) : null
 
   const s1Zn = zeugnisnoten[`${schueler.id}_1`]
   const s2Zn = zeugnisnoten[`${schueler.id}_2`]
+  // S1/S2-Werte für die Endnote-Anzeige im Tooltip: aufs aktuelle Niveau gemappt
   const s1NoteExakt   = s1Zn?.note_manuell ?? s1Zn?.note_berechnet ?? null
   const s2NoteExakt   = s2Zn?.note_manuell ?? s2Zn?.note_berechnet ?? null
-  const s1NoteAnzeige = s1Zn?.note_manuell ?? (s1Zn?.note_berechnet ? Math.round(s1Zn.note_berechnet) : null)
-  const s2NoteAnzeige = s2Zn?.note_manuell ?? (s2Zn?.note_berechnet ? Math.round(s2Zn.note_berechnet) : null)
+  const s1NoteExaktAnz = s1NoteExakt != null ? s1NoteExakt - offset : null
+  const s2NoteExaktAnz = s2NoteExakt != null ? s2NoteExakt - offset : null
+  const s1NoteAnzeige = s1Zn?.note_manuell != null ? internZuAnzeige(s1Zn.note_manuell) : (s1Zn?.note_berechnet != null ? Math.max(1, Math.min(5, Math.round(s1Zn.note_berechnet - offset))) : null)
+  const s2NoteAnzeige = s2Zn?.note_manuell != null ? internZuAnzeige(s2Zn.note_manuell) : (s2Zn?.note_berechnet != null ? Math.max(1, Math.min(5, Math.round(s2Zn.note_berechnet - offset))) : null)
   const s1Gewichtung  = parseFloat(einstellungen?.s1_gewichtung ?? '0.5')
 
-  const anzeigeNote = istManuell ? noteManuell : (noteBerechnet ? Math.round(noteBerechnet) : null)
+  // Endgültig in der Zelle angezeigte (sichtbare) Note: gerundet & gedeckelt 1-5
+  const anzeigeNote = istManuell
+    ? noteManuellAnzeige
+    : (noteBerechnet != null ? Math.max(1, Math.min(5, Math.round(noteBerechnet - offset))) : null)
 
-  const znBreakdown = useZNBreakdown(semester, schueler.id, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal)
+  const znBreakdown = useZNBreakdown(semester, schueler.id, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus)
 
   const handleClick         = () => setManuellPopup(true)
   const handleContextMenu   = (e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY }) }
 
+  // Lehrer-Eingabe (1-5 auf aktuellem Niveau) → intern speichern (+ offset bei differenziert)
   const handleManuellSelect = async (note) => {
     if (!aktivesFach) return
-    await window.api.zeugnisnoten.setManuell(aktivesFach.id, schueler.id, semester, note === '' ? null : parseInt(note))
+    if (note === '') {
+      await window.api.zeugnisnoten.setManuell(aktivesFach.id, schueler.id, semester, null)
+    } else {
+      const intern = parseInt(note) + offset
+      await window.api.zeugnisnoten.setManuell(aktivesFach.id, schueler.id, semester, intern)
+    }
     await refreshZeugnisnoten()
     setManuellPopup(false)
   }
@@ -158,19 +195,19 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
   // ── Tooltip-Inhalt ─────────────────────────────────────────────────────────
   const tooltipContent = semester === 3 ? (
     // Endnote
-    <div className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-2xl p-3 text-xs">
-      <p className="font-semibold text-zinc-700 dark:text-zinc-200 mb-2.5">Endnote – Berechnung</p>
+    <div className="bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg shadow-2xl p-3 text-xs">
+      <p className="font-semibold text-ink-700 dark:text-paper-200 mb-2.5">Endnote – Berechnung</p>
 
-      {/* S1 / S2 Zeilen */}
+      {/* S1 / S2 Zeilen — angezeigte Werte sind aufs aktuelle Niveau gemappt */}
       <div className="space-y-1 mb-2.5">
-        {[{ label: 'ZN S1', exakt: s1NoteExakt, anzeige: s1NoteAnzeige, manuell: s1Zn?.note_manuell != null },
-          { label: 'ZN S2', exakt: s2NoteExakt, anzeige: s2NoteAnzeige, manuell: s2Zn?.note_manuell != null }
+        {[{ label: 'ZN S1', exakt: s1NoteExaktAnz, anzeige: s1NoteAnzeige, manuell: s1Zn?.note_manuell != null },
+          { label: 'ZN S2', exakt: s2NoteExaktAnz, anzeige: s2NoteAnzeige, manuell: s2Zn?.note_manuell != null }
         ].map(({ label, exakt, anzeige, manuell }) => (
           <div key={label} className="flex items-center justify-between gap-3">
-            <span className="text-zinc-500 dark:text-zinc-400">
+            <span className="text-ink-500 dark:text-ink-400">
               {label}{manuell ? <span className="ml-1 text-yellow-500">M</span> : null}
             </span>
-            <span className={`font-medium tabular-nums ${anzeige ? noteKlasse(anzeige) : 'text-zinc-400'}`}>
+            <span className={`font-medium tabular-nums ${anzeige ? noteKlasse(anzeige) : 'text-ink-400'}`}>
               {exakt != null ? exakt.toFixed(2) : '–'}
             </span>
           </div>
@@ -178,93 +215,118 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
       </div>
 
       {/* Formel */}
-      <div className="border-t border-zinc-100 dark:border-zinc-700 pt-2 mb-2.5">
-        {s1NoteExakt != null && s2NoteExakt != null ? (
-          <p className="font-mono text-[10px] text-zinc-400 dark:text-zinc-500 leading-relaxed">
-            {s1NoteExakt.toFixed(2)} × {Math.round(s1Gewichtung * 100)}%
+      <div className="border-t border-paper-100 dark:border-ink-700 pt-2 mb-2.5">
+        {s1NoteExaktAnz != null && s2NoteExaktAnz != null ? (
+          <p className="font-mono text-[10px] text-ink-400 dark:text-ink-500 leading-relaxed">
+            {s1NoteExaktAnz.toFixed(2)} × {Math.round(s1Gewichtung * 100)}%
             {' + '}
-            {s2NoteExakt.toFixed(2)} × {Math.round((1 - s1Gewichtung) * 100)}%
+            {s2NoteExaktAnz.toFixed(2)} × {Math.round((1 - s1Gewichtung) * 100)}%
           </p>
-        ) : s1NoteExakt != null ? (
-          <p className="text-[10px] text-zinc-400">Nur S1 vorhanden → direkt übernommen</p>
-        ) : s2NoteExakt != null ? (
-          <p className="text-[10px] text-zinc-400">Nur S2 vorhanden → direkt übernommen</p>
+        ) : s1NoteExaktAnz != null ? (
+          <p className="text-[10px] text-ink-400">Nur S1 vorhanden → direkt übernommen</p>
+        ) : s2NoteExaktAnz != null ? (
+          <p className="text-[10px] text-ink-400">Nur S2 vorhanden → direkt übernommen</p>
         ) : (
-          <p className="text-[10px] text-zinc-400">Keine Semesternoten vorhanden</p>
+          <p className="text-[10px] text-ink-400">Keine Semesternoten vorhanden</p>
         )}
       </div>
 
       {/* Ergebnis */}
-      <div className="border-t border-zinc-100 dark:border-zinc-700 pt-2 flex items-center justify-between gap-3">
-        <span className="font-semibold text-zinc-700 dark:text-zinc-200">
-          Endnote{istManuell ? <span className="text-yellow-500 ml-1 font-normal">(manuell)</span> : null}
+      <div className="border-t border-paper-100 dark:border-ink-700 pt-2 flex items-center justify-between gap-3">
+        <span className="font-semibold text-ink-700 dark:text-paper-200">
+          Endnote{isDifferenziert && <span className="text-ink-400 ml-1 font-normal">({niveau})</span>}{istManuell ? <span className="text-yellow-500 ml-1 font-normal">(manuell)</span> : null}
         </span>
         <span className="tabular-nums">
-          {noteBerechnet != null
-            ? <span className={`font-bold ${noteKlasse(Math.round(noteBerechnet))}`}>{noteBerechnet.toFixed(2)}</span>
-            : <span className="text-zinc-400">–</span>}
-          {istManuell && <span className="text-yellow-500 font-bold ml-1.5">→ {noteManuell}</span>}
+          {noteBerechnetAnzeige != null
+            ? <span className={`font-bold ${anzeigeNote ? noteKlasse(anzeigeNote) : ''}`}>{noteBerechnetAnzeige.toFixed(2)}</span>
+            : <span className="text-ink-400">–</span>}
+          {istManuell && <span className="text-yellow-500 font-bold ml-1.5">→ {noteManuellAnzeige}</span>}
         </span>
       </div>
     </div>
   ) : (
     // ZN S1 / S2
-    <div className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-2xl p-3 text-xs">
-      <p className="font-semibold text-zinc-700 dark:text-zinc-200 mb-2.5">ZN Semester {semester} – Berechnung</p>
+    <div className="bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg shadow-2xl p-3 text-xs">
+      <p className="font-semibold text-ink-700 dark:text-paper-200 mb-2.5">
+        ZN Semester {semester} – Berechnung{isDifferenziert && <span className="text-ink-400 font-normal ml-1">({niveau})</span>}
+      </p>
 
       {znBreakdown && znBreakdown.beitraege.length > 0 ? (
         <>
-          {/* Kategorien-Tabelle */}
+          {/* Kategorien-Tabelle — avg ist intern (1-7 bei differenziert), für Anzeige aufs Niveau mappen */}
           <div className="space-y-1 mb-2.5">
-            {znBreakdown.beitraege.map(({ kat, detail, avg, w }) => (
-              <div key={kat} className="grid gap-1 text-[10px]" style={{ gridTemplateColumns: '3rem 1fr auto auto' }}>
-                <span className="font-semibold text-zinc-600 dark:text-zinc-400">{kat}</span>
-                <span className="text-zinc-400 dark:text-zinc-500 truncate">{detail}</span>
-                <span className={`font-medium tabular-nums text-right ${noteKlasse(Math.round(avg))}`}>{avg.toFixed(2)}</span>
-                <span className="text-zinc-400 tabular-nums text-right">{Math.round(w * 100)}%</span>
-              </div>
-            ))}
+            {znBreakdown.beitraege.map(({ kat, detail, avg, w, warnNullGewicht }) => {
+              const avgAnzeige = avg - offset
+              const avgGedeckelt = Math.max(1, Math.min(5, avgAnzeige))
+              return (
+                <div key={kat} className="grid gap-1 text-[10px]" style={{ gridTemplateColumns: '3rem 1fr auto auto' }}>
+                  <span className={`font-semibold ${warnNullGewicht ? 'text-amber-600 dark:text-amber-400' : 'text-ink-600 dark:text-ink-400'}`}>
+                    {kat}{warnNullGewicht && <span title="0 % Gewicht — fliesst nicht in die ZN ein"> ⚠</span>}
+                  </span>
+                  <span className="text-ink-400 dark:text-ink-500 truncate">{detail}</span>
+                  <span className={`font-medium tabular-nums text-right ${noteKlasse(Math.round(avgGedeckelt))}`}>{avgAnzeige.toFixed(2)}</span>
+                  <span className={`tabular-nums text-right ${warnNullGewicht ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-ink-400'}`}>
+                    {Math.round(w * 100)}%
+                  </span>
+                </div>
+              )
+            })}
+            {znBreakdown.beitraege.some(b => b.warnNullGewicht) && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1.5 leading-snug">
+                ⚠ Diese Spalten haben 0 % Gewichtung und fliessen nicht in die ZN ein. In den Einstellungen anpassen.
+              </p>
+            )}
           </div>
 
           {/* Ergebnis */}
-          <div className="border-t border-zinc-100 dark:border-zinc-700 pt-2 flex items-center justify-between gap-3">
-            <span className="font-semibold text-zinc-700 dark:text-zinc-200">
+          <div className="border-t border-paper-100 dark:border-ink-700 pt-2 flex items-center justify-between gap-3">
+            <span className="font-semibold text-ink-700 dark:text-paper-200">
               Ergebnis{istManuell ? <span className="text-yellow-500 ml-1 font-normal">(manuell)</span> : null}
             </span>
             <span className="tabular-nums">
-              {noteBerechnet != null
-                ? <span className={`font-bold ${noteKlasse(Math.round(noteBerechnet))}`}>{noteBerechnet.toFixed(2)}</span>
-                : <span className="text-zinc-400">–</span>}
-              {istManuell && <span className="text-yellow-500 font-bold ml-1.5">→ {noteManuell}</span>}
+              {noteBerechnetAnzeige != null
+                ? <span className={`font-bold ${anzeigeNote ? noteKlasse(anzeigeNote) : ''}`}>{noteBerechnetAnzeige.toFixed(2)}</span>
+                : <span className="text-ink-400">–</span>}
+              {istManuell && <span className="text-yellow-500 font-bold ml-1.5">→ {noteManuellAnzeige}</span>}
             </span>
           </div>
         </>
       ) : (
-        <p className="text-zinc-400 dark:text-zinc-500">Noch keine Einträge vorhanden.</p>
+        <p className="text-ink-400 dark:text-ink-500">Noch keine Einträge vorhanden.</p>
       )}
     </div>
   )
 
+  // Bei differenziert: Niveau-Hintergrund nutzt das AKTUELLE Niveau (ZN ist Aggregat → "jetzt"-Sicht)
+  const niveauKlasse = isDifferenziert && !istManuell ? niveauBgKlasse(niveau) : ''
+
+  // EN (semester=3) ist sticky-right, damit sie beim horizontalen Scrollen sichtbar bleibt.
+  // Eigener BG ist nötig, damit beim Vorbeiscrollen keine Inhalte durchscheinen.
+  const istEN = semester === 3
+  const tdClassName = istEN
+    ? 'p-0 relative bg-white dark:bg-ink-900 border-l-2 border-coral-300 dark:border-coral-700/60'
+    : 'p-0 relative'
+  const tdStyle = istEN
+    ? {
+        width: 46, minWidth: 46,
+        position: 'sticky', right: 0, zIndex: 4,
+        boxShadow: '-3px 0 8px -2px rgba(46, 42, 38, 0.08)',
+      }
+    : { width: 46, minWidth: 46 }
+
   return (
-    <td className="p-0 relative" style={{ width: 42, minWidth: 42 }}>
+    <td className={tdClassName} style={tdStyle}>
       <div
         ref={cellRef}
         className={`zn-zelle cursor-pointer select-none
-          ${istManuell ? 'zn-manuell' : ''}
-          ${anzeigeNote ? noteKlasse(anzeigeNote) : 'text-gray-300'}`}
+          ${istManuell ? 'zn-manuell' : niveauKlasse}
+          ${anzeigeNote ? noteKlasse(anzeigeNote) : 'text-ink-600 dark:text-paper-300'}`}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
-        {anzeigeNote != null ? (
-          isDifferenziert ? (
-            <span className="flex flex-col items-center leading-none">
-              <span>{anzeigeNote}</span>
-              <span className="text-[8px] opacity-60">{niveau}</span>
-            </span>
-          ) : anzeigeNote
-        ) : '–'}
+        {anzeigeNote != null ? anzeigeNote : '–'}
       </div>
 
       {/* Hover-Tooltip via Portal */}
@@ -278,27 +340,34 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
       {manuellPopup && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setManuellPopup(false)} />
-          <div className="absolute z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2"
+          <div className="absolute z-50 bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg shadow-xl p-2"
             style={{ top: '100%', right: 0, marginTop: 2, minWidth: 140 }}>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 px-1">
+            <p className="text-xs text-ink-500 dark:text-ink-400 mb-2 px-1">
               {semester === 3 ? 'Endnote' : `Zeugnisnote Semester ${semester}`}
             </p>
-            {noteBerechnet && (
-              <p className="text-xs text-gray-400 mb-2 px-1">Berechnet: {noteBerechnet.toFixed(1)}</p>
+            {noteBerechnetAnzeige != null && (
+              <p className="text-xs text-ink-400 mb-2 px-1">
+                Berechnet: {noteBerechnetAnzeige.toFixed(1)}{isDifferenziert && <span className="ml-1">({niveau})</span>}
+              </p>
             )}
             <div className="flex gap-1 mb-2">
-              {Array.from({ length: maxNote }, (_, i) => i + 1).map(n => (
-                <button
-                  key={n}
-                  className={`w-8 h-8 rounded font-bold text-sm transition-colors
-                    ${(istManuell ? noteManuell : Math.round(noteBerechnet)) === n
-                      ? 'bg-blue-600 text-white'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
-                  onClick={() => handleManuellSelect(n)}
-                >
-                  {n}
-                </button>
-              ))}
+              {Array.from({ length: maxNote }, (_, i) => i + 1).map(n => {
+                const istAusgewaehlt = istManuell
+                  ? noteManuellAnzeige === n
+                  : (noteBerechnetAnzeige != null && Math.max(1, Math.min(5, Math.round(noteBerechnetAnzeige))) === n)
+                return (
+                  <button
+                    key={n}
+                    className={`w-8 h-8 rounded font-bold text-sm transition-colors
+                      ${istAusgewaehlt
+                        ? 'bg-coral-600 text-white'
+                        : 'hover:bg-paper-100 dark:hover:bg-paper-200 dark:hover:bg-ink-700 text-ink-700 dark:text-paper-300'}`}
+                    onClick={() => handleManuellSelect(n)}
+                  >
+                    {n}
+                  </button>
+                )
+              })}
             </div>
             {istManuell && (
               <button

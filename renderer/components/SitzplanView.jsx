@@ -261,21 +261,21 @@ export default function SitzplanView() {
 
   // ─── Rendering ─────────────────────────────────────────────────────────────
   if (!aktiveKlasse) return (
-    <div className="flex-1 flex items-center justify-center text-zinc-400 text-sm">Keine Klasse ausgewählt</div>
+    <div className="flex-1 flex items-center justify-center text-ink-400 text-sm">Keine Klasse ausgewählt</div>
   )
   if (!aktivesFach) return (
-    <div className="flex-1 flex items-center justify-center text-zinc-400 text-sm">Bitte Fach auswählen</div>
+    <div className="flex-1 flex items-center justify-center text-ink-400 text-sm">Bitte Fach auswählen</div>
   )
 
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800">
+      <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-ink-900 border-b border-paper-100 dark:border-ink-800">
         <button
           className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
             bearbeitungsModus
-              ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
-              : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+              ? 'bg-coral-100 dark:bg-coral-900/40 text-coral-700 dark:text-coral-300'
+              : 'text-ink-500 hover:text-ink-700 dark:text-ink-400 dark:hover:text-ink-900 dark:hover:text-paper-200 hover:bg-paper-100 dark:hover:bg-ink-800'
           }`}
           onClick={() => { setBearbeitungsModus(v => !v); setSelectedIds(new Set()) }}
         >
@@ -283,21 +283,21 @@ export default function SitzplanView() {
         </button>
         {bearbeitungsModus && (
           <>
-            <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700" />
+            <div className="w-px h-5 bg-paper-200 dark:bg-ink-700" />
             <button className="btn-secondary text-xs" onClick={() => handleAddTisch('einzel')}>+ Einzeltisch</button>
             <button className="btn-secondary text-xs" onClick={() => handleAddTisch('doppel')}>+ Doppeltisch</button>
-            <span className="text-xs text-zinc-400">
+            <span className="text-xs text-ink-400">
               Ziehen = verschieben · Strg+Ziehen = duplizieren · Ziehen auf leerem Bereich = Gruppe markieren
             </span>
             {selectedIds.size > 1 && (
-              <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+              <span className="text-xs font-medium text-coral-600 dark:text-coral-400">
                 {selectedIds.size} Tische ausgewählt
               </span>
             )}
           </>
         )}
         {!bearbeitungsModus && tische.length > 0 && (
-          <span className="text-xs text-zinc-400">Rechtsklick → Schüler:in · Klick → Eintrag</span>
+          <span className="text-xs text-ink-400">Rechtsklick → Schüler:in · Klick → Eintrag</span>
         )}
       </div>
 
@@ -305,13 +305,13 @@ export default function SitzplanView() {
       <div
         ref={canvasRef}
         data-canvas-bg="1"
-        className="flex-1 relative overflow-auto bg-zinc-50 dark:bg-zinc-950"
+        className="flex-1 relative overflow-auto bg-paper-50 dark:bg-ink-950"
         style={{ backgroundImage: 'radial-gradient(circle, #d4d4d8 1px, transparent 1px)', backgroundSize: '24px 24px' }}
         onClick={() => { setContextMenu(null); setEintragMenu(null); if (bearbeitungsModus) setSelectedIds(new Set()) }}
         onMouseDown={onCanvasMouseDown}
       >
         {tische.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-zinc-400 text-sm pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center text-ink-400 text-sm pointer-events-none">
             Noch keine Tische. Klicke auf „+ Einzeltisch" oder „+ Doppeltisch".
           </div>
         )}
@@ -336,15 +336,15 @@ export default function SitzplanView() {
             className="absolute pointer-events-none"
             style={{ left: g.x, top: g.y, width: tischBreite(g.tisch.typ), height: EINZEL_H, opacity: 0.65 }}
           >
-            <div className="absolute inset-0 rounded-xl border-2 border-dashed border-indigo-500 bg-indigo-100 dark:bg-indigo-900/60" />
+            <div className="absolute inset-0 rounded-xl border-2 border-dashed border-coral-500 bg-coral-100 dark:bg-coral-900/60" />
             <div className="absolute inset-0 flex items-center justify-center gap-2 px-2">
               {g.tisch.sitze.map(sitz => (
                 <div
                   key={sitz.id}
-                  className="flex flex-col items-center justify-center rounded-lg border border-dashed border-indigo-400 bg-indigo-50/60 dark:bg-indigo-900/30"
+                  className="flex flex-col items-center justify-center rounded-lg border border-dashed border-coral-400 bg-coral-50/60 dark:bg-coral-900/30"
                   style={{ width: SITZ_W, height: 56 }}
                 >
-                  <span className="text-[10px] text-indigo-300 dark:text-indigo-600">frei</span>
+                  <span className="text-[10px] text-coral-300 dark:text-coral-600">frei</span>
                 </div>
               ))}
             </div>
@@ -354,7 +354,7 @@ export default function SitzplanView() {
         {/* Rubber-band Auswahlrechteck */}
         {selectionRect && (
           <div
-            className="absolute pointer-events-none border-2 border-indigo-500 bg-indigo-500/10 rounded"
+            className="absolute pointer-events-none border-2 border-coral-500 bg-coral-500/10 rounded"
             style={{ left: selectionRect.x, top: selectionRect.y, width: selectionRect.w, height: selectionRect.h }}
           />
         )}
@@ -369,13 +369,13 @@ export default function SitzplanView() {
             style={{ left: contextMenu.x, top: contextMenu.y, position: 'fixed', zIndex: 50, maxHeight: 300, overflowY: 'auto' }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="context-menu-item text-zinc-400" onClick={() => handleAssign(contextMenu.sitz, null)}>
+            <div className="context-menu-item text-ink-400" onClick={() => handleAssign(contextMenu.sitz, null)}>
               — Kein Schüler:in —
             </div>
             {schueler.map(s => (
               <div
                 key={s.id}
-                className={`context-menu-item ${contextMenu.sitz.schueler_id === s.id ? 'font-semibold text-indigo-600 dark:text-indigo-400' : ''}`}
+                className={`context-menu-item ${contextMenu.sitz.schueler_id === s.id ? 'font-semibold text-coral-600 dark:text-coral-400' : ''}`}
                 onClick={() => handleAssign(contextMenu.sitz, s.id)}
               >
                 {s.nachname} {s.vorname}
@@ -391,17 +391,17 @@ export default function SitzplanView() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setEintragMenu(null)} />
           <div
-            className="absolute z-50 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl p-3 min-w-[200px]"
+            className="absolute z-50 bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-xl shadow-xl p-3 min-w-[200px]"
             style={{ left: eintragMenu.x, top: eintragMenu.y, position: 'fixed' }}
             onClick={e => e.stopPropagation()}
           >
             {(() => {
               const s = schueler.find(s => s.id === eintragMenu.schueler_id)
-              return <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2">{s?.nachname} {s?.vorname}</p>
+              return <p className="text-xs font-semibold text-ink-700 dark:text-paper-300 mb-2">{s?.nachname} {s?.vorname}</p>
             })()}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500 dark:text-zinc-400 w-6">MA</span>
+                <span className="text-xs text-ink-500 dark:text-ink-400 w-6">MA</span>
                 {['+', '-'].map(wert => {
                   const aktiv = getHeutigerWert('MA', eintragMenu.schueler_id) === wert
                   return (
@@ -410,14 +410,14 @@ export default function SitzplanView() {
                       className={`w-8 h-8 rounded font-bold text-sm transition-colors
                         ${aktiv
                           ? wert === '+' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                          : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-600'}`}
+                          : 'bg-paper-100 dark:bg-ink-700 text-ink-500 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-600'}`}
                       onClick={() => handleSitzEintrag('MA', wert)}
                     >{wert}</button>
                   )
                 })}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500 dark:text-zinc-400 w-6">HÜ</span>
+                <span className="text-xs text-ink-500 dark:text-ink-400 w-6">HÜ</span>
                 {[['✓', 'green'], ['✗', 'red']].map(([wert, farbe]) => {
                   const aktiv = getHeutigerWert('HÜ', eintragMenu.schueler_id) === wert
                   return (
@@ -426,7 +426,7 @@ export default function SitzplanView() {
                       className={`w-8 h-8 rounded font-bold text-sm transition-colors
                         ${aktiv
                           ? farbe === 'green' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                          : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-600'}`}
+                          : 'bg-paper-100 dark:bg-ink-700 text-ink-500 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-600'}`}
                       onClick={() => handleSitzEintrag('HÜ', wert)}
                     >{wert}</button>
                   )
@@ -452,10 +452,10 @@ function Tisch({ tisch, bearbeitungsModus, selected, onMouseDown, onDelete, onSi
       <div
         className={`absolute inset-0 rounded-xl border-2 transition-colors
           ${selected
-            ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 ring-2 ring-indigo-400/40'
+            ? 'border-coral-500 dark:border-coral-400 bg-coral-50 dark:bg-coral-900/60 ring-2 ring-coral-400/40'
             : bearbeitungsModus
-            ? 'border-indigo-300 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40'
-            : 'border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800'}`}
+            ? 'border-coral-300 dark:border-coral-600 bg-coral-50 dark:bg-coral-900/40'
+            : 'border-paper-300 dark:border-ink-600 bg-white dark:bg-ink-800'}`}
       />
 
       {bearbeitungsModus && (
@@ -489,9 +489,9 @@ function SitzPlatz({ sitz, bearbeitungsModus, onRechtsklick, onKlick }) {
       className={`flex flex-col items-center justify-center rounded-lg border transition-all text-center overflow-hidden px-1
         ${belegt
           ? bearbeitungsModus
-            ? 'border-zinc-400 dark:border-zinc-500 bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200'
-            : 'border-zinc-400 dark:border-zinc-500 bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-600'
-          : 'border-dashed border-zinc-300 dark:border-zinc-600 text-zinc-300 dark:text-zinc-600 cursor-context-menu'
+            ? 'border-ink-400 dark:border-ink-500 bg-paper-100 dark:bg-ink-700 text-ink-700 dark:text-paper-200'
+            : 'border-ink-400 dark:border-ink-500 bg-paper-100 dark:bg-ink-700 text-ink-700 dark:text-paper-200 cursor-pointer hover:bg-paper-200 dark:hover:bg-ink-600'
+          : 'border-dashed border-paper-300 dark:border-ink-600 text-ink-600 dark:text-paper-300 dark:text-ink-600 cursor-context-menu'
         }`}
       style={{ width: SITZ_W, height: 56 }}
       title={belegt ? `${sitz.nachname} ${sitz.vorname}` : 'Leer – Rechtsklick zum Zuweisen'}
@@ -504,7 +504,7 @@ function SitzPlatz({ sitz, bearbeitungsModus, onRechtsklick, onKlick }) {
           <span className="text-[9px] leading-tight truncate w-full text-center opacity-80">{sitz.vorname}</span>
         </>
       ) : (
-        <span className="text-[10px] font-normal text-zinc-300 dark:text-zinc-600">frei</span>
+        <span className="text-[10px] font-normal text-ink-600 dark:text-paper-300 dark:text-ink-600">frei</span>
       )}
     </div>
   )
