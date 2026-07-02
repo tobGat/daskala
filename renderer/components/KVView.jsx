@@ -40,7 +40,8 @@ export default function KVView() {
       setAktiveKVKlasse(kvKlassen[0] ?? null)
     }
     // Beim Öffnen einmal alte offene Rückrufe → Trigger erzeugen
-    window.api.kv.pruefeOffeneRueckrufe().then(setOffeneRueckrufe).catch(() => {})
+    window.api.kv.pruefeOffeneRueckrufe().then(setOffeneRueckrufe)
+      .catch(e => console.error('pruefeOffeneRueckrufe:', e))
   }, [kvKlassen.length])
 
   if (kvKlassen.length === 0) {

@@ -23,7 +23,7 @@ async function htmlZuPdf(htmlContent) {
 
 // ─── Leistungsprofil-PDF-HTML ─────────────────────────────────────────────────
 function bauePdfHtml(profil, klassenname) {
-  const { schueler, faecher, zeugnisnoten, eintraege, notizen } = profil
+  const { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus = {} } = profil
 
   function esc(t) {
     return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -91,8 +91,10 @@ function bauePdfHtml(profil, klassenname) {
     const fachEintr = eintraege.filter(e => e.fach_id === fach.id)
     const znS1 = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 1)
     const znS2 = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 2)
-    const n1 = znS1?.note_manuell ?? (znS1?.note_berechnet ? Math.round(znS1.note_berechnet) : null)
-    const n2 = znS2?.note_manuell ?? (znS2?.note_berechnet ? Math.round(znS2.note_berechnet) : null)
+    const istDiff = fach.benotungssystem === 'differenziert'
+    const niveau = niveaus[fach.id] ?? 'AHS'
+    const n1 = znInternZuAnzeige(znS1?.note_manuell ?? znS1?.note_berechnet, niveau, istDiff)
+    const n2 = znInternZuAnzeige(znS2?.note_manuell ?? znS2?.note_berechnet, niveau, istDiff)
     const maEintr = fachEintr.filter(e => e.kategorie === 'MA' && e.wert)
     const maPos = maEintr.filter(e => e.wert === '+').length
     const maNeg = maEintr.filter(e => e.wert === '-').length
@@ -1003,6 +1005,15 @@ function niveauZurZeit(niveauHist, datum, fallback) {
 // Offset für interne 1-7-Skala bei differenzierten Fächern. AHS → 0, ST → +2.
 function niveauOffset(niveau) { return niveau === 'ST' ? 2 : 0 }
 
+// Interner Notenwert (bei differenzierten Fächern 1-7) → angezeigte ganze Zeugnisnote (1-5).
+// Bei Standardfächern (istDifferenziert = false) ist der Offset 0 → reine Rundung/Deckelung.
+// Spiegelt die Bildschirm-Logik aus ZeugnisnoteZelle.jsx für konsistente Werte im Export.
+function znInternZuAnzeige(intern, niveau, istDifferenziert) {
+  if (intern === null || intern === undefined) return null
+  const off = istDifferenziert ? niveauOffset(niveau) : 0
+  return Math.max(1, Math.min(5, Math.round(intern - off)))
+}
+
 function berechneZeugnisnote(fachId, schuelerId, semester) {
   const fach = db.prepare('SELECT * FROM faecher WHERE id = ?').get(fachId)
   if (!fach) return { note: null }
@@ -1238,8 +1249,34 @@ function pruefeNotenTrigger(spalteId, schuelerId, wertNeu, wertAlt) {
   }
 }
 
+// Zentrales Fehler-Logging: Konsole + persistente error.log im userData-Ordner,
+// damit Fehler auch ohne offene Dev-Tools nachvollziehbar sind.
+function logError(context, err) {
+  console.error(`[${context}]`, err)
+  try {
+    if (userDataPath) {
+      const msg = err && err.stack ? err.stack : String(err)
+      fs.appendFileSync(path.join(userDataPath, 'error.log'), `${new Date().toISOString()} [${context}] ${msg}\n`)
+    }
+  } catch {}
+}
+
 // ─── IPC Handler registrieren ─────────────────────────────────────────────────
 function registerIPC() {
+  // Zentraler Fehler-Wrapper: fängt Ausnahmen aus ALLEN nachfolgend registrierten
+  // Handlern ab, protokolliert sie mit Kanalnamen und reicht sie als abgelehntes
+  // Promise an den Renderer weiter – ohne alle Handler einzeln anzufassen.
+  const _origHandle = ipcMain.handle.bind(ipcMain)
+  ipcMain.handle = (channel, listener) =>
+    _origHandle(channel, async (event, ...args) => {
+      try {
+        return await listener(event, ...args)
+      } catch (e) {
+        logError(`IPC '${channel}'`, e)
+        throw e
+      }
+    })
+
   // Einstellungen
   ipcMain.handle('einstellungen:get', (_, schluessel) => {
     return db.prepare('SELECT wert FROM einstellungen WHERE schluessel = ?').get(schluessel)?.wert ?? null
@@ -1666,7 +1703,12 @@ function registerIPC() {
       JOIN faecher f ON n.fach_id = f.id
       WHERE n.schueler_id = ? AND n.text IS NOT NULL AND n.text != ''
     `).all(schuelerId)
-    return { schueler, faecher, zeugnisnoten, eintraege, notizen }
+    // Aktuelles Niveau je Fach (für korrekte Rückrechnung differenzierter Noten im Export)
+    const niveaus = {}
+    db.prepare('SELECT fach_id, niveau FROM schueler_niveau WHERE schueler_id = ?')
+      .all(schuelerId)
+      .forEach(r => { niveaus[r.fach_id] = r.niveau })
+    return { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus }
   })
 
   ipcMain.handle('schueler:exportProfilPDF', async (_, { profil, klassenname }) => {
@@ -2438,8 +2480,17 @@ function registerIPC() {
 
     const entryMap = {}
     eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
+    const istDiff = fach.benotungssystem === 'differenziert'
+    const niveauMap = {}
+    if (istDiff) {
+      db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fachId)
+        .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
+    }
     const znMap = {}
-    zeugnisnoten.forEach(z => { znMap[`${z.schueler_id}_${z.semester}`] = z.note_manuell ?? z.note_berechnet })
+    zeugnisnoten.forEach(z => {
+      znMap[`${z.schueler_id}_${z.semester}`] =
+        znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
+    })
 
     const header = ['Name', ...spalten.map(s => `${s.kuerzel} ${s.datum ?? ''}`), 'ZN S1', 'ZN S2']
     const rows = [header]
@@ -2792,8 +2843,17 @@ function registerIPC() {
         const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fach.id)
         const entryMap = {}
         eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
+        const istDiff = fach.benotungssystem === 'differenziert'
+        const niveauMap = {}
+        if (istDiff) {
+          db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fach.id)
+            .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
+        }
         const znMap = {}
-        zeugnisnoten.forEach(z => { znMap[`${z.schueler_id}_${z.semester}`] = z.note_manuell ?? z.note_berechnet })
+        zeugnisnoten.forEach(z => {
+          znMap[`${z.schueler_id}_${z.semester}`] =
+            znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
+        })
 
         const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum.slice(5).replace('-', '.') : ''}`), 'ZN S1', 'ZN S2']
         const rows = [header]
@@ -2862,8 +2922,17 @@ function registerIPC() {
         const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fach.id)
         const entryMap = {}
         eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
+        const istDiff = fach.benotungssystem === 'differenziert'
+        const niveauMap = {}
+        if (istDiff) {
+          db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fach.id)
+            .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
+        }
         const znMap = {}
-        zeugnisnoten.forEach(z => { znMap[`${z.schueler_id}_${z.semester}`] = z.note_manuell ?? z.note_berechnet })
+        zeugnisnoten.forEach(z => {
+          znMap[`${z.schueler_id}_${z.semester}`] =
+            znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
+        })
 
         const thead = `<tr><th class="name">Name</th>${spalten.map(sp =>
           `<th>${escHtml(sp.kuerzel)}${sp.datum ? '<br>' + sp.datum.slice(5).replace('-', '.') : ''}</th>`

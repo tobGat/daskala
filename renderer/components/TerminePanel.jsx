@@ -205,7 +205,8 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
 
   useEffect(() => {
     ladeTermine()
-    window.api.stundenzeiten.getAll().then(setStundenzeiten).catch(() => {})
+    window.api.stundenzeiten.getAll().then(setStundenzeiten)
+      .catch(e => console.error('stundenzeiten.getAll:', e))
   }, [])
 
   useEffect(() => {

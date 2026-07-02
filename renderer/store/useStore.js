@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+let toastSeq = 0
+
 const useStore = create((set, get) => ({
   // ─── App-Zustand ──────────────────────────────────────────────────────────
   initialized: false,
@@ -45,6 +47,15 @@ const useStore = create((set, get) => ({
   contextMenu: null,     // { x, y, items }
   activeModal: null,     // 'spalteHinzufuegen' | 'einstellungen' | 'schuelerHinzufuegen' | 'schuljahrwechsel' | 'gewichtung'
   modalData: null,
+
+  // ─── Toasts / Benachrichtigungen ──────────────────────────────────────────
+  toasts: [],  // [{ id, message, type: 'success'|'error'|'info', duration }]
+  pushToast: (message, type = 'info', duration = 4000) => {
+    const id = ++toastSeq
+    set(state => ({ toasts: [...state.toasts, { id, message, type, duration }] }))
+    return id
+  },
+  dismissToast: (id) => set(state => ({ toasts: state.toasts.filter(t => t.id !== id) })),
 
   // ─── Einstellungen ────────────────────────────────────────────────────────
   einstellungen: {},
@@ -96,6 +107,10 @@ const useStore = create((set, get) => ({
       await get().ladeKlassen(aktuellesSchuljahr.id)
       await get().ladeTodos()
       await get().ladeTermine()
+      // Offene Elternkontakt-Rückrufe beim Start prüfen → erzeugt ggf. KV-Trigger,
+      // auch wenn der KV-Bereich in dieser Sitzung nicht geöffnet wird.
+      window.api.kv.pruefeOffeneRueckrufe()
+        .catch(e => console.error('pruefeOffeneRueckrufe (init):', e))
     }
   },
 

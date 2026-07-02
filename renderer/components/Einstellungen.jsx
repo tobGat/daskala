@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
 
 export default function Einstellungen({ onClose }) {
-  const { gewichtungGlobal, theme, setTheme, einstellungen } = useStore()
+  const { gewichtungGlobal, theme, setTheme, einstellungen, pushToast } = useStore()
 
   const [gew, setGew] = useState({
     SA: (gewichtungGlobal['SA'] ?? 0.4) * 100,
@@ -81,20 +81,20 @@ export default function Einstellungen({ onClose }) {
 
   const handleBackup = async () => {
     const pfad = await window.api.backup.create()
-    if (pfad) alert(`Backup erstellt:\n${pfad}`)
-    else alert('Backup fehlgeschlagen.')
+    if (pfad) pushToast(`Backup erstellt:\n${pfad}`, 'success')
+    else pushToast('Backup fehlgeschlagen.', 'error')
   }
 
   const handleSaveAs = async () => {
     const pfad = await window.api.db.saveAs()
-    if (pfad) alert(`Gespeichert unter:\n${pfad}`)
-    else if (pfad === null) alert('Speichern fehlgeschlagen.')
+    if (pfad) pushToast(`Gespeichert unter:\n${pfad}`, 'success')
+    else if (pfad === null) pushToast('Speichern fehlgeschlagen.', 'error')
   }
 
   const handleOpen = async () => {
     if (!confirm('Die aktuellen Daten werden ersetzt und die App startet neu. Fortfahren?')) return
     const ok = await window.api.db.open()
-    if (ok === null) alert('Öffnen fehlgeschlagen.')
+    if (ok === null) pushToast('Öffnen fehlgeschlagen.', 'error')
   }
 
   const katLabel = { SA: 'Schularbeiten', T: 'Tests', MA: 'Mitarbeit', 'HÜ': 'Hausübungen', CUSTOM: 'Individuell' }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import useStore from '../store/useStore'
 
 export function toLocalDateStr(d) {
   const y = d.getFullYear()
@@ -78,7 +79,10 @@ export default function PlanungModal({ eintrag, wocheDatum, fachWochentage = [],
         }
       }
       setJahresAbschnitte(abschnitte.filter(a => a.datum_bis >= datum && a.datum_von <= freitagStr))
-    }).catch(e => console.error('PlanungModal laden:', e))
+    }).catch(e => {
+      console.error('PlanungModal laden:', e)
+      useStore.getState().pushToast('Planung konnte nicht geladen werden.', 'error')
+    })
       .finally(() => setLaden(false))
   }, [])
 
@@ -109,7 +113,7 @@ export default function PlanungModal({ eintrag, wocheDatum, fachWochentage = [],
       await window.api.stundenPlanung.save(eintrag.id, wocheDatum, titel, inhalt, musizieren, hueText || null, berechneHueFrist(), link || null)
     } catch (e) {
       console.error('stundenPlanung.save Fehler:', e)
-      alert('Fehler beim Speichern: ' + e.message)
+      useStore.getState().pushToast('Fehler beim Speichern: ' + e.message, 'error')
       return
     }
     await onGespeichert()
