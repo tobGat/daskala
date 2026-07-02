@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Build-Ausgaben
+dist/
+dist-electron/
+
+# Logs
+*.log
+
+# Lokale Claude-Einstellungen
+.claude/settings.local.json
+
+# Betriebssystem
+.DS_Store
+Thumbs.db
