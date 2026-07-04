@@ -28,9 +28,10 @@ export default function KlassenTabs() {
   const {
     klassen, aktiveKlasse, setAktiveKlasse,
     schuljahre, aktuellesSchuljahr, setAktuellesSchuljahr,
-    openModal, ladeKlassen,
+    openModal, ladeAktiveKlassenliste,
+    vorlagenModus, setVorlagenModus,
     currentView, setCurrentView,
-    einstellungen,
+    einstellungen, pushToast,
   } = useStore()
   const planungAktiv = einstellungen?.planung_aktiv === '1'
   const KLASSEN_VIEWS = ALLE_KLASSEN_VIEWS.filter(v => !v.planungOnly || planungAktiv)
@@ -52,8 +53,9 @@ export default function KlassenTabs() {
 
   const renameSpeichern = async () => {
     if (!renameWert.trim()) { setRenameId(null); return }
-    await window.api.klassen.rename(renameId, renameWert.trim())
-    await ladeKlassen(aktuellesSchuljahr.id)
+    const res = await window.api.klassen.rename(renameId, renameWert.trim())
+    if (res?.ordnerWarnung) pushToast(res.ordnerWarnung, 'error')
+    await ladeAktiveKlassenliste()
     setRenameId(null)
   }
 
@@ -65,21 +67,30 @@ export default function KlassenTabs() {
   return (
     <div className="flex items-center gap-2 px-3 py-2 bg-paper-100 dark:bg-ink-900 border-b border-paper-200 dark:border-ink-800">
 
+      {/* Vorlagen-Modus Anzeige */}
+      {vorlagenModus && (
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300 flex-shrink-0 flex items-center gap-1 whitespace-nowrap">
+          <span aria-hidden>📐</span> Vorlagen-Modus
+        </span>
+      )}
+
       {/* Dashboard-Button (Stundenplan + Übersicht) */}
-      <button
-        className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all
-          ${currentView === 'stundenplan'
-            ? 'bg-white dark:bg-ink-800 text-coral-600 dark:text-coral-300 shadow-soft'
-            : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
-        onClick={() => setCurrentView('stundenplan')}
-        title="Dashboard mit Stundenplan, Aufgaben und Terminen"
-      >
-        <span aria-hidden>🗓️</span>
-        Dashboard
-      </button>
+      {!vorlagenModus && (
+        <button
+          className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all
+            ${currentView === 'stundenplan'
+              ? 'bg-white dark:bg-ink-800 text-coral-600 dark:text-coral-300 shadow-soft'
+              : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
+          onClick={() => setCurrentView('stundenplan')}
+          title="Dashboard mit Stundenplan, Aufgaben und Terminen"
+        >
+          <span aria-hidden>🗓️</span>
+          Dashboard
+        </button>
+      )}
 
       {/* KV-Button (nur sichtbar wenn mindestens eine KV-Klasse existiert) */}
-      {klassen.some(k => k.ist_kv) && (
+      {!vorlagenModus && klassen.some(k => k.ist_kv) && (
         <button
           className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all
             ${currentView === 'kv'
@@ -119,7 +130,11 @@ export default function KlassenTabs() {
                     ? 'bg-white dark:bg-ink-800 text-ink-900 dark:text-paper-100 shadow-soft'
                     : 'text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-200 hover:bg-paper-200/70 dark:hover:bg-ink-800/70'}`}
                 onClick={e => {
-                  if (currentView === 'stundenplan') {
+                  if (vorlagenModus) {
+                    setAktiveKlasse(k)
+                    setKlasseDropdown(null)
+                    setCurrentView('jahresplanung')
+                  } else if (currentView === 'stundenplan') {
                     setAktiveKlasse(k)
                     setKlasseDropdown(null)
                     setCurrentView('notentabelle')
@@ -154,17 +169,31 @@ export default function KlassenTabs() {
         <button
           className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-ink-500 dark:text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-coral-50 dark:hover:bg-coral-900/30 rounded-2xl transition-all"
           onClick={() => openModal('klasseHinzufuegen')}
-          title="Neue Klasse"
+          title={vorlagenModus ? 'Neue Vorlagenklasse' : 'Neue Klasse'}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-          Klasse
+          {vorlagenModus ? 'Vorlagenklasse' : 'Klasse'}
         </button>
       </div>
 
       {/* Schuljahr + Aktionen rechts */}
       <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Vorlagen-Modus umschalten (immer sichtbar) */}
+        <button
+          className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all
+            ${vorlagenModus
+              ? 'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300'
+              : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
+          onClick={() => setVorlagenModus(!vorlagenModus)}
+          title={vorlagenModus ? 'Zurück zu den echten Klassen' : 'Vorlagenklassen mit fertigen Jahresplanungen verwalten'}
+        >
+          <span aria-hidden>{vorlagenModus ? '✕' : '📐'}</span>
+          {vorlagenModus ? 'Vorlagenmodus beenden' : 'Vorlagen'}
+        </button>
+
+        {!vorlagenModus && (<>
         <select
           className="text-xs font-medium bg-white dark:bg-ink-800 border border-paper-300 dark:border-ink-700 rounded-xl px-2.5 py-1.5 cursor-pointer
             text-ink-700 dark:text-ink-300 focus:outline-none focus:ring-2 focus:ring-coral-400/30 focus:border-coral-400 transition-all"
@@ -204,6 +233,7 @@ export default function KlassenTabs() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
           </svg>
         </button>
+        </>)}
       </div>
 
       {/* Ansichts-Dropdown für Klasse */}
@@ -242,18 +272,20 @@ export default function KlassenTabs() {
             <div className="context-menu-item" onClick={() => { setTeamsLinkModal({ id: klasseContextMenu.klasse.id, wert: klasseContextMenu.klasse.teams_link ?? '' }); setKlasseContextMenu(null) }}>
               Teams-Link {klasseContextMenu.klasse.teams_link ? 'bearbeiten' : 'hinzufügen'}
             </div>
-            <div
-              className="context-menu-item"
-              onClick={async () => {
-                const klasse = klasseContextMenu.klasse
-                setKlasseContextMenu(null)
-                await window.api.klassen.setIstKv(klasse.id, !klasse.ist_kv)
-                await ladeKlassen(aktuellesSchuljahr.id)
-              }}
-            >
-              <span aria-hidden>{klasseContextMenu.klasse.ist_kv ? '📜' : '◯'}</span>
-              {klasseContextMenu.klasse.ist_kv ? 'KV-Markierung entfernen' : 'Als KV-Klasse markieren'}
-            </div>
+            {!vorlagenModus && (
+              <div
+                className="context-menu-item"
+                onClick={async () => {
+                  const klasse = klasseContextMenu.klasse
+                  setKlasseContextMenu(null)
+                  await window.api.klassen.setIstKv(klasse.id, !klasse.ist_kv)
+                  await ladeAktiveKlassenliste()
+                }}
+              >
+                <span aria-hidden>{klasseContextMenu.klasse.ist_kv ? '📜' : '◯'}</span>
+                {klasseContextMenu.klasse.ist_kv ? 'KV-Markierung entfernen' : 'Als KV-Klasse markieren'}
+              </div>
+            )}
             <div className="context-menu-separator" />
             <div
               className="context-menu-item text-red-600 dark:text-red-400 hover:!bg-red-50 dark:hover:!bg-red-900/30"
@@ -277,7 +309,7 @@ export default function KlassenTabs() {
           stats={loeschModal.stats}
           onConfirm={async () => {
             await window.api.klassen.delete(loeschModal.klasse.id)
-            await ladeKlassen(aktuellesSchuljahr.id)
+            await ladeAktiveKlassenliste()
             setLoeschModal(null)
           }}
           onClose={() => setLoeschModal(null)}
@@ -300,7 +332,7 @@ export default function KlassenTabs() {
               onKeyDown={async e => {
                 if (e.key === 'Enter') {
                   await window.api.klassen.setTeamsLink(teamsLinkModal.id, teamsLinkModal.wert.trim() || null)
-                  await ladeKlassen(aktuellesSchuljahr.id)
+                  await ladeAktiveKlassenliste()
                   setTeamsLinkModal(null)
                 }
                 if (e.key === 'Escape') setTeamsLinkModal(null)
@@ -311,13 +343,13 @@ export default function KlassenTabs() {
               {teamsLinkModal.wert && (
                 <button className="btn-danger text-sm" onClick={async () => {
                   await window.api.klassen.setTeamsLink(teamsLinkModal.id, null)
-                  await ladeKlassen(aktuellesSchuljahr.id)
+                  await ladeAktiveKlassenliste()
                   setTeamsLinkModal(null)
                 }}>Entfernen</button>
               )}
               <button className="btn-primary flex-1 text-sm" onClick={async () => {
                 await window.api.klassen.setTeamsLink(teamsLinkModal.id, teamsLinkModal.wert.trim() || null)
-                await ladeKlassen(aktuellesSchuljahr.id)
+                await ladeAktiveKlassenliste()
                 setTeamsLinkModal(null)
               }}>Speichern</button>
             </div>
@@ -340,7 +372,7 @@ export default function KlassenTabs() {
                   style={{ backgroundColor: farbe }}
                   onClick={async () => {
                     await window.api.klassen.setFarbe(farbMenuKlasse.id, farbe)
-                    await ladeKlassen(aktuellesSchuljahr.id)
+                    await ladeAktiveKlassenliste()
                     setFarbMenuKlasse(null)
                   }}
                 />
@@ -349,7 +381,7 @@ export default function KlassenTabs() {
                 className="w-5 h-5 rounded-full border-2 border-dashed border-paper-300 dark:border-ink-600 flex items-center justify-center text-ink-400 text-[9px] hover:border-ink-400 transition-colors"
                 onClick={async () => {
                   await window.api.klassen.setFarbe(farbMenuKlasse.id, null)
-                  await ladeKlassen(aktuellesSchuljahr.id)
+                  await ladeAktiveKlassenliste()
                   setFarbMenuKlasse(null)
                 }}
                 title="Keine Farbe"

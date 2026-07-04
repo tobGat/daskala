@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
 import { berechneSchulferien } from '../utils/schulferien'
+import SchuelerAvatar from './SchuelerAvatar'
+import AvatarEditorModal from './AvatarEditorModal'
 
 const FARB_PALETTE = [
   // Indigo
@@ -58,7 +60,7 @@ function FarbPicker({ value, onChange }) {
 
 // ─── Klasse hinzufügen ────────────────────────────────────────────────────────
 export function KlasseHinzufuegenModal() {
-  const { closeModal, aktuellesSchuljahr, ladeKlassen } = useStore()
+  const { closeModal, aktuellesSchuljahr, vorlagenModus, ladeAktiveKlassenliste } = useStore()
   const [name, setName] = useState('')
   const [farbe, setFarbe] = useState(FARB_PALETTE[0])
   const [teamsLink, setTeamsLink] = useState('')
@@ -67,32 +69,40 @@ export function KlasseHinzufuegenModal() {
   const handleSpeichern = async () => {
     if (!name.trim() || !aktuellesSchuljahr) return
     setLoading(true)
-    await window.api.klassen.create({ schuljahrId: aktuellesSchuljahr.id, name: name.trim(), farbe, teamsLink: teamsLink.trim() || null })
-    await ladeKlassen(aktuellesSchuljahr.id)
+    await window.api.klassen.create({
+      schuljahrId: aktuellesSchuljahr.id,
+      name: name.trim(),
+      farbe,
+      teamsLink: vorlagenModus ? null : (teamsLink.trim() || null),
+      istVorlage: vorlagenModus ? 1 : 0,
+    })
+    await ladeAktiveKlassenliste()
     closeModal()
   }
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && closeModal()}>
       <div className="modal-box">
-        <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-5">Neue Klasse</h2>
+        <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-5">{vorlagenModus ? 'Neue Vorlagenklasse' : 'Neue Klasse'}</h2>
         <input
           className="input mb-5"
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="Klassenname, z.B. 2b"
+          placeholder={vorlagenModus ? 'Name der Vorlage, z.B. „1. Klasse"' : 'Klassenname, z.B. 2b'}
           autoFocus
           onKeyDown={e => { if (e.key === 'Enter') handleSpeichern() }}
         />
         <div className="mb-5">
           <FarbPicker value={farbe} onChange={setFarbe} />
         </div>
+        {!vorlagenModus && (
         <input
           className="input mb-5"
           value={teamsLink}
           onChange={e => setTeamsLink(e.target.value)}
           placeholder="Teams-Kanal-Link (optional)"
         />
+        )}
         <div className="flex gap-3">
           <button className="btn-secondary flex-1" onClick={closeModal}>Abbrechen</button>
           <button className="btn-primary flex-1" onClick={handleSpeichern} disabled={loading || !name.trim()}>
@@ -105,18 +115,76 @@ export function KlasseHinzufuegenModal() {
 }
 
 // ─── Fach hinzufügen ──────────────────────────────────────────────────────────
+// Gemeinsame Alle/Auswahl-Schülerauswahl (Fach anlegen & Fach-Zuordnung bearbeiten)
+function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt }) {
+  const toggle = (id) => setAusgewaehlt(prev => {
+    const n = new Set(prev)
+    if (n.has(id)) n.delete(id); else n.add(id)
+    return n
+  })
+  return (
+    <div className="mb-5">
+      <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Schüler:innen</label>
+      <div className="flex gap-2 mb-2">
+        {[[true, 'Alle Schüler:innen'], [false, 'Auswahl']].map(([val, label]) => (
+          <button key={String(val)} type="button" onClick={() => setAlle(val)}
+            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              alle === val
+                ? 'border-coral-500 bg-coral-50 text-coral-700 dark:bg-coral-900 dark:text-coral-300 dark:border-coral-600'
+                : 'border-paper-200 dark:border-ink-700 text-ink-600 dark:text-ink-400 hover:bg-paper-50 dark:hover:bg-ink-800'
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {!alle && (
+        <>
+          <div className="flex justify-between items-center text-xs text-ink-400 mb-1 px-1">
+            <span>{ausgewaehlt.size} von {schueler.length} ausgewählt</span>
+            <span className="flex gap-2">
+              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(new Set(schueler.map(s => s.id)))}>Alle</button>
+              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(new Set())}>Keine</button>
+            </span>
+          </div>
+          <div className="max-h-52 overflow-y-auto space-y-0.5 border border-paper-200 dark:border-ink-700 rounded-lg p-1">
+            {schueler.length === 0 ? (
+              <p className="text-sm text-ink-400 text-center py-3">Keine Schüler:innen in der Klasse</p>
+            ) : schueler.map(s => {
+              const on = ausgewaehlt.has(s.id)
+              return (
+                <button type="button" key={s.id} onClick={() => toggle(s.id)}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${on ? 'bg-coral-50 dark:bg-coral-900/30' : 'hover:bg-paper-50 dark:hover:bg-ink-800'}`}>
+                  <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${on ? 'bg-coral-600 border-coral-600 text-white' : 'border-paper-300 dark:border-ink-600'}`}>{on ? '✓' : ''}</span>
+                  <SchuelerAvatar schueler={s} size={24} />
+                  <span className="text-sm text-ink-800 dark:text-paper-200 flex-1 truncate">{s.nachname} {s.vorname}</span>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function FachHinzufuegenModal() {
-  const { closeModal, aktiveKlasse, ladeKlassen, aktuellesSchuljahr } = useStore()
+  const { closeModal, aktiveKlasse, schueler, ladeAktiveKlassenliste } = useStore()
   const [name, setName] = useState('')
   const [farbe, setFarbe] = useState(null)
   const [benotungssystem, setBenotungssystem] = useState('standard')
+  const [alleSchueler, setAlleSchueler] = useState(true)
+  const [ausgewaehlt, setAusgewaehlt] = useState(() => new Set())
   const [loading, setLoading] = useState(false)
 
   const handleSpeichern = async () => {
     if (!name.trim() || !aktiveKlasse) return
     setLoading(true)
-    await window.api.faecher.create({ klasseId: aktiveKlasse.id, name: name.trim(), farbe, benotungssystem })
-    await ladeKlassen(aktuellesSchuljahr.id)
+    await window.api.faecher.create({
+      klasseId: aktiveKlasse.id, name: name.trim(), farbe, benotungssystem,
+      alleSchueler: alleSchueler ? 1 : 0,
+      schuelerIds: alleSchueler ? [] : [...ausgewaehlt],
+    })
+    await ladeAktiveKlassenliste()
     closeModal()
   }
 
@@ -165,10 +233,67 @@ export function FachHinzufuegenModal() {
             </button>
           </div>
         </div>
+        <SchuelerAuswahl
+          schueler={schueler}
+          alle={alleSchueler}
+          setAlle={setAlleSchueler}
+          ausgewaehlt={ausgewaehlt}
+          setAusgewaehlt={setAusgewaehlt}
+        />
         <div className="flex gap-3">
           <button className="btn-secondary flex-1" onClick={closeModal}>Abbrechen</button>
-          <button className="btn-primary flex-1" onClick={handleSpeichern} disabled={loading || !name.trim()}>
+          <button className="btn-primary flex-1" onClick={handleSpeichern} disabled={loading || !name.trim() || (!alleSchueler && ausgewaehlt.size === 0)}>
             {loading ? 'Speichern…' : 'Anlegen'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Fach-Zuordnung nachträglich bearbeiten (prop-getrieben, aus dem Fach-Kontextmenü) ──
+export function FachSchuelerModal({ fach, onClose, onSaved }) {
+  const { schueler } = useStore()
+  const [alle, setAlle] = useState(fach.alle_schueler !== 0)
+  const [ausgewaehlt, setAusgewaehlt] = useState(() => new Set())
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    window.api.faecher.getSchuelerIds(fach.id).then(ids => {
+      if (fach.alle_schueler === 0) { setAlle(false); setAusgewaehlt(new Set(ids)) }
+      else setAlle(true)
+      setLoading(false)
+    }).catch(e => { console.error('getSchuelerIds:', e); setLoading(false) })
+  }, [fach.id])
+
+  const handleSpeichern = async () => {
+    setSaving(true)
+    try {
+      await window.api.faecher.setSchueler(fach.id, { alle, schuelerIds: alle ? [] : [...ausgewaehlt] })
+      await onSaved?.()
+      onClose()
+    } catch (e) {
+      console.error('setSchueler:', e)
+      useStore.getState().pushToast?.('Zuordnung speichern fehlgeschlagen.', 'error')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box">
+        <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-1">Schüler:innen zuordnen</h2>
+        <p className="text-sm text-ink-500 dark:text-ink-400 mb-4">Fach „{fach.name}"</p>
+        {loading ? (
+          <p className="text-sm text-ink-400 py-6 text-center">Lade…</p>
+        ) : (
+          <SchuelerAuswahl schueler={schueler} alle={alle} setAlle={setAlle} ausgewaehlt={ausgewaehlt} setAusgewaehlt={setAusgewaehlt} />
+        )}
+        <div className="flex gap-3">
+          <button className="btn-secondary flex-1" onClick={onClose} disabled={saving}>Abbrechen</button>
+          <button className="btn-primary flex-1" onClick={handleSpeichern} disabled={saving || loading || (!alle && ausgewaehlt.size === 0)}>
+            {saving ? 'Speichern…' : 'Speichern'}
           </button>
         </div>
       </div>
@@ -185,6 +310,7 @@ export function SchuelerVerwaltenModal() {
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState('liste') // 'liste' | 'hinzufuegen' | 'import'
   const [loeschenId, setLoeschenId] = useState(null)
+  const [avatarSchueler, setAvatarSchueler] = useState(null)
 
   const handleHinzufuegen = async () => {
     if (!vorname.trim() && !nachname.trim()) return
@@ -269,9 +395,15 @@ export function SchuelerVerwaltenModal() {
               <p className="text-sm text-ink-400 text-center py-4">Noch keine Schüler:innen</p>
             ) : schueler.map(s => (
               <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg">
+                <SchuelerAvatar schueler={s} size={28} />
                 <span className="text-sm text-ink-900 dark:text-white flex-1">
                   {s.nachname} {s.vorname}
                 </span>
+                <button
+                  title="Avatar bearbeiten"
+                  onClick={() => setAvatarSchueler(s)}
+                  className="text-xs px-1.5 py-0.5 rounded border border-paper-200 text-ink-400 dark:border-ink-600 hover:border-coral-300 hover:text-coral-600 transition-colors"
+                >🎨</button>
                 {loeschenId === s.id && (
                   <>
                     <button
@@ -409,25 +541,49 @@ export function SchuelerVerwaltenModal() {
           </div>
         )}
       </div>
+
+      {avatarSchueler && (
+        <AvatarEditorModal
+          schueler={avatarSchueler}
+          onClose={() => setAvatarSchueler(null)}
+          onSaved={ladeSchueler}
+        />
+      )}
     </div>
   )
 }
 
 // ─── Gewichtung anpassen (fach-spezifisch) ───────────────────────────────────
 export function GewichtungModal() {
-  const { closeModal, modalData: fach, gewichtungGlobal, ladeKlassen, aktuellesSchuljahr } = useStore()
+  const { closeModal, modalData: fach, gewichtungGlobal, einstellungen, ladeKlassen, aktuellesSchuljahr } = useStore()
 
-  const [gew, setGew] = useState({
-    SA: ((fach?.gewichtung_sa ?? gewichtungGlobal['SA'] ?? 0.4) * 100),
-    T: ((fach?.gewichtung_t ?? gewichtungGlobal['T'] ?? 0.3) * 100),
-    MA: ((fach?.gewichtung_ma ?? gewichtungGlobal['MA'] ?? 0.2) * 100),
-    HÜ: ((fach?.gewichtung_hue ?? gewichtungGlobal['HÜ'] ?? 0.1) * 100),
-    CUSTOM: ((fach?.gewichtung_custom ?? gewichtungGlobal['CUSTOM'] ?? 0.1) * 100),
+  // Nur SA/Test/Individuell bilden die Note (wie global). MA & HÜ wirken als Einfluss.
+  // Beim Laden auf 100 % normieren – exakt wie in den Einstellungen.
+  const [gew, setGew] = useState(() => {
+    const roh = {
+      SA: fach?.gewichtung_sa ?? gewichtungGlobal['SA'] ?? 0.4,
+      T: fach?.gewichtung_t ?? gewichtungGlobal['T'] ?? 0.3,
+      CUSTOM: fach?.gewichtung_custom ?? gewichtungGlobal['CUSTOM'] ?? 0.1,
+    }
+    const summe = roh.SA + roh.T + roh.CUSTOM || 1
+    const pct = {
+      SA: Math.round(roh.SA / summe * 100),
+      T: Math.round(roh.T / summe * 100),
+      CUSTOM: Math.round(roh.CUSTOM / summe * 100),
+    }
+    const groesste = pct.SA >= pct.T && pct.SA >= pct.CUSTOM ? 'SA' : (pct.T >= pct.CUSTOM ? 'T' : 'CUSTOM')
+    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM)
+    return pct
   })
+  // Deckelung des MA- bzw. HÜ-Einflusses: Fach-Wert oder globaler Standard (0,5), unabhängig.
+  const globalMaEinfluss = einstellungen?.['ma_max_einfluss'] ?? einstellungen?.['ma_hue_max_einfluss'] ?? '0.5'
+  const globalHueEinfluss = einstellungen?.['hue_max_einfluss'] ?? einstellungen?.['ma_hue_max_einfluss'] ?? '0.5'
+  const [maEinfluss, setMaEinfluss] = useState(fach?.ma_max_einfluss != null ? String(fach.ma_max_einfluss) : globalMaEinfluss)
+  const [hueEinfluss, setHueEinfluss] = useState(fach?.hue_max_einfluss != null ? String(fach.hue_max_einfluss) : globalHueEinfluss)
   const [loading, setLoading] = useState(false)
 
   const gesamt = Object.values(gew).reduce((a, b) => a + b, 0)
-  const katLabel = { SA: 'Schularbeiten', T: 'Tests', MA: 'Mitarbeit', 'HÜ': 'Hausübungen', CUSTOM: 'Individuell' }
+  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell' }
 
   const handleSpeichern = async () => {
     if (Math.abs(gesamt - 100) > 0.5) return
@@ -436,9 +592,9 @@ export function GewichtungModal() {
     await window.api.faecher.updateGewichtung(fach.id, {
       sa: gew.SA / 100,
       t: gew.T / 100,
-      ma: gew.MA / 100,
-      hue: gew['HÜ'] / 100,
       custom: gew.CUSTOM / 100,
+      maEinfluss: parseFloat(maEinfluss),
+      hueEinfluss: parseFloat(hueEinfluss),
     })
     await ladeKlassen(aktuellesSchuljahr.id)
     closeModal()
@@ -475,11 +631,41 @@ export function GewichtungModal() {
           ))}
         </div>
 
-        <p className={`text-sm mb-5 ${Math.abs(gesamt - 100) > 0.5 ? 'text-red-500' : 'text-green-600'}`}>
+        <p className={`text-sm mb-1 ${Math.abs(gesamt - 100) > 0.5 ? 'text-red-500' : 'text-green-600'}`}>
           Gesamt: {gesamt.toFixed(0)}% {Math.abs(gesamt - 100) <= 0.5 ? '✓' : '(muss 100% sein)'}
         </p>
 
-        <div className="flex gap-3">
+        {/* Einfluss von Mitarbeit & Hausübung (fach-spezifische Deckelung, MA/HÜ unabhängig) */}
+        <div className="mt-4 pt-4 border-t border-paper-100 dark:border-ink-800">
+          <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Einfluss von Mitarbeit &amp; Hausübung</h3>
+          <p className="text-[11px] text-ink-400 dark:text-ink-500 mb-3 leading-snug">
+            MA (+/−) und HÜ (✓/✗) bilden keine Note, sondern verschieben sie leicht. Deckelung nur für dieses Fach – MA und HÜ unabhängig voneinander.
+          </p>
+          <div className="space-y-2.5">
+            {[
+              ['Mitarbeit', maEinfluss, setMaEinfluss],
+              ['Hausübung', hueEinfluss, setHueEinfluss],
+            ].map(([label, wert, setter]) => (
+              <div key={label} className="flex items-center gap-3">
+                <span className="text-sm text-ink-600 dark:text-ink-400 w-28">{label}</span>
+                <input
+                  type="range" min="0" max="1.5" step="0.05"
+                  className="flex-1"
+                  value={wert}
+                  onChange={e => setter(e.target.value)}
+                />
+                <span className="text-sm font-medium w-16 text-right tabular-nums text-ink-900 dark:text-white">
+                  ± {Number(wert).toFixed(2).replace('.', ',')}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1.5">
+            0 = kein Einfluss · 0,5 = Standard · höhere Werte wirken stärker
+          </p>
+        </div>
+
+        <div className="flex gap-3 mt-5">
           <button className="btn-secondary" onClick={handleZuruecksetzen} disabled={loading}>
             Global verwenden
           </button>
@@ -501,10 +687,10 @@ export function GewichtungModal() {
 export function SchuljahrwechselModal() {
   const { closeModal, aktuellesSchuljahr, klassen, ladeSchuljahrDaten } = useStore()
 
-  const [schuelerDaten, setSchuelerDaten] = useState([]) // { schueler, klasse, aktion, neueKlasse, neuerKlassenName }
+  // [{ klasse, vorruecken, neuerName, faecher:[{fach, vorruecken}], schueler:[{schueler, aktion}] }]
+  const [klassenDaten, setKlassenDaten] = useState([])
   const [neuesSchuljahr, setNeuesSchuljahr] = useState('')
   const [loading, setLoading] = useState(false)
-  const [schritt, setSchritt] = useState('vorbereitung') // 'vorbereitung' | 'bestaetigung'
 
   // Schuljahr-Bezeichnung automatisch inkrementieren
   useEffect(() => {
@@ -519,58 +705,66 @@ export function SchuljahrwechselModal() {
     }
   }, [aktuellesSchuljahr])
 
-  // Schüler:innen laden
+  // Klassen + Fächer + Schüler:innen laden
   useEffect(() => {
     const laden = async () => {
       const daten = []
       for (const klasse of klassen) {
-        const schuelerListe = await window.api.schueler.getAll(klasse.id)
+        const [schuelerListe, faecherListe] = await Promise.all([
+          window.api.schueler.getAll(klasse.id),
+          window.api.faecher.getAll(klasse.id),
+        ])
         // Automatisch neuen Klassennamen generieren (Zahl inkrementieren)
         const neuerName = klasse.name.replace(/(\d+)/, m => String(parseInt(m) + 1))
-        for (const s of schuelerListe) {
-          daten.push({
-            schueler: s,
-            klasse,
-            aktion: 'bleibt',
-            neueKlasse: neuerName,
-            neuerKlassenName: neuerName,
-          })
-        }
+        daten.push({
+          klasse,
+          vorruecken: true,
+          neuerName,
+          faecher: faecherListe.map(f => ({ fach: f, vorruecken: true })),
+          schueler: schuelerListe.map(s => ({ schueler: s, aktion: 'bleibt' })),
+        })
       }
-      setSchuelerDaten(daten)
+      setKlassenDaten(daten)
     }
     laden()
   }, [klassen])
 
-  const handleAktionChange = (schuelerId, aktion) => {
-    setSchuelerDaten(prev => prev.map(d =>
-      d.schueler.id === schuelerId ? { ...d, aktion } : d
-    ))
-  }
+  const patchKlasse = (kid, patch) =>
+    setKlassenDaten(prev => prev.map(k => k.klasse.id === kid ? { ...k, ...patch } : k))
+
+  const toggleFach = (kid, fid) =>
+    setKlassenDaten(prev => prev.map(k => k.klasse.id === kid
+      ? { ...k, faecher: k.faecher.map(f => f.fach.id === fid ? { ...f, vorruecken: !f.vorruecken } : f) }
+      : k))
+
+  const setAktion = (kid, sid, aktion) =>
+    setKlassenDaten(prev => prev.map(k => k.klasse.id === kid
+      ? { ...k, schueler: k.schueler.map(s => s.schueler.id === sid ? { ...s, aktion } : s) }
+      : k))
 
   const handleDurchfuehren = async () => {
     if (!aktuellesSchuljahr || !neuesSchuljahr.trim()) return
     setLoading(true)
     try {
-      // Klassen-Namen deduplizieren
-      const klassenNamen = {}
-      for (const d of schuelerDaten) {
-        if (!klassenNamen[d.klasse.id]) {
-          klassenNamen[d.klasse.id] = d.neuerKlassenName
-        }
-      }
+      const advancing = klassenDaten.filter(k => k.vorruecken)
 
-      const zuordnungen = schuelerDaten.map(d => ({
-        schuelerId: d.schueler.id,
-        alteKlasseId: d.klasse.id,
-        aktion: d.aktion,
-        neueKlasse: d.neuerKlassenName,
-        neuerKlassenName: klassenNamen[d.klasse.id],
+      // Nur ausgewählte Klassen + deren angehakte Fächer werden vorgerückt
+      const klassenPayload = advancing.map(k => ({
+        alteKlasseId: k.klasse.id,
+        neuerName: k.neuerName.trim() || k.klasse.name,
+        fachIds: k.faecher.filter(f => f.vorruecken).map(f => f.fach.id),
       }))
+
+      const zuordnungen = advancing.flatMap(k => k.schueler.map(s => ({
+        schuelerId: s.schueler.id,
+        alteKlasseId: k.klasse.id,
+        aktion: s.aktion,
+      })))
 
       const neueId = await window.api.jahresabschluss.neuesSchuljahr({
         altesSchuljahreId: aktuellesSchuljahr.id,
         neueBezeichnung: neuesSchuljahr.trim(),
+        klassen: klassenPayload,
         schuelerZuordnungen: zuordnungen,
       })
 
@@ -581,24 +775,18 @@ export function SchuljahrwechselModal() {
     }
   }
 
-  // Nach Klassen gruppieren
-  const nachKlassen = {}
-  for (const d of schuelerDaten) {
-    const kid = d.klasse.id
-    if (!nachKlassen[kid]) nachKlassen[kid] = { klasse: d.klasse, schueler: [] }
-    nachKlassen[kid].schueler.push(d)
-  }
+  const anzahlKlassen = klassenDaten.filter(k => k.vorruecken).length
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && closeModal()}>
       <div className="modal-box max-w-2xl">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Klassen vorrücken</h2>
+          <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Neues Schuljahr beginnen</h2>
           <button className="text-ink-400 hover:text-ink-600 text-xl" onClick={closeModal}>✕</button>
         </div>
 
         {/* Neues Schuljahr */}
-        <div className="mb-5 flex items-center gap-4">
+        <div className="mb-4 flex items-center gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1">Neues Schuljahr</label>
             <input
@@ -610,49 +798,96 @@ export function SchuljahrwechselModal() {
           </div>
         </div>
 
-        {/* Schüler:innen pro Klasse */}
-        <div className="max-h-96 overflow-y-auto space-y-4 mb-5">
-          {Object.values(nachKlassen).map(({ klasse, schueler: sl }) => (
-            <div key={klasse.id}>
-              <div className="flex items-center gap-3 mb-2">
-                <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300">{klasse.name}</h3>
-                <span className="text-ink-400">→</span>
-                <input
-                  className="input py-1 text-sm w-24"
-                  value={sl[0]?.neuerKlassenName ?? ''}
-                  onChange={e => {
-                    const val = e.target.value
-                    setSchuelerDaten(prev => prev.map(d =>
-                      d.klasse.id === klasse.id ? { ...d, neuerKlassenName: val } : d
-                    ))
-                  }}
-                  placeholder="Neuer Name"
-                />
+        <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">
+          Wähle, welche Klassen und Fächer vorgerückt werden. Nicht angehakte Klassen bzw. Fächer erscheinen im neuen Schuljahr nicht mehr.
+        </p>
+
+        {/* Klassen + Fächer + Schüler:innen */}
+        <div className="max-h-96 overflow-y-auto space-y-3 mb-5">
+          {klassenDaten.map(k => (
+            <div key={k.klasse.id}
+              className={`rounded-lg border p-3 transition-colors ${k.vorruecken
+                ? 'border-paper-200 dark:border-ink-700'
+                : 'border-paper-200 dark:border-ink-800 opacity-60 bg-paper-50 dark:bg-ink-900/40'}`}>
+
+              {/* Klassen-Kopf mit Vorrücken-Checkbox */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => patchKlasse(k.klasse.id, { vorruecken: !k.vorruecken })}
+                  className={`w-5 h-5 rounded border flex items-center justify-center text-xs flex-shrink-0 transition-colors ${k.vorruecken
+                    ? 'bg-coral-600 border-coral-600 text-white'
+                    : 'border-paper-300 dark:border-ink-600 text-transparent'}`}
+                  title={k.vorruecken ? 'Nicht vorrücken' : 'Vorrücken'}
+                >✓</button>
+                <span className="text-sm font-semibold text-ink-800 dark:text-paper-200">{k.klasse.name}</span>
+                {k.vorruecken ? (
+                  <>
+                    <span className="text-ink-400">→</span>
+                    <input
+                      className="input py-1 text-sm w-24"
+                      value={k.neuerName}
+                      onChange={e => patchKlasse(k.klasse.id, { neuerName: e.target.value })}
+                      placeholder="Neuer Name"
+                    />
+                  </>
+                ) : (
+                  <span className="text-xs text-ink-400 italic">wird nicht vorgerückt</span>
+                )}
               </div>
-              <div className="space-y-1 pl-2">
-                {sl.map(d => (
-                  <div key={d.schueler.id} className="flex items-center justify-between py-1">
-                    <span className="text-sm text-ink-900 dark:text-white">
-                      {d.schueler.nachname} {d.schueler.vorname}
-                    </span>
-                    <select
-                      className="text-xs border border-paper-200 dark:border-ink-700 rounded px-2 py-1 bg-white dark:bg-ink-800 focus:outline-none"
-                      value={d.aktion}
-                      onChange={e => handleAktionChange(d.schueler.id, e.target.value)}
-                    >
-                      <option value="bleibt">bleibt (vorrücken)</option>
-                      <option value="ausgeschieden">scheidet aus</option>
-                    </select>
-                  </div>
-                ))}
-              </div>
+
+              {k.vorruecken && (
+                <>
+                  {/* Fächer */}
+                  {k.faecher.length > 0 && (
+                    <div className="mt-2.5 pl-7">
+                      <p className="text-[11px] font-medium text-ink-400 uppercase tracking-wide mb-1">Fächer</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {k.faecher.map(f => (
+                          <button
+                            key={f.fach.id}
+                            type="button"
+                            onClick={() => toggleFach(k.klasse.id, f.fach.id)}
+                            className={`text-xs px-2 py-1 rounded-md border flex items-center gap-1 transition-colors ${f.vorruecken
+                              ? 'border-coral-400 bg-coral-50 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300 dark:border-coral-700'
+                              : 'border-paper-200 dark:border-ink-700 text-ink-400 line-through'}`}
+                          >
+                            {f.vorruecken ? '✓' : '○'} {f.fach.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Schüler:innen */}
+                  {k.schueler.length > 0 && (
+                    <div className="mt-2.5 pl-7 space-y-0.5">
+                      {k.schueler.map(s => (
+                        <div key={s.schueler.id} className="flex items-center justify-between py-0.5">
+                          <span className="text-sm text-ink-800 dark:text-paper-200">
+                            {s.schueler.nachname} {s.schueler.vorname}
+                          </span>
+                          <select
+                            className="text-xs border border-paper-200 dark:border-ink-700 rounded px-2 py-1 bg-white dark:bg-ink-800 focus:outline-none"
+                            value={s.aktion}
+                            onChange={e => setAktion(k.klasse.id, s.schueler.id, e.target.value)}
+                          >
+                            <option value="bleibt">bleibt (vorrücken)</option>
+                            <option value="ausgeschieden">scheidet aus</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           ))}
         </div>
 
         <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-5">
           <p className="text-xs text-yellow-700 dark:text-yellow-400">
-            Alle Daten des aktuellen Schuljahrs werden archiviert und sind danach schreibgeschützt.
+            Alle Daten des aktuellen Schuljahrs werden archiviert und sind danach schreibgeschützt. Nicht vorgerückte Klassen und Fächer bleiben nur im Archiv erhalten.
           </p>
         </div>
 
@@ -661,9 +896,9 @@ export function SchuljahrwechselModal() {
           <button
             className="btn-primary flex-1"
             onClick={handleDurchfuehren}
-            disabled={loading || !neuesSchuljahr.trim()}
+            disabled={loading || !neuesSchuljahr.trim() || anzahlKlassen === 0}
           >
-            {loading ? 'Vorrücken…' : 'Schuljahr abschließen & vorrücken'}
+            {loading ? 'Vorrücken…' : `Schuljahr abschließen (${anzahlKlassen} Klasse${anzahlKlassen === 1 ? '' : 'n'})`}
           </button>
         </div>
       </div>
@@ -775,7 +1010,7 @@ export function FerienModal() {
         setFerien(custom.map(f => ({ name: f.name, von: f.von, bis: f.bis })))
       } else {
         // Keine benutzerdefinierten → berechnete als Vorlage laden
-        const schuljahr = einstellungen?.schuljahr_aktuell ?? ''
+        const schuljahr = aktuellesSchuljahr?.bezeichnung ?? ''
         const bundesland = einstellungen?.bundesland ?? ''
         const berechnet = berechneSchulferien(schuljahr, bundesland)
         if (berechnet) {
@@ -804,7 +1039,7 @@ export function FerienModal() {
 
   const handleReset = () => {
     if (!confirm('Ferien auf die automatisch berechneten Werte zurücksetzen?')) return
-    const schuljahr = einstellungen?.schuljahr_aktuell ?? ''
+    const schuljahr = aktuellesSchuljahr?.bezeichnung ?? ''
     const bundesland = einstellungen?.bundesland ?? ''
     const berechnet = berechneSchulferien(schuljahr, bundesland)
     if (berechnet) {

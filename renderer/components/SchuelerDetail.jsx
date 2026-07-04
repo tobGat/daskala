@@ -1,27 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import useStore from '../store/useStore'
 import SchuelerKVSection from './kv/SchuelerKVSection'
+import SchuelerAvatar from './SchuelerAvatar'
+import AvatarEditorModal from './AvatarEditorModal'
+import { avatarSvg } from '../utils/avatar'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const AVATAR_FARBEN = [
-  '#fb6936', '#31a982', '#a98fff', '#56c39e', '#f59e0b',
-  '#ec4899', '#3b82f6', '#8b66f5', '#14b8a6', '#f97316',
-]
-function hashFromString(str) {
-  let h = 0
-  for (let i = 0; i < (str ?? '').length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0
-  return h
-}
-function avatarFarbe(schueler) {
-  const key = (schueler.vorname ?? '') + (schueler.nachname ?? '')
-  return AVATAR_FARBEN[hashFromString(key) % AVATAR_FARBEN.length]
-}
-function initialen(schueler) {
-  const v = (schueler.vorname ?? '').trim()[0] ?? ''
-  const n = (schueler.nachname ?? '').trim()[0] ?? ''
-  return (v + n).toUpperCase() || '?'
-}
-
 function noteZuFarbe(note) {
   if (note == null) return '#71717a'
   if (note <= 1.5) return '#22c55e'
@@ -291,9 +275,9 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, klassenname, schue
         <h3 className="text-lg font-bold text-ink-900 dark:text-paper-100 font-display">{fach.name}</h3>
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           {[
-            { label: 'S1',  zn: znS1,  highlight: false },
-            { label: 'S2',  zn: znS2,  highlight: false },
-            { label: 'EN',  zn: znEN,  highlight: true  },
+            { label: 'SN 1', zn: znS1, highlight: false },
+            { label: 'SN 2', zn: znS2, highlight: false },
+            { label: 'ZN',   zn: znEN, highlight: true  },
           ].map(({ label, zn, highlight }) => {
             const note = anzeige(zn)
             return (
@@ -469,13 +453,14 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, klassenname, schue
 
 // ─── Haupt-Modal ──────────────────────────────────────────────────────────────
 export default function SchuelerDetail() {
-  const { detailSchueler, closeDetail, aktivesFach, aktiveKlasse } = useStore()
+  const { detailSchueler, closeDetail, aktivesFach, aktiveKlasse, ladeSchueler } = useStore()
 
   const [profil, setProfil] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedFachId, setSelectedFachId] = useState(null)
   const [kvAktiv, setKvAktiv] = useState(false)         // ob KV-Sektion in Sidebar gewählt ist
   const [exportLoading, setExportLoading] = useState(false)
+  const [avatarSchueler, setAvatarSchueler] = useState(null)
 
   useEffect(() => {
     if (!detailSchueler) return
@@ -501,14 +486,14 @@ export default function SchuelerDetail() {
     if (!profil) return
     setExportLoading(true)
     try {
-      await window.api.schueler.exportProfilPDF({ profil, klassenname: aktiveKlasse?.name ?? '' })
+      const profilMitAvatar = { ...profil, avatarSvg: avatarSvg(profil.schueler, 96) }
+      await window.api.schueler.exportProfilPDF({ profil: profilMitAvatar, klassenname: aktiveKlasse?.name ?? '' })
     } finally {
       setExportLoading(false)
     }
   }
 
-  const farbe = avatarFarbe(detailSchueler)
-  const ini = initialen(detailSchueler)
+  const headerSchueler = profil?.schueler ?? detailSchueler
   const selectedFach = profil?.faecher?.find(f => f.id === selectedFachId)
 
   return (
@@ -517,12 +502,13 @@ export default function SchuelerDetail() {
 
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-3.5 border-b border-paper-200 dark:border-ink-800 flex-shrink-0">
-          <div
-            className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow-soft flex-shrink-0"
-            style={{ backgroundColor: farbe }}
-          >
-            {ini}
-          </div>
+          <SchuelerAvatar
+            schueler={headerSchueler}
+            size={44}
+            className="rounded-2xl shadow-soft"
+            onClick={() => setAvatarSchueler(headerSchueler)}
+            title="Avatar bearbeiten"
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <h2 className="font-bold text-base text-ink-900 dark:text-paper-100 font-display truncate">
@@ -624,7 +610,7 @@ export default function SchuelerDetail() {
                           </span>
                         </div>
                         <div className="flex items-center gap-1 pl-4">
-                          {[['S1', nS1], ['S2', nS2], ['EN', nEN]].map(([label, n]) => (
+                          {[['SN 1', nS1], ['SN 2', nS2], ['ZN', nEN]].map(([label, n]) => (
                             <span
                               key={label}
                               className={`text-[9px] font-bold px-1 py-0.5 rounded ${
@@ -669,6 +655,18 @@ export default function SchuelerDetail() {
           )}
         </div>
       </div>
+
+      {avatarSchueler && (
+        <AvatarEditorModal
+          schueler={avatarSchueler}
+          onClose={() => setAvatarSchueler(null)}
+          onSaved={async () => {
+            const data = await window.api.schueler.getLeistungsProfil(detailSchueler.id)
+            setProfil(data)
+            await ladeSchueler()   // Store-Schülerliste (Notentabelle/Sitzplan) mit aktualisieren
+          }}
+        />
+      )}
     </div>
   )
 }

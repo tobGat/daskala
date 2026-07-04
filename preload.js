@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('api', {
 
   klassen: {
     getAll: (schuljahrId) => invoke('klassen:getAll', schuljahrId),
+    getVorlagen: () => invoke('klassen:getVorlagen'),
     create: (data) => invoke('klassen:create', data),
     delete: (id) => invoke('klassen:delete', id),
     getDeleteStats: (id) => invoke('klassen:getDeleteStats', id),
@@ -85,6 +86,8 @@ contextBridge.exposeInMainWorld('api', {
     updateGewichtung: (id, data) => invoke('faecher:updateGewichtung', id, data),
     resetGewichtung: (id) => invoke('faecher:resetGewichtung', id),
     setBenotungssystem: (id, system) => invoke('faecher:setBenotungssystem', id, system),
+    getSchuelerIds: (fachId) => invoke('faecher:getSchuelerIds', fachId),
+    setSchueler: (fachId, data) => invoke('faecher:setSchueler', fachId, data),
   },
 
   niveau: {
@@ -99,6 +102,7 @@ contextBridge.exposeInMainWorld('api', {
     create: (data) => invoke('schueler:create', data),
     delete: (id) => invoke('schueler:delete', id),
     update: (id, data) => invoke('schueler:update', id, data),
+    setAvatar: (id, avatar) => invoke('schueler:setAvatar', id, avatar),
     reorder: (updates) => invoke('schueler:reorder', updates),
     importBatch: (klasseId, list) => invoke('schueler:importBatch', klasseId, list),
     getLeistungsProfil: (id) => invoke('schueler:getLeistungsProfil', id),
@@ -149,6 +153,7 @@ contextBridge.exposeInMainWorld('api', {
     update: (id, data) => invoke('stundenzeiten:update', id, data),
     create: () => invoke('stundenzeiten:create'),
     delete: (id) => invoke('stundenzeiten:delete', id),
+    saveAll: (rows) => invoke('stundenzeiten:saveAll', rows),
   },
 
   stundenplan: {
@@ -236,6 +241,7 @@ contextBridge.exposeInMainWorld('api', {
     allSchuelerExcel: () => invoke('export:allSchuelerExcel'),
     allSchuelerPdf: () => invoke('export:allSchuelerPdf'),
     fachPlanungDocx: (fachId, fachName, klasseName, wochenDaten) => invoke('export:fachPlanungDocx', fachId, fachName, klasseName, wochenDaten),
+    jahresplanungPdf: (fachId) => invoke('export:jahresplanungPdf', fachId),
   },
 
   import: {
@@ -277,7 +283,19 @@ contextBridge.exposeInMainWorld('api', {
     update:            (id, d)                 => invoke('jahresplanung:update', id, d),
     delete:            (id)                    => invoke('jahresplanung:delete', id),
     getFaecherMitPlan: ()                      => invoke('jahresplanung:getFaecherMitPlan'),
-    importVonFach:     (quellId, zielId)       => invoke('jahresplanung:importVonFach', quellId, zielId),
+    importVonFach:     (quellId, zielId, options) => invoke('jahresplanung:importVonFach', quellId, zielId, options),
     swap:              (idA, idB)              => invoke('jahresplanung:swap', idA, idB),
+  },
+
+  materialien: {
+    waehleRoot:         ()                  => invoke('materialien:waehleRoot'),
+    getRoot:            ()                  => invoke('materialien:getRoot'),
+    list:               (abschnittId)       => invoke('materialien:list', abschnittId),
+    dateienHinzufuegen: (abschnittId)       => invoke('materialien:dateienHinzufuegen', abschnittId),
+    linkHinzufuegen:    (abschnittId, data) => invoke('materialien:linkHinzufuegen', abschnittId, data),
+    metaSetzen:         (data)              => invoke('materialien:metaSetzen', data),
+    entfernen:          (data)              => invoke('materialien:entfernen', data),
+    oeffnen:            (data)              => invoke('materialien:oeffnen', data),
+    ordnerOeffnen:      (abschnittId)       => invoke('materialien:ordnerOeffnen', abschnittId),
   },
 })

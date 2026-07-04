@@ -42,6 +42,7 @@ export default function Einrichtungsflow() {
   const [semester, setSemester] = useState(defaultSemester)
   const [klasse, setKlasse] = useState('')
   const [fach, setFach] = useState('')
+  const [materialRootPfad, setMaterialRootPfad] = useState('')
   const [schuelerText, setSchuelerText] = useState('')
   const [importListe, setImportListe] = useState([])
   const [loading, setLoading] = useState(false)
@@ -235,6 +236,20 @@ export default function Einrichtungsflow() {
                     />
                   </div>
                   <p className="text-xs text-ink-500">Weitere Klassen und Fächer kannst du jederzeit hinzufügen.</p>
+                  <div className="pt-2 border-t border-paper-100">
+                    <label className="block text-sm font-medium text-ink-700 mb-1">Materialordner <span className="font-normal text-ink-400">(optional)</span></label>
+                    <p className="text-xs text-ink-500 mb-2">Ordner für Materialien der Jahresplanung – kannst du auch später in den Einstellungen wählen.</p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={async () => { const p = await window.api.materialien.waehleRoot(); if (p) setMaterialRootPfad(p) }}
+                      >
+                        Ordner wählen…
+                      </button>
+                      {materialRootPfad && <span className="text-xs text-ink-500 truncate" title={materialRootPfad}>{materialRootPfad}</span>}
+                    </div>
+                  </div>
                 </div>
                 {fehler && <p className="text-red-500 text-sm mt-3">{fehler}</p>}
                 <div className="flex gap-3 mt-8">

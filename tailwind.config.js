@@ -102,6 +102,7 @@ export default {
         'pop-in':        'popIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both',
         'slide-up':      'slideUp 0.36s cubic-bezier(0.16, 1, 0.3, 1) both',
         'shimmer':       'shimmer 2.2s linear infinite',
+        'glow-frame':    'glowFrame 3s ease-in-out infinite',
       },
       keyframes: {
         gentleBounce: {
@@ -128,6 +129,11 @@ export default {
         shimmer: {
           '0%':   { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
+        },
+        // Dezent pulsierendes grünes Leuchten für den Vorlagen-Modus-Rahmen
+        glowFrame: {
+          '0%, 100%': { boxShadow: 'inset 0 0 8px 0px rgba(34, 197, 94, 0.22)' },
+          '50%':      { boxShadow: 'inset 0 0 16px 2px rgba(34, 197, 94, 0.40)' },
         },
       },
     },

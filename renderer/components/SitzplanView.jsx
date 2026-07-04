@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import useStore from '../store/useStore'
+import SchuelerAvatar from './SchuelerAvatar'
 
 // Dimensionen
 const EINZEL_W = 80
@@ -11,7 +12,7 @@ const SITZ_W = 75
 function tischBreite(typ) { return typ === 'doppel' ? DOPPEL_W : EINZEL_W }
 
 export default function SitzplanView() {
-  const { aktiveKlasse, schueler, aktivesFach, spalten, eintraege, aktiveSemester } = useStore()
+  const { aktiveKlasse, schueler, aktivesFach, spalten, eintraege, aktiveSemester, fachSchuelerIds } = useStore()
 
   const [tische, setTische] = useState([])
   const [bearbeitungsModus, setBearbeitungsModus] = useState(false)
@@ -372,7 +373,7 @@ export default function SitzplanView() {
             <div className="context-menu-item text-ink-400" onClick={() => handleAssign(contextMenu.sitz, null)}>
               — Kein Schüler:in —
             </div>
-            {schueler.map(s => (
+            {schueler.filter(s => fachSchuelerIds.has(s.id)).map(s => (
               <div
                 key={s.id}
                 className={`context-menu-item ${contextMenu.sitz.schueler_id === s.id ? 'font-semibold text-coral-600 dark:text-coral-400' : ''}`}
@@ -500,6 +501,7 @@ function SitzPlatz({ sitz, bearbeitungsModus, onRechtsklick, onKlick }) {
     >
       {belegt ? (
         <>
+          <SchuelerAvatar schueler={sitz} size={22} className="mb-0.5" />
           <span className="text-[9px] font-semibold leading-tight truncate w-full text-center">{sitz.nachname}</span>
           <span className="text-[9px] leading-tight truncate w-full text-center opacity-80">{sitz.vorname}</span>
         </>

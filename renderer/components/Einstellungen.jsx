@@ -4,15 +4,27 @@ import useStore from '../store/useStore'
 export default function Einstellungen({ onClose }) {
   const { gewichtungGlobal, theme, setTheme, einstellungen, pushToast } = useStore()
 
-  const [gew, setGew] = useState({
-    SA: (gewichtungGlobal['SA'] ?? 0.4) * 100,
-    T: (gewichtungGlobal['T'] ?? 0.3) * 100,
-    MA: (gewichtungGlobal['MA'] ?? 0.2) * 100,
-    HÜ: (gewichtungGlobal['HÜ'] ?? 0.1) * 100,
-    CUSTOM: (gewichtungGlobal['CUSTOM'] ?? 0.1) * 100,
+  // Nur noch SA, Test, Individuell bilden die Note → beim Laden auf 100 % normieren
+  // (Mitarbeit/Hausübung zählen als Einfluss, nicht als Gewicht).
+  const [gew, setGew] = useState(() => {
+    const roh = {
+      SA: gewichtungGlobal['SA'] ?? 0.4,
+      T: gewichtungGlobal['T'] ?? 0.3,
+      CUSTOM: gewichtungGlobal['CUSTOM'] ?? 0.1,
+    }
+    const summe = roh.SA + roh.T + roh.CUSTOM || 1
+    const pct = {
+      SA: Math.round(roh.SA / summe * 100),
+      T: Math.round(roh.T / summe * 100),
+      CUSTOM: Math.round(roh.CUSTOM / summe * 100),
+    }
+    // Rundungsdifferenz der größten Kategorie zuschlagen, damit die Summe exakt 100 ergibt
+    const groesste = pct.SA >= pct.T && pct.SA >= pct.CUSTOM ? 'SA' : (pct.T >= pct.CUSTOM ? 'T' : 'CUSTOM')
+    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM)
+    return pct
   })
-  const [maPlusWert, setMaPlusWert] = useState(einstellungen['ma_plus_wert'] ?? '1')
-  const [maMinusWert, setMaMinusWert] = useState(einstellungen['ma_minus_wert'] ?? '5')
+  const [maEinfluss, setMaEinfluss] = useState(einstellungen['ma_max_einfluss'] ?? einstellungen['ma_hue_max_einfluss'] ?? '0.5')
+  const [hueEinfluss, setHueEinfluss] = useState(einstellungen['hue_max_einfluss'] ?? einstellungen['ma_hue_max_einfluss'] ?? '0.5')
   const [semester2Monat, setSemester2Monat] = useState(einstellungen['semester2_monat'] ?? '2')
   const [s1Gewichtung, setS1Gewichtung] = useState(Math.round((parseFloat(einstellungen['s1_gewichtung'] ?? '0.5')) * 100))
   const [loading, setLoading] = useState(false)
@@ -22,6 +34,21 @@ export default function Einstellungen({ onClose }) {
   const [onedriveAktiv, setOnedriveAktiv] = useState(einstellungen['onedrive_backup_aktiv'] === '1')
   const [planungAktiv, setPlanungAktiv] = useState(einstellungen['planung_aktiv'] === '1')
   const [onedriveInfo, setOnedriveInfo] = useState(null) // { pfad, verfuegbar }
+  const [materialRootPfad, setMaterialRootPfad] = useState(einstellungen['material_root_pfad'] || '')
+
+  const handleMaterialRootWaehlen = async () => {
+    const p = await window.api.materialien.waehleRoot()
+    if (p) {
+      setMaterialRootPfad(p)
+      useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+      pushToast('Materialordner gesetzt.', 'success')
+    }
+  }
+  const handleMaterialRootZuruecksetzen = async () => {
+    await window.api.einstellungen.set('material_root_pfad', '')
+    setMaterialRootPfad('')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
 
   useEffect(() => {
     window.api.onedrive.getInfo().then(setOnedriveInfo)
@@ -47,8 +74,8 @@ export default function Einstellungen({ onClose }) {
       for (const [kat, val] of Object.entries(gew)) {
         await window.api.gewichtungGlobal.update(kat, val / 100)
       }
-      await window.api.einstellungen.set('ma_plus_wert', maPlusWert)
-      await window.api.einstellungen.set('ma_minus_wert', maMinusWert)
+      await window.api.einstellungen.set('ma_max_einfluss', maEinfluss)
+      await window.api.einstellungen.set('hue_max_einfluss', hueEinfluss)
       await window.api.einstellungen.set('semester2_monat', semester2Monat)
       await window.api.einstellungen.set('s1_gewichtung', String(s1Gewichtung / 100))
       await window.api.einstellungen.set('bundesland', bundesland)
@@ -97,7 +124,7 @@ export default function Einstellungen({ onClose }) {
     if (ok === null) pushToast('Öffnen fehlgeschlagen.', 'error')
   }
 
-  const katLabel = { SA: 'Schularbeiten', T: 'Tests', MA: 'Mitarbeit', 'HÜ': 'Hausübungen', CUSTOM: 'Individuell' }
+  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell' }
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
@@ -137,25 +164,44 @@ export default function Einstellungen({ onClose }) {
               <div className={`mt-2 text-sm ${Math.abs(gesamt - 100) > 0.5 ? 'text-red-500' : 'text-green-600'}`}>
                 Gesamt: {gesamt.toFixed(0)}% {Math.abs(gesamt - 100) <= 0.5 ? '✓' : '(muss 100% ergeben)'}
               </div>
+              <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1.5 leading-snug">
+                Mitarbeit und Hausübungen bilden keine Note, sondern wirken nur als Einfluss (siehe unten).
+              </p>
             </section>
 
-            {/* MA-Bewertung */}
+            {/* Einfluss von Mitarbeit & Hausübung */}
             <section className="mb-6">
-              <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Mitarbeit-Bewertung</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-ink-500 mb-1">„+" entspricht Note</label>
-                  <select className="input" value={maPlusWert} onChange={e => setMaPlusWert(e.target.value)}>
-                    {[1, 2].map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-ink-500 mb-1">„−" entspricht Note</label>
-                  <select className="input" value={maMinusWert} onChange={e => setMaMinusWert(e.target.value)}>
-                    {[4, 5].map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </div>
+              <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Einfluss von Mitarbeit &amp; Hausübung</h3>
+              <p className="text-xs text-ink-400 dark:text-ink-500 mb-3">
+                Mitarbeit (+/−) und Hausübung (✓/✗) zählen nicht als Note, sondern verschieben die Note aus SA/Test/Individuell leicht – niveau-unabhängig. Jeder Eintrag zählt ein Stück (0,1 Notenpunkte). MA und HÜ wirken unabhängig voneinander: jede hat ihre eigene Deckelung, beide werden addiert.
+              </p>
+              <div className="space-y-3">
+                {[
+                  ['Mitarbeit', maEinfluss, setMaEinfluss],
+                  ['Hausübung', hueEinfluss, setHueEinfluss],
+                ].map(([label, wert, setter]) => (
+                  <div key={label}>
+                    <label className="block text-xs text-ink-500 mb-1">{label} – max. Verschiebung</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1.5"
+                        step="0.05"
+                        className="flex-1"
+                        value={wert}
+                        onChange={e => setter(e.target.value)}
+                      />
+                      <span className="text-sm font-medium w-16 text-right tabular-nums text-ink-900 dark:text-white">
+                        ± {Number(wert).toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
+              <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1">
+                0 = kein Einfluss · 0,5 = empfohlen · höhere Werte wirken stärker
+              </p>
             </section>
           </div>
 
@@ -221,15 +267,15 @@ export default function Einstellungen({ onClose }) {
               </label>
             </section>
 
-            {/* Endnote */}
+            {/* Zeugnisnote */}
             <section className="mb-6">
-              <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Endnote</h3>
+              <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Zeugnisnote</h3>
               <p className="text-xs text-ink-400 dark:text-ink-500 mb-3">
-                Gewichtung der S1-Semesternote in der Endnote (EN).
-                50% = S1 und S2 gleichwertig. Ist nur S1 vorhanden, wird S1 direkt als Endnote übernommen.
+                Gewichtung der SN 1 in der Zeugnisnote (ZN).
+                50% = SN 1 und SN 2 gleichwertig. Ist nur SN 1 vorhanden, wird SN 1 direkt als Zeugnisnote übernommen.
               </p>
               <div className="flex items-center gap-3">
-                <span className="text-sm text-ink-600 dark:text-ink-400 w-24">S1-Gewichtung</span>
+                <span className="text-sm text-ink-600 dark:text-ink-400 w-24">SN 1-Gewichtung</span>
                 <input
                   type="range"
                   min="0"
@@ -244,9 +290,9 @@ export default function Einstellungen({ onClose }) {
                 </span>
               </div>
               <div className="flex justify-between text-xs text-ink-400 mt-1">
-                <span>nur S2</span>
-                <span>S2 {100 - s1Gewichtung}% + S1 {s1Gewichtung}%</span>
-                <span>nur S1</span>
+                <span>nur SN 2</span>
+                <span>SN 2 {100 - s1Gewichtung}% + SN 1 {s1Gewichtung}%</span>
+                <span>nur SN 1</span>
               </div>
             </section>
 
@@ -277,6 +323,26 @@ export default function Einstellungen({ onClose }) {
           <div className="flex gap-3 mb-6">
             <button className="btn-secondary" onClick={handleOpen}>Öffnen...</button>
             <button className="btn-secondary" onClick={handleSaveAs}>Speichern unter...</button>
+          </div>
+
+          <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Materialordner</h3>
+          <p className="text-xs text-ink-400 dark:text-ink-500 mb-2">
+            Wurzelordner für die Materialien der Jahresplanung (Struktur: Schuljahr/Klasse/Fach/Abschnitt). Am besten einen kurzen Pfad wählen.
+          </p>
+          <div className="rounded-xl border border-paper-200 dark:border-ink-700 p-3 mb-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                {materialRootPfad
+                  ? <div className="text-xs text-ink-500 dark:text-ink-400 truncate" title={materialRootPfad}>{materialRootPfad}</div>
+                  : <div className="text-xs text-ink-400">Noch kein Ordner gewählt.</div>}
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button className="btn-secondary" onClick={handleMaterialRootWaehlen}>Ordner wählen…</button>
+                {materialRootPfad && (
+                  <button className="text-xs text-ink-400 hover:text-red-500 px-2" onClick={handleMaterialRootZuruecksetzen} title="Zurücksetzen">✕</button>
+                )}
+              </div>
+            </div>
           </div>
 
           <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Datensicherung</h3>

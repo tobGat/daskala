@@ -16,6 +16,7 @@ const useStore = create((set, get) => ({
   // ─── Klassen ─────────────────────────────────────────────────────────────
   klassen: [],
   aktiveKlasse: null,
+  vorlagenModus: false,   // true = Vorlagenklassen statt echter Klassen anzeigen/bearbeiten
 
   // ─── KV (Klassenvorstand) ────────────────────────────────────────────────
   aktiveKVKlasse: null,             // separate Auswahl im KV-Bereich
@@ -31,6 +32,7 @@ const useStore = create((set, get) => ({
 
   // ─── Daten ───────────────────────────────────────────────────────────────
   schueler: [],
+  fachSchuelerIds: new Set(),   // ids der im AKTIVEN Fach sichtbaren Schüler:innen (Gruppen-Roster)
   spalten: [],
   eintraege: {},   // { spalte_id_schueler_id: wert }
   kommentare: {},  // { spalte_id_schueler_id: kommentar }
@@ -161,7 +163,7 @@ const useStore = create((set, get) => ({
     if (neueAktive) {
       await get().setAktiveKlasse(neueAktive)
     } else {
-      set({ aktiveKlasse: null, faecher: [], aktivesFach: null, schueler: [], spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {} })
+      set({ aktiveKlasse: null, faecher: [], aktivesFach: null, schueler: [], spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchuelerIds: new Set() })
     }
   },
 
@@ -176,7 +178,43 @@ const useStore = create((set, get) => ({
     if (aktivesFach) {
       await get().setAktivesFach(aktivesFach)
     } else {
-      set({ aktivesFach: null, spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {} })
+      set({ aktivesFach: null, spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchuelerIds: new Set() })
+    }
+  },
+
+  // ─── Vorlagen-Modus ────────────────────────────────────────────────────────
+  // Schaltet die Navigation zwischen echten Klassen und Vorlagenklassen um.
+  setVorlagenModus: async (an) => {
+    if (an) {
+      const vorlagen = await window.api.klassen.getVorlagen()
+      set({
+        vorlagenModus: true,
+        klassen: vorlagen,
+        aktiveKlasse: null, faecher: [], aktivesFach: null,
+        schueler: [], spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchuelerIds: new Set(),
+        currentView: 'jahresplanung',
+      })
+      if (vorlagen[0]) await get().setAktiveKlasse(vorlagen[0])
+    } else {
+      const { aktuellesSchuljahr } = get()
+      set({ vorlagenModus: false, klassen: [], aktiveKlasse: null, faecher: [], aktivesFach: null, currentView: 'notentabelle' })
+      if (aktuellesSchuljahr) await get().ladeKlassen(aktuellesSchuljahr.id)
+    }
+  },
+
+  // Lädt die aktuell relevante Klassenliste (Vorlagen oder echte) neu und hält die aktive Klasse.
+  ladeAktiveKlassenliste: async () => {
+    const { vorlagenModus, aktuellesSchuljahr, aktiveKlasse } = get()
+    if (vorlagenModus) {
+      const vorlagen = await window.api.klassen.getVorlagen()
+      set({ klassen: vorlagen })
+      const neueAktive = aktiveKlasse
+        ? vorlagen.find(k => k.id === aktiveKlasse.id) ?? vorlagen[0]
+        : vorlagen[0]
+      if (neueAktive) await get().setAktiveKlasse(neueAktive)
+      else set({ aktiveKlasse: null, faecher: [], aktivesFach: null, fachSchuelerIds: new Set() })
+    } else if (aktuellesSchuljahr) {
+      await get().ladeKlassen(aktuellesSchuljahr.id)
     }
   },
 
@@ -188,10 +226,11 @@ const useStore = create((set, get) => ({
 
   ladeFachDaten: async (fachId) => {
     const { aktivesFach } = get()
-    const [spalten, eintraegeArr, zeugnisnotenArr] = await Promise.all([
+    const [spalten, eintraegeArr, zeugnisnotenArr, schuelerIdArr] = await Promise.all([
       window.api.spalten.getAll(fachId),
       window.api.eintraege.getAll(fachId),
       window.api.zeugnisnoten.getAll(fachId),
+      window.api.faecher.getSchuelerIds(fachId),
     ])
 
     const eintraege = {}
@@ -237,7 +276,7 @@ const useStore = create((set, get) => ({
       }
     })
 
-    set({ spalten, eintraege, kommentare, zeugnisnoten, niveaus, niveauHistorie, kompetenzbereiche, schuelerKompetenzen })
+    set({ spalten, eintraege, kommentare, zeugnisnoten, niveaus, niveauHistorie, kompetenzbereiche, schuelerKompetenzen, fachSchuelerIds: new Set(schuelerIdArr) })
   },
 
   // ─── Einträge setzen ──────────────────────────────────────────────────────
@@ -419,6 +458,7 @@ const useStore = create((set, get) => ({
       spalten,
       eintraege,
       zeugnisnoten,
+      fachSchuelerIds: new Set(schueler.map(s => s.id)),
       currentView: 'notentabelle',
     })
   },

@@ -23,10 +23,12 @@ export default function SpalteHinzufuegen({ onClose }) {
     }
   }, [kategorie])
 
-  // Effektives Gewicht der gewählten Kategorie (fach-spezifisch oder global)
-  const fachKey = { SA: 'gewichtung_sa', T: 'gewichtung_t', MA: 'gewichtung_ma', 'HÜ': 'gewichtung_hue', CUSTOM: 'gewichtung_custom' }[kategorie]
-  const effektivesGewicht = aktivesFach?.[fachKey] ?? gewichtungGlobal?.[kategorie] ?? 0
-  const zeigeNullGewichtHinweis = effektivesGewicht === 0
+  // MA & HÜ zählen als Einfluss (keine Gewichtung) → keine 0%-Warnung.
+  // Nur SA/Test/Individuell bilden die Note und haben ein effektives Gewicht.
+  const istEinfluss = kategorie === 'MA' || kategorie === 'HÜ'
+  const fachKey = { SA: 'gewichtung_sa', T: 'gewichtung_t', CUSTOM: 'gewichtung_custom' }[kategorie]
+  const effektivesGewicht = istEinfluss ? null : (aktivesFach?.[fachKey] ?? gewichtungGlobal?.[kategorie] ?? 0)
+  const zeigeNullGewichtHinweis = !istEinfluss && effektivesGewicht === 0
 
   const handleSpeichern = async () => {
     if (!kuerzel.trim()) return

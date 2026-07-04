@@ -124,6 +124,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const [stundenzeiten, setStundenzeiten] = useState([])
   const [stundenplanEintraege, setStundenplanEintraege] = useState([])
   const [bearbeitungsModus, setBearbeitungsModus] = useState(false)
+  const [zeitenModalOffen, setZeitenModalOffen] = useState(false)
   const [slotModal, setSlotModal] = useState(null)
   const [planungModal, setPlanungModal] = useState(null) // { eintrag, wocheDatum } or { supplier, wocheDatum, stunde }
   const [notizModal, setNotizModal] = useState(null) // { eintrag, wocheDatum, planung }
@@ -139,12 +140,12 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
 
   // Schulferien berechnen (berechnete + benutzerdefinierte)
   const schulferien = useMemo(() => {
-    const schuljahr = einstellungen?.schuljahr_aktuell ?? ''
+    const schuljahr = aktuellesSchuljahr?.bezeichnung ?? ''
     const bundesland = einstellungen?.bundesland ?? ''
     const berechnet = berechneSchulferien(schuljahr, bundesland)
     if (customFerien.length > 0) return mergeFerien(berechnet, customFerien)
     return berechnet
-  }, [einstellungen?.schuljahr_aktuell, einstellungen?.bundesland, customFerien])
+  }, [aktuellesSchuljahr?.bezeichnung, einstellungen?.bundesland, customFerien])
 
   const wocheDatum = getMontag(aktuelleWoche)
 
@@ -308,25 +309,6 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
     }
   }
 
-  const handleStundeHinzufuegen = async () => {
-    await window.api.stundenzeiten.create()
-    await laden()
-  }
-
-  const handleStundeLoeschen = async (id) => {
-    await window.api.stundenzeiten.delete(id)
-    await laden()
-  }
-
-  const handleZeitChange = useCallback((id, field, value) => {
-    setStundenzeiten(prev => prev.map(sz => sz.id === id ? { ...sz, [field]: value } : sz))
-  }, [])
-
-  const handleZeitBlur = useCallback(async (id) => {
-    const sz = stundenzeiten.find(s => s.id === id)
-    if (sz) await window.api.stundenzeiten.update(id, { beginn: sz.beginn, ende: sz.ende })
-  }, [stundenzeiten])
-
   const aktStunde = aktuelleStunde(stundenzeiten)
   const aktTag = aktuellerWochentag()
 
@@ -367,6 +349,15 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           >
             PDF exportieren
           </button>
+          {bearbeitungsModus && (
+            <button
+              className="px-3 py-1.5 text-xs rounded-lg font-medium border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 transition-colors"
+              onClick={() => setZeitenModalOffen(true)}
+              title="Stunden- und Pausenzeiten bearbeiten"
+            >
+              🕐 Zeiten
+            </button>
+          )}
           <button
             className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors
               ${bearbeitungsModus
@@ -383,7 +374,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
       <div className="flex-1 overflow-auto p-4 bg-paper-50 dark:bg-ink-950">
         <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: bearbeitungsModus ? 100 : 72 }} />
+            <col style={{ width: 72 }} />
             {WOCHENTAGE.map((_, i) => <col key={i} />)}
           </colgroup>
           <thead>
@@ -467,45 +458,14 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
               const istAktuelleStunde = aktuelleWoche === 0 && aktStunde?.id === stunde.id
               return (
                 <tr key={stunde.id} className="border-t border-paper-200 dark:border-ink-800">
-                  {/* Zeit-Spalte */}
+                  {/* Zeit-Spalte (read-only; Bearbeitung über den „Zeiten"-Dialog) */}
                   <td className="px-2 py-1 align-top">
-                    {bearbeitungsModus ? (
-                      <div className="flex flex-col gap-0.5 py-0.5">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className={`text-xs font-medium ${istAktuelleStunde ? 'text-coral-600 dark:text-coral-400' : 'text-ink-400'}`}>
-                            {stunde.stunde}. Std
-                          </span>
-                          <button
-                            className="text-ink-600 dark:text-paper-300 dark:text-ink-600 hover:text-red-400 dark:hover:text-red-400 text-xs leading-none transition-colors"
-                            title="Stunde entfernen"
-                            onClick={() => handleStundeLoeschen(stunde.id)}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        <input
-                          type="time"
-                          className="text-xs border border-paper-200 dark:border-ink-700 rounded px-1 py-0.5 bg-white dark:bg-ink-800 dark:text-paper-200 focus:outline-none focus:border-coral-400 w-full"
-                          value={stunde.beginn}
-                          onChange={e => handleZeitChange(stunde.id, 'beginn', e.target.value)}
-                          onBlur={() => handleZeitBlur(stunde.id)}
-                        />
-                        <input
-                          type="time"
-                          className="text-xs border border-paper-200 dark:border-ink-700 rounded px-1 py-0.5 bg-white dark:bg-ink-800 dark:text-paper-200 focus:outline-none focus:border-coral-400 w-full"
-                          value={stunde.ende}
-                          onChange={e => handleZeitChange(stunde.id, 'ende', e.target.value)}
-                          onBlur={() => handleZeitBlur(stunde.id)}
-                        />
+                    <div className="text-right">
+                      <div className={`text-xs font-medium ${istAktuelleStunde ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-500'}`}>
+                        {stunde.stunde}. Std
                       </div>
-                    ) : (
-                      <div className="text-right">
-                        <div className={`text-xs font-medium ${istAktuelleStunde ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-500'}`}>
-                          {stunde.stunde}. Std
-                        </div>
-                        <div className="text-xs text-ink-400">{stunde.beginn}</div>
-                      </div>
-                    )}
+                      <div className="text-xs text-ink-400 tabular-nums">{stunde.beginn}–{stunde.ende}</div>
+                    </div>
                   </td>
 
                   {/* Wochentage */}
@@ -575,18 +535,6 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                 </tr>
               )
             })}
-            {bearbeitungsModus && (
-              <tr className="border-t border-paper-200 dark:border-ink-800">
-                <td colSpan={6} className="px-2 py-1">
-                  <button
-                    className="text-xs text-ink-400 dark:text-ink-500 hover:text-coral-600 dark:hover:text-coral-400 hover:bg-coral-50 dark:hover:bg-coral-900/30 rounded-lg px-3 py-1.5 transition-colors w-full text-left"
-                    onClick={handleStundeHinzufuegen}
-                  >
-                    + Stunde hinzufügen
-                  </button>
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
@@ -672,6 +620,14 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           klassen={klassen}
           onSpeichern={handleSlotSpeichern}
           onClose={() => setSlotModal(null)}
+        />
+      )}
+
+      {/* Stunden-/Pausenzeiten-Editor */}
+      {zeitenModalOffen && (
+        <StundenzeitenModal
+          onClose={() => setZeitenModalOffen(false)}
+          onSaved={async () => { await laden() }}
         />
       )}
 
@@ -994,6 +950,143 @@ function SlotModal({ slotModal, alleFaecher, klassen, onSpeichern, onClose }) {
           >
             Speichern
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Kompakter Editor für Stunden-/Pausenzeiten: Generator + editierbare Liste + Sammel-Speichern.
+function StundenzeitenModal({ onClose, onSaved }) {
+  const [zeilen, setZeilen] = useState([])
+  const [startzeit, setStartzeit] = useState('07:55')
+  const [stundenLaenge, setStundenLaenge] = useState('45')
+  const [pausenLaenge, setPausenLaenge] = useState('5')
+  const [anzahl, setAnzahl] = useState('8')
+  const [grossePauseNach, setGrossePauseNach] = useState('')
+  const [grossePauseLaenge, setGrossePauseLaenge] = useState('15')
+  const [originalIds, setOriginalIds] = useState([])
+  const [saving, setSaving] = useState(false)
+
+  const toMin = (hhmm) => { const [h, m] = (hhmm || '0:0').split(':').map(Number); return (h || 0) * 60 + (m || 0) }
+  const toHHMM = (min) => { const v = ((Math.round(min) % 1440) + 1440) % 1440; return `${String(Math.floor(v / 60)).padStart(2, '0')}:${String(v % 60).padStart(2, '0')}` }
+
+  useEffect(() => {
+    window.api.stundenzeiten.getAll().then(rows => {
+      const zs = rows.map(r => ({ id: r.id, beginn: r.beginn, ende: r.ende }))
+      setZeilen(zs)
+      setOriginalIds(zs.map(z => z.id))
+      if (zs[0]?.beginn) setStartzeit(zs[0].beginn)
+      if (zs.length) setAnzahl(String(zs.length))
+    }).catch(e => console.error('stundenzeiten laden:', e))
+  }, [])
+
+  const handleErzeugen = () => {
+    if (zeilen.length > 0 && !confirm('Alle Zeiten neu berechnen? Bestehende Beginn-/Endzeiten werden überschrieben.')) return
+    const n = Math.max(0, parseInt(anzahl) || 0)
+    const len = Math.max(1, parseInt(stundenLaenge) || 45)
+    const pause = Math.max(0, parseInt(pausenLaenge) || 0)
+    const gpNach = parseInt(grossePauseNach) || 0
+    const gpLen = Math.max(0, parseInt(grossePauseLaenge) || 0)
+    let cursor = toMin(startzeit)
+    const neu = []
+    for (let i = 0; i < n; i++) {
+      neu.push({ id: zeilen[i]?.id ?? null, beginn: toHHMM(cursor), ende: toHHMM(cursor + len) })
+      cursor += len + ((gpNach && i + 1 === gpNach) ? gpLen : pause)
+    }
+    setZeilen(neu)
+  }
+
+  const handleChange = (idx, field, value) => setZeilen(prev => prev.map((z, i) => i === idx ? { ...z, [field]: value } : z))
+  const handleRemove = (idx) => setZeilen(prev => prev.filter((_, i) => i !== idx))
+  const handleAdd = () => setZeilen(prev => {
+    const last = prev[prev.length - 1]
+    const start = last ? toMin(last.ende) + (parseInt(pausenLaenge) || 0) : toMin(startzeit)
+    return [...prev, { id: null, beginn: toHHMM(start), ende: toHHMM(start + (parseInt(stundenLaenge) || 45)) }]
+  })
+
+  const handleSpeichern = async () => {
+    const gueltig = zeilen.filter(z => z.beginn && z.ende)
+    const keptIds = new Set(gueltig.filter(z => z.id != null).map(z => z.id))
+    const entfernt = originalIds.filter(id => !keptIds.has(id))
+    if (entfernt.length > 0 && !confirm(`${entfernt.length} Stunde(n) werden entfernt – dort eingetragene Fächer und Planungen gehen dabei verloren. Fortfahren?`)) return
+    setSaving(true)
+    try {
+      await window.api.stundenzeiten.saveAll(gueltig)
+      await onSaved?.()
+      onClose()
+    } catch (e) {
+      console.error('stundenzeiten speichern:', e)
+      useStore.getState().pushToast?.('Speichern der Zeiten fehlgeschlagen.', 'error')
+      setSaving(false)
+    }
+  }
+
+  const GRID = '2rem 1fr 1fr 5rem 1.5rem'
+
+  return (
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box" style={{ maxWidth: 560 }}>
+        <h2 className="text-base font-semibold text-ink-900 dark:text-white mb-4">Stunden- &amp; Pausenzeiten</h2>
+
+        {/* Generator */}
+        <div className="rounded-lg border border-paper-200 dark:border-ink-700 p-3 mb-4">
+          <p className="text-xs font-medium text-ink-500 dark:text-ink-400 uppercase tracking-wide mb-2">Automatisch erzeugen</p>
+          <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <label className="text-[11px] text-ink-500 dark:text-ink-400">Startzeit
+              <input type="time" className="input mt-0.5" value={startzeit} onChange={e => setStartzeit(e.target.value)} />
+            </label>
+            <label className="text-[11px] text-ink-500 dark:text-ink-400">Stundenlänge (min)
+              <input type="number" min="1" className="input mt-0.5" value={stundenLaenge} onChange={e => setStundenLaenge(e.target.value)} />
+            </label>
+            <label className="text-[11px] text-ink-500 dark:text-ink-400">Pausenlänge (min)
+              <input type="number" min="0" className="input mt-0.5" value={pausenLaenge} onChange={e => setPausenLaenge(e.target.value)} />
+            </label>
+            <label className="text-[11px] text-ink-500 dark:text-ink-400">Anzahl Stunden
+              <input type="number" min="1" max="20" className="input mt-0.5" value={anzahl} onChange={e => setAnzahl(e.target.value)} />
+            </label>
+            <label className="text-[11px] text-ink-500 dark:text-ink-400">Große Pause nach Std.
+              <input type="number" min="0" className="input mt-0.5" value={grossePauseNach} onChange={e => setGrossePauseNach(e.target.value)} placeholder="—" />
+            </label>
+            <label className="text-[11px] text-ink-500 dark:text-ink-400">Große Pause (min)
+              <input type="number" min="0" className="input mt-0.5" value={grossePauseLaenge} onChange={e => setGrossePauseLaenge(e.target.value)} />
+            </label>
+          </div>
+          <button className="btn-secondary w-full mt-2 text-sm" onClick={handleErzeugen}>Zeiten erzeugen</button>
+        </div>
+
+        {/* Editierbare Liste */}
+        <div className="grid gap-1 items-center text-[10px] font-semibold text-ink-400 uppercase tracking-wide mb-1" style={{ gridTemplateColumns: GRID }}>
+          <span>Nr.</span><span>Beginn</span><span>Ende</span><span>Pause</span><span></span>
+        </div>
+        <div className="max-h-56 overflow-y-auto pr-1">
+          {zeilen.map((z, i) => {
+            const naechste = zeilen[i + 1]
+            const pauseMin = naechste ? toMin(naechste.beginn) - toMin(z.ende) : null
+            const ungueltig = !!z.beginn && !!z.ende && toMin(z.ende) <= toMin(z.beginn)
+            const ueberlappt = pauseMin != null && pauseMin < 0
+            return (
+              <div key={z.id ?? `neu-${i}`} className="grid gap-1 items-center mb-1" style={{ gridTemplateColumns: GRID }}>
+                <span className="text-xs text-ink-400 tabular-nums">{i + 1}.</span>
+                <input type="time" className={`input ${ungueltig ? 'border-rose-400' : ''}`} value={z.beginn} onChange={e => handleChange(i, 'beginn', e.target.value)} />
+                <input type="time" className={`input ${ungueltig ? 'border-rose-400' : ''}`} value={z.ende} onChange={e => handleChange(i, 'ende', e.target.value)} />
+                <span className={`text-[11px] tabular-nums ${ueberlappt ? 'text-rose-500 font-semibold' : 'text-ink-400'}`}>
+                  {pauseMin == null ? '—' : `${pauseMin} min`}
+                </span>
+                <button className="text-ink-400 hover:text-rose-500 text-sm leading-none" title="Stunde entfernen" onClick={() => handleRemove(i)}>✕</button>
+              </div>
+            )
+          })}
+        </div>
+        <button className="text-xs text-ink-400 hover:text-coral-600 dark:hover:text-coral-400 mt-1 mb-3" onClick={handleAdd}>+ Stunde</button>
+
+        <p className="text-[11px] text-ink-400 dark:text-ink-500 mb-3 leading-snug">
+          Pausen ergeben sich aus den Lücken zwischen den Stunden. Entfernte Stunden löschen dort eingetragene Fächer und Planungen mit.
+        </p>
+
+        <div className="flex gap-3">
+          <button className="btn-secondary flex-1" onClick={onClose}>Abbrechen</button>
+          <button className="btn-primary flex-1" onClick={handleSpeichern} disabled={saving}>{saving ? 'Speichern…' : 'Speichern'}</button>
         </div>
       </div>
     </div>

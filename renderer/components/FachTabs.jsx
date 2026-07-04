@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react'
 import useStore from '../store/useStore'
+import { FachSchuelerModal } from './Modals'
 
 const FARB_PALETTE = [
   '#a5b4fc', '#6366f1', '#3730a3',
@@ -19,7 +20,7 @@ const FARB_PALETTE = [
 export default function FachTabs() {
   const {
     faecher, aktivesFach, setAktivesFach,
-    aktiveKlasse, openModal, ladeKlassen, aktuellesSchuljahr,
+    aktiveKlasse, openModal, ladeAktiveKlassenliste, pushToast,
   } = useStore()
 
   const [renameId, setRenameId] = useState(null)
@@ -28,10 +29,12 @@ export default function FachTabs() {
   const [contextMenu, setContextMenu] = useState(null)
   const [farbMenuFach, setFarbMenuFach] = useState(null)
   const [benotungMenuFach, setBenotungMenuFach] = useState(null)
+  const [fachSchuelerFach, setFachSchuelerFach] = useState(null)
 
   const fachHatCustomGewichtung = (fach) =>
     fach.gewichtung_sa !== null || fach.gewichtung_t !== null ||
-    fach.gewichtung_ma !== null || fach.gewichtung_hue !== null
+    fach.gewichtung_custom !== null ||
+    fach.ma_max_einfluss !== null || fach.hue_max_einfluss !== null
 
   const renameStarten = (fach) => {
     setRenameId(fach.id)
@@ -41,8 +44,9 @@ export default function FachTabs() {
 
   const renameSpeichern = async () => {
     if (!renameWert.trim()) { setRenameId(null); return }
-    await window.api.faecher.rename(renameId, renameWert.trim())
-    await ladeKlassen(aktuellesSchuljahr.id)
+    const res = await window.api.faecher.rename(renameId, renameWert.trim())
+    if (res?.ordnerWarnung) pushToast(res.ordnerWarnung, 'error')
+    await ladeAktiveKlassenliste()
     setRenameId(null)
   }
 
@@ -167,11 +171,17 @@ export default function FachTabs() {
             }}>
               Benotungssystem {contextMenu.fach.benotungssystem === 'differenziert' ? '(AHS/ST)' : '(Standard)'}
             </div>
+            <div className="context-menu-item" onClick={() => {
+              setFachSchuelerFach(contextMenu.fach)
+              setContextMenu(null)
+            }}>
+              Schüler:innen zuordnen…
+            </div>
             <div className="context-menu-separator" />
             <div className="context-menu-item text-red-500" onClick={async () => {
               if (confirm(`Fach „${contextMenu.fach.name}" wirklich löschen?`)) {
                 await window.api.faecher.delete(contextMenu.fach.id)
-                await ladeKlassen(aktuellesSchuljahr.id)
+                await ladeAktiveKlassenliste()
               }
               setContextMenu(null)
             }}>
@@ -196,7 +206,7 @@ export default function FachTabs() {
                   style={{ backgroundColor: farbe }}
                   onClick={async () => {
                     await window.api.faecher.setFarbe(farbMenuFach.id, farbe)
-                    await ladeKlassen(aktuellesSchuljahr.id)
+                    await ladeAktiveKlassenliste()
                     setFarbMenuFach(null)
                   }}
                 />
@@ -205,7 +215,7 @@ export default function FachTabs() {
                 className="w-5 h-5 rounded-full border-2 border-dashed border-paper-300 dark:border-ink-600 flex items-center justify-center text-ink-400 text-[9px] hover:border-ink-400 transition-colors"
                 onClick={async () => {
                   await window.api.faecher.setFarbe(farbMenuFach.id, null)
-                  await ladeKlassen(aktuellesSchuljahr.id)
+                  await ladeAktiveKlassenliste()
                   setFarbMenuFach(null)
                 }}
                 title="Keine Farbe"
@@ -231,7 +241,7 @@ export default function FachTabs() {
                 }`}
                 onClick={async () => {
                   await window.api.faecher.setBenotungssystem(benotungMenuFach.id, 'standard')
-                  await ladeKlassen(aktuellesSchuljahr.id)
+                  await ladeAktiveKlassenliste()
                   setBenotungMenuFach(null)
                 }}
               >
@@ -246,7 +256,7 @@ export default function FachTabs() {
                 }`}
                 onClick={async () => {
                   await window.api.faecher.setBenotungssystem(benotungMenuFach.id, 'differenziert')
-                  await ladeKlassen(aktuellesSchuljahr.id)
+                  await ladeAktiveKlassenliste()
                   setBenotungMenuFach(null)
                 }}
               >
@@ -256,6 +266,14 @@ export default function FachTabs() {
             </div>
           </div>
         </>
+      )}
+
+      {fachSchuelerFach && (
+        <FachSchuelerModal
+          fach={fachSchuelerFach}
+          onClose={() => setFachSchuelerFach(null)}
+          onSaved={ladeAktiveKlassenliste}
+        />
       )}
     </div>
   )

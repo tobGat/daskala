@@ -42,17 +42,19 @@ export default function App() {
     activeModal, closeModal,
     detailSchueler,
     einstellungen,
+    vorlagenModus,
     init,
   } = useStore()
 
   const planungAktiv = einstellungen?.planung_aktiv === '1'
 
-  // Falls Planung deaktiviert, aber aktuell eine Planungs-View aktiv ist → umschalten
+  // Falls Planung deaktiviert, aber aktuell eine Planungs-View aktiv ist → umschalten.
+  // Im Vorlagen-Modus bleibt die Jahresplanung immer erreichbar.
   useEffect(() => {
-    if (!planungAktiv && (currentView === 'jahresplanung' || currentView === 'klassenplanung')) {
+    if (!planungAktiv && !vorlagenModus && (currentView === 'jahresplanung' || currentView === 'klassenplanung')) {
       setCurrentView('notentabelle')
     }
-  }, [planungAktiv, currentView])
+  }, [planungAktiv, vorlagenModus, currentView])
 
   useEffect(() => {
     init()
@@ -73,19 +75,24 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-paper-50 dark:bg-ink-950">
 
+      {/* Grün leuchtender Rahmen als deutliches Signal für den Vorlagen-Modus */}
+      {vorlagenModus && (
+        <div className="pointer-events-none fixed inset-0 z-[100] border-4 border-green-400 animate-glow-frame" />
+      )}
+
       {/* Immer sichtbare Navigation */}
       <KlassenTabs />
-      {['notentabelle', 'kompetenzen', 'sitzplan', ...(planungAktiv ? ['jahresplanung'] : [])].includes(currentView) && <FachTabs />}
+      {(vorlagenModus || ['notentabelle', 'kompetenzen', 'sitzplan', ...(planungAktiv ? ['jahresplanung'] : [])].includes(currentView)) && <FachTabs />}
 
-      {/* Haupt-Inhalt */}
+      {/* Haupt-Inhalt. Im Vorlagen-Modus nur die Jahresplanung. */}
       <div className="flex-1 overflow-hidden flex flex-col">
-        {currentView === 'stundenplan' && <UebersichtView />}
-        {currentView === 'kv' && <KVView />}
-        {currentView === 'notentabelle' && <NotenTabelle />}
-        {currentView === 'kompetenzen' && <KompetenzrasterView />}
-        {currentView === 'sitzplan' && <SitzplanView />}
-        {planungAktiv && currentView === 'jahresplanung' && <JahresplanungView />}
-        {planungAktiv && currentView === 'klassenplanung' && <KlassenplanungView />}
+        {!vorlagenModus && currentView === 'stundenplan' && <UebersichtView />}
+        {!vorlagenModus && currentView === 'kv' && <KVView />}
+        {!vorlagenModus && currentView === 'notentabelle' && <NotenTabelle />}
+        {!vorlagenModus && currentView === 'kompetenzen' && <KompetenzrasterView />}
+        {!vorlagenModus && currentView === 'sitzplan' && <SitzplanView />}
+        {(planungAktiv || vorlagenModus) && currentView === 'jahresplanung' && <JahresplanungView />}
+        {!vorlagenModus && planungAktiv && currentView === 'klassenplanung' && <KlassenplanungView />}
       </div>
 
       {/* Schüler:innen Slide-over */}

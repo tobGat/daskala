@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useMemo, memo } from 'react'
 import useStore from '../store/useStore'
 import Zelle from './Zelle'
 import ZeugnisnoteZelle from './ZeugnisnoteZelle'
+import SchuelerAvatar from './SchuelerAvatar'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 const KAT_FARBE = {
@@ -21,29 +22,6 @@ const KAT_DOT = {
 }
 
 const KATEGORIEN_LABEL = { MA: 'Mitarbeit', 'HÜ': 'Hausübung', T: 'Test', SA: 'Schularbeit', CUSTOM: 'Individuell' }
-
-// ─── Avatar-Helpers ───────────────────────────────────────────────────────────
-const AVATAR_FARBEN = [
-  '#fb6936', '#31a982', '#a98fff', '#56c39e', '#f59e0b',
-  '#ec4899', '#3b82f6', '#8b66f5', '#14b8a6', '#f97316',
-]
-
-function hashFromString(str) {
-  let h = 0
-  for (let i = 0; i < (str ?? '').length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0
-  return h
-}
-
-function avatarFarbe(schueler) {
-  const key = (schueler.vorname ?? '') + (schueler.nachname ?? '')
-  return AVATAR_FARBEN[hashFromString(key) % AVATAR_FARBEN.length]
-}
-
-function initialen(schueler) {
-  const v = (schueler.vorname ?? '').trim()[0] ?? ''
-  const n = (schueler.nachname ?? '').trim()[0] ?? ''
-  return (v + n).toUpperCase() || '?'
-}
 
 // ─── Spalten-Header ───────────────────────────────────────────────────────────
 const SpalteHeader = memo(function SpalteHeader({ spalte, onContextMenu }) {
@@ -97,17 +75,18 @@ const EingeklappteZelle = memo(function EingeklappteZelle() {
   return <td style={{ width: 22, minWidth: 22 }} className="bg-paper-50/70 dark:bg-ink-900/50" />
 })
 
-// ─── ZN/EN-Headers ────────────────────────────────────────────────────────────
+// ─── SN/ZN-Headers ────────────────────────────────────────────────────────────
+// SN = Semesternote (je Semester), ZN = Zeugnisnote (Jahresnote).
 // Layout passt zur Zellen-Breite (46px). Klare visuelle Hierarchie ohne Quetschung.
 function ZNHeader({ semester }) {
   return (
     <th
       className="bg-paper-100 dark:bg-ink-800/60 text-center border-l-2 border-paper-300 dark:border-ink-700"
       style={{ width: 46, minWidth: 46 }}
-      title={`Zeugnisnote Semester ${semester}`}
+      title={`Semesternote ${semester}`}
     >
       <div className="h-14 flex flex-col items-center justify-center gap-0.5">
-        <span className="font-bold text-[11px] text-ink-600 dark:text-ink-300 tracking-wider leading-none">ZN</span>
+        <span className="font-bold text-[11px] text-ink-600 dark:text-ink-300 tracking-wider leading-none">SN</span>
         <span className="font-bold text-base text-ink-700 dark:text-paper-200 leading-none">{semester}</span>
       </div>
     </th>
@@ -126,11 +105,11 @@ function ENHeader() {
         zIndex: 10,
         boxShadow: '-3px 0 8px -2px rgba(46, 42, 38, 0.08), 0 1px 0 0 rgb(230 227 223)',
       }}
-      title="Endnote"
+      title="Zeugnisnote"
     >
       <div className="h-14 flex flex-col items-center justify-center gap-0.5">
         <span aria-hidden className="text-sm leading-none">⭐</span>
-        <span className="font-bold text-[11px] text-coral-700 dark:text-coral-200 tracking-wider leading-none">EN</span>
+        <span className="font-bold text-[11px] text-coral-700 dark:text-coral-200 tracking-wider leading-none">ZN</span>
       </div>
     </th>
   )
@@ -179,9 +158,6 @@ function SpacerZelle() {
 
 // ─── Schüler-Avatar + Namens-Zelle ────────────────────────────────────────────
 function SchuelerNameZelle({ schueler, isDifferenziert, niveau, onClick, onNiveauKlick }) {
-  const ini = useMemo(() => initialen(schueler), [schueler.vorname, schueler.nachname])
-  const farbe = useMemo(() => avatarFarbe(schueler), [schueler.vorname, schueler.nachname])
-
   return (
     <td
       className="sticky left-0 z-10 bg-white dark:bg-ink-950 px-2 py-0 cursor-pointer hover:bg-coral-50/60 dark:hover:bg-coral-900/30 border-r border-paper-100 dark:border-ink-800/60 transition-colors relative"
@@ -191,12 +167,7 @@ function SchuelerNameZelle({ schueler, isDifferenziert, niveau, onClick, onNivea
     >
       <div className="flex items-center gap-2 h-full">
         {/* Avatar */}
-        <span
-          className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 shadow-softer"
-          style={{ backgroundColor: farbe }}
-        >
-          {ini}
-        </span>
+        <SchuelerAvatar schueler={schueler} size={28} className="shadow-softer" />
 
         {/* Name */}
         <div className="flex-1 min-w-0 leading-tight">
@@ -387,7 +358,14 @@ export default function NotenTabelle() {
     setDetailSchueler, openModal,
     ladeSpalten, refreshZeugnisnoten,
     niveaus, niveauHistorie, setNiveau, deleteNiveauHistorie,
+    fachSchuelerIds,
   } = useStore()
+
+  // Nur die dem aktiven Fach zugeordneten Schüler:innen (Gruppen-Roster)
+  const sichtbareSchueler = useMemo(
+    () => schueler.filter(s => fachSchuelerIds.has(s.id)),
+    [schueler, fachSchuelerIds]
+  )
 
   const [spaltenContextMenu, setSpaltenContextMenu] = useState(null)
   const [spalteBearbeitenModal, setSpalteBearbeitenModal] = useState(null)
@@ -467,13 +445,26 @@ export default function NotenTabelle() {
     )
   }
 
+  // Klasse hat Schüler:innen, aber diesem (Gruppen-)Fach sind keine zugeordnet
+  if (sichtbareSchueler.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-paper-50 dark:bg-ink-950">
+        <div className="text-center animate-fade-up max-w-sm px-4">
+          <div className="text-5xl mb-3">👥</div>
+          <p className="text-base mb-1 text-ink-700 dark:text-paper-200 font-semibold">Keine Schüler:innen in diesem Fach</p>
+          <p className="text-sm text-ink-500">Über das Fach-Menü (Rechtsklick auf den Fach-Tab) → „Schüler:innen zuordnen…" kannst du welche hinzufügen.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-paper-50 dark:bg-ink-950 p-3">
       <div className="flex-1 flex flex-col overflow-hidden daskala-card">
 
         <NotenToolbar
           aktivesFach={aktivesFach}
-          schueler={schueler}
+          schueler={sichtbareSchueler}
           spalten={spalten}
           eintraege={eintraege}
           zeugnisnoten={zeugnisnoten}
@@ -526,7 +517,7 @@ export default function NotenTabelle() {
             </thead>
 
             <tbody>
-              {schueler.map(s => (
+              {sichtbareSchueler.map(s => (
                 <tr key={s.id} className="group/row border-b border-paper-100 dark:border-ink-800/50">
                   <SchuelerNameZelle
                     schueler={s}
