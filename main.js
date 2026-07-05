@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron')
+const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
@@ -4104,6 +4105,24 @@ function createWindow() {
 }
 
 // ─── App-Lifecycle ────────────────────────────────────────────────────────────
+// ─── Automatische Updates (GitHub Releases) ──────────────────────────────────
+// Nur im gepackten Build aktiv; im Dev fehlt die Update-Konfiguration.
+function setupAutoUpdate() {
+  if (!app.isPackaged) return
+  const send = (data) => BrowserWindow.getAllWindows()[0]?.webContents.send('update:status', data)
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+  autoUpdater.on('update-available', (info) => send({ status: 'available', version: info?.version }))
+  autoUpdater.on('update-downloaded', (info) => send({ status: 'downloaded', version: info?.version }))
+  autoUpdater.on('error', (err) => logError('autoUpdater', err))
+  autoUpdater.checkForUpdates().catch((e) => logError('checkForUpdates', e))
+}
+// Vom Renderer ausgelöst, wenn der/die Nutzer:in „jetzt neu starten" wählt.
+ipcMain.handle('update:installieren', () => {
+  try { autoUpdater.quitAndInstall() } catch (e) { logError('quitAndInstall', e) }
+  return true
+})
+
 app.whenReady().then(() => {
   initPaths()
   initDB()
@@ -4111,6 +4130,7 @@ app.whenReady().then(() => {
   registerIPC()
   setupMenu()
   createWindow()
+  setupAutoUpdate()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
