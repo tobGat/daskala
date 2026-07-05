@@ -1,15 +1,16 @@
 {
   "name": "daskala",
-  "version": "1.0.49",
+  "version": "1.0.52",
   "description": "Digitales Notenbuch für österreichische Mittelschulen",
+  "author": "Tobias Gatterbauer",
   "license": "GPL-3.0-or-later",
   "main": "main.js",
   "scripts": {
     "dev": "concurrently -k \"npm run vite\" \"npm run electron:dev\"",
     "vite": "vite",
     "electron:dev": "wait-on http://localhost:5173 && cross-env NODE_ENV=development node launch-electron.js",
-    "build": "node bump-version.js && vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
-    "release": "npm run build -- --publish always",
+    "build": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "release": "node bump-version.js && npm run build -- --publish always",
     "preview": "vite preview",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3 || true"
