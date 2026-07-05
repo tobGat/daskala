@@ -1,5 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tobias Gatterbauer
+// This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 import { createAvatar } from '@dicebear/core'
-import { lorelei } from '@dicebear/collection'
+import * as lorelei from '@dicebear/lorelei'
 
 // ─── Initialen-Fallback (konsolidiert aus SchuelerDetail.jsx / NotenTabelle.jsx) ───
 export const AVATAR_FARBEN = [

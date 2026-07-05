@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tobias Gatterbauer
+// This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 // Helpers für AHS/ST-Differenzierung
 // Interne Skala 1-7: AHS = intern 1..5, ST = intern 3..7 (Überlappung 3..5).
 

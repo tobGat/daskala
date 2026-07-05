@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tobias Gatterbauer
+// This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 import React, { useMemo, useState } from 'react'
 import { createAvatar } from '@dicebear/core'
-import { lorelei } from '@dicebear/collection'
+import * as lorelei from '@dicebear/lorelei'
 import useStore from '../store/useStore'
 import { SKIN, HAIR, variantsOf, parseAvatarOptions, hashFromString } from '../utils/avatar'
 

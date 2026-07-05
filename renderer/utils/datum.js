@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tobias Gatterbauer
+// This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 // Zentraler Date-Helper für Daskala. Alle Funktionen nutzen lokale Zeitzone und
 // erwarten Strings im Format YYYY-MM-DD (ISO) oder Date-Objekte.
 
