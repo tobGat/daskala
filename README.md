@@ -1,7 +1,9 @@
 # Daskala
 
-Digitales Notenbuch für österreichische Mittelschulen – eine offline-fähige
+Digitales Notenbuch für österreichische Schulen – eine offline-fähige
 Desktop-App (Electron + React) zur Noten-, Klassen- und Jahresplanung.
+Ursprünglich für die Mittelschule entwickelt und für jede Schulstufe geeignet.
+Verfügbar für **Windows** und **Linux**.
 
 ## Lizenz
 
@@ -35,5 +37,10 @@ Design © Lisa Wischofsky.
 ```bash
 npm install      # Abhängigkeiten installieren (baut better-sqlite3 nativ)
 npm run dev      # Vite-Devserver + Electron starten
-npm run build    # Installationspaket (Windows/NSIS) erstellen
+npm run build    # Paket fürs eigene System bauen: .exe (Windows) bzw. AppImage/.deb (Linux)
 ```
+
+Das native Modul `better-sqlite3` wird je Zielsystem gebaut; nötige Build-Werkzeuge
+sind unter Windows die Visual-Studio-Build-Tools, unter Linux `build-essential` und Python.
+Release-Pakete für **beide** Plattformen erzeugt die CI automatisch beim Pushen eines
+Versions-Tags (`v*`) – siehe [`.github/workflows/release.yml`](.github/workflows/release.yml).

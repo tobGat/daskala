@@ -1,7 +1,8 @@
 # Release-Pipeline für Daskala.
 # Wird ausgelöst, sobald ein Versions-Tag (z. B. v1.0.53) gepusht wird.
-# GitHub baut dann den Windows-Installer und legt ihn als (Entwurfs-)Release ab –
+# GitHub baut dann Windows- UND Linux-Pakete und legt sie im selben (Entwurfs-)Release ab –
 # ohne lokalen Build und ohne persönlichen Token (nutzt den eingebauten GITHUB_TOKEN).
+# Der native better-sqlite3 muss je Zielsystem gebaut werden, deshalb ein eigener Runner pro OS.
 name: Release
 
 on:
@@ -13,8 +14,15 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build:
+    strategy:
+      fail-fast: false
+      # Nacheinander: Windows legt den Release-Entwurf an, Ubuntu hängt seine
+      # Artefakte an denselben Entwurf an (verhindert doppelte Entwürfe zum Tag).
+      max-parallel: 1
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
