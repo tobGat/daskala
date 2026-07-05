@@ -138,6 +138,32 @@ const DOKU = [
       'Beim Start prüft Daskala automatisch auf eine neuere Version und lädt sie im Hintergrund. Sobald ein Update bereit ist, kannst du es über „Jetzt neu starten" sofort installieren – andernfalls wird es beim nächsten Beenden übernommen.',
     ],
   },
+  {
+    id: 'impressum', titel: 'Impressum', bloecke: [
+      'Angaben gemäß österreichischem Medien- und E-Commerce-Recht (kleine Offenlegung).',
+      { h: 'Für den Inhalt verantwortlich' },
+      'Tobias Gatterbauer',
+      // TODO: eigene Anschrift und Kontakt-E-Mail eintragen
+      '[Straße Nr., PLZ Ort]',
+      'E-Mail: [deine-adresse@example.com]',
+      { h: 'Art des Angebots' },
+      'Nicht-kommerzielles, kostenloses Open-Source-Projekt (GNU GPL-3.0), ohne Gewinnabsicht.',
+    ],
+  },
+  {
+    id: 'datenschutz', titel: 'Datenschutz', bloecke: [
+      'Daskala ist auf Datensparsamkeit ausgelegt und funktioniert vollständig offline.',
+      { ul: [
+        'Alle Inhalte (Klassen, Noten, Materialien, Notizen) werden ausschließlich lokal auf deinem Gerät gespeichert.',
+        'Es werden keine personenbezogenen Daten an Server oder Dritte übertragen – kein Tracking, keine Analyse, keine Werbung.',
+        'Einzige Ausnahme: Zur Update-Prüfung wird beim Start GitHub kontaktiert (reine Versionsabfrage, ohne personenbezogene Daten).',
+        'Backups liegen lokal bzw. am von dir gewählten Speicherort.',
+      ] },
+      { h: 'Verantwortlichkeit' },
+      'Für die in der App verarbeiteten personenbezogenen Daten (z. B. Schülernoten) ist die Schule bzw. die jeweilige Lehrkraft datenschutzrechtlich verantwortlich. Der Entwickler erhält oder verarbeitet keine dieser Daten.',
+      { tipp: 'Bewahre Datenbank und Backups sicher auf und gib das Gerät bzw. den Speicherort nicht unbefugt weiter.' },
+    ],
+  },
 ]
 
 function Block({ b }) {
