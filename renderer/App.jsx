@@ -17,6 +17,7 @@ import KlassenplanungView from './components/KlassenplanungView'
 import KompetenzrasterView from './components/KompetenzrasterView'
 import UebersichtView from './components/UebersichtView'
 import KVView from './components/KVView'
+import DokumentationModal from './components/DokumentationModal'
 import {
   KlasseHinzufuegenModal,
   FachHinzufuegenModal,
@@ -42,7 +43,7 @@ export default function App() {
   const {
     initialized, erststart,
     currentView, setCurrentView,
-    activeModal, closeModal,
+    activeModal, openModal, closeModal,
     detailSchueler,
     einstellungen,
     vorlagenModus,
@@ -62,6 +63,15 @@ export default function App() {
   useEffect(() => {
     init()
   }, [])
+
+  // Dokumentation beim ersten Öffnen einmalig anzeigen (danach jederzeit über die Einstellungen).
+  useEffect(() => {
+    if (initialized && !erststart && einstellungen && einstellungen.doku_gesehen !== '1') {
+      openModal('dokumentation')
+      window.api.einstellungen.set('doku_gesehen', '1')
+      useStore.setState({ einstellungen: { ...useStore.getState().einstellungen, doku_gesehen: '1' } })
+    }
+  }, [initialized, erststart, einstellungen?.doku_gesehen])
 
   useEffect(() => {
     const handler = async () => {
@@ -112,6 +122,7 @@ export default function App() {
       {activeModal === 'archiv' && <ArchivModal />}
       {activeModal === 'exportieren' && <ExportierenModal />}
       {activeModal === 'ferien' && <FerienModal />}
+      {activeModal === 'dokumentation' && <DokumentationModal onClose={closeModal} />}
     </div>
   )
 }

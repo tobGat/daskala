@@ -134,7 +134,15 @@ export default function Einstellungen({ onClose }) {
       <div className="modal-box max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Einstellungen</h2>
-          <button className="text-ink-400 hover:text-ink-600 text-xl" onClick={onClose}>✕</button>
+          <div className="flex items-center gap-3">
+            <button
+              className="text-sm font-medium text-coral-600 hover:text-coral-700"
+              onClick={() => { onClose(); useStore.getState().openModal('dokumentation') }}
+            >
+              📖 Dokumentation
+            </button>
+            <button className="text-ink-400 hover:text-ink-600 text-xl" onClick={onClose}>✕</button>
+          </div>
         </div>
 
         {/* Zweispaltiges Grid */}
