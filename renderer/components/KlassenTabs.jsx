@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tobias Gatterbauer
+// This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 import React, { useState, useRef } from 'react'
 import useStore from '../store/useStore'
 
@@ -44,6 +47,29 @@ export default function KlassenTabs() {
   const [klasseContextMenu, setKlasseContextMenu] = useState(null) // { klasse, x, y }
   const [teamsLinkModal, setTeamsLinkModal] = useState(null) // { id, wert }
   const [loeschModal, setLoeschModal] = useState(null) // { klasse, stats }
+  const [dupModal, setDupModal] = useState(null) // { klasse, name, mitPlanung, mitSchueler }
+  const [dupLaeuft, setDupLaeuft] = useState(false)
+
+  const handleDuplizieren = async () => {
+    if (!dupModal) return
+    setDupLaeuft(true)
+    try {
+      const neueId = await window.api.klassen.duplizieren({
+        klasseId: dupModal.klasse.id,
+        neuerName: dupModal.name.trim() || (dupModal.klasse.name + ' (Kopie)'),
+        mitPlanung: dupModal.mitPlanung,
+        mitSchueler: dupModal.mitSchueler,
+      })
+      setDupModal(null)
+      if (!neueId) { pushToast('Klasse konnte nicht dupliziert werden.', 'error'); return }
+      pushToast('Klasse dupliziert.', 'success')
+      await ladeAktiveKlassenliste()
+      const neu = useStore.getState().klassen.find(k => k.id === neueId)
+      if (neu) await setAktiveKlasse(neu)
+    } finally {
+      setDupLaeuft(false)
+    }
+  }
 
   const renameStarten = (klasse) => {
     setRenameId(klasse.id)
@@ -273,6 +299,11 @@ export default function KlassenTabs() {
               Teams-Link {klasseContextMenu.klasse.teams_link ? 'bearbeiten' : 'hinzufügen'}
             </div>
             {!vorlagenModus && (
+              <div className="context-menu-item" onClick={() => { const k = klasseContextMenu.klasse; setKlasseContextMenu(null); setDupModal({ klasse: k, name: k.name + ' (Kopie)', mitPlanung: true, mitSchueler: true }) }}>
+                <span aria-hidden>⧉</span> Klasse duplizieren…
+              </div>
+            )}
+            {!vorlagenModus && (
               <div
                 className="context-menu-item"
                 onClick={async () => {
@@ -314,6 +345,47 @@ export default function KlassenTabs() {
           }}
           onClose={() => setLoeschModal(null)}
         />
+      )}
+
+      {/* Klasse-duplizieren-Modal */}
+      {dupModal && (
+        <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && setDupModal(null)}>
+          <div className="modal-box max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-ink-900 dark:text-white">Klasse duplizieren</h3>
+              <button onClick={() => setDupModal(null)} className="text-ink-400 hover:text-ink-600 text-sm">✕</button>
+            </div>
+            <p className="text-xs text-ink-500 dark:text-ink-400 mb-4">
+              Dupliziert „{dupModal.klasse.name}" inkl. aller Fächer. Noten werden nicht übernommen.
+            </p>
+            <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Klassenname</label>
+            <input
+              value={dupModal.name}
+              onChange={e => setDupModal(m => ({ ...m, name: e.target.value }))}
+              className="w-full text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 placeholder-ink-400 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400 mb-4"
+              autoFocus
+            />
+            <div className="flex flex-col gap-2 mb-5">
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={dupModal.mitSchueler} onChange={e => setDupModal(m => ({ ...m, mitSchueler: e.target.checked }))} className="mt-0.5" />
+                <span className="text-sm text-ink-700 dark:text-paper-200">Schüler:innen übernehmen</span>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={dupModal.mitPlanung} onChange={e => setDupModal(m => ({ ...m, mitPlanung: e.target.checked }))} className="mt-0.5" />
+                <span className="text-sm text-ink-700 dark:text-paper-200">
+                  Jahresplanung samt Materialien übernehmen
+                  <span className="block text-[11px] text-ink-400">Abschnitte, Dokumente und Links werden mitkopiert.</span>
+                </span>
+              </label>
+            </div>
+            <div className="flex gap-3">
+              <button className="btn-secondary flex-1" onClick={() => setDupModal(null)}>Abbrechen</button>
+              <button className="btn-primary flex-1" onClick={handleDuplizieren} disabled={dupLaeuft || !dupModal.name.trim()}>
+                {dupLaeuft ? 'Dupliziere…' : 'Duplizieren'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Teams-Link Modal */}

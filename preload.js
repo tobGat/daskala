@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tobias Gatterbauer
+// This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 const { contextBridge, ipcRenderer } = require('electron')
 
 const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args)
@@ -17,6 +20,8 @@ contextBridge.exposeInMainWorld('api', {
   klassen: {
     getAll: (schuljahrId) => invoke('klassen:getAll', schuljahrId),
     getVorlagen: () => invoke('klassen:getVorlagen'),
+    ausVorlage: (data) => invoke('klassen:ausVorlage', data),
+    duplizieren: (data) => invoke('klassen:duplizieren', data),
     create: (data) => invoke('klassen:create', data),
     delete: (id) => invoke('klassen:delete', id),
     getDeleteStats: (id) => invoke('klassen:getDeleteStats', id),

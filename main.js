@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tobias Gatterbauer
+// This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
@@ -3645,6 +3648,121 @@ function registerIPC() {
     schreibeMaterialIndex(abschnittId)
     const err = await shell.openPath(dir)
     return { ok: !err, fehler: err || null }
+  })
+
+  // Materialien eines Abschnitts (Links + Datei-Metadaten + echte Dateien) auf einen anderen kopieren.
+  function kopiereMaterialien(vonAbschnittId, nachAbschnittId) {
+    const rows = db.prepare('SELECT typ, ref, anzeigename, beschreibung, reihenfolge FROM abschnitt_materialien WHERE abschnitt_id=? ORDER BY reihenfolge, id').all(vonAbschnittId)
+    const ins = db.prepare('INSERT INTO abschnitt_materialien (abschnitt_id, typ, ref, anzeigename, beschreibung, reihenfolge) VALUES (?,?,?,?,?,?)')
+    for (const r of rows) ins.run(nachAbschnittId, r.typ, r.ref, r.anzeigename, r.beschreibung, r.reihenfolge)
+    try {
+      const vonDir = abschnittFolderIfExists(vonAbschnittId)
+      if (!vonDir) return
+      const nachDir = ensureAbschnittFolder(nachAbschnittId)
+      if (!nachDir) return
+      for (const de of fs.readdirSync(vonDir, { withFileTypes: true })) {
+        if (!de.isFile() || de.name.startsWith('.') || de.name === MATERIAL_INDEX_NAME) continue
+        fs.copyFileSync(path.join(vonDir, de.name), path.join(nachDir, de.name))
+      }
+      schreibeMaterialIndex(nachAbschnittId)
+    } catch (e) { logError('kopiereMaterialien', e) }
+  }
+
+  // Aus einer Vorlagenklasse eine echte Klasse erstellen (Fächer, optional Jahresplanung + Materialien).
+  ipcMain.handle('klassen:ausVorlage', (_, { vorlagenKlasseId, schuljahrId, neuerName, mitPlanung }) => {
+    const tx = db.transaction(() => {
+      const vorlage = db.prepare('SELECT * FROM klassen WHERE id=?').get(vorlagenKlasseId)
+      if (!vorlage) return null
+      const maxReihen = db.prepare('SELECT MAX(reihenfolge) as m FROM klassen WHERE schuljahr_id=?').get(schuljahrId)?.m ?? 0
+      const nk = db.prepare('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link, ist_vorlage) VALUES (?,?,?,?,?,0)')
+        .run(schuljahrId, (neuerName && neuerName.trim()) || vorlage.name, vorlage.farbe ?? null, maxReihen + 1, vorlage.teams_link ?? null)
+      const neueKlasseId = nk.lastInsertRowid
+
+      const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id=? ORDER BY reihenfolge, id').all(vorlagenKlasseId)
+      for (const f of faecher) {
+        const nf = db.prepare(`INSERT INTO faecher
+          (klasse_id, name, farbe, reihenfolge, benotungssystem, alle_schueler,
+           gewichtung_sa, gewichtung_t, gewichtung_custom, ma_max_einfluss, hue_max_einfluss)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(
+          neueKlasseId, f.name, f.farbe ?? null, f.reihenfolge, f.benotungssystem ?? 'standard', f.alle_schueler ?? 1,
+          f.gewichtung_sa, f.gewichtung_t, f.gewichtung_custom, f.ma_max_einfluss, f.hue_max_einfluss)
+        const neuFachId = nf.lastInsertRowid
+        initKompetenzVorlagen(neuFachId, f.name)
+        if (mitPlanung) {
+          const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id').all(f.id)
+          for (const a of abschnitte) {
+            // Ohne Termine übernehmen (im neuen Kalender frei platzierbar)
+            const na = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?)')
+              .run(neuFachId, a.titel, a.inhalt, null, null, a.farbe, a.reihenfolge)
+            kopiereMaterialien(a.id, na.lastInsertRowid)
+          }
+        }
+      }
+      return neueKlasseId
+    })
+    return tx()
+  })
+
+  // Eine echte Klasse duplizieren: Fächer immer; optional Jahresplanung+Materialien und/oder Schüler:innen (ohne Noten).
+  ipcMain.handle('klassen:duplizieren', (_, { klasseId, neuerName, mitPlanung, mitSchueler }) => {
+    const tx = db.transaction(() => {
+      const orig = db.prepare('SELECT * FROM klassen WHERE id=?').get(klasseId)
+      if (!orig) return null
+      const maxReihen = db.prepare('SELECT MAX(reihenfolge) as m FROM klassen WHERE schuljahr_id=?').get(orig.schuljahr_id)?.m ?? 0
+      const nk = db.prepare('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link, ist_vorlage, ist_kv) VALUES (?,?,?,?,?,0,?)')
+        .run(orig.schuljahr_id, (neuerName && neuerName.trim()) || (orig.name + ' (Kopie)'), orig.farbe ?? null, maxReihen + 1, orig.teams_link ?? null, orig.ist_kv ?? 0)
+      const neueKlasseId = nk.lastInsertRowid
+
+      // Schüler:innen kopieren (ohne Noten)
+      const schuelerMap = {}
+      if (mitSchueler) {
+        const schueler = db.prepare('SELECT * FROM schueler WHERE klasse_id=? AND aktiv=1 ORDER BY reihenfolge, id').all(klasseId)
+        const insS = db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge, aktiv, avatar, lernschwaeche, legasthenie, spf) VALUES (?,?,?,?,1,?,?,?,?)')
+        for (const s of schueler) {
+          const r = insS.run(neueKlasseId, s.vorname, s.nachname, s.reihenfolge, s.avatar ?? null, s.lernschwaeche ?? 0, s.legasthenie ?? 0, s.spf ?? 0)
+          schuelerMap[s.id] = r.lastInsertRowid
+        }
+      }
+
+      // Fächer kopieren (mit Einstellungen)
+      const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id=? ORDER BY reihenfolge, id').all(klasseId)
+      for (const f of faecher) {
+        const nf = db.prepare(`INSERT INTO faecher
+          (klasse_id, name, farbe, reihenfolge, benotungssystem, alle_schueler,
+           gewichtung_sa, gewichtung_t, gewichtung_custom, ma_max_einfluss, hue_max_einfluss)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(
+          neueKlasseId, f.name, f.farbe ?? null, f.reihenfolge, f.benotungssystem ?? 'standard', f.alle_schueler ?? 1,
+          f.gewichtung_sa, f.gewichtung_t, f.gewichtung_custom, f.ma_max_einfluss, f.hue_max_einfluss)
+        const neuFachId = nf.lastInsertRowid
+        initKompetenzVorlagen(neuFachId, f.name)
+
+        if (mitSchueler) {
+          // Gruppenfächer: Mitgliedschaften auf die neuen Schüler:innen remappen
+          if (!(f.alle_schueler ?? 1)) {
+            const rows = db.prepare('SELECT schueler_id FROM fach_schueler WHERE fach_id=?').all(f.id)
+            const insFS = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
+            for (const r of rows) { const ns = schuelerMap[r.schueler_id]; if (ns) insFS.run(neuFachId, ns) }
+          }
+          // Differenziert: Niveau-Default (AHS) für die Roster-Schüler:innen
+          if (f.benotungssystem === 'differenziert') {
+            const insN = db.prepare("INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, 'AHS')")
+            for (const sid of rosterIdsFuerFach(neuFachId)) insN.run(neuFachId, sid)
+          }
+        }
+
+        // Jahresplanung + Materialien (Termine bleiben erhalten)
+        if (mitPlanung) {
+          const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id').all(f.id)
+          for (const a of abschnitte) {
+            const na = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?)')
+              .run(neuFachId, a.titel, a.inhalt, a.datum_von, a.datum_bis, a.farbe, a.reihenfolge)
+            kopiereMaterialien(a.id, na.lastInsertRowid)
+          }
+        }
+      }
+      return neueKlasseId
+    })
+    return tx()
   })
 
   // ─── KV-Modul (Klassenvorstand) ──────────────────────────────────────────────

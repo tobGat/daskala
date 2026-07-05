@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tobias Gatterbauer
+// This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import useStore from '../store/useStore'
 import { berechneSchulferien, ferienFuerTag } from '../utils/schulferien'
@@ -336,7 +339,7 @@ function AbschnittKarte({ abschnitt, aktivesFach, istSelektiert, onClick, onCale
 
 // ─── Hauptkomponente ─────────────────────────────────────────────────────────
 export default function JahresplanungView() {
-  const { aktivesFach, einstellungen, aktuellesSchuljahr, pushToast } = useStore()
+  const { aktivesFach, einstellungen, aktuellesSchuljahr, pushToast, vorlagenModus, aktiveKlasse, setVorlagenModus } = useStore()
   const [abschnitte, setAbschnitte] = useState([])
   const [selektiert, setSelektiert] = useState(null)
   const [istNeu, setIstNeu] = useState(false)
@@ -344,6 +347,12 @@ export default function JahresplanungView() {
   const [importModal, setImportModal] = useState(false)
   const [importQuellen, setImportQuellen] = useState([])
   const [importiertVon, setImportiertVon] = useState(null)
+
+  // Klasse(n)-aus-Vorlage
+  const [vorlageModal, setVorlageModal] = useState(false)
+  const [vorlageNamen, setVorlageNamen] = useState([''])
+  const [vorlageMitPlanung, setVorlageMitPlanung] = useState(true)
+  const [vorlageLaeuft, setVorlageLaeuft] = useState(false)
 
   // Formular
   const [formTitel, setFormTitel] = useState('')
@@ -455,6 +464,45 @@ export default function JahresplanungView() {
     finally { setExportLaeuft(false) }
   }
 
+  // ─── Klasse(n) aus Vorlage erstellen ─────────────────────────────────────
+  const openVorlageModal = () => {
+    setVorlageNamen([aktiveKlasse?.name ?? ''])
+    setVorlageMitPlanung(true)
+    setVorlageModal(true)
+  }
+  const setVorlageNameAt = (i, val) => setVorlageNamen(prev => prev.map((n, idx) => idx === i ? val : n))
+  const addVorlageName = () => setVorlageNamen(prev => [...prev, ''])
+  const removeVorlageName = (i) => setVorlageNamen(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev)
+
+  const handleKlasseAusVorlage = async () => {
+    if (!aktiveKlasse || !aktuellesSchuljahr) return
+    const namen = vorlageNamen.map(n => n.trim()).filter(Boolean)
+    if (namen.length === 0) return
+    setVorlageLaeuft(true)
+    try {
+      const ids = []
+      for (const name of namen) {
+        const id = await window.api.klassen.ausVorlage({
+          vorlagenKlasseId: aktiveKlasse.id,
+          schuljahrId: aktuellesSchuljahr.id,
+          neuerName: name,
+          mitPlanung: vorlageMitPlanung,
+        })
+        if (id) ids.push(id)
+      }
+      setVorlageModal(false)
+      if (ids.length === 0) { pushToast('Klasse konnte nicht erstellt werden.', 'error'); return }
+      pushToast(ids.length === 1 ? 'Klasse aus Vorlage erstellt.' : `${ids.length} Klassen aus Vorlage erstellt.`, 'success')
+      // Vorlagenmodus verlassen und die erste neue Klasse anzeigen
+      await setVorlagenModus(false)
+      const { klassen, setAktiveKlasse } = useStore.getState()
+      const neu = klassen.find(k => k.id === ids[0])
+      if (neu) await setAktiveKlasse(neu)
+    } finally {
+      setVorlageLaeuft(false)
+    }
+  }
+
   // ─── Abschnitt selektieren / bearbeiten ──────────────────────────────────
   const abschnittWaehlen = (abschnitt) => {
     setSelektiert(abschnitt)
@@ -482,10 +530,9 @@ export default function JahresplanungView() {
 
   const handleSpeichern = async () => {
     if (!aktivesFach) return
-    let zielId = selektiert?.id
     if (istNeu) {
       // Nur Titel, Farbe, Inhalt – ohne Datum (wird per Drag gesetzt)
-      zielId = await window.api.jahresplanung.create({
+      await window.api.jahresplanung.create({
         fachId: aktivesFach.id,
         titel: formTitel.trim(),
         inhalt: formInhalt,
@@ -503,17 +550,8 @@ export default function JahresplanungView() {
       })
       if (res?.ordnerWarnung) pushToast(res.ordnerWarnung, 'error')
     }
-    // Abschnitte neu laden und den gespeicherten Abschnitt selektiert lassen,
-    // damit die Materialien-Sektion (auch für neue Abschnitte) direkt nutzbar ist.
-    const rows = await window.api.jahresplanung.getAll(aktivesFach.id)
-    setAbschnitte(rows)
-    const ziel = rows.find(a => a.id === zielId)
-    if (ziel) {
-      setSelektiert(ziel); setIstNeu(false); setLoeschenBestaetigung(false)
-      setFormTitel(ziel.titel); setFormFarbe(ziel.farbe); setFormInhalt(ziel.inhalt ?? '')
-    } else {
-      panelSchliessen()
-    }
+    await ladeAbschnitte()
+    panelSchliessen()
   }
 
   const handleLoeschen = async () => {
@@ -666,12 +704,22 @@ export default function JahresplanungView() {
         <span className="text-xs text-ink-400">
           {aktivesFach.name} · Schuljahr {schuljahr}
         </span>
-        <button
-          className="btn-secondary text-xs ml-auto"
-          onClick={handleImportOeffnen}
-        >
-          Übernehmen
-        </button>
+        {vorlagenModus ? (
+          <button
+            className="btn-primary text-xs ml-auto"
+            onClick={openVorlageModal}
+            title="Aus dieser Vorlage eine echte Klasse erstellen"
+          >
+            Klasse aus Vorlage erstellen
+          </button>
+        ) : (
+          <button
+            className="btn-secondary text-xs ml-auto"
+            onClick={handleImportOeffnen}
+          >
+            Übernehmen
+          </button>
+        )}
         <button
           className="btn-secondary text-xs"
           onClick={handleExport}
@@ -737,7 +785,22 @@ export default function JahresplanungView() {
                   <h3 className="text-base font-semibold text-ink-800 dark:text-paper-100">
                     {istNeu ? 'Neuer Abschnitt' : 'Abschnitt bearbeiten'}
                   </h3>
-                  <button onClick={panelSchliessen} className="text-ink-400 hover:text-ink-600 text-sm">✕</button>
+                  <div className="flex items-center gap-1">
+                    {!istNeu && (
+                      <button
+                        onClick={handleLoeschen}
+                        className={`text-sm px-2.5 py-1.5 rounded-md transition-colors ${
+                          loeschenBestaetigung
+                            ? 'bg-red-500 text-white font-medium'
+                            : 'text-ink-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                        }`}
+                        title="Abschnitt löschen"
+                      >
+                        {loeschenBestaetigung ? 'Wirklich löschen?' : <span className="text-lg leading-none">🗑</span>}
+                      </button>
+                    )}
+                    <button onClick={panelSchliessen} className="w-7 h-7 flex items-center justify-center text-ink-400 hover:text-ink-600 text-sm">✕</button>
+                  </div>
                 </div>
                 <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-0.5 pt-1 pb-1">
                   {/* Titel */}
@@ -894,26 +957,14 @@ export default function JahresplanungView() {
                 </div>
 
                 {/* Buttons */}
-                <div className="flex gap-2 pt-4 mt-3 border-t border-paper-100 dark:border-ink-800">
+                <div className="pt-4 mt-3 border-t border-paper-100 dark:border-ink-800">
                   <button
                     onClick={handleSpeichern}
                     disabled={!formTitel.trim()}
-                    className="flex-1 btn-primary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full btn-primary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Speichern
+                    Speichern &amp; schließen
                   </button>
-                  {!istNeu && (
-                    <button
-                      onClick={handleLoeschen}
-                      className={`text-sm px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                        loeschenBestaetigung
-                          ? 'bg-red-500 text-white hover:bg-red-600'
-                          : 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
-                      }`}
-                    >
-                      {loeschenBestaetigung ? 'Sicher?' : 'Löschen'}
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
@@ -1013,6 +1064,55 @@ export default function JahresplanungView() {
                 ))}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Klasse(n)-aus-Vorlage-Modal ───────────────────────────────── */}
+      {vorlageModal && (
+        <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && setVorlageModal(false)}>
+          <div className="modal-box max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-ink-800 dark:text-paper-100">Klasse(n) aus Vorlage erstellen</h3>
+              <button onClick={() => setVorlageModal(false)} className="text-ink-400 hover:text-ink-600 text-sm">✕</button>
+            </div>
+            <p className="text-xs text-ink-500 dark:text-ink-400 mb-4">
+              Erstellt im Schuljahr <span className="font-medium">{aktuellesSchuljahr?.bezeichnung}</span> aus der Vorlage „{aktiveKlasse?.name}" eine oder mehrere Klassen (je inkl. aller Fächer).
+            </p>
+            <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Klassennamen</label>
+            <div className="flex flex-col gap-1.5 mb-2">
+              {vorlageNamen.map((n, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <input
+                    value={n}
+                    onChange={e => setVorlageNameAt(i, e.target.value)}
+                    placeholder={`z.B. ${i === 0 ? '3A' : '3' + String.fromCharCode(66 + i)}`}
+                    className="flex-1 text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 placeholder-ink-400 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
+                    autoFocus={i === vorlageNamen.length - 1}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addVorlageName() } }}
+                  />
+                  {vorlageNamen.length > 1 && (
+                    <button onClick={() => removeVorlageName(i)} className="w-7 h-7 flex items-center justify-center rounded-md text-ink-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0" title="Entfernen">✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button onClick={addVorlageName} className="text-xs font-medium text-coral-600 hover:text-coral-700 mb-4 flex items-center gap-1">
+              <span className="text-sm leading-none">＋</span> weitere Klasse
+            </button>
+            <label className="flex items-start gap-2 cursor-pointer select-none mb-5">
+              <input type="checkbox" checked={vorlageMitPlanung} onChange={e => setVorlageMitPlanung(e.target.checked)} className="mt-0.5" />
+              <span className="text-sm text-ink-700 dark:text-paper-200">
+                Jahresplanung samt Materialien übernehmen
+                <span className="block text-[11px] text-ink-400">Abschnitte, Dokumente und Links werden je Klasse mitkopiert (ohne Kalender-Termine).</span>
+              </span>
+            </label>
+            <div className="flex gap-3">
+              <button className="btn-secondary flex-1" onClick={() => setVorlageModal(false)}>Abbrechen</button>
+              <button className="btn-primary flex-1" onClick={handleKlasseAusVorlage} disabled={vorlageLaeuft || !vorlageNamen.some(n => n.trim())}>
+                {vorlageLaeuft ? 'Erstelle…' : `Erstellen${vorlageNamen.filter(n => n.trim()).length > 1 ? ` (${vorlageNamen.filter(n => n.trim()).length})` : ''}`}
+              </button>
+            </div>
           </div>
         </div>
       )}
