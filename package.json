@@ -1,7 +1,7 @@
 {
   "name": "daskala",
   "version": "1.0.55",
-  "description": "Digitales Notenbuch für österreichische Mittelschulen",
+  "description": "Digitales Notenbuch für österreichische Schulen",
   "author": "Tobias Gatterbauer",
   "license": "GPL-3.0-or-later",
   "main": "main.js",
@@ -75,10 +75,10 @@
       "icon": "daskalalogo.png",
       "category": "Education",
       "maintainer": "Tobias Gatterbauer <t.gatterbauer@proton.me>",
-      "synopsis": "Digitales Notenbuch für österreichische Mittelschulen",
+      "synopsis": "Digitales Notenbuch für österreichische Schulen",
       "desktop": {
         "Name": "Daskala",
-        "Comment": "Digitales Notenbuch für österreichische Mittelschulen"
+        "Comment": "Digitales Notenbuch für österreichische Schulen"
       },
       "target": [
         "AppImage",
