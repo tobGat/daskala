@@ -8,9 +8,6 @@ dist-electron/
 # Logs
 *.log
 
-# Lokale Claude-Einstellungen
-.claude/settings.local.json
-
 # Geheimnisse / Tokens (nie committen!)
 .env
 .env.*

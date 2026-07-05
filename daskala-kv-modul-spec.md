@@ -1,6 +1,6 @@
 # Daskala — KV-Modul
 
-**Spezifikation für Claude Code**
+**Spezifikation**
 Stand: Mai 2026 · Autor: Tobias
 
 ---
@@ -232,7 +232,7 @@ Trigger werden nicht stumm geschlossen — sie verlangen `reagiert_am` + `reakti
 
 ---
 
-## 8. Phasen / Reihenfolge für Claude Code
+## 8. Phasen / Reihenfolge
 
 ### Phase 1 — Fundament (1–2 Sitzungen)
 1. Migration anlegen: alle `kv_*`-Tabellen + `schuljahr` (falls fehlt)
