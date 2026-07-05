@@ -9,6 +9,7 @@
     "vite": "vite",
     "electron:dev": "wait-on http://localhost:5173 && cross-env NODE_ENV=development node launch-electron.js",
     "build": "node bump-version.js && vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "release": "npm run build -- --publish always",
     "preview": "vite preview",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3 || true"

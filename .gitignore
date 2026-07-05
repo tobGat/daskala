@@ -11,6 +11,10 @@ dist-electron/
 # Lokale Claude-Einstellungen
 .claude/settings.local.json
 
+# Geheimnisse / Tokens (nie committen!)
+.env
+.env.*
+
 # Betriebssystem
 .DS_Store
 Thumbs.db
