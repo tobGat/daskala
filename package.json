@@ -71,6 +71,20 @@
         "dir"
       ]
     },
+    "linux": {
+      "icon": "daskalalogo.png",
+      "category": "Education",
+      "maintainer": "Tobias Gatterbauer <t.gatterbauer@proton.me>",
+      "synopsis": "Digitales Notenbuch für österreichische Mittelschulen",
+      "desktop": {
+        "Name": "Daskala",
+        "Comment": "Digitales Notenbuch für österreichische Mittelschulen"
+      },
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
     "npmRebuild": true
   }
 }
