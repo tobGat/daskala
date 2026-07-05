@@ -1,0 +1,38 @@
+# Release-Pipeline für Daskala.
+# Wird ausgelöst, sobald ein Versions-Tag (z. B. v1.0.53) gepusht wird.
+# GitHub baut dann den Windows-Installer und legt ihn als (Entwurfs-)Release ab –
+# ohne lokalen Build und ohne persönlichen Token (nutzt den eingebauten GITHUB_TOKEN).
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Version aus dem Tag übernehmen
+        shell: bash
+        run: npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
+
+      - name: Bauen & als Entwurfs-Release veröffentlichen
+        run: npm run build -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
