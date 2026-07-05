@@ -143,9 +143,9 @@ const DOKU = [
       'Angaben gemäß österreichischem Medien- und E-Commerce-Recht (kleine Offenlegung).',
       { h: 'Für den Inhalt verantwortlich' },
       'Tobias Gatterbauer',
-      // TODO: eigene Anschrift und Kontakt-E-Mail eintragen
-      '[Straße Nr., PLZ Ort]',
-      'E-Mail: [deine-adresse@example.com]',
+      'Brucknerweg 10, 4780 Schärding',
+      'Lindenweg 4, 4783 Wernstein am Inn',
+      'E-Mail: t.gatterbauer@proton.me',
       { h: 'Art des Angebots' },
       'Nicht-kommerzielles, kostenloses Open-Source-Projekt (GNU GPL-3.0), ohne Gewinnabsicht.',
     ],
