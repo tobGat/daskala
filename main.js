@@ -254,53 +254,10 @@ async function doOpen(win) {
 }
 
 function setupMenu() {
-  const template = [
-    {
-      label: 'Datei',
-      submenu: [
-        {
-          label: 'Öffnen…',
-          accelerator: 'CmdOrCtrl+O',
-          click: async (_, win) => {
-            const ok = await doOpen(win ?? BrowserWindow.getAllWindows()[0])
-            if (ok === null) dialog.showMessageBox(win ?? BrowserWindow.getAllWindows()[0], { type: 'error', message: 'Öffnen fehlgeschlagen.' })
-          },
-        },
-        {
-          label: 'Speichern unter…',
-          accelerator: 'CmdOrCtrl+Shift+S',
-          click: async (_, win) => {
-            const pfad = await doSaveAs(win ?? BrowserWindow.getAllWindows()[0])
-            if (pfad === null) dialog.showMessageBox(win ?? BrowserWindow.getAllWindows()[0], { type: 'error', message: 'Speichern fehlgeschlagen.' })
-            else if (pfad) dialog.showMessageBox(win ?? BrowserWindow.getAllWindows()[0], { type: 'info', message: `Gespeichert unter:\n${pfad}` })
-          },
-        },
-        { type: 'separator' },
-        {
-          label: 'Backup erstellen',
-          click: async (_, win) => {
-            const pfad = doBackupCreate()
-            const w = win ?? BrowserWindow.getAllWindows()[0]
-            if (pfad) dialog.showMessageBox(w, { type: 'info', message: `Backup erstellt:\n${pfad}` })
-            else dialog.showMessageBox(w, { type: 'error', message: 'Backup fehlgeschlagen.' })
-          },
-        },
-      ],
-    },
-    {
-      label: 'Bearbeiten',
-      submenu: [
-        { label: 'Rückgängig', accelerator: 'CmdOrCtrl+Z', click: executeUndo },
-        { label: 'Wiederholen', accelerator: 'CmdOrCtrl+Y', click: executeRedo },
-        { type: 'separator' },
-        { role: 'cut', label: 'Ausschneiden' },
-        { role: 'copy', label: 'Kopieren' },
-        { role: 'paste', label: 'Einfügen' },
-        { role: 'selectAll', label: 'Alles auswählen' },
-      ],
-    },
-  ]
-  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+  // Kein Anwendungsmenü (die „Datei/Bearbeiten"-Leiste ist entfernt).
+  // Die Tastenkürzel (Rückgängig/Wiederholen, Öffnen, Speichern unter) sind
+  // stattdessen in createWindow() über 'before-input-event' registriert.
+  Menu.setApplicationMenu(null)
 }
 
 function initDB() {
@@ -940,7 +897,6 @@ function initDB() {
   insertEinstellung.run('ma_plus_wert', '1')
   insertEinstellung.run('ma_minus_wert', '5')
   insertEinstellung.run('semester2_monat', '2')
-  insertEinstellung.run('onedrive_backup_aktiv', '0')
   // Planungs-Features (Stundenplan, Jahres-/Klassenplanung) — default aus.
   // Wer die Planung in Daskala separat zu einem Tool wie Teachino nutzen möchte,
   // schaltet das in den Einstellungen ein.
@@ -957,19 +913,6 @@ function initDB() {
 
   const semester = month >= 9 || month <= 1 ? '1' : '2'
   insertEinstellung.run('semester_aktuell', semester)
-}
-
-// ─── OneDrive ─────────────────────────────────────────────────────────────────
-function findOneDrivePath() {
-  const kandidaten = [
-    process.env.OneDrive,
-    process.env.OneDriveConsumer,
-    process.env.OneDriveCommercial,
-    path.join(process.env.USERPROFILE || '', 'OneDrive'),
-    path.join(process.env.USERPROFILE || '', 'OneDrive - Personal'),
-    path.join(process.env.USERPROFILE || '', 'OneDrive - Business'),
-  ].filter(Boolean)
-  return kandidaten.find(p => { try { return fs.existsSync(p) } catch { return false } }) ?? null
 }
 
 // ─── Backup ───────────────────────────────────────────────────────────────────
@@ -992,31 +935,6 @@ function createBackup() {
     }
   }
 
-  // OneDrive-Backup (falls aktiviert)
-  try {
-    const onedriveAktiv = db.prepare(
-      "SELECT wert FROM einstellungen WHERE schluessel = 'onedrive_backup_aktiv'"
-    ).get()?.wert
-    if (onedriveAktiv === '1') {
-      const onedrivePfad = findOneDrivePath()
-      if (onedrivePfad) {
-        const onedriveBkDir = path.join(onedrivePfad, 'Daskala', 'backups')
-        if (!fs.existsSync(onedriveBkDir)) fs.mkdirSync(onedriveBkDir, { recursive: true })
-        const onedriveBkPath = path.join(onedriveBkDir, `db_${today}.sqlite`)
-        if (!fs.existsSync(onedriveBkPath)) fs.copyFileSync(dbPath, onedriveBkPath)
-        // Max 30 OneDrive-Backups
-        const odBackups = fs.readdirSync(onedriveBkDir)
-          .filter(f => f.startsWith('db_') && f.endsWith('.sqlite'))
-          .sort()
-        if (odBackups.length > 30) {
-          odBackups.slice(0, odBackups.length - 30)
-            .forEach(f => fs.unlinkSync(path.join(onedriveBkDir, f)))
-        }
-      }
-    }
-  } catch (e) {
-    console.error('OneDrive-Backup fehlgeschlagen:', e)
-  }
 }
 
 // ─── Zeugnisnoten-Berechnung ──────────────────────────────────────────────────
@@ -2589,12 +2507,6 @@ function registerIPC() {
     return true
   })
 
-  // OneDrive
-  ipcMain.handle('onedrive:getInfo', () => {
-    const pfad = findOneDrivePath()
-    return { pfad, verfuegbar: !!pfad }
-  })
-
   // Backup
   ipcMain.handle('backup:create', () => doBackupCreate())
 
@@ -4095,6 +4007,17 @@ function createWindow() {
   })
 
   win.once('ready-to-show', () => win.show())
+
+  // Tastenkürzel (Ersatz für das entfernte Menü): Rückgängig/Wiederholen, Öffnen, Speichern unter.
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return
+    if (!(input.control || input.meta)) return
+    const key = (input.key || '').toLowerCase()
+    if (key === 'z' && !input.shift) { event.preventDefault(); executeUndo() }
+    else if (key === 'y' || (key === 'z' && input.shift)) { event.preventDefault(); executeRedo() }
+    else if (key === 'o' && !input.shift) { event.preventDefault(); doOpen(win) }
+    else if (key === 's' && input.shift) { event.preventDefault(); doSaveAs(win) }
+  })
 
   if (isDev) {
     win.loadURL('http://localhost:5173')

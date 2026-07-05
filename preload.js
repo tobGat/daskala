@@ -212,10 +212,6 @@ contextBridge.exposeInMainWorld('api', {
     getHueWoche: (wocheDatum) => invoke('stundenPlanung:getHueWoche', wocheDatum),
   },
 
-  onedrive: {
-    getInfo: () => invoke('onedrive:getInfo'),
-  },
-
   backup: {
     create: () => invoke('backup:create'),
     getList: () => invoke('backup:getList'),

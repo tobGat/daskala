@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import useStore from '../store/useStore'
 
 export default function Einstellungen({ onClose }) {
@@ -34,9 +34,7 @@ export default function Einstellungen({ onClose }) {
   const [fehler, setFehler] = useState('')
   const [erfolg, setErfolg] = useState(false)
   const [bundesland, setBundesland] = useState(einstellungen['bundesland'] ?? '')
-  const [onedriveAktiv, setOnedriveAktiv] = useState(einstellungen['onedrive_backup_aktiv'] === '1')
   const [planungAktiv, setPlanungAktiv] = useState(einstellungen['planung_aktiv'] === '1')
-  const [onedriveInfo, setOnedriveInfo] = useState(null) // { pfad, verfuegbar }
   const [materialRootPfad, setMaterialRootPfad] = useState(einstellungen['material_root_pfad'] || '')
 
   const handleMaterialRootWaehlen = async () => {
@@ -52,10 +50,6 @@ export default function Einstellungen({ onClose }) {
     setMaterialRootPfad('')
     useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
   }
-
-  useEffect(() => {
-    window.api.onedrive.getInfo().then(setOnedriveInfo)
-  }, [])
 
   const gesamt = Object.values(gew).reduce((a, b) => a + b, 0)
 
@@ -82,7 +76,6 @@ export default function Einstellungen({ onClose }) {
       await window.api.einstellungen.set('semester2_monat', semester2Monat)
       await window.api.einstellungen.set('s1_gewichtung', String(s1Gewichtung / 100))
       await window.api.einstellungen.set('bundesland', bundesland)
-      await window.api.einstellungen.set('onedrive_backup_aktiv', onedriveAktiv ? '1' : '0')
       await window.api.einstellungen.set('planung_aktiv', planungAktiv ? '1' : '0')
 
       // Notenrelevante Einstellungen (MA+/-, s1_gewichtung) wirken sich auf gespeicherte ZN aus
@@ -357,50 +350,9 @@ export default function Einstellungen({ onClose }) {
           </div>
 
           <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Datensicherung</h3>
-          <div className="grid grid-cols-2 gap-4 items-start">
-            <div className="flex gap-3">
-              <button className="btn-secondary" onClick={handleBackup}>Backup erstellen</button>
-              <button className="btn-secondary" onClick={() => window.api.export.toJson()}>JSON-Export</button>
-            </div>
-            {/* OneDrive */}
-            <div className={`rounded-xl border p-3 ${onedriveInfo?.verfuegbar ? 'border-paper-200 dark:border-ink-700' : 'border-paper-100 dark:border-ink-800'}`}>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-ink-700 dark:text-paper-300">OneDrive-Backup</span>
-                    {onedriveInfo?.verfuegbar
-                      ? <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">gefunden</span>
-                      : <span className="text-xs text-ink-400">nicht gefunden</span>}
-                  </div>
-                  {onedriveInfo?.pfad && (
-                    <div className="text-xs text-ink-400 truncate mt-0.5" title={onedriveInfo.pfad}>
-                      {onedriveInfo.pfad}/Daskala/backups/
-                    </div>
-                  )}
-                  {!onedriveInfo?.verfuegbar && (
-                    <div className="text-xs text-ink-400 mt-0.5">OneDrive ist auf diesem PC nicht installiert.</div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  disabled={!onedriveInfo?.verfuegbar}
-                  onClick={() => setOnedriveAktiv(v => !v)}
-                  className={`relative flex-shrink-0 w-10 h-6 rounded-full transition-colors focus:outline-none
-                    ${onedriveAktiv && onedriveInfo?.verfuegbar
-                      ? 'bg-coral-600'
-                      : 'bg-paper-200 dark:bg-ink-700'}
-                    ${!onedriveInfo?.verfuegbar ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform
-                    ${onedriveAktiv && onedriveInfo?.verfuegbar ? 'translate-x-4' : 'translate-x-0'}`} />
-                </button>
-              </div>
-              {onedriveAktiv && onedriveInfo?.verfuegbar && (
-                <p className="text-xs text-ink-400 mt-2">
-                  Beim nächsten Start wird täglich ein Backup in deinen OneDrive-Ordner kopiert.
-                </p>
-              )}
-            </div>
+          <div className="flex gap-3">
+            <button className="btn-secondary" onClick={handleBackup}>Backup erstellen</button>
+            <button className="btn-secondary" onClick={() => window.api.export.toJson()}>JSON-Export</button>
           </div>
         </section>
 

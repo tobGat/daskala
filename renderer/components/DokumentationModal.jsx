@@ -124,7 +124,6 @@ const DOKU = [
       'Deine Daten liegen in einer lokalen Datenbank. Für Sicherheit und Weitergabe gibt es mehrere Wege (Einstellungen → Datei/Datensicherung):',
       { ul: [
         'Backup erstellen / JSON-Export',
-        'Optionales tägliches OneDrive-Backup',
         '„Öffnen…" / „Speichern unter…" für die Datenbankdatei',
         'Noten-Exporte als Excel und PDF (pro Fach oder gesamt)',
       ] },
