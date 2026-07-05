@@ -234,6 +234,11 @@ contextBridge.exposeInMainWorld('api', {
     offApplied: (cb) => ipcRenderer.removeListener('undo:applied', cb),
   },
 
+  update: {
+    onStatus:     (cb) => { const h = (_e, data) => cb(data); ipcRenderer.on('update:status', h); return () => ipcRenderer.removeListener('update:status', h) },
+    installieren: () => invoke('update:installieren'),
+  },
+
   dialog: {
     openFile: (filters) => invoke('dialog:openFile', filters),
     saveFile: (filters, defaultName) => invoke('dialog:saveFile', filters, defaultName),

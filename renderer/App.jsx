@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import useStore from './store/useStore'
 
 import Einrichtungsflow from './components/Einrichtungsflow'
@@ -51,6 +51,7 @@ export default function App() {
   } = useStore()
 
   const planungAktiv = einstellungen?.planung_aktiv === '1'
+  const [updateInfo, setUpdateInfo] = useState(null) // { status, version }
 
   // Falls Planung deaktiviert, aber aktuell eine Planungs-View aktiv ist → umschalten.
   // Im Vorlagen-Modus bleibt die Jahresplanung immer erreichbar.
@@ -80,6 +81,17 @@ export default function App() {
     }
     window.api.undo.onApplied(handler)
     return () => window.api.undo.offApplied(handler)
+  }, [])
+
+  // Auto-Update-Status (nur im gepackten Build aktiv).
+  useEffect(() => {
+    const off = window.api.update?.onStatus?.((data) => {
+      setUpdateInfo(data)
+      if (data?.status === 'available') {
+        useStore.getState().pushToast(`Update${data.version ? ' v' + data.version : ''} wird geladen…`, 'info')
+      }
+    })
+    return off
   }, [])
 
   if (!initialized) return <LoadingScreen />
@@ -123,6 +135,28 @@ export default function App() {
       {activeModal === 'exportieren' && <ExportierenModal />}
       {activeModal === 'ferien' && <FerienModal />}
       {activeModal === 'dokumentation' && <DokumentationModal onClose={closeModal} />}
+
+      {/* Auto-Update: Hinweis, sobald ein Update geladen wurde */}
+      {updateInfo?.status === 'downloaded' && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-3 bg-ink-900 dark:bg-ink-800 text-white rounded-xl shadow-pop px-4 py-2.5 border border-ink-700">
+          <span className="text-sm">
+            Ein Update{updateInfo.version ? ` (v${updateInfo.version})` : ''} ist bereit.
+          </span>
+          <button
+            onClick={() => window.api.update.installieren()}
+            className="text-sm font-medium bg-coral-600 hover:bg-coral-700 rounded-lg px-3 py-1 transition-colors"
+          >
+            Jetzt neu starten
+          </button>
+          <button
+            onClick={() => setUpdateInfo(null)}
+            className="text-white/60 hover:text-white text-sm"
+            title="Später (wird beim Beenden installiert)"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   )
 }
