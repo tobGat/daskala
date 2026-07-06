@@ -131,7 +131,7 @@ const DOKU = [
         'Noten-Exporte als Excel und PDF (pro Fach oder gesamt)',
       ] },
       { h: 'Automatische Sicherung' },
-      'Aktiviere „Automatische Sicherung bei jedem Start" und wähle einen Zielordner (z. B. USB-Stick oder Cloud-Ordner). Daskala legt dann höchstens einmal pro Tag automatisch eine Kopie dort ab.',
+      'Aktiviere „Automatische Sicherung bei jedem Start" und wähle einen Zielordner (z. B. USB-Stick oder Cloud-Ordner). Daskala legt dort sparsam Kopien ab: höchstens einmal pro Tag und nur, wenn sich seit der letzten Sicherung etwas geändert hat. Wie viele Sicherungen aufbewahrt werden (Standard: 10), stellst du daneben ein – ältere werden automatisch gelöscht, es sammeln sich also keine Massen an Dateien an.',
       'Ist keine automatische Sicherung aktiv, erinnert dich die App nach einigen Tagen ohne Sicherung mit einem Hinweis oben im Fenster. Vor jedem Update wird zusätzlich automatisch gesichert.',
       { tipp: 'Erstelle vor größeren Änderungen (z. B. Schuljahreswechsel) ein Backup – oder aktiviere gleich die automatische Sicherung.' },
       { h: 'App zurücksetzen' },

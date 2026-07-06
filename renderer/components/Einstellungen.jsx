@@ -66,6 +66,12 @@ export default function Einstellungen({ onClose }) {
   const [backupOrdner, setBackupOrdner] = useState(einstellungen['backup_ordner'] || '')
   const [autoBackup, setAutoBackup] = useState(einstellungen['backup_automatisch'] === '1')
   const [backupInfo, setBackupInfo] = useState(null)
+  const [backupBehalten, setBackupBehalten] = useState(einstellungen['backup_max'] || '10')
+  const handleBackupBehalten = async (v) => {
+    setBackupBehalten(v)
+    await window.api.einstellungen.set('backup_max', v)
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
   const [resetOffen, setResetOffen] = useState(false)
   const [offenerBereich, setOffenerBereich] = useState(null)
   const toggleBereich = (id) => setOffenerBereich(o => (o === id ? null : id))
@@ -608,8 +614,9 @@ export default function Einstellungen({ onClose }) {
                 <div className="flex-1">
                   <span className="text-sm text-ink-700 dark:text-paper-200">Automatische Sicherung bei jedem Start</span>
                   <p className="text-[11px] text-ink-400 leading-snug">
-                    Legt beim Start (max. 1×/Tag) eine Kopie in einen von dir gewählten Ordner – z.&nbsp;B. auf
-                    einem USB-Stick oder in einem Cloud-Ordner. Solange aktiv, erinnert dich die App nicht mehr ans Sichern.
+                    Legt beim Start eine Kopie in einen von dir gewählten Ordner – z.&nbsp;B. auf einem USB-Stick oder
+                    in einem Cloud-Ordner. Sichert <strong>höchstens 1×/Tag und nur, wenn sich etwas geändert hat</strong>;
+                    ältere Sicherungen werden automatisch gelöscht. Solange aktiv, erinnert dich die App nicht mehr ans Sichern.
                   </p>
                 </div>
               </label>
@@ -625,6 +632,12 @@ export default function Einstellungen({ onClose }) {
                     <button className="text-xs text-ink-400 hover:text-red-500 px-2" onClick={handleAutoBackupReset} title="Zurücksetzen">✕</button>
                   )}
                 </div>
+              </div>
+              <div className="flex items-center gap-2 mt-3 pl-6">
+                <label className="text-xs text-ink-500">Sicherungen aufbewahren:</label>
+                <select className="input py-1 w-auto text-sm" value={backupBehalten} onChange={e => handleBackupBehalten(e.target.value)}>
+                  {['3', '5', '10', '20', '30'].map(n => <option key={n} value={n}>letzte {n}</option>)}
+                </select>
               </div>
             </div>
             {backupInfo?.letzte && (

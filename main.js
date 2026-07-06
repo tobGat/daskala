@@ -982,16 +982,35 @@ function backupAutoAktiv() {
   return bkGet('backup_automatisch') === '1' && !!bkGet('backup_ordner')
 }
 
-// Beim Start: wenn automatische Sicherung aktiv ist, höchstens einmal pro Tag
-// eine Kopie in den gewählten Ordner schreiben.
+// Wie viele automatische Sicherungen aufbewahrt werden (konfigurierbar).
+function backupMax() {
+  return Math.max(1, parseInt(bkGet('backup_max'), 10) || BACKUP_MAX_STANDARD)
+}
+
+// Aktuelle Signatur der Datenbank (Größe + Zeitstempel) für die Änderungserkennung.
+function dbSignatur() {
+  try { const st = fs.statSync(dbPath); return `${st.size}-${Math.round(st.mtimeMs)}` } catch { return '' }
+}
+
+// Standardanzahl aufbewahrter automatischer Sicherungen.
+const BACKUP_MAX_STANDARD = 10
+
+// Beim Start: automatische Sicherung – aber sparsam:
+//   • höchstens einmal pro Tag,
+//   • nur wenn sich die Datenbank seit der letzten Auto-Sicherung geändert hat,
+//   • es werden nur die letzten N Sicherungen behalten (ältere gelöscht).
 function autoBackupWennAktiv() {
   try {
     if (!backupAutoAktiv()) return
     const heute = new Date().toISOString().slice(0, 10)
-    const zuletzt = (bkGet('backup_letzte') || '').slice(0, 10)
-    if (zuletzt === heute) return
-    const p = schreibeBackupInOrdner(bkGet('backup_ordner'), 'Daskala-Sicherung', 30)
-    if (p) markiereBackupGemacht()
+    if ((bkGet('backup_letzte') || '').slice(0, 10) === heute) return   // max. 1×/Tag
+    // WAL in die Hauptdatei schreiben – macht die Sicherung vollständig und die
+    // Änderungserkennung (Größe/Zeitstempel) zuverlässig.
+    try { db.pragma('wal_checkpoint(TRUNCATE)') } catch {}
+    const sig = dbSignatur()
+    if (sig && sig === bkGet('backup_auto_sig')) return   // unverändert → keine neue Kopie
+    const p = schreibeBackupInOrdner(bkGet('backup_ordner'), 'Daskala-Sicherung', backupMax())
+    if (p) { markiereBackupGemacht(); if (sig) bkSet('backup_auto_sig', sig) }
   } catch (e) { logError('autoBackupWennAktiv', e) }
 }
 
@@ -2687,8 +2706,8 @@ function registerIPC() {
       if (r.canceled || !r.filePaths[0]) return null
       ordner = r.filePaths[0]
     }
-    const p = schreibeBackupInOrdner(ordner, 'Daskala-Sicherung', 30)
-    if (p) markiereBackupGemacht()
+    const p = schreibeBackupInOrdner(ordner, 'Daskala-Sicherung', backupMax())
+    if (p) { markiereBackupGemacht(); bkSet('backup_auto_sig', dbSignatur()) }
     return p
   })
 
@@ -2707,8 +2726,8 @@ function registerIPC() {
   ipcMain.handle('backup:setAutomatisch', (_, an) => {
     bkSet('backup_automatisch', an ? '1' : '0')
     if (an && bkGet('backup_ordner')) {
-      const p = schreibeBackupInOrdner(bkGet('backup_ordner'), 'Daskala-Sicherung', 30)
-      if (p) markiereBackupGemacht()
+      const p = schreibeBackupInOrdner(bkGet('backup_ordner'), 'Daskala-Sicherung', backupMax())
+      if (p) { markiereBackupGemacht(); bkSet('backup_auto_sig', dbSignatur()) }
     }
     return { ok: true, autoAktiv: backupAutoAktiv() }
   })
