@@ -52,6 +52,7 @@ export default function App() {
 
   const planungAktiv = einstellungen?.planung_aktiv === '1'
   const [updateInfo, setUpdateInfo] = useState(null) // { status, version }
+  const [backupErinnerung, setBackupErinnerung] = useState(false)
 
   // Falls Planung deaktiviert, aber aktuell eine Planungs-View aktiv ist → umschalten.
   // Im Vorlagen-Modus bleibt die Jahresplanung immer erreichbar.
@@ -94,6 +95,16 @@ export default function App() {
     return off
   }, [])
 
+  // Sicherungs-Erinnerung: fällig, wenn länger nicht gesichert und keine
+  // automatische Sicherung aktiv ist.
+  useEffect(() => {
+    if (initialized && !erststart) {
+      window.api.backup?.status?.()
+        .then(s => { if (s?.faellig) setBackupErinnerung(true) })
+        .catch(() => {})
+    }
+  }, [initialized, erststart])
+
   if (!initialized) return <LoadingScreen />
   if (erststart) return <Einrichtungsflow />
 
@@ -135,6 +146,36 @@ export default function App() {
       {activeModal === 'exportieren' && <ExportierenModal />}
       {activeModal === 'ferien' && <FerienModal />}
       {activeModal === 'dokumentation' && <DokumentationModal onClose={closeModal} />}
+
+      {/* Sicherungs-Erinnerung */}
+      {!activeModal && backupErinnerung && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl shadow-pop px-4 py-2.5">
+          <span className="text-lg">💾</span>
+          <span className="text-sm">Zeit für eine Datensicherung.</span>
+          <button
+            onClick={async () => {
+              const p = await window.api.backup.jetzt()
+              if (p) { useStore.getState().pushToast('Sicherung erstellt.', 'success'); setBackupErinnerung(false) }
+            }}
+            className="text-sm font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-lg px-3 py-1 transition-colors"
+          >
+            Jetzt sichern
+          </button>
+          <button
+            onClick={() => { setBackupErinnerung(false); openModal('einstellungen') }}
+            className="text-sm font-medium text-amber-800 dark:text-amber-300 hover:underline"
+          >
+            Automatisch sichern
+          </button>
+          <button
+            onClick={async () => { await window.api.backup.snooze(3); setBackupErinnerung(false) }}
+            className="text-amber-700/70 dark:text-amber-300/60 hover:text-amber-900 dark:hover:text-amber-100 text-sm"
+            title="Später erinnern"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Auto-Update: Hinweis, sobald ein Update geladen wurde */}
       {updateInfo?.status === 'downloaded' && (

@@ -437,6 +437,8 @@ const useStore = create((set, get) => ({
   // ─── Nach Erststart ───────────────────────────────────────────────────────
   erststart_abschliessen: async (schuljahrId, klasseId, fachId) => {
     await window.api.einstellungen.set('erststart_abgeschlossen', '1')
+    // Erinnerungsuhr für Sicherungen starten (sonst würde sofort erinnert).
+    await window.api.einstellungen.set('backup_letzte', new Date().toISOString())
 
     const schuljahre = await window.api.schuljahre.getAll()
     const aktuellesSchuljahr = schuljahre.find(s => s.id === schuljahrId)

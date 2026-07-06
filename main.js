@@ -213,6 +213,7 @@ function doBackupCreate() {
   const backupPath = path.join(backupDir, `db_${ts}.sqlite`)
   try {
     fs.copyFileSync(dbPath, backupPath)
+    markiereBackupGemacht()
     return backupPath
   } catch (e) {
     return null
@@ -227,6 +228,7 @@ async function doSaveAs(win) {
   if (result.canceled) return false
   try {
     fs.copyFileSync(dbPath, result.filePath)
+    markiereBackupGemacht()
     return result.filePath
   } catch (e) {
     return null
@@ -935,6 +937,72 @@ function createBackup() {
     }
   }
 
+}
+
+// ─── Sicherungs-Erinnerung, automatische & Vor-Update-Sicherungen ────────────
+const BACKUP_ERINNERUNG_TAGE = 4   // nach so vielen Tagen ohne Sicherung erinnern
+
+function bkGet(key) {
+  return db.prepare('SELECT wert FROM einstellungen WHERE schluessel = ?').get(key)?.wert ?? null
+}
+function bkSet(key, wert) {
+  db.prepare('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)').run(key, wert)
+}
+
+// Kopiert die aktuelle Datenbank als Zeitstempel-Datei in einen Zielordner und
+// behält (falls `max` gesetzt) nur die neuesten `max` Dateien dieses Präfixes.
+function schreibeBackupInOrdner(ordner, prefix, max) {
+  try {
+    if (!ordner) return null
+    if (!fs.existsSync(ordner)) fs.mkdirSync(ordner, { recursive: true })
+    const ts = new Date().toISOString().replace(/:/g, '-').slice(0, 19)
+    const ziel = path.join(ordner, `${prefix}_${ts}.sqlite`)
+    fs.copyFileSync(dbPath, ziel)
+    if (max) {
+      const alte = fs.readdirSync(ordner)
+        .filter(f => f.startsWith(prefix + '_') && f.endsWith('.sqlite'))
+        .sort()
+      if (alte.length > max) {
+        alte.slice(0, alte.length - max).forEach(f => { try { fs.unlinkSync(path.join(ordner, f)) } catch {} })
+      }
+    }
+    return ziel
+  } catch (e) {
+    logError('schreibeBackupInOrdner', e)
+    return null
+  }
+}
+
+// Merkt sich, dass gerade gesichert wurde → setzt die Erinnerungsuhr zurück.
+function markiereBackupGemacht() {
+  try { bkSet('backup_letzte', new Date().toISOString()); bkSet('backup_snooze_bis', '') } catch (e) { logError('markiereBackupGemacht', e) }
+}
+
+function backupAutoAktiv() {
+  return bkGet('backup_automatisch') === '1' && !!bkGet('backup_ordner')
+}
+
+// Beim Start: wenn automatische Sicherung aktiv ist, höchstens einmal pro Tag
+// eine Kopie in den gewählten Ordner schreiben.
+function autoBackupWennAktiv() {
+  try {
+    if (!backupAutoAktiv()) return
+    const heute = new Date().toISOString().slice(0, 10)
+    const zuletzt = (bkGet('backup_letzte') || '').slice(0, 10)
+    if (zuletzt === heute) return
+    const p = schreibeBackupInOrdner(bkGet('backup_ordner'), 'Daskala-Sicherung', 30)
+    if (p) markiereBackupGemacht()
+  } catch (e) { logError('autoBackupWennAktiv', e) }
+}
+
+// Vor einem Update eine Sicherung anlegen – intern und (falls konfiguriert) im Zielordner.
+function backupVorUpdate() {
+  try {
+    schreibeBackupInOrdner(backupDir, 'db_vor-update', null)
+    const ordner = bkGet('backup_ordner')
+    if (ordner) schreibeBackupInOrdner(ordner, 'Daskala-vor-Update', 10)
+    markiereBackupGemacht()
+  } catch (e) { logError('backupVorUpdate', e) }
 }
 
 // ─── Zeugnisnoten-Berechnung ──────────────────────────────────────────────────
@@ -2521,6 +2589,86 @@ function registerIPC() {
     }
   })
 
+  // Status für die Sicherungs-Erinnerung.
+  ipcMain.handle('backup:status', () => {
+    const autoAktiv = backupAutoAktiv()
+    const ordner = bkGet('backup_ordner') || ''
+    const letzte = bkGet('backup_letzte') || null
+    const snoozeBis = bkGet('backup_snooze_bis') || null
+    const now = new Date()
+    let tageSeit = null
+    if (letzte) tageSeit = Math.floor((now - new Date(letzte)) / 86400000)
+    const snoozeAktiv = !!snoozeBis && new Date(snoozeBis) > now
+    const faellig = !autoAktiv && !snoozeAktiv && (letzte === null || tageSeit >= BACKUP_ERINNERUNG_TAGE)
+    return { autoAktiv, ordner, letzte, tageSeit, faellig, intervall: BACKUP_ERINNERUNG_TAGE }
+  })
+
+  // Jetzt sichern: in den konfigurierten Ordner – oder einen einmalig gewählten.
+  ipcMain.handle('backup:jetzt', async () => {
+    let ordner = bkGet('backup_ordner')
+    if (!ordner) {
+      const r = await dialog.showOpenDialog({
+        properties: ['openDirectory', 'createDirectory'],
+        title: 'Ordner für die Sicherung wählen',
+      })
+      if (r.canceled || !r.filePaths[0]) return null
+      ordner = r.filePaths[0]
+    }
+    const p = schreibeBackupInOrdner(ordner, 'Daskala-Sicherung', 30)
+    if (p) markiereBackupGemacht()
+    return p
+  })
+
+  // Ordner für automatische Sicherungen wählen (und merken).
+  ipcMain.handle('backup:waehleOrdner', async () => {
+    const r = await dialog.showOpenDialog({
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Ordner für automatische Sicherungen',
+    })
+    if (r.canceled || !r.filePaths[0]) return null
+    bkSet('backup_ordner', r.filePaths[0])
+    return r.filePaths[0]
+  })
+
+  // Automatische Sicherung ein-/ausschalten.
+  ipcMain.handle('backup:setAutomatisch', (_, an) => {
+    bkSet('backup_automatisch', an ? '1' : '0')
+    if (an && bkGet('backup_ordner')) {
+      const p = schreibeBackupInOrdner(bkGet('backup_ordner'), 'Daskala-Sicherung', 30)
+      if (p) markiereBackupGemacht()
+    }
+    return { ok: true, autoAktiv: backupAutoAktiv() }
+  })
+
+  ipcMain.handle('backup:ordnerZuruecksetzen', () => {
+    bkSet('backup_ordner', '')
+    bkSet('backup_automatisch', '0')
+    return true
+  })
+
+  // Erinnerung um einige Tage verschieben.
+  ipcMain.handle('backup:snooze', (_, tage) => {
+    const bis = new Date()
+    bis.setDate(bis.getDate() + (Number(tage) || 3))
+    bkSet('backup_snooze_bis', bis.toISOString())
+    return true
+  })
+
+  // App komplett zurücksetzen: Sicherheitskopie, Datenbank löschen, neu starten.
+  ipcMain.handle('app:reset', () => {
+    try {
+      try { schreibeBackupInOrdner(backupDir, 'db_vor-reset', null) } catch (e) { logError('reset-backup', e) }
+      try { db.close() } catch {}
+      for (const suffix of ['', '-wal', '-shm']) {
+        const f = dbPath + suffix
+        try { if (fs.existsSync(f)) fs.unlinkSync(f) } catch (e) { logError('app:reset unlink', e) }
+      }
+    } catch (e) { logError('app:reset', e) }
+    app.relaunch()
+    app.exit(0)
+    return true
+  })
+
   ipcMain.handle('db:saveAs', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     return doSaveAs(win)
@@ -4036,12 +4184,18 @@ function setupAutoUpdate() {
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
   autoUpdater.on('update-available', (info) => send({ status: 'available', version: info?.version }))
-  autoUpdater.on('update-downloaded', (info) => send({ status: 'downloaded', version: info?.version }))
+  autoUpdater.on('update-downloaded', (info) => {
+    // Vor jedem Update eine Sicherung – deckt auch die Installation beim Beenden ab.
+    try { backupVorUpdate() } catch (e) { logError('backupVorUpdate', e) }
+    send({ status: 'downloaded', version: info?.version })
+  })
   autoUpdater.on('error', (err) => logError('autoUpdater', err))
   autoUpdater.checkForUpdates().catch((e) => logError('checkForUpdates', e))
 }
 // Vom Renderer ausgelöst, wenn der/die Nutzer:in „jetzt neu starten" wählt.
 ipcMain.handle('update:installieren', () => {
+  // Frische Sicherung unmittelbar vor der Installation.
+  try { backupVorUpdate() } catch (e) { logError('backupVorUpdate(install)', e) }
   try { autoUpdater.quitAndInstall() } catch (e) { logError('quitAndInstall', e) }
   return true
 })
@@ -4050,6 +4204,7 @@ app.whenReady().then(() => {
   initPaths()
   initDB()
   createBackup()
+  autoBackupWennAktiv()
   registerIPC()
   setupMenu()
   createWindow()

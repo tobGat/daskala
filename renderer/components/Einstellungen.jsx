@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
+import AppZuruecksetzenModal from './AppZuruecksetzenModal'
 
 export default function Einstellungen({ onClose }) {
   const { gewichtungGlobal, theme, setTheme, einstellungen, pushToast } = useStore()
@@ -36,6 +37,50 @@ export default function Einstellungen({ onClose }) {
   const [bundesland, setBundesland] = useState(einstellungen['bundesland'] ?? '')
   const [planungAktiv, setPlanungAktiv] = useState(einstellungen['planung_aktiv'] === '1')
   const [materialRootPfad, setMaterialRootPfad] = useState(einstellungen['material_root_pfad'] || '')
+
+  // Datensicherung
+  const [backupOrdner, setBackupOrdner] = useState(einstellungen['backup_ordner'] || '')
+  const [autoBackup, setAutoBackup] = useState(einstellungen['backup_automatisch'] === '1')
+  const [backupInfo, setBackupInfo] = useState(null)
+  const [resetOffen, setResetOffen] = useState(false)
+
+  const ladeBackupStatus = async () => {
+    try {
+      const s = await window.api.backup.status()
+      setBackupInfo(s)
+      setBackupOrdner(s.ordner || '')
+      setAutoBackup(s.autoAktiv)
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { ladeBackupStatus() }, [])
+
+  const handleBackupOrdnerWaehlen = async () => {
+    const p = await window.api.backup.waehleOrdner()
+    if (p) {
+      setBackupOrdner(p)
+      useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+      pushToast('Sicherungsordner gesetzt.', 'success')
+    }
+  }
+  const handleAutoBackupToggle = async (an) => {
+    if (an && !backupOrdner) {
+      const p = await window.api.backup.waehleOrdner()
+      if (!p) return // abgebrochen → Schalter bleibt aus
+      setBackupOrdner(p)
+    }
+    const res = await window.api.backup.setAutomatisch(an)
+    setAutoBackup(res.autoAktiv)
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+    await ladeBackupStatus()
+    if (an && res.autoAktiv) pushToast('Automatische Sicherung aktiviert.', 'success')
+  }
+  const handleAutoBackupReset = async () => {
+    await window.api.backup.ordnerZuruecksetzen()
+    setBackupOrdner('')
+    setAutoBackup(false)
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+    await ladeBackupStatus()
+  }
 
   const handleMaterialRootWaehlen = async () => {
     const p = await window.api.materialien.waehleRoot()
@@ -104,7 +149,7 @@ export default function Einstellungen({ onClose }) {
 
   const handleBackup = async () => {
     const pfad = await window.api.backup.create()
-    if (pfad) pushToast(`Backup erstellt:\n${pfad}`, 'success')
+    if (pfad) { pushToast(`Backup erstellt:\n${pfad}`, 'success'); ladeBackupStatus() }
     else pushToast('Backup fehlgeschlagen.', 'error')
   }
 
@@ -123,6 +168,7 @@ export default function Einstellungen({ onClose }) {
   const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell' }
 
   return (
+    <>
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
@@ -350,10 +396,47 @@ export default function Einstellungen({ onClose }) {
           </div>
 
           <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Datensicherung</h3>
-          <div className="flex gap-3">
+          <div className="flex gap-3 mb-3">
             <button className="btn-secondary" onClick={handleBackup}>Backup erstellen</button>
             <button className="btn-secondary" onClick={() => window.api.export.toJson()}>JSON-Export</button>
           </div>
+
+          {/* Automatische Sicherung */}
+          <div className="rounded-xl border border-paper-200 dark:border-ink-700 p-3">
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={autoBackup}
+                onChange={e => handleAutoBackupToggle(e.target.checked)}
+                className="mt-0.5"
+              />
+              <div className="flex-1">
+                <span className="text-sm text-ink-700 dark:text-paper-200">Automatische Sicherung bei jedem Start</span>
+                <p className="text-[11px] text-ink-400 leading-snug">
+                  Legt beim Start (max. 1×/Tag) eine Kopie in einen von dir gewählten Ordner – z.&nbsp;B. auf
+                  einem USB-Stick oder in einem Cloud-Ordner. Solange aktiv, erinnert dich die App nicht mehr ans Sichern.
+                </p>
+              </div>
+            </label>
+            <div className="flex items-center justify-between gap-3 mt-3 pl-6">
+              <div className="flex-1 min-w-0">
+                {backupOrdner
+                  ? <div className="text-xs text-ink-500 dark:text-ink-400 truncate" title={backupOrdner}>{backupOrdner}</div>
+                  : <div className="text-xs text-ink-400">Noch kein Sicherungsordner gewählt.</div>}
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button className="btn-secondary" onClick={handleBackupOrdnerWaehlen}>Ordner wählen…</button>
+                {backupOrdner && (
+                  <button className="text-xs text-ink-400 hover:text-red-500 px-2" onClick={handleAutoBackupReset} title="Zurücksetzen">✕</button>
+                )}
+              </div>
+            </div>
+          </div>
+          {backupInfo?.letzte && (
+            <p className="text-[11px] text-ink-400 mt-2">
+              Zuletzt gesichert: {backupInfo.tageSeit === 0 ? 'heute' : `vor ${backupInfo.tageSeit} Tag${backupInfo.tageSeit === 1 ? '' : 'en'}`}.
+            </p>
+          )}
         </section>
 
         {/* Jahresabschluss */}
@@ -370,6 +453,21 @@ export default function Einstellungen({ onClose }) {
           </button>
         </section>
 
+        {/* Gefahrenzone */}
+        <section className="mb-6 pt-4 border-t border-red-200 dark:border-red-900/40">
+          <h3 className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">Gefahrenzone</h3>
+          <p className="text-xs text-ink-400 dark:text-ink-500 mb-3">
+            Setzt die App vollständig zurück und löscht alle Daten unwiderruflich. Mehrfach abgesichert,
+            damit es nicht versehentlich passiert – vorher wird automatisch eine Sicherheitskopie angelegt.
+          </p>
+          <button
+            className="py-2 px-4 rounded-lg text-sm font-medium border-2 border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+            onClick={() => setResetOffen(true)}
+          >
+            App zurücksetzen…
+          </button>
+        </section>
+
         {fehler && <p className="text-red-500 text-sm mb-3">{fehler}</p>}
         {erfolg && <p className="text-green-600 text-sm mb-3">Gespeichert ✓</p>}
 
@@ -381,5 +479,7 @@ export default function Einstellungen({ onClose }) {
         </div>
       </div>
     </div>
+    {resetOffen && <AppZuruecksetzenModal onClose={() => { setResetOffen(false); ladeBackupStatus() }} />}
+    </>
   )
 }
