@@ -2913,31 +2913,27 @@ function registerIPC() {
         + `&start_date=${start}&end_date=${ende}`
       const json = await httpsGetJson(url)
       const d = json.daily || {}
-      // Tageszeiten aus den Stundenwerten (Vormittag 09h, Mittag 13h, Abend 18h).
+      // Alle Stundenwerte je Tag (für Zellen-Symbole und die Tageszeiten Vm/Mi/Ab).
       const h = json.hourly || {}
-      const stundeIdx = {}   // 'YYYY-MM-DD' -> { '09': i, '13': i, '18': i }
+      const proTag = {}   // 'YYYY-MM-DD' -> { 'HH': { code, temp } }
       ;(h.time || []).forEach((t, i) => {
         const [datum, zeit] = t.split('T')
         const hh = (zeit || '').slice(0, 2)
-        if (hh === '09' || hh === '13' || hh === '18') {
-          if (!stundeIdx[datum]) stundeIdx[datum] = {}
-          stundeIdx[datum][hh] = i
-        }
+        if (!datum || !hh) return
+        if (!proTag[datum]) proTag[datum] = {}
+        proTag[datum][hh] = { code: h.weather_code?.[i] ?? null, temp: h.temperature_2m?.[i] ?? null }
       })
-      const teil = (datum, hh) => {
-        const i = stundeIdx[datum]?.[hh]
-        if (i == null) return null
-        return { code: h.weather_code?.[i] ?? null, temp: h.temperature_2m?.[i] ?? null }
-      }
       const out = {}
       ;(d.time || []).forEach((t, i) => {
+        const st = proTag[t] || {}
         out[t] = {
           code: d.weather_code?.[i] ?? null,
           tmax: d.temperature_2m_max?.[i] ?? null,
           tmin: d.temperature_2m_min?.[i] ?? null,
-          vm: teil(t, '09'),
-          mi: teil(t, '13'),
-          ab: teil(t, '18'),
+          vm: st['09'] || null,
+          mi: st['13'] || null,
+          ab: st['18'] || null,
+          stunden: st,
         }
       })
       wetterCache.set(key, { zeit: Date.now(), data: out })

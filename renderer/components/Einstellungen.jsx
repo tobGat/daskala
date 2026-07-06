@@ -148,6 +148,13 @@ export default function Einstellungen({ onClose }) {
     useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
   }
 
+  const [wetterZellen, setWetterZellen] = useState(einstellungen['wetter_zellen'] === '1')
+  const handleWetterZellen = async (an) => {
+    setWetterZellen(an)
+    await window.api.einstellungen.set('wetter_zellen', an ? '1' : '0')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
+
   const ladeBackupStatus = async () => {
     try {
       const s = await window.api.backup.status()
@@ -509,6 +516,17 @@ export default function Einstellungen({ onClose }) {
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input type="checkbox" checked={wetterDetail} onChange={e => handleWetterDetail(e.target.checked)} />
                   <span className="text-sm text-ink-700 dark:text-paper-200">Tageszeiten anzeigen (Vormittag · Mittag · Abend)</span>
+                </label>
+
+                {/* Symbol je Stundenzelle */}
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={wetterZellen} onChange={e => handleWetterZellen(e.target.checked)} className="mt-0.5" />
+                  <div>
+                    <span className="text-sm text-ink-700 dark:text-paper-200">Wettersymbol in jeder Stundenzelle</span>
+                    <p className="text-[11px] text-ink-400 leading-snug">
+                      Kleines, transparentes Symbol rechts oben in jeder Zelle – die Prognose für genau die Uhrzeit dieser Stunde.
+                    </p>
+                  </div>
                 </label>
               </div>
             )}

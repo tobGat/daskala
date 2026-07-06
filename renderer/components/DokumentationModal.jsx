@@ -108,7 +108,7 @@ const DOKU = [
       { h: 'Ferien' },
       'Wählst du in den Einstellungen dein Bundesland, werden die österreichischen Schulferien und Feiertage automatisch berechnet und im Kalender angezeigt. Eigene Ferien/Feiertage kannst du zusätzlich pflegen.',
       { h: 'Wettervorschau' },
-      'Aktivierst du die Wettervorschau in den Einstellungen (eigener Bereich „Wettervorschau", standardmäßig aus), zeigt der Stundenplan neben jedem Wochentag ein kleines Wettersymbol samt Temperatur (Vorhersage für die aktuelle und kommende Tage) – praktisch z. B. zur Planung von Exkursionen. Der Ort richtet sich nach dem Bundesland; für genauere Werte lässt sich ein konkreter Ort wählen. Optional werden Vormittag, Mittag und Abend getrennt angezeigt.',
+      'Aktivierst du die Wettervorschau in den Einstellungen (eigener Bereich „Wettervorschau", standardmäßig aus), zeigt der Stundenplan neben jedem Wochentag ein kleines Wettersymbol samt Temperatur (Vorhersage für die aktuelle und kommende Tage) – praktisch z. B. zur Planung von Exkursionen. Der Ort richtet sich nach dem Bundesland; für genauere Werte lässt sich ein konkreter Ort wählen. Optional werden Vormittag, Mittag und Abend getrennt angezeigt – oder ein kleines, transparentes Symbol rechts oben in jeder Stundenzelle mit der Prognose für genau diese Uhrzeit.',
     ],
   },
   {
