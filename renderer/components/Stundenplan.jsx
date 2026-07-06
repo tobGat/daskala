@@ -465,16 +465,19 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                     key={i}
                     className={`px-2 py-2 ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
                   >
-                    <div className="flex items-center justify-center gap-1.5">
+                    <div className={wetterDetail ? 'flex items-center justify-center gap-1.5' : 'text-center'}>
                       <div className="text-center">
                         <div className={`text-sm font-semibold ${istHeute && !headerFerien ? 'underline underline-offset-4 decoration-coral-400' : ''}`}>
                           {tag}
                         </div>
-                        <div className="text-[11px] font-normal opacity-70 mt-0.5">
-                          {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
+                        <div className="mt-0.5 flex items-center justify-center gap-1">
+                          <span className="text-[11px] font-normal opacity-70">
+                            {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
+                          </span>
+                          {!wetterDetail && <TagWetter w={wetter?.[wochenDaten[i]]} detail={false} />}
                         </div>
                       </div>
-                      <TagWetter w={wetter?.[wochenDaten[i]]} detail={wetterDetail} />
+                      {wetterDetail && <TagWetter w={wetter?.[wochenDaten[i]]} detail />}
                     </div>
                   </th>
                 )
