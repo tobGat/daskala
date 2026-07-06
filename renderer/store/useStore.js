@@ -53,6 +53,17 @@ const useStore = create((set, get) => ({
   activeModal: null,     // 'spalteHinzufuegen' | 'einstellungen' | 'schuelerHinzufuegen' | 'schuljahrwechsel' | 'gewichtung'
   modalData: null,
 
+  // ─── App-Sperre (PIN) ─────────────────────────────────────────────────────
+  gesperrt: false,
+  sperren: () => {
+    set({ gesperrt: true })
+    window.api.sperre?.setGesperrt?.(true)
+  },
+  entsperren: () => {
+    set({ gesperrt: false })
+    window.api.sperre?.setGesperrt?.(false)
+  },
+
   // ─── Toasts / Benachrichtigungen ──────────────────────────────────────────
   toasts: [],  // [{ id, message, type: 'success'|'error'|'info', duration }]
   pushToast: (message, type = 'info', duration = 4000) => {
@@ -437,6 +448,8 @@ const useStore = create((set, get) => ({
   // ─── Nach Erststart ───────────────────────────────────────────────────────
   erststart_abschliessen: async (schuljahrId, klasseId, fachId) => {
     await window.api.einstellungen.set('erststart_abgeschlossen', '1')
+    // Erinnerungsuhr für Sicherungen starten (sonst würde sofort erinnert).
+    await window.api.einstellungen.set('backup_letzte', new Date().toISOString())
 
     const schuljahre = await window.api.schuljahre.getAll()
     const aktuellesSchuljahr = schuljahre.find(s => s.id === schuljahrId)

@@ -106,6 +106,7 @@ export default {
         'slide-up':      'slideUp 0.36s cubic-bezier(0.16, 1, 0.3, 1) both',
         'shimmer':       'shimmer 2.2s linear infinite',
         'glow-frame':    'glowFrame 3s ease-in-out infinite',
+        'shake':         'shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both',
       },
       keyframes: {
         gentleBounce: {
@@ -137,6 +138,12 @@ export default {
         glowFrame: {
           '0%, 100%': { boxShadow: 'inset 0 0 8px 0px rgba(34, 197, 94, 0.22)' },
           '50%':      { boxShadow: 'inset 0 0 16px 2px rgba(34, 197, 94, 0.40)' },
+        },
+        // Kurzes Rütteln bei falscher PIN-Eingabe
+        shake: {
+          '0%, 100%':      { transform: 'translateX(0)' },
+          '20%, 60%':      { transform: 'translateX(-7px)' },
+          '40%, 80%':      { transform: 'translateX(7px)' },
         },
       },
     },

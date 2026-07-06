@@ -215,11 +215,29 @@ contextBridge.exposeInMainWorld('api', {
   backup: {
     create: () => invoke('backup:create'),
     getList: () => invoke('backup:getList'),
+    status: () => invoke('backup:status'),
+    jetzt: () => invoke('backup:jetzt'),
+    waehleOrdner: () => invoke('backup:waehleOrdner'),
+    setAutomatisch: (an) => invoke('backup:setAutomatisch', an),
+    ordnerZuruecksetzen: () => invoke('backup:ordnerZuruecksetzen'),
+    snooze: (tage) => invoke('backup:snooze', tage),
   },
 
   db: {
     saveAs: () => invoke('db:saveAs'),
     open:   () => invoke('db:open'),
+  },
+
+  app: {
+    reset: () => invoke('app:reset'),
+  },
+
+  sperre: {
+    status: () => invoke('sperre:status'),
+    setPin: (pin) => invoke('sperre:setPin', pin),
+    deaktivieren: () => invoke('sperre:deaktivieren'),
+    pruefe: (pin) => invoke('sperre:pruefe', pin),
+    setGesperrt: (wert) => invoke('sperre:setGesperrt', wert),
   },
 
   undo: {

@@ -127,7 +127,23 @@ const DOKU = [
         '„Öffnen…" / „Speichern unter…" für die Datenbankdatei',
         'Noten-Exporte als Excel und PDF (pro Fach oder gesamt)',
       ] },
-      { tipp: 'Erstelle vor größeren Änderungen (z. B. Schuljahreswechsel) ein Backup.' },
+      { h: 'Automatische Sicherung' },
+      'Aktiviere „Automatische Sicherung bei jedem Start" und wähle einen Zielordner (z. B. USB-Stick oder Cloud-Ordner). Daskala legt dann höchstens einmal pro Tag automatisch eine Kopie dort ab.',
+      'Ist keine automatische Sicherung aktiv, erinnert dich die App nach einigen Tagen ohne Sicherung mit einem Hinweis oben im Fenster. Vor jedem Update wird zusätzlich automatisch gesichert.',
+      { tipp: 'Erstelle vor größeren Änderungen (z. B. Schuljahreswechsel) ein Backup – oder aktiviere gleich die automatische Sicherung.' },
+      { h: 'App zurücksetzen' },
+      'In den Einstellungen ganz unten (Gefahrenzone) kannst du die App vollständig zurücksetzen. Dabei werden alle Daten unwiderruflich gelöscht – der Vorgang ist mehrfach abgesichert, und vorher wird automatisch eine Sicherheitskopie angelegt.',
+    ],
+  },
+  {
+    id: 'sperre', titel: 'App-Sperre', bloecke: [
+      'Damit bei kurzer Abwesenheit niemand (z. B. Kinder) auf deine Daten zugreift, kannst du die App mit einem PIN sperren.',
+      { ul: [
+        'Aktivieren in den Einstellungen → App-Sperre: PIN festlegen (mindestens 4 Ziffern).',
+        'Sperren mit Strg + L (Mac: Cmd + L) oder über den Knopf „Jetzt sperren".',
+        'Im gesperrten Zustand sind alle Inhalte unkenntlich (verschwommen); nur mit dem PIN geht es weiter.',
+      ] },
+      { tipp: 'Der PIN schützt vor Blicken und Zugriff im Vorbeigehen – für echten Datenschutz sperre zusätzlich deinen Rechner.' },
     ],
   },
   {
@@ -135,7 +151,7 @@ const DOKU = [
       'Daskala ist freie Software unter der GNU GPL-3.0 (Open Source). Du darfst die App kostenlos nutzen, weitergeben und verändern; weitergegebene Varianten müssen ebenfalls offen bleiben.',
       'Details in den Dateien LICENSE und THIRD-PARTY-NOTICES.txt.',
       { h: 'Updates' },
-      'Beim Start prüft Daskala automatisch auf eine neuere Version und lädt sie im Hintergrund. Sobald ein Update bereit ist, kannst du es über „Jetzt neu starten" sofort installieren – andernfalls wird es beim nächsten Beenden übernommen.',
+      'Beim Start prüft Daskala automatisch auf eine neuere Version und lädt sie im Hintergrund. Sobald ein Update bereit ist, kannst du es über „Jetzt neu starten" sofort installieren – andernfalls wird es beim nächsten Beenden übernommen. Vor jeder Installation legt Daskala automatisch eine Sicherung deiner Daten an.',
     ],
   },
   {
