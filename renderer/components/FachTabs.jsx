@@ -24,6 +24,7 @@ export default function FachTabs() {
   const {
     faecher, aktivesFach, setAktivesFach,
     aktiveKlasse, openModal, ladeAktiveKlassenliste, pushToast,
+    vorlagenModus,
   } = useStore()
 
   const [renameId, setRenameId] = useState(null)
@@ -128,7 +129,7 @@ export default function FachTabs() {
       {/* Aktionen rechts */}
       {(aktiveKlasse || aktivesFach) && (
         <div className="flex items-center gap-1 ml-2 pl-3 py-1 flex-shrink-0 border-l border-paper-300 dark:border-ink-700">
-          {aktiveKlasse && (
+          {aktiveKlasse && !vorlagenModus && (
             <button
               className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 hover:border-paper-300 dark:hover:border-ink-600 transition-colors"
               onClick={() => openModal('schuelerVerwalten')}
@@ -174,12 +175,14 @@ export default function FachTabs() {
             }}>
               Benotungssystem {contextMenu.fach.benotungssystem === 'differenziert' ? '(AHS/ST)' : '(Standard)'}
             </div>
-            <div className="context-menu-item" onClick={() => {
-              setFachSchuelerFach(contextMenu.fach)
-              setContextMenu(null)
-            }}>
-              Schüler:innen zuordnen…
-            </div>
+            {!vorlagenModus && (
+              <div className="context-menu-item" onClick={() => {
+                setFachSchuelerFach(contextMenu.fach)
+                setContextMenu(null)
+              }}>
+                Schüler:innen zuordnen…
+              </div>
+            )}
             <div className="context-menu-separator" />
             <div className="context-menu-item text-red-500" onClick={async () => {
               if (confirm(`Fach „${contextMenu.fach.name}" wirklich löschen?`)) {
