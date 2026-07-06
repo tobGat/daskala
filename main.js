@@ -1012,6 +1012,35 @@ function hashPin(pin) {
   return require('crypto').createHash('sha256').update('daskala-pin:' + String(pin)).digest('hex')
 }
 
+// ─── Wetter (Open-Meteo, kostenlos, ohne API-Key) ────────────────────────────
+const https = require('https')
+// Näherung: Koordinaten der Landeshauptstädte je Bundesland.
+const WETTER_KOORD = {
+  'Wien':             [48.2082, 16.3738],
+  'Niederösterreich': [48.2047, 15.6256],
+  'Burgenland':       [47.8457, 16.5231],
+  'Oberösterreich':   [48.3069, 14.2858],
+  'Steiermark':       [47.0707, 15.4395],
+  'Kärnten':          [46.6247, 14.3050],
+  'Salzburg':         [47.8095, 13.0550],
+  'Tirol':            [47.2692, 11.4041],
+  'Vorarlberg':       [47.5031,  9.7471],
+}
+const wetterCache = new Map()   // key -> { zeit, data }
+
+function httpsGetJson(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'Daskala' } }, (res) => {
+      if (res.statusCode < 200 || res.statusCode >= 300) { res.resume(); reject(new Error('HTTP ' + res.statusCode)); return }
+      let data = ''
+      res.on('data', c => { data += c })
+      res.on('end', () => { try { resolve(JSON.parse(data)) } catch (e) { reject(e) } })
+    })
+    req.on('error', reject)
+    req.setTimeout(8000, () => req.destroy(new Error('timeout')))
+  })
+}
+
 // ─── Zeugnisnoten-Berechnung ──────────────────────────────────────────────────
 // ─── Kompetenz-Vorlagen (Lehrplan NEU) ──────────────────────────────────────
 const KOMPETENZ_VORLAGEN = {
@@ -1787,10 +1816,28 @@ function registerIPC() {
     return db.prepare('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY nachname, vorname').all(klasseId)
   })
 
-  ipcMain.handle('schueler:create', (_, { klasseId, vorname, nachname }) => {
+  ipcMain.handle('schueler:create', (_, { klasseId, vorname, nachname, fachIds = [] }) => {
     const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM schueler WHERE klasse_id = ?').get(klasseId)?.m ?? 0
     const info = db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge) VALUES (?, ?, ?, ?)').run(klasseId, vorname, nachname, maxReihenfolge + 1)
-    return info.lastInsertRowid
+    const schuelerId = info.lastInsertRowid
+    // In gewählte Fächer aufnehmen: manuelle Fächer bekommen einen fach_schueler-Eintrag,
+    // „alle Schüler:innen"-Fächer schließen neue automatisch ein (nichts zu tun).
+    if (Array.isArray(fachIds) && fachIds.length) {
+      const insFS = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
+      const insN  = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
+      const insH  = db.prepare(`
+        INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
+        SELECT ?, ?, ?, '1900-01-01'
+        WHERE NOT EXISTS (SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?)
+      `)
+      for (const fid of fachIds) {
+        const fach = db.prepare('SELECT alle_schueler, benotungssystem FROM faecher WHERE id = ? AND klasse_id = ?').get(fid, klasseId)
+        if (!fach) continue
+        if (!fach.alle_schueler) insFS.run(fid, schuelerId)
+        if (fach.benotungssystem === 'differenziert') { insN.run(fid, schuelerId, 'AHS'); insH.run(fid, schuelerId, 'AHS', fid, schuelerId) }
+      }
+    }
+    return schuelerId
   })
 
   ipcMain.handle('schueler:delete', (_, id) => {
@@ -1831,12 +1878,31 @@ function registerIPC() {
     return true
   })
 
-  ipcMain.handle('schueler:importBatch', (_, klasseId, list) => {
+  ipcMain.handle('schueler:importBatch', (_, klasseId, list, fachIds = []) => {
+    // Gewählte Fächer (nur gültige der Klasse) einmal auflösen.
+    const faecher = (Array.isArray(fachIds) ? fachIds : [])
+      .map(fid => db.prepare('SELECT id, alle_schueler, benotungssystem FROM faecher WHERE id = ? AND klasse_id = ?').get(fid, klasseId))
+      .filter(Boolean)
+    const insFS = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
+    const insN  = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
+    const insH  = db.prepare(`
+      INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
+      SELECT ?, ?, ?, '1900-01-01'
+      WHERE NOT EXISTS (SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?)
+    `)
     const tx = db.transaction(() => {
       const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM schueler WHERE klasse_id = ?').get(klasseId)?.m ?? 0
       const stmt = db.prepare('INSERT OR IGNORE INTO schueler (klasse_id, vorname, nachname, reihenfolge) VALUES (?, ?, ?, ?)')
       list.forEach((s, i) => {
-        stmt.run(klasseId, s.vorname, s.nachname, maxReihenfolge + i + 1)
+        const info = stmt.run(klasseId, s.vorname, s.nachname, maxReihenfolge + i + 1)
+        // Nur wirklich neu angelegte Schüler:innen den Fächern zuordnen.
+        if (info.changes && faecher.length) {
+          const sid = info.lastInsertRowid
+          for (const fach of faecher) {
+            if (!fach.alle_schueler) insFS.run(fach.id, sid)
+            if (fach.benotungssystem === 'differenziert') { insN.run(fach.id, sid, 'AHS'); insH.run(fach.id, sid, 'AHS', fach.id, sid) }
+          }
+        }
       })
     })
     tx()
@@ -2676,6 +2742,9 @@ function registerIPC() {
     return true
   })
 
+  // Laufende App-Version (für das „Was ist neu"-Modal nach Updates).
+  ipcMain.handle('app:version', () => app.getVersion())
+
   // ─── App-Sperre ─────────────────────────────────────────────────────────────
   ipcMain.handle('sperre:status', () => ({
     aktiv: bkGet('sperre_aktiv') === '1' && !!bkGet('sperre_pin_hash'),
@@ -2701,6 +2770,92 @@ function registerIPC() {
   ipcMain.handle('sperre:setGesperrt', (_, wert) => {
     appGesperrt = !!wert
     return true
+  })
+
+  // ─── Wetter ─────────────────────────────────────────────────────────────────
+  // Tagesvorhersage (Mo–Fr) einer Woche für das eingestellte Bundesland.
+  ipcMain.handle('wetter:getWoche', async (_, bundesland, montagDatum) => {
+    try {
+      // Genauer Ort (falls gesetzt) hat Vorrang vor der Bundesland-Hauptstadt.
+      let koord = null
+      const lat = parseFloat(bkGet('wetter_lat'))
+      const lon = parseFloat(bkGet('wetter_lon'))
+      if (!isNaN(lat) && !isNaN(lon)) koord = [lat, lon]
+      else koord = WETTER_KOORD[bundesland]
+      if (!koord || !montagDatum) return null
+      const startD = new Date(montagDatum + 'T00:00:00')
+      if (isNaN(startD)) return null
+      const endD = new Date(startD); endD.setDate(endD.getDate() + 4)   // Mo..Fr
+      const heute = new Date(); heute.setHours(0, 0, 0, 0)
+      const tageBisStart = (startD - heute) / 86400000
+      const tageBisEnde  = (endD - heute) / 86400000
+      // Open-Meteo-Vorhersage sinnvoll etwa -3 … +15 Tage; sonst kein Wetter.
+      if (tageBisEnde < -3 || tageBisStart > 15) return null
+      // Lokale (nicht UTC-)Datums-Strings, sonst verschiebt sich der Tag.
+      const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const start = iso(startD), ende = iso(endD)
+      const key = `${koord[0]},${koord[1]},${start}`
+      const cached = wetterCache.get(key)
+      if (cached && (Date.now() - cached.zeit) < 3600000) return cached.data
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${koord[0]}&longitude=${koord[1]}`
+        + `&daily=weather_code,temperature_2m_max,temperature_2m_min`
+        + `&hourly=weather_code,temperature_2m&timezone=Europe%2FVienna`
+        + `&start_date=${start}&end_date=${ende}`
+      const json = await httpsGetJson(url)
+      const d = json.daily || {}
+      // Tageszeiten aus den Stundenwerten (Vormittag 09h, Mittag 13h, Abend 18h).
+      const h = json.hourly || {}
+      const stundeIdx = {}   // 'YYYY-MM-DD' -> { '09': i, '13': i, '18': i }
+      ;(h.time || []).forEach((t, i) => {
+        const [datum, zeit] = t.split('T')
+        const hh = (zeit || '').slice(0, 2)
+        if (hh === '09' || hh === '13' || hh === '18') {
+          if (!stundeIdx[datum]) stundeIdx[datum] = {}
+          stundeIdx[datum][hh] = i
+        }
+      })
+      const teil = (datum, hh) => {
+        const i = stundeIdx[datum]?.[hh]
+        if (i == null) return null
+        return { code: h.weather_code?.[i] ?? null, temp: h.temperature_2m?.[i] ?? null }
+      }
+      const out = {}
+      ;(d.time || []).forEach((t, i) => {
+        out[t] = {
+          code: d.weather_code?.[i] ?? null,
+          tmax: d.temperature_2m_max?.[i] ?? null,
+          tmin: d.temperature_2m_min?.[i] ?? null,
+          vm: teil(t, '09'),
+          mi: teil(t, '13'),
+          ab: teil(t, '18'),
+        }
+      })
+      wetterCache.set(key, { zeit: Date.now(), data: out })
+      return out
+    } catch (e) {
+      logError('wetter:getWoche', e)
+      return null
+    }
+  })
+
+  // Ortssuche (Geocoding) für eine genauere Wettervorschau.
+  ipcMain.handle('wetter:sucheOrt', async (_, query) => {
+    try {
+      const q = (query || '').trim()
+      if (q.length < 2) return []
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=de&format=json`
+      const json = await httpsGetJson(url)
+      return (json.results || []).map(r => ({
+        name: r.name,
+        admin1: r.admin1 || '',
+        land: r.country_code || r.country || '',
+        lat: r.latitude,
+        lon: r.longitude,
+      }))
+    } catch (e) {
+      logError('wetter:sucheOrt', e)
+      return []
+    }
   })
 
   ipcMain.handle('db:saveAs', async (event) => {

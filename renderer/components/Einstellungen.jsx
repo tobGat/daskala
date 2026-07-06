@@ -97,6 +97,49 @@ export default function Einstellungen({ onClose }) {
     useStore.getState().sperren()
   }
 
+  // Wetter-Ort (genauer als das Bundesland)
+  const [wetterOrt, setWetterOrt] = useState(einstellungen['wetter_ort_name'] || '')
+  const [ortQuery, setOrtQuery] = useState('')
+  const [ortTreffer, setOrtTreffer] = useState([])
+  const [ortSuchLaeuft, setOrtSuchLaeuft] = useState(false)
+
+  const handleOrtSuche = async () => {
+    if (ortQuery.trim().length < 2) return
+    setOrtSuchLaeuft(true)
+    try { setOrtTreffer(await window.api.wetter.sucheOrt(ortQuery)) }
+    finally { setOrtSuchLaeuft(false) }
+  }
+  const handleOrtWaehlen = async (t) => {
+    const label = `${t.name}${t.admin1 ? ', ' + t.admin1 : ''}`
+    await window.api.einstellungen.set('wetter_ort_name', label)
+    await window.api.einstellungen.set('wetter_lat', String(t.lat))
+    await window.api.einstellungen.set('wetter_lon', String(t.lon))
+    setWetterOrt(label); setOrtTreffer([]); setOrtQuery('')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+    pushToast('Wetter-Ort gesetzt.', 'success')
+  }
+  const handleOrtZuruecksetzen = async () => {
+    await window.api.einstellungen.set('wetter_ort_name', '')
+    await window.api.einstellungen.set('wetter_lat', '')
+    await window.api.einstellungen.set('wetter_lon', '')
+    setWetterOrt('')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
+
+  const [wetterAktiv, setWetterAktiv] = useState(einstellungen['wetter_aktiv'] === '1')
+  const handleWetterAktiv = async (an) => {
+    setWetterAktiv(an)
+    await window.api.einstellungen.set('wetter_aktiv', an ? '1' : '0')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
+
+  const [wetterDetail, setWetterDetail] = useState(einstellungen['wetter_detail'] === '1')
+  const handleWetterDetail = async (an) => {
+    setWetterDetail(an)
+    await window.api.einstellungen.set('wetter_detail', an ? '1' : '0')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
+
   const ladeBackupStatus = async () => {
     try {
       const s = await window.api.backup.status()
@@ -393,6 +436,74 @@ export default function Einstellungen({ onClose }) {
                 </button>
               </div>
             </div>
+          </Akkordeon>
+
+          {/* Wetter */}
+          <Akkordeon id="wetter" icon="🌦️" titel="Wettervorschau" offen={offenerBereich} onToggle={toggleBereich}>
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={wetterAktiv} onChange={e => handleWetterAktiv(e.target.checked)} className="mt-0.5" />
+              <div>
+                <span className="text-sm text-ink-700 dark:text-paper-200">Wettervorschau aktivieren</span>
+                <p className="text-[11px] text-ink-400 leading-snug">
+                  Zeigt im Stundenplan neben jedem Tag ein Wettersymbol und die Temperatur. Ruft dafür open-meteo.com ab
+                  (ohne API-Key, ohne personenbezogene Daten). Standardmäßig deaktiviert.
+                </p>
+              </div>
+            </label>
+
+            {wetterAktiv && (
+              <div className="mt-4 space-y-4 pl-6">
+                {/* Ort für Wettervorschau */}
+                <div>
+                  <h4 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">
+                    Ort <span className="font-normal text-ink-400">(optional)</span>
+                  </h4>
+                  <p className="text-xs text-ink-400 dark:text-ink-500 mb-2">
+                    Macht die Vorhersage genauer. Ohne Angabe wird die Landeshauptstadt deines Bundeslands verwendet.
+                  </p>
+                  {wetterOrt ? (
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-paper-200 dark:border-ink-700 px-3 py-2">
+                      <span className="text-sm text-ink-700 dark:text-paper-200 truncate">📍 {wetterOrt}</span>
+                      <button className="text-xs text-ink-400 hover:text-red-500 px-2 flex-shrink-0" onClick={handleOrtZuruecksetzen} title="Zurücksetzen">✕</button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex gap-2">
+                        <input
+                          className="input flex-1"
+                          placeholder="Ort suchen, z. B. Schärding"
+                          value={ortQuery}
+                          onChange={e => setOrtQuery(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleOrtSuche() } }}
+                        />
+                        <button className="btn-secondary flex-shrink-0" onClick={handleOrtSuche} disabled={ortSuchLaeuft || ortQuery.trim().length < 2}>
+                          {ortSuchLaeuft ? 'Suche…' : 'Suchen'}
+                        </button>
+                      </div>
+                      {ortTreffer.length > 0 && (
+                        <div className="mt-2 rounded-xl border border-paper-200 dark:border-ink-700 divide-y divide-paper-100 dark:divide-ink-800 overflow-hidden">
+                          {ortTreffer.map((t, i) => (
+                            <button
+                              key={i}
+                              onClick={() => handleOrtWaehlen(t)}
+                              className="w-full text-left px-3 py-2 text-sm text-ink-700 dark:text-paper-200 hover:bg-paper-50 dark:hover:bg-ink-800 transition-colors"
+                            >
+                              {t.name}{t.admin1 ? `, ${t.admin1}` : ''}{t.land ? ` · ${t.land}` : ''}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Tageszeiten */}
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={wetterDetail} onChange={e => handleWetterDetail(e.target.checked)} />
+                  <span className="text-sm text-ink-700 dark:text-paper-200">Tageszeiten anzeigen (Vormittag · Mittag · Abend)</span>
+                </label>
+              </div>
+            )}
           </Akkordeon>
 
           {/* Ansicht & Module */}

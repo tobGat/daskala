@@ -19,6 +19,7 @@ import UebersichtView from './components/UebersichtView'
 import KVView from './components/KVView'
 import DokumentationModal from './components/DokumentationModal'
 import SperreOverlay from './components/SperreOverlay'
+import ChangelogModal, { CHANGELOG, cmpVersion } from './components/ChangelogModal'
 import {
   KlasseHinzufuegenModal,
   FachHinzufuegenModal,
@@ -55,6 +56,7 @@ export default function App() {
   const planungAktiv = einstellungen?.planung_aktiv === '1'
   const [updateInfo, setUpdateInfo] = useState(null) // { status, version }
   const [backupErinnerung, setBackupErinnerung] = useState(false)
+  const [changelogVersionen, setChangelogVersionen] = useState(null) // Einträge fürs „Was ist neu"-Modal
 
   // Falls Planung deaktiviert, aber aktuell eine Planungs-View aktiv ist → umschalten.
   // Im Vorlagen-Modus bleibt die Jahresplanung immer erreichbar.
@@ -119,6 +121,28 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [einstellungen?.sperre_aktiv, gesperrt, sperren])
 
+  // „Was ist neu": nach einem Versionssprung die Änderungen einmalig zeigen.
+  useEffect(() => {
+    if (!initialized || erststart) return
+    let cancelled = false
+    ;(async () => {
+      const current = await window.api.app?.version?.()
+      if (cancelled || !current) return
+      const lastSeen = einstellungen?.changelog_gesehen_version || ''
+      const merken = async () => {
+        await window.api.einstellungen.set('changelog_gesehen_version', current)
+        useStore.setState({ einstellungen: { ...useStore.getState().einstellungen, changelog_gesehen_version: current } })
+      }
+      if (!lastSeen) { await merken(); return }               // Erstlauf: nur merken, nichts zeigen
+      if (cmpVersion(current, lastSeen) > 0) {
+        const neu = CHANGELOG.filter(e => cmpVersion(e.version, lastSeen) > 0)
+        if (neu.length > 0) setChangelogVersionen(neu)
+        await merken()
+      }
+    })()
+    return () => { cancelled = true }
+  }, [initialized, erststart, einstellungen?.changelog_gesehen_version])
+
   if (!initialized) return <LoadingScreen />
   if (erststart) return <Einrichtungsflow />
 
@@ -161,6 +185,9 @@ export default function App() {
       {activeModal === 'exportieren' && <ExportierenModal />}
       {activeModal === 'ferien' && <FerienModal />}
       {activeModal === 'dokumentation' && <DokumentationModal onClose={closeModal} />}
+
+      {/* „Was ist neu"-Modal nach einem Update */}
+      {changelogVersionen && <ChangelogModal versionen={changelogVersionen} onClose={() => setChangelogVersionen(null)} />}
 
       {/* Sicherungs-Erinnerung */}
       {!activeModal && backupErinnerung && (

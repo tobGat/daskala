@@ -349,8 +349,8 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, klassenname, schue
         <EintraegeTabelle eintraege={fachEintraege} />
       </section>
 
-      {/* Kompetenzen */}
-      {kompBereiche.length > 0 && (
+      {/* Kompetenzen – vorübergehend ausgeblendet, bis die Funktion vollständig eingebettet ist */}
+      {false && kompBereiche.length > 0 && (
         <section>
           <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-2">Kompetenzen</p>
           <div className="bg-paper-50 dark:bg-ink-900/40 border border-paper-200 dark:border-ink-800 rounded-xl p-3 space-y-1.5">

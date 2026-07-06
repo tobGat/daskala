@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import useStore from '../store/useStore'
 import { berechneSchulferien } from '../utils/schulferien'
 import SchuelerAvatar from './SchuelerAvatar'
@@ -314,8 +314,28 @@ export function SchuelerVerwaltenModal() {
   const [tab, setTab] = useState('liste') // 'liste' | 'hinzufuegen' | 'import'
   const [loeschenId, setLoeschenId] = useState(null)
   const [avatarSchueler, setAvatarSchueler] = useState(null)
+  const [faecher, setFaecher] = useState([])
+  const [ausgewaehlteFaecher, setAusgewaehlteFaecher] = useState(() => new Set())
+  const vornameRef = useRef(null)
+  const nachnameRef = useRef(null)
+
+  // Fächer der Klasse laden; manuelle Fächer standardmäßig ausgewählt.
+  useEffect(() => {
+    if (!aktiveKlasse) return
+    window.api.faecher.getAll(aktiveKlasse.id).then(fs => {
+      setFaecher(fs)
+      setAusgewaehlteFaecher(new Set(fs.filter(f => !f.alle_schueler).map(f => f.id)))
+    })
+  }, [aktiveKlasse?.id])
+
+  const toggleFach = (id) => setAusgewaehlteFaecher(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
 
   const handleHinzufuegen = async () => {
+    if (loading) return
     if (!vorname.trim() && !nachname.trim()) return
     setLoading(true)
     try {
@@ -323,10 +343,15 @@ export function SchuelerVerwaltenModal() {
         klasseId: aktiveKlasse.id,
         vorname: vorname.trim(),
         nachname: nachname.trim(),
+        fachIds: Array.from(ausgewaehlteFaecher),
       })
       await ladeSchueler()
+      // Aktives Fach neu laden, damit die/der neue Schüler:in dort sofort erscheint.
+      const { aktivesFach, ladeFachDaten } = useStore.getState()
+      if (aktivesFach) await ladeFachDaten(aktivesFach.id)
       setVorname('')
       setNachname('')
+      vornameRef.current?.focus()
     } finally {
       setLoading(false)
     }
@@ -358,12 +383,38 @@ export function SchuelerVerwaltenModal() {
   const handleImportSpeichern = async () => {
     if (!importListe.length) return
     setLoading(true)
-    await window.api.schueler.importBatch(aktiveKlasse.id, importListe)
+    await window.api.schueler.importBatch(aktiveKlasse.id, importListe, Array.from(ausgewaehlteFaecher))
     await ladeSchueler()
+    const { aktivesFach, ladeFachDaten } = useStore.getState()
+    if (aktivesFach) await ladeFachDaten(aktivesFach.id)
     setImportListe([])
     setTab('liste')
     setLoading(false)
   }
+
+  // Fächer-Auswahl (in „Hinzufügen" und „Importieren" gleich verwendet).
+  const faecherAuswahl = faecher.length > 0 && (
+    <div>
+      <label className="block text-xs text-ink-500 mb-1.5">Zu Fächern hinzufügen</label>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+        {faecher.map(f => {
+          const alle = !!f.alle_schueler
+          const checked = alle || ausgewaehlteFaecher.has(f.id)
+          return (
+            <label
+              key={f.id}
+              className={`flex items-center gap-2 text-sm ${alle ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
+              title={alle ? 'Enthält automatisch alle Schüler:innen der Klasse' : undefined}
+            >
+              <input type="checkbox" checked={checked} disabled={alle} onChange={() => toggleFach(f.id)} />
+              <span className="text-ink-700 dark:text-paper-200 truncate">{f.name}</span>
+              {alle && <span className="text-[10px] text-ink-400 flex-shrink-0">(alle)</span>}
+            </label>
+          )
+        })}
+      </div>
+    </div>
+  )
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && closeModal()}>
@@ -467,23 +518,28 @@ export function SchuelerVerwaltenModal() {
               <div>
                 <label className="block text-xs text-ink-500 mb-1">Vorname</label>
                 <input
+                  ref={vornameRef}
                   className="input"
                   value={vorname}
                   onChange={e => setVorname(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleHinzufuegen() }}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); nachnameRef.current?.focus() } }}
                   autoFocus
                 />
               </div>
               <div>
                 <label className="block text-xs text-ink-500 mb-1">Nachname</label>
                 <input
+                  ref={nachnameRef}
                   className="input"
                   value={nachname}
                   onChange={e => setNachname(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleHinzufuegen() }}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleHinzufuegen() } }}
                 />
               </div>
             </div>
+
+            {faecherAuswahl}
+
             <button
               className="btn-primary w-full"
               onClick={handleHinzufuegen}
@@ -523,6 +579,7 @@ export function SchuelerVerwaltenModal() {
                     ))}
                   </div>
                 </div>
+                {faecherAuswahl && <div className="mb-3">{faecherAuswahl}</div>}
                 <div className="flex gap-3">
                   <button className="btn-secondary flex-1" onClick={() => setImportListe([])}>Verwerfen</button>
                   <button

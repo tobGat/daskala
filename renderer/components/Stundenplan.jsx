@@ -17,6 +17,61 @@ function getMontag(wochenOffset) {
 
 const WOCHENTAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
 
+// WMO-Wettercode → Emoji (Open-Meteo)
+function wetterSymbol(code) {
+  if (code == null) return ''
+  if (code === 0) return '☀️'
+  if (code <= 2) return '🌤️'
+  if (code === 3) return '☁️'
+  if (code <= 48) return '🌫️'
+  if (code <= 57) return '🌦️'
+  if (code <= 67) return '🌧️'
+  if (code <= 77) return '🌨️'
+  if (code <= 82) return '🌦️'
+  if (code <= 86) return '🌨️'
+  return '⛈️'
+}
+function wetterText(code) {
+  if (code == null) return ''
+  if (code === 0) return 'Klar'
+  if (code <= 2) return 'Heiter'
+  if (code === 3) return 'Bewölkt'
+  if (code <= 48) return 'Nebel'
+  if (code <= 57) return 'Nieselregen'
+  if (code <= 67) return 'Regen'
+  if (code <= 77) return 'Schnee'
+  if (code <= 82) return 'Regenschauer'
+  if (code <= 86) return 'Schneeschauer'
+  return 'Gewitter'
+}
+
+// Wetter im Tages-Header: klein, rechts neben Wochentag/Datum.
+// Kompakt (Tageshöchst) oder mit Tageszeiten (Vm/Mi/Ab).
+function TagWetter({ w, detail }) {
+  if (!w) return null
+  if (detail && (w.vm || w.mi || w.ab)) {
+    const teile = [['Vm', w.vm], ['Mi', w.mi], ['Ab', w.ab]]
+    return (
+      <div className="text-[9px] leading-tight text-ink-500 dark:text-ink-400">
+        {teile.map(([lbl, teil]) => teil ? (
+          <div key={lbl} className="flex items-center gap-0.5" title={wetterText(teil.code)}>
+            <span className="opacity-60 w-4">{lbl}</span>
+            <span className="text-[11px] leading-none">{wetterSymbol(teil.code)}</span>
+            <span className="tabular-nums w-5 text-right">{Math.round(teil.temp)}°</span>
+          </div>
+        ) : null)}
+      </div>
+    )
+  }
+  if (w.tmax == null) return null
+  return (
+    <div className="flex items-center gap-0.5 text-[10px] font-normal text-ink-500 dark:text-ink-400" title={wetterText(w.code)}>
+      <span className="text-[12px] leading-none">{wetterSymbol(w.code)}</span>
+      <span className="tabular-nums">{Math.round(w.tmax)}°</span>
+    </div>
+  )
+}
+
 function faelligkeitRelativ(faelligkeit, vonDatum) {
   if (!faelligkeit) return null
   const diff = Math.round(
@@ -123,6 +178,7 @@ function aktuellerWochentag() {
 export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const { klassen, todos, termine, aktuellesSchuljahr, einstellungen } = useStore()
   const planungAktiv = einstellungen?.planung_aktiv === '1'
+  const wetterDetail = einstellungen?.wetter_detail === '1'
 
   const [stundenzeiten, setStundenzeiten] = useState([])
   const [stundenplanEintraege, setStundenplanEintraege] = useState([])
@@ -140,6 +196,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const [supplierModal, setSupplierModal] = useState(null) // { wochentag, stunde, tagDatum }
   const [hueEintraege, setHueEintraege] = useState([])
   const [customFerien, setCustomFerien] = useState([])
+  const [wetter, setWetter] = useState(null)   // { 'YYYY-MM-DD': { code, tmax, tmin } }
 
   // Schulferien berechnen (berechnete + benutzerdefinierte)
   const schulferien = useMemo(() => {
@@ -158,6 +215,19 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
     d.setDate(d.getDate() + i)
     return toLocalDateStr(d)
   })
+
+  // Wettervorhersage laden – nur wenn aktiviert und Bundesland oder genauer Ort gesetzt ist.
+  useEffect(() => {
+    const an = einstellungen?.wetter_aktiv === '1'
+    const bl = einstellungen?.bundesland
+    const hatOrt = !!einstellungen?.wetter_lat
+    if (!an || (!bl && !hatOrt)) { setWetter(null); return }
+    let aktiv = true
+    window.api.wetter?.getWoche?.(bl, wocheDatum)
+      .then(w => { if (aktiv) setWetter(w) })
+      .catch(() => { if (aktiv) setWetter(null) })
+    return () => { aktiv = false }
+  }, [wocheDatum, einstellungen?.bundesland, einstellungen?.wetter_lat, einstellungen?.wetter_aktiv])
 
   useEffect(() => {
     laden()
@@ -394,13 +464,21 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                 return (
                   <th
                     key={i}
-                    className={`px-2 py-2 text-center ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
+                    className={`px-2 py-2 ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
                   >
-                    <div className={`text-sm font-semibold ${istHeute && !headerFerien ? 'underline underline-offset-4 decoration-coral-400' : ''}`}>
-                      {tag}
-                    </div>
-                    <div className="text-[11px] font-normal opacity-70 mt-0.5">
-                      {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
+                    <div className={wetterDetail ? 'flex items-center justify-center gap-1.5' : 'text-center'}>
+                      <div className="text-center">
+                        <div className={`text-sm font-semibold ${istHeute && !headerFerien ? 'underline underline-offset-4 decoration-coral-400' : ''}`}>
+                          {tag}
+                        </div>
+                        <div className="mt-0.5 flex items-center justify-center gap-1">
+                          <span className="text-[11px] font-normal opacity-70">
+                            {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
+                          </span>
+                          {!wetterDetail && <TagWetter w={wetter?.[wochenDaten[i]]} detail={false} />}
+                        </div>
+                      </div>
+                      {wetterDetail && <TagWetter w={wetter?.[wochenDaten[i]]} detail />}
                     </div>
                   </th>
                 )

@@ -109,7 +109,7 @@ contextBridge.exposeInMainWorld('api', {
     update: (id, data) => invoke('schueler:update', id, data),
     setAvatar: (id, avatar) => invoke('schueler:setAvatar', id, avatar),
     reorder: (updates) => invoke('schueler:reorder', updates),
-    importBatch: (klasseId, list) => invoke('schueler:importBatch', klasseId, list),
+    importBatch: (klasseId, list, fachIds) => invoke('schueler:importBatch', klasseId, list, fachIds),
     getLeistungsProfil: (id) => invoke('schueler:getLeistungsProfil', id),
     exportProfilPDF: (data) => invoke('schueler:exportProfilPDF', data),
   },
@@ -230,6 +230,7 @@ contextBridge.exposeInMainWorld('api', {
 
   app: {
     reset: () => invoke('app:reset'),
+    version: () => invoke('app:version'),
   },
 
   sperre: {
@@ -238,6 +239,11 @@ contextBridge.exposeInMainWorld('api', {
     deaktivieren: () => invoke('sperre:deaktivieren'),
     pruefe: (pin) => invoke('sperre:pruefe', pin),
     setGesperrt: (wert) => invoke('sperre:setGesperrt', wert),
+  },
+
+  wetter: {
+    getWoche: (bundesland, montagDatum) => invoke('wetter:getWoche', bundesland, montagDatum),
+    sucheOrt: (query) => invoke('wetter:sucheOrt', query),
   },
 
   undo: {

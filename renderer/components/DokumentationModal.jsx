@@ -40,6 +40,7 @@ const DOKU = [
   {
     id: 'schueler', titel: 'Schüler:innen', bloecke: [
       'Über „Schüler:innen" verwaltest du die Klassenliste – einzeln, per Text oder per CSV-/Excel-Import.',
+      'Beim Hinzufügen kannst du gleich auswählen, zu welchen Fächern die Person gehört (Fächer mit „(alle)" enthalten ohnehin die ganze Klasse). Nach Vor- und Nachname genügt die Enter-Taste: die Person wird gespeichert und der Cursor springt zurück ins Vorname-Feld – so trägst du zügig eine ganze Liste ein.',
       { h: 'Avatare' },
       'Jede:r Schüler:in erhält automatisch einen Avatar aus dem Namen. Über den Avatar-Editor lassen sich Gesicht, Frisur, Farben und Accessoires anpassen.',
       { tipp: 'Die Avatare werden ohne Internet erzeugt (DiceBear „lorelei", CC0) und funktionieren komplett offline.' },
@@ -106,6 +107,8 @@ const DOKU = [
       'Der Stundenplan ist im Dashboard sichtbar. Über „Bearbeiten" pflegst du die Stunden und – kompakt im selben Screen – die Stunden-/Pausenzeiten.',
       { h: 'Ferien' },
       'Wählst du in den Einstellungen dein Bundesland, werden die österreichischen Schulferien und Feiertage automatisch berechnet und im Kalender angezeigt. Eigene Ferien/Feiertage kannst du zusätzlich pflegen.',
+      { h: 'Wettervorschau' },
+      'Aktivierst du die Wettervorschau in den Einstellungen (eigener Bereich „Wettervorschau", standardmäßig aus), zeigt der Stundenplan neben jedem Wochentag ein kleines Wettersymbol samt Temperatur (Vorhersage für die aktuelle und kommende Tage) – praktisch z. B. zur Planung von Exkursionen. Der Ort richtet sich nach dem Bundesland; für genauere Werte lässt sich ein konkreter Ort wählen. Optional werden Vormittag, Mittag und Abend getrennt angezeigt.',
     ],
   },
   {
@@ -151,7 +154,7 @@ const DOKU = [
       'Daskala ist freie Software unter der GNU GPL-3.0 (Open Source). Du darfst die App kostenlos nutzen, weitergeben und verändern; weitergegebene Varianten müssen ebenfalls offen bleiben.',
       'Details in den Dateien LICENSE und THIRD-PARTY-NOTICES.txt.',
       { h: 'Updates' },
-      'Beim Start prüft Daskala automatisch auf eine neuere Version und lädt sie im Hintergrund. Sobald ein Update bereit ist, kannst du es über „Jetzt neu starten" sofort installieren – andernfalls wird es beim nächsten Beenden übernommen. Vor jeder Installation legt Daskala automatisch eine Sicherung deiner Daten an.',
+      'Beim Start prüft Daskala automatisch auf eine neuere Version und lädt sie im Hintergrund. Sobald ein Update bereit ist, kannst du es über „Jetzt neu starten" sofort installieren – andernfalls wird es beim nächsten Beenden übernommen. Vor jeder Installation legt Daskala automatisch eine Sicherung deiner Daten an. Nach dem Update zeigt ein kurzes Fenster die wichtigsten Neuerungen.',
     ],
   },
   {
@@ -172,7 +175,8 @@ const DOKU = [
       { ul: [
         'Alle Inhalte (Klassen, Noten, Materialien, Notizen) werden ausschließlich lokal auf deinem Gerät gespeichert.',
         'Es werden keine personenbezogenen Daten an Server oder Dritte übertragen – kein Tracking, keine Analyse, keine Werbung.',
-        'Einzige Ausnahme: Zur Update-Prüfung wird beim Start GitHub kontaktiert (reine Versionsabfrage, ohne personenbezogene Daten).',
+        'Zur Update-Prüfung wird beim Start GitHub kontaktiert (reine Versionsabfrage, ohne personenbezogene Daten).',
+        'Für die Wettervorschau im Stundenplan wird open-meteo.com abgefragt – übermittelt werden nur die Koordinaten des eingestellten Orts (bzw. der Landeshauptstadt deines Bundeslands), keine personenbezogenen Daten. Ohne Bundesland/Ort erfolgt keine Abfrage. Die Ortssuche fragt zusätzlich den Geocoding-Dienst von open-meteo.com mit deinem Suchbegriff ab.',
         'Backups liegen lokal bzw. am von dir gewählten Speicherort.',
       ] },
       { h: 'Verantwortlichkeit' },
