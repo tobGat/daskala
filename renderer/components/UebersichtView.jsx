@@ -29,7 +29,7 @@ function StatPill({ label, value, accent, emoji }) {
 
 export default function UebersichtView() {
   const {
-    aktuellesSchuljahr, klassen, todos, termine,
+    aktuellesSchuljahr, todos, termine,
   } = useStore()
   const [highlightedTodoId, setHighlightedTodoId] = useState(null)
   const [highlightedTerminId, setHighlightedTerminId] = useState(null)
@@ -120,7 +120,6 @@ export default function UebersichtView() {
           <div className="flex items-center gap-2 flex-wrap">
             <StatPill label="offen"   value={offeneTodos}     emoji="✏️" accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300" />
             <StatPill label="Termine" value={naechsteTermine} emoji="📅" accent="bg-mint-50 text-mint-700 dark:bg-mint-900/30 dark:text-mint-300" />
-            <StatPill label="Klassen" value={klassen.length}  emoji="👋" accent="bg-lavender-50 text-lavender-700 dark:bg-lavender-900/30 dark:text-lavender-300" />
           </div>
         </div>
       </div>
