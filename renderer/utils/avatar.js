@@ -73,3 +73,50 @@ export function avatarSvg(schueler, size = 64) {
   _cache.set(key, svg)
   return svg
 }
+
+// ─── Teilbarer Avatar-Code (App ⇄ Web-Editor avatar.schulapps.at) ─────────────
+// Format: DSK1-hd-ha-ey-eb-no-mo-sk-hc-gl-ea-be
+//   hd..mo = Varianten-Nummer (aus „variantNN"); sk/hc = Index in SKIN/HAIR;
+//   gl/ea/be = Varianten-Nummer wenn aktiv, sonst 0.
+// WICHTIG: App und Web müssen dieselbe lorelei-Version + dieselben Paletten nutzen.
+export const CODE_PREFIX = 'DSK1'
+const vnum = (v) => { const m = /(\d+)/.exec(v || ''); return m ? parseInt(m[1], 10) : 1 }
+function vname(cat, n) {
+  const vs = variantsOf(cat)
+  const name = `variant${String(n).padStart(2, '0')}`
+  if (vs.includes(name)) return name
+  return vs[Math.min(vs.length - 1, Math.max(0, (n || 1) - 1))] || name
+}
+
+export function optionsToCode(opts) {
+  const o = opts || {}
+  const parts = [
+    vnum(o.head?.[0]), vnum(o.hair?.[0]), vnum(o.eyes?.[0]),
+    vnum(o.eyebrows?.[0]), vnum(o.nose?.[0]), vnum(o.mouth?.[0]),
+    Math.max(0, SKIN.indexOf(o.skinColor?.[0])),
+    Math.max(0, HAIR.indexOf(o.hairColor?.[0])),
+    o.glassesProbability === 100 ? vnum(o.glasses?.[0]) : 0,
+    o.earringsProbability === 100 ? vnum(o.earrings?.[0]) : 0,
+    o.beardProbability === 100 ? vnum(o.beard?.[0]) : 0,
+  ]
+  return CODE_PREFIX + '-' + parts.join('-')
+}
+
+export function codeToOptions(code) {
+  const t = String(code || '').trim().toUpperCase().split('-')
+  if (t[0] !== CODE_PREFIX || t.length < 12) return null
+  const n = t.slice(1, 12).map(x => parseInt(x, 10) || 0)
+  const [hd, ha, ey, eb, no, mo, sk, hc, gl, ea, be] = n
+  const hcHex = HAIR[hc] || HAIR[0]
+  const o = {
+    skinColor: [SKIN[sk] || SKIN[0]],
+    hairColor: [hcHex], eyebrowsColor: [hcHex],
+    head: [vname('head', hd)], hair: [vname('hair', ha)], eyes: [vname('eyes', ey)],
+    eyebrows: [vname('eyebrows', eb)], nose: [vname('nose', no)], mouth: [vname('mouth', mo)],
+    glassesProbability: gl ? 100 : 0, earringsProbability: ea ? 100 : 0, beardProbability: be ? 100 : 0,
+  }
+  if (gl) o.glasses = [vname('glasses', gl)]
+  if (ea) o.earrings = [vname('earrings', ea)]
+  if (be) o.beard = [vname('beard', be)]
+  return o
+}
