@@ -79,25 +79,24 @@ export function avatarSvg(schueler, size = 64) {
 //   hd..mo = Varianten-Nummer (aus „variantNN"); sk/hc = Index in SKIN/HAIR;
 //   gl/ea/be = Varianten-Nummer wenn aktiv, sonst 0.
 // WICHTIG: App und Web müssen dieselbe lorelei-Version + dieselben Paletten nutzen.
+// Format: DSK1-hd-ha-ey-eb-no-mo-sk-hc-gl-ea-be
+//   hd..mo = Index in variantsOf(cat) (0-basiert); sk/hc = Index in SKIN/HAIR;
+//   gl/ea/be = 0 wenn aus, sonst (Varianten-Index + 1).
+// App und Web-Editor (avatar.schulapps.at) MÜSSEN dieselbe lorelei-Version nutzen.
 export const CODE_PREFIX = 'DSK1'
-const vnum = (v) => { const m = /(\d+)/.exec(v || ''); return m ? parseInt(m[1], 10) : 1 }
-function vname(cat, n) {
-  const vs = variantsOf(cat)
-  const name = `variant${String(n).padStart(2, '0')}`
-  if (vs.includes(name)) return name
-  return vs[Math.min(vs.length - 1, Math.max(0, (n || 1) - 1))] || name
-}
+const vidx = (cat, v) => Math.max(0, variantsOf(cat).indexOf(v))
+const vat = (cat, i) => { const vs = variantsOf(cat); return vs[Math.min(vs.length - 1, Math.max(0, i))] || vs[0] }
 
 export function optionsToCode(opts) {
   const o = opts || {}
   const parts = [
-    vnum(o.head?.[0]), vnum(o.hair?.[0]), vnum(o.eyes?.[0]),
-    vnum(o.eyebrows?.[0]), vnum(o.nose?.[0]), vnum(o.mouth?.[0]),
+    vidx('head', o.head?.[0]), vidx('hair', o.hair?.[0]), vidx('eyes', o.eyes?.[0]),
+    vidx('eyebrows', o.eyebrows?.[0]), vidx('nose', o.nose?.[0]), vidx('mouth', o.mouth?.[0]),
     Math.max(0, SKIN.indexOf(o.skinColor?.[0])),
     Math.max(0, HAIR.indexOf(o.hairColor?.[0])),
-    o.glassesProbability === 100 ? vnum(o.glasses?.[0]) : 0,
-    o.earringsProbability === 100 ? vnum(o.earrings?.[0]) : 0,
-    o.beardProbability === 100 ? vnum(o.beard?.[0]) : 0,
+    o.glassesProbability === 100 ? vidx('glasses', o.glasses?.[0]) + 1 : 0,
+    o.earringsProbability === 100 ? vidx('earrings', o.earrings?.[0]) + 1 : 0,
+    o.beardProbability === 100 ? vidx('beard', o.beard?.[0]) + 1 : 0,
   ]
   return CODE_PREFIX + '-' + parts.join('-')
 }
@@ -111,12 +110,12 @@ export function codeToOptions(code) {
   const o = {
     skinColor: [SKIN[sk] || SKIN[0]],
     hairColor: [hcHex], eyebrowsColor: [hcHex],
-    head: [vname('head', hd)], hair: [vname('hair', ha)], eyes: [vname('eyes', ey)],
-    eyebrows: [vname('eyebrows', eb)], nose: [vname('nose', no)], mouth: [vname('mouth', mo)],
+    head: [vat('head', hd)], hair: [vat('hair', ha)], eyes: [vat('eyes', ey)],
+    eyebrows: [vat('eyebrows', eb)], nose: [vat('nose', no)], mouth: [vat('mouth', mo)],
     glassesProbability: gl ? 100 : 0, earringsProbability: ea ? 100 : 0, beardProbability: be ? 100 : 0,
   }
-  if (gl) o.glasses = [vname('glasses', gl)]
-  if (ea) o.earrings = [vname('earrings', ea)]
-  if (be) o.beard = [vname('beard', be)]
+  if (gl) o.glasses = [vat('glasses', gl - 1)]
+  if (ea) o.earrings = [vat('earrings', ea - 1)]
+  if (be) o.beard = [vat('beard', be - 1)]
   return o
 }
