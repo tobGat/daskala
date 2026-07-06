@@ -2705,6 +2705,9 @@ function registerIPC() {
     return true
   })
 
+  // Laufende App-Version (für das „Was ist neu"-Modal nach Updates).
+  ipcMain.handle('app:version', () => app.getVersion())
+
   // ─── App-Sperre ─────────────────────────────────────────────────────────────
   ipcMain.handle('sperre:status', () => ({
     aktiv: bkGet('sperre_aktiv') === '1' && !!bkGet('sperre_pin_hash'),
