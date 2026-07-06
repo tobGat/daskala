@@ -45,30 +45,28 @@ function wetterText(code) {
   return 'Gewitter'
 }
 
-// Wetter im Tages-Header: kompakt (Tageshöchst) oder mit Tageszeiten (Vm/Mi/Ab).
+// Wetter im Tages-Header: klein, rechts neben Wochentag/Datum.
+// Kompakt (Tageshöchst) oder mit Tageszeiten (Vm/Mi/Ab).
 function TagWetter({ w, detail }) {
   if (!w) return null
   if (detail && (w.vm || w.mi || w.ab)) {
     const teile = [['Vm', w.vm], ['Mi', w.mi], ['Ab', w.ab]]
     return (
-      <div className="flex justify-center gap-1.5 mt-1 text-[9px] text-ink-500 dark:text-ink-400">
+      <div className="text-[9px] leading-tight text-ink-500 dark:text-ink-400">
         {teile.map(([lbl, teil]) => teil ? (
-          <div key={lbl} className="flex flex-col items-center leading-none" title={wetterText(teil.code)}>
-            <span className="opacity-60">{lbl}</span>
-            <span className="text-[13px] my-0.5">{wetterSymbol(teil.code)}</span>
-            <span className="tabular-nums">{Math.round(teil.temp)}°</span>
+          <div key={lbl} className="flex items-center gap-0.5" title={wetterText(teil.code)}>
+            <span className="opacity-60 w-4">{lbl}</span>
+            <span className="text-[11px] leading-none">{wetterSymbol(teil.code)}</span>
+            <span className="tabular-nums w-5 text-right">{Math.round(teil.temp)}°</span>
           </div>
-        ) : <div key={lbl} className="w-6" />)}
+        ) : null)}
       </div>
     )
   }
   if (w.tmax == null) return null
   return (
-    <div
-      className="text-[11px] font-normal mt-0.5 flex items-center justify-center gap-0.5 text-ink-500 dark:text-ink-400"
-      title={wetterText(w.code)}
-    >
-      <span>{wetterSymbol(w.code)}</span>
+    <div className="flex items-center gap-0.5 text-[10px] font-normal text-ink-500 dark:text-ink-400" title={wetterText(w.code)}>
+      <span className="text-[12px] leading-none">{wetterSymbol(w.code)}</span>
       <span className="tabular-nums">{Math.round(w.tmax)}°</span>
     </div>
   )
@@ -465,15 +463,19 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                 return (
                   <th
                     key={i}
-                    className={`px-2 py-2 text-center ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
+                    className={`px-2 py-2 ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
                   >
-                    <div className={`text-sm font-semibold ${istHeute && !headerFerien ? 'underline underline-offset-4 decoration-coral-400' : ''}`}>
-                      {tag}
+                    <div className="flex items-center justify-center gap-1.5">
+                      <div className="text-center">
+                        <div className={`text-sm font-semibold ${istHeute && !headerFerien ? 'underline underline-offset-4 decoration-coral-400' : ''}`}>
+                          {tag}
+                        </div>
+                        <div className="text-[11px] font-normal opacity-70 mt-0.5">
+                          {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
+                        </div>
+                      </div>
+                      <TagWetter w={wetter?.[wochenDaten[i]]} detail={wetterDetail} />
                     </div>
-                    <div className="text-[11px] font-normal opacity-70 mt-0.5">
-                      {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
-                    </div>
-                    <TagWetter w={wetter?.[wochenDaten[i]]} detail={wetterDetail} />
                   </th>
                 )
               })}
