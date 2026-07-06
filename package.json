@@ -82,7 +82,8 @@
       },
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "rpm"
       ]
     },
     "npmRebuild": true

@@ -36,6 +36,12 @@ jobs:
       - name: Abhängigkeiten installieren
         run: npm ci
 
+      # rpmbuild wird zum Erzeugen des RPM-Pakets benötigt und ist auf dem
+      # Ubuntu-Runner nicht vorinstalliert. Nur auf Linux nötig.
+      - name: RPM-Werkzeuge installieren (nur Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
       - name: Version aus dem Tag übernehmen
         shell: bash
         run: npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
