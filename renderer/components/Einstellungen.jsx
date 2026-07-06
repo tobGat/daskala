@@ -67,7 +67,7 @@ export default function Einstellungen({ onClose }) {
   const [autoBackup, setAutoBackup] = useState(einstellungen['backup_automatisch'] === '1')
   const [backupInfo, setBackupInfo] = useState(null)
   const [resetOffen, setResetOffen] = useState(false)
-  const [offenerBereich, setOffenerBereich] = useState('benotung')
+  const [offenerBereich, setOffenerBereich] = useState(null)
   const toggleBereich = (id) => setOffenerBereich(o => (o === id ? null : id))
 
   const ladeBackupStatus = async () => {
