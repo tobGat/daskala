@@ -18,6 +18,7 @@ import KompetenzrasterView from './components/KompetenzrasterView'
 import UebersichtView from './components/UebersichtView'
 import KVView from './components/KVView'
 import DokumentationModal from './components/DokumentationModal'
+import SperreOverlay from './components/SperreOverlay'
 import {
   KlasseHinzufuegenModal,
   FachHinzufuegenModal,
@@ -47,6 +48,7 @@ export default function App() {
     detailSchueler,
     einstellungen,
     vorlagenModus,
+    gesperrt, sperren, entsperren,
     init,
   } = useStore()
 
@@ -105,11 +107,24 @@ export default function App() {
     }
   }, [initialized, erststart])
 
+  // App-Sperre per Tastenkürzel (Strg/Cmd + L), sofern aktiviert.
+  useEffect(() => {
+    const sperreAktiv = einstellungen?.sperre_aktiv === '1'
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'l' || e.key === 'L')) {
+        if (sperreAktiv && !gesperrt) { e.preventDefault(); sperren() }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [einstellungen?.sperre_aktiv, gesperrt, sperren])
+
   if (!initialized) return <LoadingScreen />
   if (erststart) return <Einrichtungsflow />
 
   return (
-    <div className="flex flex-col h-screen bg-paper-50 dark:bg-ink-950">
+    <>
+    <div className={`flex flex-col h-screen bg-paper-50 dark:bg-ink-950${gesperrt ? ' blur-lg pointer-events-none select-none' : ''}`}>
 
       {/* Grün leuchtender Rahmen als deutliches Signal für den Vorlagen-Modus */}
       {vorlagenModus && (
@@ -199,5 +214,9 @@ export default function App() {
         </div>
       )}
     </div>
+
+    {/* App-Sperre: Overlay mit PIN-Eingabe (Inhalt dahinter ist geblurt) */}
+    {gesperrt && <SperreOverlay onUnlock={entsperren} />}
+    </>
   )
 }

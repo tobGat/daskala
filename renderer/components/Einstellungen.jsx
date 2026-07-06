@@ -70,6 +70,33 @@ export default function Einstellungen({ onClose }) {
   const [offenerBereich, setOffenerBereich] = useState(null)
   const toggleBereich = (id) => setOffenerBereich(o => (o === id ? null : id))
 
+  // App-Sperre (PIN)
+  const [sperreAktiv, setSperreAktiv] = useState(einstellungen['sperre_aktiv'] === '1')
+  const [pinNeu, setPinNeu] = useState('')
+  const [pinNeu2, setPinNeu2] = useState('')
+  const onlyDigits = (v) => v.replace(/\D/g, '').slice(0, 12)
+
+  const handleSperreSpeichern = async () => {
+    if (pinNeu.length < 4) { pushToast('Der PIN muss mindestens 4 Ziffern haben.', 'error'); return }
+    if (pinNeu !== pinNeu2) { pushToast('Die PINs stimmen nicht überein.', 'error'); return }
+    const res = await window.api.sperre.setPin(pinNeu)
+    if (res?.ok) {
+      setSperreAktiv(true); setPinNeu(''); setPinNeu2('')
+      useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+      pushToast('App-Sperre aktiviert.', 'success')
+    } else pushToast('PIN konnte nicht gesetzt werden.', 'error')
+  }
+  const handleSperreDeaktivieren = async () => {
+    await window.api.sperre.deaktivieren()
+    setSperreAktiv(false); setPinNeu(''); setPinNeu2('')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+    pushToast('App-Sperre deaktiviert.', 'info')
+  }
+  const handleJetztSperren = () => {
+    onClose()
+    useStore.getState().sperren()
+  }
+
   const ladeBackupStatus = async () => {
     try {
       const s = await window.api.backup.status()
@@ -493,6 +520,42 @@ export default function Einstellungen({ onClose }) {
               <p className="text-[11px] text-ink-400 mt-2">
                 Zuletzt gesichert: {backupInfo.tageSeit === 0 ? 'heute' : `vor ${backupInfo.tageSeit} Tag${backupInfo.tageSeit === 1 ? '' : 'en'}`}.
               </p>
+            )}
+          </Akkordeon>
+
+          {/* App-Sperre */}
+          <Akkordeon id="sperre" icon="🔒" titel="App-Sperre" offen={offenerBereich} onToggle={toggleBereich}>
+            <p className="text-xs text-ink-400 dark:text-ink-500 mb-4">
+              Sperrt die App per Tastenkürzel <strong>Strg&nbsp;+&nbsp;L</strong> (Mac: Cmd&nbsp;+&nbsp;L); entsperrt wird
+              mit deinem PIN. So haben Kinder bei kurzer Abwesenheit keinen Zugriff – die Inhalte werden dabei unkenntlich gemacht.
+            </p>
+
+            {sperreAktiv ? (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-sm text-green-600 dark:text-green-400">✓ Sperre ist aktiv</span>
+                  <button className="btn-secondary" onClick={handleJetztSperren}>Jetzt sperren (Strg&nbsp;+&nbsp;L)</button>
+                  <button className="text-sm text-red-500 hover:text-red-600" onClick={handleSperreDeaktivieren}>Sperre deaktivieren</button>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-2">PIN ändern</h4>
+                  <div className="flex flex-col gap-2 max-w-xs">
+                    <input type="password" inputMode="numeric" autoComplete="off" className="input" placeholder="Neuer PIN (min. 4 Ziffern)"
+                      value={pinNeu} onChange={e => setPinNeu(onlyDigits(e.target.value))} />
+                    <input type="password" inputMode="numeric" autoComplete="off" className="input" placeholder="PIN wiederholen"
+                      value={pinNeu2} onChange={e => setPinNeu2(onlyDigits(e.target.value))} />
+                    <button className="btn-secondary self-start" onClick={handleSperreSpeichern}>PIN speichern</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 max-w-xs">
+                <input type="password" inputMode="numeric" autoComplete="off" className="input" placeholder="PIN wählen (min. 4 Ziffern)"
+                  value={pinNeu} onChange={e => setPinNeu(onlyDigits(e.target.value))} />
+                <input type="password" inputMode="numeric" autoComplete="off" className="input" placeholder="PIN wiederholen"
+                  value={pinNeu2} onChange={e => setPinNeu2(onlyDigits(e.target.value))} />
+                <button className="btn-primary self-start" onClick={handleSperreSpeichern}>Sperre aktivieren</button>
+              </div>
             )}
           </Akkordeon>
 

@@ -1005,6 +1005,13 @@ function backupVorUpdate() {
   } catch (e) { logError('backupVorUpdate', e) }
 }
 
+// ─── App-Sperre (PIN) ────────────────────────────────────────────────────────
+// Merkt sich, ob die App gerade gesperrt ist (blockiert Tastenkürzel).
+let appGesperrt = false
+function hashPin(pin) {
+  return require('crypto').createHash('sha256').update('daskala-pin:' + String(pin)).digest('hex')
+}
+
 // ─── Zeugnisnoten-Berechnung ──────────────────────────────────────────────────
 // ─── Kompetenz-Vorlagen (Lehrplan NEU) ──────────────────────────────────────
 const KOMPETENZ_VORLAGEN = {
@@ -2669,6 +2676,33 @@ function registerIPC() {
     return true
   })
 
+  // ─── App-Sperre ─────────────────────────────────────────────────────────────
+  ipcMain.handle('sperre:status', () => ({
+    aktiv: bkGet('sperre_aktiv') === '1' && !!bkGet('sperre_pin_hash'),
+  }))
+  ipcMain.handle('sperre:setPin', (_, pin) => {
+    if (!pin || String(pin).length < 4) return { ok: false }
+    bkSet('sperre_pin_hash', hashPin(pin))
+    bkSet('sperre_aktiv', '1')
+    return { ok: true }
+  })
+  ipcMain.handle('sperre:deaktivieren', () => {
+    bkSet('sperre_aktiv', '0')
+    bkSet('sperre_pin_hash', '')
+    appGesperrt = false
+    return true
+  })
+  ipcMain.handle('sperre:pruefe', (_, pin) => {
+    const hash = bkGet('sperre_pin_hash')
+    const ok = !!hash && hashPin(pin) === hash
+    if (ok) appGesperrt = false
+    return ok
+  })
+  ipcMain.handle('sperre:setGesperrt', (_, wert) => {
+    appGesperrt = !!wert
+    return true
+  })
+
   ipcMain.handle('db:saveAs', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     return doSaveAs(win)
@@ -4159,6 +4193,7 @@ function createWindow() {
   // Tastenkürzel (Ersatz für das entfernte Menü): Rückgängig/Wiederholen, Öffnen, Speichern unter.
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return
+    if (appGesperrt) return   // gesperrt: keine App-Kürzel (PIN-Eingabe bleibt möglich)
     if (!(input.control || input.meta)) return
     const key = (input.key || '').toLowerCase()
     if (key === 'z' && !input.shift) { event.preventDefault(); executeUndo() }

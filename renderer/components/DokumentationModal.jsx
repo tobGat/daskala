@@ -136,6 +136,17 @@ const DOKU = [
     ],
   },
   {
+    id: 'sperre', titel: 'App-Sperre', bloecke: [
+      'Damit bei kurzer Abwesenheit niemand (z. B. Kinder) auf deine Daten zugreift, kannst du die App mit einem PIN sperren.',
+      { ul: [
+        'Aktivieren in den Einstellungen → App-Sperre: PIN festlegen (mindestens 4 Ziffern).',
+        'Sperren mit Strg + L (Mac: Cmd + L) oder über den Knopf „Jetzt sperren".',
+        'Im gesperrten Zustand sind alle Inhalte unkenntlich (verschwommen); nur mit dem PIN geht es weiter.',
+      ] },
+      { tipp: 'Der PIN schützt vor Blicken und Zugriff im Vorbeigehen – für echten Datenschutz sperre zusätzlich deinen Rechner.' },
+    ],
+  },
+  {
     id: 'lizenz', titel: 'Über Daskala', bloecke: [
       'Daskala ist freie Software unter der GNU GPL-3.0 (Open Source). Du darfst die App kostenlos nutzen, weitergeben und verändern; weitergegebene Varianten müssen ebenfalls offen bleiben.',
       'Details in den Dateien LICENSE und THIRD-PARTY-NOTICES.txt.',

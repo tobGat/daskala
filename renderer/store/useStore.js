@@ -53,6 +53,17 @@ const useStore = create((set, get) => ({
   activeModal: null,     // 'spalteHinzufuegen' | 'einstellungen' | 'schuelerHinzufuegen' | 'schuljahrwechsel' | 'gewichtung'
   modalData: null,
 
+  // ─── App-Sperre (PIN) ─────────────────────────────────────────────────────
+  gesperrt: false,
+  sperren: () => {
+    set({ gesperrt: true })
+    window.api.sperre?.setGesperrt?.(true)
+  },
+  entsperren: () => {
+    set({ gesperrt: false })
+    window.api.sperre?.setGesperrt?.(false)
+  },
+
   // ─── Toasts / Benachrichtigungen ──────────────────────────────────────────
   toasts: [],  // [{ id, message, type: 'success'|'error'|'info', duration }]
   pushToast: (message, type = 'info', duration = 4000) => {

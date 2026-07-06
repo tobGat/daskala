@@ -232,6 +232,14 @@ contextBridge.exposeInMainWorld('api', {
     reset: () => invoke('app:reset'),
   },
 
+  sperre: {
+    status: () => invoke('sperre:status'),
+    setPin: (pin) => invoke('sperre:setPin', pin),
+    deaktivieren: () => invoke('sperre:deaktivieren'),
+    pruefe: (pin) => invoke('sperre:pruefe', pin),
+    setGesperrt: (wert) => invoke('sperre:setGesperrt', wert),
+  },
+
   undo: {
     execute:    () => invoke('undo:execute'),
     redo:       () => invoke('undo:redo'),
