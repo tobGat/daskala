@@ -188,16 +188,17 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
     return toLocalDateStr(d)
   })
 
-  // Wettervorhersage der Woche laden (nur wenn ein Bundesland eingestellt ist).
+  // Wettervorhersage der Woche laden (wenn Bundesland oder genauer Ort gesetzt ist).
   useEffect(() => {
     const bl = einstellungen?.bundesland
-    if (!bl) { setWetter(null); return }
+    const hatOrt = !!einstellungen?.wetter_lat
+    if (!bl && !hatOrt) { setWetter(null); return }
     let aktiv = true
     window.api.wetter?.getWoche?.(bl, wocheDatum)
       .then(w => { if (aktiv) setWetter(w) })
       .catch(() => { if (aktiv) setWetter(null) })
     return () => { aktiv = false }
-  }, [wocheDatum, einstellungen?.bundesland])
+  }, [wocheDatum, einstellungen?.bundesland, einstellungen?.wetter_lat])
 
   useEffect(() => {
     laden()

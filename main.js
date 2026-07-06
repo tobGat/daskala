@@ -2736,7 +2736,12 @@ function registerIPC() {
   // Tagesvorhersage (Mo–Fr) einer Woche für das eingestellte Bundesland.
   ipcMain.handle('wetter:getWoche', async (_, bundesland, montagDatum) => {
     try {
-      const koord = WETTER_KOORD[bundesland]
+      // Genauer Ort (falls gesetzt) hat Vorrang vor der Bundesland-Hauptstadt.
+      let koord = null
+      const lat = parseFloat(bkGet('wetter_lat'))
+      const lon = parseFloat(bkGet('wetter_lon'))
+      if (!isNaN(lat) && !isNaN(lon)) koord = [lat, lon]
+      else koord = WETTER_KOORD[bundesland]
       if (!koord || !montagDatum) return null
       const startD = new Date(montagDatum + 'T00:00:00')
       if (isNaN(startD)) return null
@@ -2770,6 +2775,26 @@ function registerIPC() {
     } catch (e) {
       logError('wetter:getWoche', e)
       return null
+    }
+  })
+
+  // Ortssuche (Geocoding) für eine genauere Wettervorschau.
+  ipcMain.handle('wetter:sucheOrt', async (_, query) => {
+    try {
+      const q = (query || '').trim()
+      if (q.length < 2) return []
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=de&format=json`
+      const json = await httpsGetJson(url)
+      return (json.results || []).map(r => ({
+        name: r.name,
+        admin1: r.admin1 || '',
+        land: r.country_code || r.country || '',
+        lat: r.latitude,
+        lon: r.longitude,
+      }))
+    } catch (e) {
+      logError('wetter:sucheOrt', e)
+      return []
     }
   })
 

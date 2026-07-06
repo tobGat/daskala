@@ -242,6 +242,7 @@ contextBridge.exposeInMainWorld('api', {
 
   wetter: {
     getWoche: (bundesland, montagDatum) => invoke('wetter:getWoche', bundesland, montagDatum),
+    sucheOrt: (query) => invoke('wetter:sucheOrt', query),
   },
 
   undo: {

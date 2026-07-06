@@ -175,7 +175,7 @@ const DOKU = [
         'Alle Inhalte (Klassen, Noten, Materialien, Notizen) werden ausschließlich lokal auf deinem Gerät gespeichert.',
         'Es werden keine personenbezogenen Daten an Server oder Dritte übertragen – kein Tracking, keine Analyse, keine Werbung.',
         'Zur Update-Prüfung wird beim Start GitHub kontaktiert (reine Versionsabfrage, ohne personenbezogene Daten).',
-        'Für die Wettervorschau im Stundenplan wird open-meteo.com abgefragt – übermittelt werden nur die ungefähren Koordinaten deines Bundeslandes (dessen Landeshauptstadt), keine personenbezogenen Daten. Ohne eingestelltes Bundesland erfolgt keine Abfrage.',
+        'Für die Wettervorschau im Stundenplan wird open-meteo.com abgefragt – übermittelt werden nur die Koordinaten des eingestellten Orts (bzw. der Landeshauptstadt deines Bundeslands), keine personenbezogenen Daten. Ohne Bundesland/Ort erfolgt keine Abfrage. Die Ortssuche fragt zusätzlich den Geocoding-Dienst von open-meteo.com mit deinem Suchbegriff ab.',
         'Backups liegen lokal bzw. am von dir gewählten Speicherort.',
       ] },
       { h: 'Verantwortlichkeit' },
