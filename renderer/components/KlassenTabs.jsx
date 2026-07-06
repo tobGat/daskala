@@ -21,7 +21,8 @@ const FARB_PALETTE = [
 
 const ALLE_KLASSEN_VIEWS = [
   { id: 'notentabelle',    label: 'Noten',       planungOnly: false },
-  { id: 'kompetenzen',     label: 'Kompetenzen', planungOnly: false },
+  // Kompetenzen vorübergehend ausgeblendet, bis die Funktion vollständig eingebettet ist:
+  // { id: 'kompetenzen',     label: 'Kompetenzen', planungOnly: false },
   { id: 'klassenplanung',  label: 'Planung',     planungOnly: true  },
   { id: 'sitzplan',        label: 'Sitzplan',    planungOnly: false },
   { id: 'jahresplanung',   label: 'Jahresplan',  planungOnly: true  },
