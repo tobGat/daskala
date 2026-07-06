@@ -240,6 +240,10 @@ contextBridge.exposeInMainWorld('api', {
     setGesperrt: (wert) => invoke('sperre:setGesperrt', wert),
   },
 
+  wetter: {
+    getWoche: (bundesland, montagDatum) => invoke('wetter:getWoche', bundesland, montagDatum),
+  },
+
   undo: {
     execute:    () => invoke('undo:execute'),
     redo:       () => invoke('undo:redo'),

@@ -17,6 +17,34 @@ function getMontag(wochenOffset) {
 
 const WOCHENTAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
 
+// WMO-Wettercode → Emoji (Open-Meteo)
+function wetterSymbol(code) {
+  if (code == null) return ''
+  if (code === 0) return '☀️'
+  if (code <= 2) return '🌤️'
+  if (code === 3) return '☁️'
+  if (code <= 48) return '🌫️'
+  if (code <= 57) return '🌦️'
+  if (code <= 67) return '🌧️'
+  if (code <= 77) return '🌨️'
+  if (code <= 82) return '🌦️'
+  if (code <= 86) return '🌨️'
+  return '⛈️'
+}
+function wetterText(code) {
+  if (code == null) return ''
+  if (code === 0) return 'Klar'
+  if (code <= 2) return 'Heiter'
+  if (code === 3) return 'Bewölkt'
+  if (code <= 48) return 'Nebel'
+  if (code <= 57) return 'Nieselregen'
+  if (code <= 67) return 'Regen'
+  if (code <= 77) return 'Schnee'
+  if (code <= 82) return 'Regenschauer'
+  if (code <= 86) return 'Schneeschauer'
+  return 'Gewitter'
+}
+
 function faelligkeitRelativ(faelligkeit, vonDatum) {
   if (!faelligkeit) return null
   const diff = Math.round(
@@ -140,6 +168,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const [supplierModal, setSupplierModal] = useState(null) // { wochentag, stunde, tagDatum }
   const [hueEintraege, setHueEintraege] = useState([])
   const [customFerien, setCustomFerien] = useState([])
+  const [wetter, setWetter] = useState(null)   // { 'YYYY-MM-DD': { code, tmax, tmin } }
 
   // Schulferien berechnen (berechnete + benutzerdefinierte)
   const schulferien = useMemo(() => {
@@ -158,6 +187,17 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
     d.setDate(d.getDate() + i)
     return toLocalDateStr(d)
   })
+
+  // Wettervorhersage der Woche laden (nur wenn ein Bundesland eingestellt ist).
+  useEffect(() => {
+    const bl = einstellungen?.bundesland
+    if (!bl) { setWetter(null); return }
+    let aktiv = true
+    window.api.wetter?.getWoche?.(bl, wocheDatum)
+      .then(w => { if (aktiv) setWetter(w) })
+      .catch(() => { if (aktiv) setWetter(null) })
+    return () => { aktiv = false }
+  }, [wocheDatum, einstellungen?.bundesland])
 
   useEffect(() => {
     laden()
@@ -402,6 +442,15 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                     <div className="text-[11px] font-normal opacity-70 mt-0.5">
                       {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
                     </div>
+                    {wetter?.[wochenDaten[i]]?.tmax != null && (
+                      <div
+                        className="text-[11px] font-normal mt-0.5 flex items-center justify-center gap-0.5 text-ink-500 dark:text-ink-400"
+                        title={wetterText(wetter[wochenDaten[i]].code)}
+                      >
+                        <span>{wetterSymbol(wetter[wochenDaten[i]].code)}</span>
+                        <span className="tabular-nums">{Math.round(wetter[wochenDaten[i]].tmax)}°</span>
+                      </div>
+                    )}
                   </th>
                 )
               })}

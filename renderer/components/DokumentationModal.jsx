@@ -106,6 +106,8 @@ const DOKU = [
       'Der Stundenplan ist im Dashboard sichtbar. Über „Bearbeiten" pflegst du die Stunden und – kompakt im selben Screen – die Stunden-/Pausenzeiten.',
       { h: 'Ferien' },
       'Wählst du in den Einstellungen dein Bundesland, werden die österreichischen Schulferien und Feiertage automatisch berechnet und im Kalender angezeigt. Eigene Ferien/Feiertage kannst du zusätzlich pflegen.',
+      { h: 'Wettervorschau' },
+      'Ist ein Bundesland eingestellt, zeigt der Stundenplan neben jedem Wochentag ein kleines Wettersymbol samt Tageshöchsttemperatur (Vorhersage für die aktuelle und kommende Tage) – praktisch z. B. zur Planung von Exkursionen.',
     ],
   },
   {
@@ -172,7 +174,8 @@ const DOKU = [
       { ul: [
         'Alle Inhalte (Klassen, Noten, Materialien, Notizen) werden ausschließlich lokal auf deinem Gerät gespeichert.',
         'Es werden keine personenbezogenen Daten an Server oder Dritte übertragen – kein Tracking, keine Analyse, keine Werbung.',
-        'Einzige Ausnahme: Zur Update-Prüfung wird beim Start GitHub kontaktiert (reine Versionsabfrage, ohne personenbezogene Daten).',
+        'Zur Update-Prüfung wird beim Start GitHub kontaktiert (reine Versionsabfrage, ohne personenbezogene Daten).',
+        'Für die Wettervorschau im Stundenplan wird open-meteo.com abgefragt – übermittelt werden nur die ungefähren Koordinaten deines Bundeslandes (dessen Landeshauptstadt), keine personenbezogenen Daten. Ohne eingestelltes Bundesland erfolgt keine Abfrage.',
         'Backups liegen lokal bzw. am von dir gewählten Speicherort.',
       ] },
       { h: 'Verantwortlichkeit' },

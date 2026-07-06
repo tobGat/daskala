@@ -17,24 +17,6 @@ function Begruessung() {
   return       { text: 'Späte Stunde noch dran?',    emoji: '🌙' }
 }
 
-function KlasseChip({ klasse, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-ink-900 border border-paper-200 dark:border-ink-800 hover:border-coral-300 dark:hover:border-coral-700 hover:shadow-soft transition-all duration-150 active:scale-[0.97]"
-    >
-      <span
-        className="w-2 h-2 rounded-full flex-shrink-0"
-        style={{ backgroundColor: klasse.farbe || '#fb6936' }}
-      />
-      <span className="text-xs font-semibold text-ink-800 dark:text-paper-100">{klasse.name}</span>
-      <svg className="w-3 h-3 text-ink-400 group-hover:text-coral-500 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
-    </button>
-  )
-}
-
 function StatPill({ label, value, accent, emoji }) {
   return (
     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl ${accent}`}>
@@ -48,7 +30,6 @@ function StatPill({ label, value, accent, emoji }) {
 export default function UebersichtView() {
   const {
     aktuellesSchuljahr, klassen, todos, termine,
-    setAktiveKlasse, setCurrentView,
   } = useStore()
   const [highlightedTodoId, setHighlightedTodoId] = useState(null)
   const [highlightedTerminId, setHighlightedTerminId] = useState(null)
@@ -116,11 +97,6 @@ export default function UebersichtView() {
   const inSiebenTagen = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
   const naechsteTermine = (termine ?? []).filter(t => t.datum >= heute && t.datum <= inSiebenTagen).length
 
-  const oeffneKlasse = (klasse) => {
-    setAktiveKlasse(klasse)
-    setCurrentView('notentabelle')
-  }
-
   return (
     <div className="flex-1 overflow-hidden flex flex-col bg-paper-50 dark:bg-ink-950">
 
@@ -146,17 +122,6 @@ export default function UebersichtView() {
             <StatPill label="Termine" value={naechsteTermine} emoji="📅" accent="bg-mint-50 text-mint-700 dark:bg-mint-900/30 dark:text-mint-300" />
             <StatPill label="Klassen" value={klassen.length}  emoji="👋" accent="bg-lavender-50 text-lavender-700 dark:bg-lavender-900/30 dark:text-lavender-300" />
           </div>
-
-          {klassen.length > 0 && (
-            <>
-              <div className="flex-1 min-w-2" />
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {klassen.map(k => (
-                  <KlasseChip key={k.id} klasse={k} onClick={() => oeffneKlasse(k)} />
-                ))}
-              </div>
-            </>
-          )}
         </div>
       </div>
 

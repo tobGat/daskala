@@ -1012,6 +1012,35 @@ function hashPin(pin) {
   return require('crypto').createHash('sha256').update('daskala-pin:' + String(pin)).digest('hex')
 }
 
+// ─── Wetter (Open-Meteo, kostenlos, ohne API-Key) ────────────────────────────
+const https = require('https')
+// Näherung: Koordinaten der Landeshauptstädte je Bundesland.
+const WETTER_KOORD = {
+  'Wien':             [48.2082, 16.3738],
+  'Niederösterreich': [48.2047, 15.6256],
+  'Burgenland':       [47.8457, 16.5231],
+  'Oberösterreich':   [48.3069, 14.2858],
+  'Steiermark':       [47.0707, 15.4395],
+  'Kärnten':          [46.6247, 14.3050],
+  'Salzburg':         [47.8095, 13.0550],
+  'Tirol':            [47.2692, 11.4041],
+  'Vorarlberg':       [47.5031,  9.7471],
+}
+const wetterCache = new Map()   // key -> { zeit, data }
+
+function httpsGetJson(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'Daskala' } }, (res) => {
+      if (res.statusCode < 200 || res.statusCode >= 300) { res.resume(); reject(new Error('HTTP ' + res.statusCode)); return }
+      let data = ''
+      res.on('data', c => { data += c })
+      res.on('end', () => { try { resolve(JSON.parse(data)) } catch (e) { reject(e) } })
+    })
+    req.on('error', reject)
+    req.setTimeout(8000, () => req.destroy(new Error('timeout')))
+  })
+}
+
 // ─── Zeugnisnoten-Berechnung ──────────────────────────────────────────────────
 // ─── Kompetenz-Vorlagen (Lehrplan NEU) ──────────────────────────────────────
 const KOMPETENZ_VORLAGEN = {
@@ -2701,6 +2730,47 @@ function registerIPC() {
   ipcMain.handle('sperre:setGesperrt', (_, wert) => {
     appGesperrt = !!wert
     return true
+  })
+
+  // ─── Wetter ─────────────────────────────────────────────────────────────────
+  // Tagesvorhersage (Mo–Fr) einer Woche für das eingestellte Bundesland.
+  ipcMain.handle('wetter:getWoche', async (_, bundesland, montagDatum) => {
+    try {
+      const koord = WETTER_KOORD[bundesland]
+      if (!koord || !montagDatum) return null
+      const startD = new Date(montagDatum + 'T00:00:00')
+      if (isNaN(startD)) return null
+      const endD = new Date(startD); endD.setDate(endD.getDate() + 4)   // Mo..Fr
+      const heute = new Date(); heute.setHours(0, 0, 0, 0)
+      const tageBisStart = (startD - heute) / 86400000
+      const tageBisEnde  = (endD - heute) / 86400000
+      // Open-Meteo-Vorhersage sinnvoll etwa -3 … +15 Tage; sonst kein Wetter.
+      if (tageBisEnde < -3 || tageBisStart > 15) return null
+      // Lokale (nicht UTC-)Datums-Strings, sonst verschiebt sich der Tag.
+      const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const start = iso(startD), ende = iso(endD)
+      const key = `${koord[0]},${koord[1]},${start}`
+      const cached = wetterCache.get(key)
+      if (cached && (Date.now() - cached.zeit) < 3600000) return cached.data
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${koord[0]}&longitude=${koord[1]}`
+        + `&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe%2FVienna`
+        + `&start_date=${start}&end_date=${ende}`
+      const json = await httpsGetJson(url)
+      const d = json.daily || {}
+      const out = {}
+      ;(d.time || []).forEach((t, i) => {
+        out[t] = {
+          code: d.weather_code?.[i] ?? null,
+          tmax: d.temperature_2m_max?.[i] ?? null,
+          tmin: d.temperature_2m_min?.[i] ?? null,
+        }
+      })
+      wetterCache.set(key, { zeit: Date.now(), data: out })
+      return out
+    } catch (e) {
+      logError('wetter:getWoche', e)
+      return null
+    }
   })
 
   ipcMain.handle('db:saveAs', async (event) => {
