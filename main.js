@@ -1816,10 +1816,28 @@ function registerIPC() {
     return db.prepare('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY nachname, vorname').all(klasseId)
   })
 
-  ipcMain.handle('schueler:create', (_, { klasseId, vorname, nachname }) => {
+  ipcMain.handle('schueler:create', (_, { klasseId, vorname, nachname, fachIds = [] }) => {
     const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM schueler WHERE klasse_id = ?').get(klasseId)?.m ?? 0
     const info = db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge) VALUES (?, ?, ?, ?)').run(klasseId, vorname, nachname, maxReihenfolge + 1)
-    return info.lastInsertRowid
+    const schuelerId = info.lastInsertRowid
+    // In gewählte Fächer aufnehmen: manuelle Fächer bekommen einen fach_schueler-Eintrag,
+    // „alle Schüler:innen"-Fächer schließen neue automatisch ein (nichts zu tun).
+    if (Array.isArray(fachIds) && fachIds.length) {
+      const insFS = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
+      const insN  = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
+      const insH  = db.prepare(`
+        INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
+        SELECT ?, ?, ?, '1900-01-01'
+        WHERE NOT EXISTS (SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?)
+      `)
+      for (const fid of fachIds) {
+        const fach = db.prepare('SELECT alle_schueler, benotungssystem FROM faecher WHERE id = ? AND klasse_id = ?').get(fid, klasseId)
+        if (!fach) continue
+        if (!fach.alle_schueler) insFS.run(fid, schuelerId)
+        if (fach.benotungssystem === 'differenziert') { insN.run(fid, schuelerId, 'AHS'); insH.run(fid, schuelerId, 'AHS', fid, schuelerId) }
+      }
+    }
+    return schuelerId
   })
 
   ipcMain.handle('schueler:delete', (_, id) => {
