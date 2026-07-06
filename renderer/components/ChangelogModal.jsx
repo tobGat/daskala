@@ -11,13 +11,15 @@ export const CHANGELOG = [
     version: '1.0.59',
     datum: 'Juli 2026',
     punkte: [
-      'Wettervorschau im Stundenplan – mit genauer Ortssuche und optionaler Anzeige nach Tageszeiten (Vormittag/Mittag/Abend).',
-      'Automatische Datensicherung in einen Ordner, Erinnerung ans Sichern und automatische Sicherung vor jedem Update.',
+      'Wettervorschau im Stundenplan – mit genauer Ortssuche, optionaler Anzeige nach Tageszeiten (Vormittag/Mittag/Abend) und einem kleinen Symbol samt Temperatur direkt in jeder Stundenzelle.',
+      'Datensicherung deutlich verbessert: automatische Sicherung in einen Ordner (sparsam – nur bei Änderungen, Anzahl wählbar), Erinnerung ans Sichern und automatische Sicherung vor jedem Update.',
+      'Sicherungen lassen sich jetzt direkt in der App wiederherstellen (mit Datum und Art zur Auswahl).',
       'App-Sperre mit PIN (Strg + L) – blendet die Inhalte bei Abwesenheit aus.',
+      'Beim Anlegen von Schüler:innen können gleich die Fächer gewählt werden; mit Enter speichern und flüssig den nächsten Namen eintippen.',
       'Nach Updates werden die Neuerungen in diesem Fenster angezeigt.',
       'Einstellungen übersichtlicher in einklappbare Bereiche gegliedert.',
       'Daskala gibt es jetzt auch für Linux (AppImage, deb, rpm).',
-      'Dashboard aufgeräumt: die doppelte Klassenzeile entfernt.',
+      'Dashboard aufgeräumt.',
     ],
   },
 ]

@@ -179,6 +179,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const { klassen, todos, termine, aktuellesSchuljahr, einstellungen } = useStore()
   const planungAktiv = einstellungen?.planung_aktiv === '1'
   const wetterDetail = einstellungen?.wetter_detail === '1'
+  const wetterZellen = einstellungen?.wetter_zellen === '1'
 
   const [stundenzeiten, setStundenzeiten] = useState([])
   const [stundenplanEintraege, setStundenplanEintraege] = useState([])
@@ -565,10 +566,15 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                     const ferienInfo = schulferien ? ferienFuerTag(tagDatum, schulferien) : null
                     const istFerien = !!ferienInfo
 
+                    // Wetter zur Uhrzeit dieser Stunde (optional, transparent, rechts oben)
+                    const zellenWetter = wetterZellen && !istFerien
+                      ? wetter?.[tagDatum]?.stunden?.[stunde.beginn?.slice(0, 2)]
+                      : null
+
                     return (
                       <td
                         key={tagIdx}
-                        className={`px-1 py-1 h-14 align-top border border-paper-200 dark:border-ink-800 transition-colors
+                        className={`relative px-1 py-1 h-14 align-top border border-paper-200 dark:border-ink-800 transition-colors
                           ${istFerien ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''}
                           ${istAktuell && !istFerien ? 'ring-2 ring-coral-400 ring-inset' : ''}
                           ${!istFerien && bearbeitungsModus ? 'cursor-pointer hover:bg-coral-50/50 dark:hover:bg-coral-900/30' : ''}
@@ -577,6 +583,15 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                         onContextMenu={e => istFerien ? e.preventDefault() : handleSlotContextMenu(e, wochentag, stunde)}
                         title={istFerien ? ferienInfo.name : tooltipText}
                       >
+                        {zellenWetter && (
+                          <span
+                            className="pointer-events-none absolute top-2 right-2 flex items-center gap-0.5 text-[9px] leading-none z-10 tabular-nums text-ink-400 dark:text-ink-500"
+                            title={wetterText(zellenWetter.code)}
+                          >
+                            <span className="text-[10px]">{wetterSymbol(zellenWetter.code)}</span>
+                            {zellenWetter.temp != null && <span>{Math.round(zellenWetter.temp)}°</span>}
+                          </span>
+                        )}
                         {istFerien ? (
                           <div className="h-full flex items-center justify-center">
                             <span className="text-[10px] font-medium text-rose-400 dark:text-rose-500 text-center leading-tight px-1">{ferienInfo.name}</span>

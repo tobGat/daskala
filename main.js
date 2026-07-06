@@ -235,6 +235,22 @@ async function doSaveAs(win) {
   }
 }
 
+// Nach einem Datenbank-Wechsel (Öffnen/Wiederherstellen/Zurücksetzen) den frischen
+// Zustand anzeigen. In Produktion via sauberem Prozess-Neustart. In der Entwicklung
+// würde app.relaunch()+exit über `concurrently -k` den Vite-Dev-Server mitbeenden
+// (→ weißes Fenster); dort deshalb die DB neu initialisieren und nur das Fenster neu laden.
+function neustartNachDatenwechsel() {
+  if (isDev) {
+    try { initDB() } catch (e) { logError('initDB(reload)', e) }
+    undoStack.length = 0
+    redoStack.length = 0
+    BrowserWindow.getAllWindows()[0]?.webContents.reload()
+  } else {
+    app.relaunch()
+    app.exit(0)
+  }
+}
+
 async function doOpen(win) {
   const result = await dialog.showOpenDialog(win, {
     properties: ['openFile'],
@@ -244,13 +260,14 @@ async function doOpen(win) {
   try {
     db.close()
     fs.copyFileSync(result.filePaths[0], dbPath)
-    app.relaunch()
-    app.exit(0)
+    for (const suffix of ['-wal', '-shm']) {
+      const f = dbPath + suffix
+      try { if (fs.existsSync(f)) fs.unlinkSync(f) } catch {}
+    }
+    neustartNachDatenwechsel()
     return true
   } catch (e) {
-    db = new Database(dbPath)
-    db.pragma('journal_mode = WAL')
-    db.pragma('foreign_keys = ON')
+    try { db = new Database(dbPath); db.pragma('journal_mode = WAL'); db.pragma('foreign_keys = ON') } catch {}
     return null
   }
 }
@@ -982,16 +999,68 @@ function backupAutoAktiv() {
   return bkGet('backup_automatisch') === '1' && !!bkGet('backup_ordner')
 }
 
-// Beim Start: wenn automatische Sicherung aktiv ist, höchstens einmal pro Tag
-// eine Kopie in den gewählten Ordner schreiben.
+// Wie viele automatische Sicherungen aufbewahrt werden (konfigurierbar).
+function backupMax() {
+  return Math.max(1, parseInt(bkGet('backup_max'), 10) || BACKUP_MAX_STANDARD)
+}
+
+// Aktuelle Signatur der Datenbank (Größe + Zeitstempel) für die Änderungserkennung.
+function dbSignatur() {
+  try { const st = fs.statSync(dbPath); return `${st.size}-${Math.round(st.mtimeMs)}` } catch { return '' }
+}
+
+// Art einer Sicherung anhand des Dateinamens (für die Anzeige).
+function backupArt(name) {
+  if (name.startsWith('db_vor-update') || name.startsWith('Daskala-vor-Update')) return 'vor Update'
+  if (name.startsWith('db_vor-reset')) return 'vor Zurücksetzen'
+  if (name.startsWith('db_vor-wiederherstellung')) return 'vor Wiederherstellung'
+  if (name.startsWith('Daskala-Sicherung')) return 'automatisch'
+  return 'manuell'
+}
+
+// Alle wiederherstellbaren Sicherungen (interner Ordner + gewählter Sicherungsordner).
+function sammleBackups() {
+  const out = []
+  const scan = (dir, quelle) => {
+    if (!dir) return
+    let files = []
+    try { files = fs.readdirSync(dir) } catch { return }
+    for (const name of files) {
+      if (!name.endsWith('.sqlite')) continue
+      try {
+        const p = path.join(dir, name)
+        const st = fs.statSync(p)
+        if (!st.isFile()) continue
+        out.push({ pfad: p, name, quelle, art: backupArt(name), datumIso: new Date(st.mtimeMs).toISOString(), groesse: st.size })
+      } catch { /* Datei überspringen */ }
+    }
+  }
+  scan(backupDir, 'intern')
+  const ordner = bkGet('backup_ordner')
+  if (ordner && path.resolve(ordner) !== path.resolve(backupDir)) scan(ordner, 'ordner')
+  out.sort((a, b) => b.datumIso.localeCompare(a.datumIso))
+  return out
+}
+
+// Standardanzahl aufbewahrter automatischer Sicherungen.
+const BACKUP_MAX_STANDARD = 10
+
+// Beim Start: automatische Sicherung – aber sparsam:
+//   • höchstens einmal pro Tag,
+//   • nur wenn sich die Datenbank seit der letzten Auto-Sicherung geändert hat,
+//   • es werden nur die letzten N Sicherungen behalten (ältere gelöscht).
 function autoBackupWennAktiv() {
   try {
     if (!backupAutoAktiv()) return
     const heute = new Date().toISOString().slice(0, 10)
-    const zuletzt = (bkGet('backup_letzte') || '').slice(0, 10)
-    if (zuletzt === heute) return
-    const p = schreibeBackupInOrdner(bkGet('backup_ordner'), 'Daskala-Sicherung', 30)
-    if (p) markiereBackupGemacht()
+    if ((bkGet('backup_letzte') || '').slice(0, 10) === heute) return   // max. 1×/Tag
+    // WAL in die Hauptdatei schreiben – macht die Sicherung vollständig und die
+    // Änderungserkennung (Größe/Zeitstempel) zuverlässig.
+    try { db.pragma('wal_checkpoint(TRUNCATE)') } catch {}
+    const sig = dbSignatur()
+    if (sig && sig === bkGet('backup_auto_sig')) return   // unverändert → keine neue Kopie
+    const p = schreibeBackupInOrdner(bkGet('backup_ordner'), 'Daskala-Sicherung', backupMax())
+    if (p) { markiereBackupGemacht(); if (sig) bkSet('backup_auto_sig', sig) }
   } catch (e) { logError('autoBackupWennAktiv', e) }
 }
 
@@ -2662,6 +2731,48 @@ function registerIPC() {
     }
   })
 
+  // Alle wiederherstellbaren Sicherungen mit Datum/Art/Größe.
+  ipcMain.handle('backup:liste', () => {
+    try { return sammleBackups() } catch (e) { logError('backup:liste', e); return [] }
+  })
+
+  // Eine Sicherung wiederherstellen: aktuelle Daten sichern, DB ersetzen, neu starten.
+  ipcMain.handle('backup:wiederherstellen', (_, pfad) => {
+    try {
+      if (!pfad || !fs.existsSync(pfad)) return { ok: false, fehler: 'Datei nicht gefunden.' }
+      // Nur aus bekannten Backup-Orten zulassen.
+      const ordner = bkGet('backup_ordner')
+      const erlaubt = [backupDir, ordner].filter(Boolean)
+        .some(d => path.resolve(pfad).startsWith(path.resolve(d) + path.sep))
+      if (!erlaubt) return { ok: false, fehler: 'Ungültiger Pfad.' }
+      // SQLite-Header prüfen.
+      let kopf = ''
+      try {
+        const fd = fs.openSync(pfad, 'r'); const buf = Buffer.alloc(16)
+        fs.readSync(fd, buf, 0, 16, 0); fs.closeSync(fd)
+        kopf = buf.toString('utf8', 0, 15)
+      } catch { /* ignore */ }
+      if (kopf !== 'SQLite format 3') return { ok: false, fehler: 'Keine gültige Datenbank-Datei.' }
+      // Aktuelle Daten sichern (WAL vorher einschreiben).
+      try { db.pragma('wal_checkpoint(TRUNCATE)') } catch {}
+      schreibeBackupInOrdner(backupDir, 'db_vor-wiederherstellung', null)
+      try { db.close() } catch {}
+      fs.copyFileSync(pfad, dbPath)
+      // Alte WAL/SHM entfernen, damit die wiederhergestellte DB sauber öffnet.
+      for (const suffix of ['-wal', '-shm']) {
+        const f = dbPath + suffix
+        try { if (fs.existsSync(f)) fs.unlinkSync(f) } catch {}
+      }
+      neustartNachDatenwechsel()
+      return { ok: true }
+    } catch (e) {
+      logError('backup:wiederherstellen', e)
+      // Falls die DB geschlossen wurde, aber das Kopieren scheiterte: wieder öffnen.
+      try { db = new Database(dbPath); db.pragma('journal_mode = WAL'); db.pragma('foreign_keys = ON') } catch {}
+      return { ok: false, fehler: 'Wiederherstellung fehlgeschlagen.' }
+    }
+  })
+
   // Status für die Sicherungs-Erinnerung.
   ipcMain.handle('backup:status', () => {
     const autoAktiv = backupAutoAktiv()
@@ -2687,8 +2798,8 @@ function registerIPC() {
       if (r.canceled || !r.filePaths[0]) return null
       ordner = r.filePaths[0]
     }
-    const p = schreibeBackupInOrdner(ordner, 'Daskala-Sicherung', 30)
-    if (p) markiereBackupGemacht()
+    const p = schreibeBackupInOrdner(ordner, 'Daskala-Sicherung', backupMax())
+    if (p) { markiereBackupGemacht(); bkSet('backup_auto_sig', dbSignatur()) }
     return p
   })
 
@@ -2707,8 +2818,8 @@ function registerIPC() {
   ipcMain.handle('backup:setAutomatisch', (_, an) => {
     bkSet('backup_automatisch', an ? '1' : '0')
     if (an && bkGet('backup_ordner')) {
-      const p = schreibeBackupInOrdner(bkGet('backup_ordner'), 'Daskala-Sicherung', 30)
-      if (p) markiereBackupGemacht()
+      const p = schreibeBackupInOrdner(bkGet('backup_ordner'), 'Daskala-Sicherung', backupMax())
+      if (p) { markiereBackupGemacht(); bkSet('backup_auto_sig', dbSignatur()) }
     }
     return { ok: true, autoAktiv: backupAutoAktiv() }
   })
@@ -2737,8 +2848,7 @@ function registerIPC() {
         try { if (fs.existsSync(f)) fs.unlinkSync(f) } catch (e) { logError('app:reset unlink', e) }
       }
     } catch (e) { logError('app:reset', e) }
-    app.relaunch()
-    app.exit(0)
+    neustartNachDatenwechsel()
     return true
   })
 
@@ -2803,31 +2913,27 @@ function registerIPC() {
         + `&start_date=${start}&end_date=${ende}`
       const json = await httpsGetJson(url)
       const d = json.daily || {}
-      // Tageszeiten aus den Stundenwerten (Vormittag 09h, Mittag 13h, Abend 18h).
+      // Alle Stundenwerte je Tag (für Zellen-Symbole und die Tageszeiten Vm/Mi/Ab).
       const h = json.hourly || {}
-      const stundeIdx = {}   // 'YYYY-MM-DD' -> { '09': i, '13': i, '18': i }
+      const proTag = {}   // 'YYYY-MM-DD' -> { 'HH': { code, temp } }
       ;(h.time || []).forEach((t, i) => {
         const [datum, zeit] = t.split('T')
         const hh = (zeit || '').slice(0, 2)
-        if (hh === '09' || hh === '13' || hh === '18') {
-          if (!stundeIdx[datum]) stundeIdx[datum] = {}
-          stundeIdx[datum][hh] = i
-        }
+        if (!datum || !hh) return
+        if (!proTag[datum]) proTag[datum] = {}
+        proTag[datum][hh] = { code: h.weather_code?.[i] ?? null, temp: h.temperature_2m?.[i] ?? null }
       })
-      const teil = (datum, hh) => {
-        const i = stundeIdx[datum]?.[hh]
-        if (i == null) return null
-        return { code: h.weather_code?.[i] ?? null, temp: h.temperature_2m?.[i] ?? null }
-      }
       const out = {}
       ;(d.time || []).forEach((t, i) => {
+        const st = proTag[t] || {}
         out[t] = {
           code: d.weather_code?.[i] ?? null,
           tmax: d.temperature_2m_max?.[i] ?? null,
           tmin: d.temperature_2m_min?.[i] ?? null,
-          vm: teil(t, '09'),
-          mi: teil(t, '13'),
-          ab: teil(t, '18'),
+          vm: st['09'] || null,
+          mi: st['13'] || null,
+          ab: st['18'] || null,
+          stunden: st,
         }
       })
       wetterCache.set(key, { zeit: Date.now(), data: out })

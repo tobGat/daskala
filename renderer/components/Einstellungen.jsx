@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
 import AppZuruecksetzenModal from './AppZuruecksetzenModal'
+import BackupWiederherstellenModal from './BackupWiederherstellenModal'
 
 // Einklappbarer Einstellungs-Bereich (Akkordeon).
 function Akkordeon({ id, icon, titel, offen, onToggle, danger, children }) {
@@ -66,7 +67,14 @@ export default function Einstellungen({ onClose }) {
   const [backupOrdner, setBackupOrdner] = useState(einstellungen['backup_ordner'] || '')
   const [autoBackup, setAutoBackup] = useState(einstellungen['backup_automatisch'] === '1')
   const [backupInfo, setBackupInfo] = useState(null)
+  const [backupBehalten, setBackupBehalten] = useState(einstellungen['backup_max'] || '10')
+  const handleBackupBehalten = async (v) => {
+    setBackupBehalten(v)
+    await window.api.einstellungen.set('backup_max', v)
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
   const [resetOffen, setResetOffen] = useState(false)
+  const [wiederherstellenOffen, setWiederherstellenOffen] = useState(false)
   const [offenerBereich, setOffenerBereich] = useState(null)
   const toggleBereich = (id) => setOffenerBereich(o => (o === id ? null : id))
 
@@ -137,6 +145,13 @@ export default function Einstellungen({ onClose }) {
   const handleWetterDetail = async (an) => {
     setWetterDetail(an)
     await window.api.einstellungen.set('wetter_detail', an ? '1' : '0')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
+
+  const [wetterZellen, setWetterZellen] = useState(einstellungen['wetter_zellen'] === '1')
+  const handleWetterZellen = async (an) => {
+    setWetterZellen(an)
+    await window.api.einstellungen.set('wetter_zellen', an ? '1' : '0')
     useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
   }
 
@@ -502,6 +517,17 @@ export default function Einstellungen({ onClose }) {
                   <input type="checkbox" checked={wetterDetail} onChange={e => handleWetterDetail(e.target.checked)} />
                   <span className="text-sm text-ink-700 dark:text-paper-200">Tageszeiten anzeigen (Vormittag · Mittag · Abend)</span>
                 </label>
+
+                {/* Symbol je Stundenzelle */}
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={wetterZellen} onChange={e => handleWetterZellen(e.target.checked)} className="mt-0.5" />
+                  <div>
+                    <span className="text-sm text-ink-700 dark:text-paper-200">Wettersymbol in jeder Stundenzelle</span>
+                    <p className="text-[11px] text-ink-400 leading-snug">
+                      Kleines, transparentes Symbol rechts oben in jeder Zelle – die Prognose für genau die Uhrzeit dieser Stunde.
+                    </p>
+                  </div>
+                </label>
               </div>
             )}
           </Akkordeon>
@@ -591,8 +617,9 @@ export default function Einstellungen({ onClose }) {
 
           {/* Datensicherung */}
           <Akkordeon id="sicherung" icon="💾" titel="Datensicherung" offen={offenerBereich} onToggle={toggleBereich}>
-            <div className="flex gap-3 mb-3">
+            <div className="flex flex-wrap gap-3 mb-3">
               <button className="btn-secondary" onClick={handleBackup}>Backup erstellen</button>
+              <button className="btn-secondary" onClick={() => setWiederherstellenOffen(true)}>Wiederherstellen…</button>
               <button className="btn-secondary" onClick={() => window.api.export.toJson()}>JSON-Export</button>
             </div>
 
@@ -608,8 +635,9 @@ export default function Einstellungen({ onClose }) {
                 <div className="flex-1">
                   <span className="text-sm text-ink-700 dark:text-paper-200">Automatische Sicherung bei jedem Start</span>
                   <p className="text-[11px] text-ink-400 leading-snug">
-                    Legt beim Start (max. 1×/Tag) eine Kopie in einen von dir gewählten Ordner – z.&nbsp;B. auf
-                    einem USB-Stick oder in einem Cloud-Ordner. Solange aktiv, erinnert dich die App nicht mehr ans Sichern.
+                    Legt beim Start eine Kopie in einen von dir gewählten Ordner – z.&nbsp;B. auf einem USB-Stick oder
+                    in einem Cloud-Ordner. Sichert <strong>höchstens 1×/Tag und nur, wenn sich etwas geändert hat</strong>;
+                    ältere Sicherungen werden automatisch gelöscht. Solange aktiv, erinnert dich die App nicht mehr ans Sichern.
                   </p>
                 </div>
               </label>
@@ -625,6 +653,12 @@ export default function Einstellungen({ onClose }) {
                     <button className="text-xs text-ink-400 hover:text-red-500 px-2" onClick={handleAutoBackupReset} title="Zurücksetzen">✕</button>
                   )}
                 </div>
+              </div>
+              <div className="flex items-center gap-2 mt-3 pl-6">
+                <label className="text-xs text-ink-500">Sicherungen aufbewahren:</label>
+                <select className="input py-1 w-auto text-sm" value={backupBehalten} onChange={e => handleBackupBehalten(e.target.value)}>
+                  {['3', '5', '10', '20', '30'].map(n => <option key={n} value={n}>letzte {n}</option>)}
+                </select>
               </div>
             </div>
             {backupInfo?.letzte && (
@@ -698,6 +732,7 @@ export default function Einstellungen({ onClose }) {
       </div>
     </div>
     {resetOffen && <AppZuruecksetzenModal onClose={() => { setResetOffen(false); ladeBackupStatus() }} />}
+    {wiederherstellenOffen && <BackupWiederherstellenModal onClose={() => setWiederherstellenOffen(false)} />}
     </>
   )
 }

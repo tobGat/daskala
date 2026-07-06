@@ -215,6 +215,8 @@ contextBridge.exposeInMainWorld('api', {
   backup: {
     create: () => invoke('backup:create'),
     getList: () => invoke('backup:getList'),
+    liste: () => invoke('backup:liste'),
+    wiederherstellen: (pfad) => invoke('backup:wiederherstellen', pfad),
     status: () => invoke('backup:status'),
     jetzt: () => invoke('backup:jetzt'),
     waehleOrdner: () => invoke('backup:waehleOrdner'),
