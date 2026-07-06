@@ -126,6 +126,13 @@ export default function Einstellungen({ onClose }) {
     useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
   }
 
+  const [wetterDetail, setWetterDetail] = useState(einstellungen['wetter_detail'] === '1')
+  const handleWetterDetail = async (an) => {
+    setWetterDetail(an)
+    await window.api.einstellungen.set('wetter_detail', an ? '1' : '0')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
+
   const ladeBackupStatus = async () => {
     try {
       const s = await window.api.backup.status()
@@ -450,6 +457,11 @@ export default function Einstellungen({ onClose }) {
                     )}
                   </div>
                 )}
+
+                <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                  <input type="checkbox" checked={wetterDetail} onChange={e => handleWetterDetail(e.target.checked)} />
+                  <span className="text-sm text-ink-700 dark:text-paper-200">Tageszeiten anzeigen (Vormittag · Mittag · Abend)</span>
+                </label>
               </div>
 
               {/* Jahresabschluss */}

@@ -2758,16 +2758,36 @@ function registerIPC() {
       const cached = wetterCache.get(key)
       if (cached && (Date.now() - cached.zeit) < 3600000) return cached.data
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${koord[0]}&longitude=${koord[1]}`
-        + `&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe%2FVienna`
+        + `&daily=weather_code,temperature_2m_max,temperature_2m_min`
+        + `&hourly=weather_code,temperature_2m&timezone=Europe%2FVienna`
         + `&start_date=${start}&end_date=${ende}`
       const json = await httpsGetJson(url)
       const d = json.daily || {}
+      // Tageszeiten aus den Stundenwerten (Vormittag 09h, Mittag 13h, Abend 18h).
+      const h = json.hourly || {}
+      const stundeIdx = {}   // 'YYYY-MM-DD' -> { '09': i, '13': i, '18': i }
+      ;(h.time || []).forEach((t, i) => {
+        const [datum, zeit] = t.split('T')
+        const hh = (zeit || '').slice(0, 2)
+        if (hh === '09' || hh === '13' || hh === '18') {
+          if (!stundeIdx[datum]) stundeIdx[datum] = {}
+          stundeIdx[datum][hh] = i
+        }
+      })
+      const teil = (datum, hh) => {
+        const i = stundeIdx[datum]?.[hh]
+        if (i == null) return null
+        return { code: h.weather_code?.[i] ?? null, temp: h.temperature_2m?.[i] ?? null }
+      }
       const out = {}
       ;(d.time || []).forEach((t, i) => {
         out[t] = {
           code: d.weather_code?.[i] ?? null,
           tmax: d.temperature_2m_max?.[i] ?? null,
           tmin: d.temperature_2m_min?.[i] ?? null,
+          vm: teil(t, '09'),
+          mi: teil(t, '13'),
+          ab: teil(t, '18'),
         }
       })
       wetterCache.set(key, { zeit: Date.now(), data: out })

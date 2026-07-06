@@ -45,6 +45,35 @@ function wetterText(code) {
   return 'Gewitter'
 }
 
+// Wetter im Tages-Header: kompakt (Tageshöchst) oder mit Tageszeiten (Vm/Mi/Ab).
+function TagWetter({ w, detail }) {
+  if (!w) return null
+  if (detail && (w.vm || w.mi || w.ab)) {
+    const teile = [['Vm', w.vm], ['Mi', w.mi], ['Ab', w.ab]]
+    return (
+      <div className="flex justify-center gap-1.5 mt-1 text-[9px] text-ink-500 dark:text-ink-400">
+        {teile.map(([lbl, teil]) => teil ? (
+          <div key={lbl} className="flex flex-col items-center leading-none" title={wetterText(teil.code)}>
+            <span className="opacity-60">{lbl}</span>
+            <span className="text-[13px] my-0.5">{wetterSymbol(teil.code)}</span>
+            <span className="tabular-nums">{Math.round(teil.temp)}°</span>
+          </div>
+        ) : <div key={lbl} className="w-6" />)}
+      </div>
+    )
+  }
+  if (w.tmax == null) return null
+  return (
+    <div
+      className="text-[11px] font-normal mt-0.5 flex items-center justify-center gap-0.5 text-ink-500 dark:text-ink-400"
+      title={wetterText(w.code)}
+    >
+      <span>{wetterSymbol(w.code)}</span>
+      <span className="tabular-nums">{Math.round(w.tmax)}°</span>
+    </div>
+  )
+}
+
 function faelligkeitRelativ(faelligkeit, vonDatum) {
   if (!faelligkeit) return null
   const diff = Math.round(
@@ -151,6 +180,7 @@ function aktuellerWochentag() {
 export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const { klassen, todos, termine, aktuellesSchuljahr, einstellungen } = useStore()
   const planungAktiv = einstellungen?.planung_aktiv === '1'
+  const wetterDetail = einstellungen?.wetter_detail === '1'
 
   const [stundenzeiten, setStundenzeiten] = useState([])
   const [stundenplanEintraege, setStundenplanEintraege] = useState([])
@@ -443,15 +473,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                     <div className="text-[11px] font-normal opacity-70 mt-0.5">
                       {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
                     </div>
-                    {wetter?.[wochenDaten[i]]?.tmax != null && (
-                      <div
-                        className="text-[11px] font-normal mt-0.5 flex items-center justify-center gap-0.5 text-ink-500 dark:text-ink-400"
-                        title={wetterText(wetter[wochenDaten[i]].code)}
-                      >
-                        <span>{wetterSymbol(wetter[wochenDaten[i]].code)}</span>
-                        <span className="tabular-nums">{Math.round(wetter[wochenDaten[i]].tmax)}°</span>
-                      </div>
-                    )}
+                    <TagWetter w={wetter?.[wochenDaten[i]]} detail={wetterDetail} />
                   </th>
                 )
               })}
