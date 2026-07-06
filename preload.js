@@ -109,7 +109,7 @@ contextBridge.exposeInMainWorld('api', {
     update: (id, data) => invoke('schueler:update', id, data),
     setAvatar: (id, avatar) => invoke('schueler:setAvatar', id, avatar),
     reorder: (updates) => invoke('schueler:reorder', updates),
-    importBatch: (klasseId, list) => invoke('schueler:importBatch', klasseId, list),
+    importBatch: (klasseId, list, fachIds) => invoke('schueler:importBatch', klasseId, list, fachIds),
     getLeistungsProfil: (id) => invoke('schueler:getLeistungsProfil', id),
     exportProfilPDF: (data) => invoke('schueler:exportProfilPDF', data),
   },

@@ -1878,12 +1878,31 @@ function registerIPC() {
     return true
   })
 
-  ipcMain.handle('schueler:importBatch', (_, klasseId, list) => {
+  ipcMain.handle('schueler:importBatch', (_, klasseId, list, fachIds = []) => {
+    // Gewählte Fächer (nur gültige der Klasse) einmal auflösen.
+    const faecher = (Array.isArray(fachIds) ? fachIds : [])
+      .map(fid => db.prepare('SELECT id, alle_schueler, benotungssystem FROM faecher WHERE id = ? AND klasse_id = ?').get(fid, klasseId))
+      .filter(Boolean)
+    const insFS = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
+    const insN  = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
+    const insH  = db.prepare(`
+      INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
+      SELECT ?, ?, ?, '1900-01-01'
+      WHERE NOT EXISTS (SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?)
+    `)
     const tx = db.transaction(() => {
       const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM schueler WHERE klasse_id = ?').get(klasseId)?.m ?? 0
       const stmt = db.prepare('INSERT OR IGNORE INTO schueler (klasse_id, vorname, nachname, reihenfolge) VALUES (?, ?, ?, ?)')
       list.forEach((s, i) => {
-        stmt.run(klasseId, s.vorname, s.nachname, maxReihenfolge + i + 1)
+        const info = stmt.run(klasseId, s.vorname, s.nachname, maxReihenfolge + i + 1)
+        // Nur wirklich neu angelegte Schüler:innen den Fächern zuordnen.
+        if (info.changes && faecher.length) {
+          const sid = info.lastInsertRowid
+          for (const fach of faecher) {
+            if (!fach.alle_schueler) insFS.run(fach.id, sid)
+            if (fach.benotungssystem === 'differenziert') { insN.run(fach.id, sid, 'AHS'); insH.run(fach.id, sid, 'AHS', fach.id, sid) }
+          }
+        }
       })
     })
     tx()

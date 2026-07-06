@@ -383,12 +383,38 @@ export function SchuelerVerwaltenModal() {
   const handleImportSpeichern = async () => {
     if (!importListe.length) return
     setLoading(true)
-    await window.api.schueler.importBatch(aktiveKlasse.id, importListe)
+    await window.api.schueler.importBatch(aktiveKlasse.id, importListe, Array.from(ausgewaehlteFaecher))
     await ladeSchueler()
+    const { aktivesFach, ladeFachDaten } = useStore.getState()
+    if (aktivesFach) await ladeFachDaten(aktivesFach.id)
     setImportListe([])
     setTab('liste')
     setLoading(false)
   }
+
+  // Fächer-Auswahl (in „Hinzufügen" und „Importieren" gleich verwendet).
+  const faecherAuswahl = faecher.length > 0 && (
+    <div>
+      <label className="block text-xs text-ink-500 mb-1.5">Zu Fächern hinzufügen</label>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+        {faecher.map(f => {
+          const alle = !!f.alle_schueler
+          const checked = alle || ausgewaehlteFaecher.has(f.id)
+          return (
+            <label
+              key={f.id}
+              className={`flex items-center gap-2 text-sm ${alle ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
+              title={alle ? 'Enthält automatisch alle Schüler:innen der Klasse' : undefined}
+            >
+              <input type="checkbox" checked={checked} disabled={alle} onChange={() => toggleFach(f.id)} />
+              <span className="text-ink-700 dark:text-paper-200 truncate">{f.name}</span>
+              {alle && <span className="text-[10px] text-ink-400 flex-shrink-0">(alle)</span>}
+            </label>
+          )
+        })}
+      </div>
+    </div>
+  )
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && closeModal()}>
@@ -512,28 +538,7 @@ export function SchuelerVerwaltenModal() {
               </div>
             </div>
 
-            {faecher.length > 0 && (
-              <div>
-                <label className="block text-xs text-ink-500 mb-1.5">Zu Fächern hinzufügen</label>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                  {faecher.map(f => {
-                    const alle = !!f.alle_schueler
-                    const checked = alle || ausgewaehlteFaecher.has(f.id)
-                    return (
-                      <label
-                        key={f.id}
-                        className={`flex items-center gap-2 text-sm ${alle ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
-                        title={alle ? 'Enthält automatisch alle Schüler:innen der Klasse' : undefined}
-                      >
-                        <input type="checkbox" checked={checked} disabled={alle} onChange={() => toggleFach(f.id)} />
-                        <span className="text-ink-700 dark:text-paper-200 truncate">{f.name}</span>
-                        {alle && <span className="text-[10px] text-ink-400 flex-shrink-0">(alle)</span>}
-                      </label>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+            {faecherAuswahl}
 
             <button
               className="btn-primary w-full"
@@ -574,6 +579,7 @@ export function SchuelerVerwaltenModal() {
                     ))}
                   </div>
                 </div>
+                {faecherAuswahl && <div className="mb-3">{faecherAuswahl}</div>}
                 <div className="flex gap-3">
                   <button className="btn-secondary flex-1" onClick={() => setImportListe([])}>Verwerfen</button>
                   <button
