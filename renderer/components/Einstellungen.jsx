@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
 import AppZuruecksetzenModal from './AppZuruecksetzenModal'
+import BackupWiederherstellenModal from './BackupWiederherstellenModal'
 
 // Einklappbarer Einstellungs-Bereich (Akkordeon).
 function Akkordeon({ id, icon, titel, offen, onToggle, danger, children }) {
@@ -73,6 +74,7 @@ export default function Einstellungen({ onClose }) {
     useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
   }
   const [resetOffen, setResetOffen] = useState(false)
+  const [wiederherstellenOffen, setWiederherstellenOffen] = useState(false)
   const [offenerBereich, setOffenerBereich] = useState(null)
   const toggleBereich = (id) => setOffenerBereich(o => (o === id ? null : id))
 
@@ -597,8 +599,9 @@ export default function Einstellungen({ onClose }) {
 
           {/* Datensicherung */}
           <Akkordeon id="sicherung" icon="💾" titel="Datensicherung" offen={offenerBereich} onToggle={toggleBereich}>
-            <div className="flex gap-3 mb-3">
+            <div className="flex flex-wrap gap-3 mb-3">
               <button className="btn-secondary" onClick={handleBackup}>Backup erstellen</button>
+              <button className="btn-secondary" onClick={() => setWiederherstellenOffen(true)}>Wiederherstellen…</button>
               <button className="btn-secondary" onClick={() => window.api.export.toJson()}>JSON-Export</button>
             </div>
 
@@ -711,6 +714,7 @@ export default function Einstellungen({ onClose }) {
       </div>
     </div>
     {resetOffen && <AppZuruecksetzenModal onClose={() => { setResetOffen(false); ladeBackupStatus() }} />}
+    {wiederherstellenOffen && <BackupWiederherstellenModal onClose={() => setWiederherstellenOffen(false)} />}
     </>
   )
 }

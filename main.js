@@ -992,6 +992,39 @@ function dbSignatur() {
   try { const st = fs.statSync(dbPath); return `${st.size}-${Math.round(st.mtimeMs)}` } catch { return '' }
 }
 
+// Art einer Sicherung anhand des Dateinamens (für die Anzeige).
+function backupArt(name) {
+  if (name.startsWith('db_vor-update') || name.startsWith('Daskala-vor-Update')) return 'vor Update'
+  if (name.startsWith('db_vor-reset')) return 'vor Zurücksetzen'
+  if (name.startsWith('db_vor-wiederherstellung')) return 'vor Wiederherstellung'
+  if (name.startsWith('Daskala-Sicherung')) return 'automatisch'
+  return 'manuell'
+}
+
+// Alle wiederherstellbaren Sicherungen (interner Ordner + gewählter Sicherungsordner).
+function sammleBackups() {
+  const out = []
+  const scan = (dir, quelle) => {
+    if (!dir) return
+    let files = []
+    try { files = fs.readdirSync(dir) } catch { return }
+    for (const name of files) {
+      if (!name.endsWith('.sqlite')) continue
+      try {
+        const p = path.join(dir, name)
+        const st = fs.statSync(p)
+        if (!st.isFile()) continue
+        out.push({ pfad: p, name, quelle, art: backupArt(name), datumIso: new Date(st.mtimeMs).toISOString(), groesse: st.size })
+      } catch { /* Datei überspringen */ }
+    }
+  }
+  scan(backupDir, 'intern')
+  const ordner = bkGet('backup_ordner')
+  if (ordner && path.resolve(ordner) !== path.resolve(backupDir)) scan(ordner, 'ordner')
+  out.sort((a, b) => b.datumIso.localeCompare(a.datumIso))
+  return out
+}
+
 // Standardanzahl aufbewahrter automatischer Sicherungen.
 const BACKUP_MAX_STANDARD = 10
 
@@ -2678,6 +2711,49 @@ function registerIPC() {
         .reverse()
     } catch (e) {
       return []
+    }
+  })
+
+  // Alle wiederherstellbaren Sicherungen mit Datum/Art/Größe.
+  ipcMain.handle('backup:liste', () => {
+    try { return sammleBackups() } catch (e) { logError('backup:liste', e); return [] }
+  })
+
+  // Eine Sicherung wiederherstellen: aktuelle Daten sichern, DB ersetzen, neu starten.
+  ipcMain.handle('backup:wiederherstellen', (_, pfad) => {
+    try {
+      if (!pfad || !fs.existsSync(pfad)) return { ok: false, fehler: 'Datei nicht gefunden.' }
+      // Nur aus bekannten Backup-Orten zulassen.
+      const ordner = bkGet('backup_ordner')
+      const erlaubt = [backupDir, ordner].filter(Boolean)
+        .some(d => path.resolve(pfad).startsWith(path.resolve(d) + path.sep))
+      if (!erlaubt) return { ok: false, fehler: 'Ungültiger Pfad.' }
+      // SQLite-Header prüfen.
+      let kopf = ''
+      try {
+        const fd = fs.openSync(pfad, 'r'); const buf = Buffer.alloc(16)
+        fs.readSync(fd, buf, 0, 16, 0); fs.closeSync(fd)
+        kopf = buf.toString('utf8', 0, 15)
+      } catch { /* ignore */ }
+      if (kopf !== 'SQLite format 3') return { ok: false, fehler: 'Keine gültige Datenbank-Datei.' }
+      // Aktuelle Daten sichern (WAL vorher einschreiben).
+      try { db.pragma('wal_checkpoint(TRUNCATE)') } catch {}
+      schreibeBackupInOrdner(backupDir, 'db_vor-wiederherstellung', null)
+      try { db.close() } catch {}
+      fs.copyFileSync(pfad, dbPath)
+      // Alte WAL/SHM entfernen, damit die wiederhergestellte DB sauber öffnet.
+      for (const suffix of ['-wal', '-shm']) {
+        const f = dbPath + suffix
+        try { if (fs.existsSync(f)) fs.unlinkSync(f) } catch {}
+      }
+      app.relaunch()
+      app.exit(0)
+      return { ok: true }
+    } catch (e) {
+      logError('backup:wiederherstellen', e)
+      // Falls die DB geschlossen wurde, aber das Kopieren scheiterte: wieder öffnen.
+      try { db = new Database(dbPath); db.pragma('journal_mode = WAL'); db.pragma('foreign_keys = ON') } catch {}
+      return { ok: false, fehler: 'Wiederherstellung fehlgeschlagen.' }
     }
   })
 

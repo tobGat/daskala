@@ -133,6 +133,8 @@ const DOKU = [
       { h: 'Automatische Sicherung' },
       'Aktiviere „Automatische Sicherung bei jedem Start" und wähle einen Zielordner (z. B. USB-Stick oder Cloud-Ordner). Daskala legt dort sparsam Kopien ab: höchstens einmal pro Tag und nur, wenn sich seit der letzten Sicherung etwas geändert hat. Wie viele Sicherungen aufbewahrt werden (Standard: 10), stellst du daneben ein – ältere werden automatisch gelöscht, es sammeln sich also keine Massen an Dateien an.',
       'Ist keine automatische Sicherung aktiv, erinnert dich die App nach einigen Tagen ohne Sicherung mit einem Hinweis oben im Fenster. Vor jedem Update wird zusätzlich automatisch gesichert.',
+      { h: 'Wiederherstellen' },
+      'Über „Wiederherstellen…" (Einstellungen → Datensicherung) siehst du alle vorhandenen Sicherungen mit Datum und Art und spielst eine davon mit einem Klick zurück. Deine aktuellen Daten werden dabei zuerst automatisch gesichert, dann durch die gewählte Sicherung ersetzt; anschließend startet die App neu.',
       { tipp: 'Erstelle vor größeren Änderungen (z. B. Schuljahreswechsel) ein Backup – oder aktiviere gleich die automatische Sicherung.' },
       { h: 'App zurücksetzen' },
       'In den Einstellungen ganz unten (Gefahrenzone) kannst du die App vollständig zurücksetzen. Dabei werden alle Daten unwiderruflich gelöscht – der Vorgang ist mehrfach abgesichert, und vorher wird automatisch eine Sicherheitskopie angelegt.',
