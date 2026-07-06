@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
@@ -2474,6 +2474,10 @@ function registerIPC() {
   ipcMain.handle('shell:open', (_, url) => {
     shell.openExternal(url)
     return true
+  })
+
+  ipcMain.handle('app:clipboard', (_, text) => {
+    try { clipboard.writeText(String(text ?? '')); return true } catch (e) { logError('app:clipboard', e); return false }
   })
 
   ipcMain.handle('stundenPlanung:getWoche', (_, wocheDatum) => {

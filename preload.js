@@ -233,6 +233,7 @@ contextBridge.exposeInMainWorld('api', {
   app: {
     reset: () => invoke('app:reset'),
     version: () => invoke('app:version'),
+    clipboard: (text) => invoke('app:clipboard', text),
   },
 
   sperre: {
