@@ -235,6 +235,22 @@ async function doSaveAs(win) {
   }
 }
 
+// Nach einem Datenbank-Wechsel (Öffnen/Wiederherstellen/Zurücksetzen) den frischen
+// Zustand anzeigen. In Produktion via sauberem Prozess-Neustart. In der Entwicklung
+// würde app.relaunch()+exit über `concurrently -k` den Vite-Dev-Server mitbeenden
+// (→ weißes Fenster); dort deshalb die DB neu initialisieren und nur das Fenster neu laden.
+function neustartNachDatenwechsel() {
+  if (isDev) {
+    try { initDB() } catch (e) { logError('initDB(reload)', e) }
+    undoStack.length = 0
+    redoStack.length = 0
+    BrowserWindow.getAllWindows()[0]?.webContents.reload()
+  } else {
+    app.relaunch()
+    app.exit(0)
+  }
+}
+
 async function doOpen(win) {
   const result = await dialog.showOpenDialog(win, {
     properties: ['openFile'],
@@ -244,13 +260,14 @@ async function doOpen(win) {
   try {
     db.close()
     fs.copyFileSync(result.filePaths[0], dbPath)
-    app.relaunch()
-    app.exit(0)
+    for (const suffix of ['-wal', '-shm']) {
+      const f = dbPath + suffix
+      try { if (fs.existsSync(f)) fs.unlinkSync(f) } catch {}
+    }
+    neustartNachDatenwechsel()
     return true
   } catch (e) {
-    db = new Database(dbPath)
-    db.pragma('journal_mode = WAL')
-    db.pragma('foreign_keys = ON')
+    try { db = new Database(dbPath); db.pragma('journal_mode = WAL'); db.pragma('foreign_keys = ON') } catch {}
     return null
   }
 }
@@ -2746,8 +2763,7 @@ function registerIPC() {
         const f = dbPath + suffix
         try { if (fs.existsSync(f)) fs.unlinkSync(f) } catch {}
       }
-      app.relaunch()
-      app.exit(0)
+      neustartNachDatenwechsel()
       return { ok: true }
     } catch (e) {
       logError('backup:wiederherstellen', e)
@@ -2832,8 +2848,7 @@ function registerIPC() {
         try { if (fs.existsSync(f)) fs.unlinkSync(f) } catch (e) { logError('app:reset unlink', e) }
       }
     } catch (e) { logError('app:reset', e) }
-    app.relaunch()
-    app.exit(0)
+    neustartNachDatenwechsel()
     return true
   })
 
