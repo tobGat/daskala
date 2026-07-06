@@ -3355,6 +3355,86 @@ function registerIPC() {
     return true
   })
 
+  // ─── Export: Jahresplanung als DOCX (tabellarisch, Querformat) ────────────
+  ipcMain.handle('export:jahresplanungDocx', async (_, fachId) => {
+    const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, HeadingLevel, BorderStyle, PageOrientation } = require('docx')
+    const h = abschnittHierarchie(fachId)
+    if (!h) return false
+    const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id').all(fachId)
+    if (abschnitte.length === 0) {
+      dialog.showMessageBox({ type: 'info', message: 'Keine Abschnitte in der Jahresplanung vorhanden.' })
+      return false
+    }
+
+    const fdat = (d) => { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${parseInt(dd)}.${parseInt(m)}.${y}` }
+    const thin = { style: BorderStyle.SINGLE, size: 1, color: 'D5D8E0' }
+    const cellBorders = { top: thin, bottom: thin, left: thin, right: thin }
+    const cellMargins = { top: 60, bottom: 60, left: 90, right: 90 }
+
+    // Text mit einfachen Markdown-/Aufzählungs-Ersetzungen → Absätze
+    const textParas = (raw, extra = {}) => {
+      const paras = []
+      for (let line of String(raw || '').split('\n')) {
+        if (!line.trim()) continue
+        line = line.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/^\s*[-*]\s+/, '• ')
+        paras.push(new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: line, size: 18, font: 'Arial', ...extra })] }))
+      }
+      if (paras.length === 0) paras.push(new Paragraph({ children: [] }))
+      return paras
+    }
+    const matParas = (a) => {
+      const { dateien, links } = sammleMaterialien(a.id)
+      const paras = []
+      for (const d of dateien) paras.push(new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: `• ${d.anzeigename || d.ref}${d.fehlt ? ' (fehlt)' : ''}`, size: 16, font: 'Arial' })] }))
+      for (const l of links) paras.push(new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: `• ${l.anzeigename || l.ref}`, size: 16, font: 'Arial', color: '2563EB' })] }))
+      if (paras.length === 0) paras.push(new Paragraph({ children: [new TextRun({ text: '', size: 16 })] }))
+      return paras
+    }
+
+    const headerCell = (text, width) => new TableCell({
+      ...(width ? { width: { size: width, type: WidthType.DXA } } : {}),
+      borders: cellBorders, margins: cellMargins, shading: { fill: '4F46E5' },
+      children: [new Paragraph({ children: [new TextRun({ text, bold: true, size: 18, font: 'Arial', color: 'FFFFFF' })] })],
+    })
+    const headerRow = new TableRow({ tableHeader: true, children: [
+      headerCell('Zeitraum', 1600),
+      headerCell('Abschnitt', 2500),
+      headerCell('Inhalt', null),
+      headerCell('Materialien', 2600),
+    ] })
+
+    const dataRows = abschnitte.map((a, idx) => {
+      const shading = idx % 2 === 1 ? { fill: 'F4F5FB' } : undefined
+      const zeitraum = a.datum_von ? `${fdat(a.datum_von)} –\n${fdat(a.datum_bis)}` : ''
+      return new TableRow({ children: [
+        new TableCell({ width: { size: 1600, type: WidthType.DXA }, borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: textParas(zeitraum, { color: '666666', size: 16 }) }),
+        new TableCell({ width: { size: 2500, type: WidthType.DXA }, borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: [new Paragraph({ children: [new TextRun({ text: a.titel || 'Ohne Titel', bold: true, size: 20, font: 'Arial' })] })] }),
+        new TableCell({ borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: textParas(a.inhalt) }),
+        new TableCell({ width: { size: 2600, type: WidthType.DXA }, borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: matParas(a) }),
+      ] })
+    })
+
+    const table = new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...dataRows] })
+
+    const doc = new Document({ sections: [{
+      properties: { page: { size: { orientation: PageOrientation.LANDSCAPE }, margin: { top: 720, bottom: 720, left: 720, right: 720 } } },
+      children: [
+        new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `Jahresplanung – ${h.fach_name}`, font: 'Arial' })] }),
+        new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: `${h.klasse_name} · ${h.schuljahr_bez} · Exportiert am ${new Date().toLocaleDateString('de-AT')}`, size: 18, font: 'Arial', color: '999999' })] }),
+        table,
+      ],
+    }] })
+
+    const savePath = await dialog.showSaveDialog({
+      defaultPath: `Jahresplanung_${sanitizeSegment(h.fach_name)}_${sanitizeSegment(h.klasse_name)}.docx`,
+      filters: [{ name: 'Word-Dokument', extensions: ['docx'] }],
+    })
+    if (savePath.canceled) return false
+    const buf = await Packer.toBuffer(doc)
+    fs.writeFileSync(savePath.filePath, buf)
+    return true
+  })
+
   // ─── Export: Fach-Planung als DOCX ────────────────────────────────────────
   ipcMain.handle('export:fachPlanungDocx', async (_, fachId, fachName, klasseName, wochenDaten) => {
     const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, BorderStyle, HeadingLevel } = require('docx')

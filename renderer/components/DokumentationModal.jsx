@@ -98,8 +98,10 @@ const DOKU = [
         '„Vorlagen" (Tab-Leiste) schaltet in den Vorlagenmodus – erkennbar am grünen Leuchtrahmen',
         'Vorlage samt Jahresplanung und Materialien anlegen',
         '„Klasse aus Vorlage erstellen": eine oder mehrere Klassen auf einmal (Namensliste), wahlweise inkl. Planung',
+        '„Export" (rechts) speichert die Jahresplanung als tabellarisches Word-Dokument',
         '„Vorlagenmodus beenden" kehrt zu den echten Klassen zurück',
       ] },
+      'Im Vorlagenmodus geht es ausschließlich um die Jahresplanung – Schüler:innen werden dort nicht verwaltet.',
     ],
   },
   {

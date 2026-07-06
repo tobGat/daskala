@@ -64,6 +64,12 @@ export default function FachTabs() {
     await window.api.export.toExcel(aktivesFach.id)
   }
 
+  const handleJahresplanungExport = async () => {
+    if (!aktivesFach) return
+    const ok = await window.api.export.jahresplanungDocx(aktivesFach.id)
+    if (ok) pushToast('Jahresplanung als Word-Dokument exportiert.', 'success')
+  }
+
   return (
     <div className="flex items-center px-3 bg-white dark:bg-ink-900 border-b border-paper-300 dark:border-ink-700/80">
 
@@ -140,8 +146,8 @@ export default function FachTabs() {
           {aktivesFach && (
             <button
               className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 hover:border-paper-300 dark:hover:border-ink-600 transition-colors"
-              onClick={handleExport}
-              title="Als Excel exportieren"
+              onClick={vorlagenModus ? handleJahresplanungExport : handleExport}
+              title={vorlagenModus ? 'Jahresplanung als Word-Dokument exportieren' : 'Als Excel exportieren'}
             >
               Export
             </button>
