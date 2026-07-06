@@ -585,10 +585,11 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                       >
                         {zellenWetter && (
                           <span
-                            className="pointer-events-none absolute top-0 right-0.5 text-[11px] leading-none opacity-40 z-10"
-                            title={`${wetterText(zellenWetter.code)} · ${Math.round(zellenWetter.temp)}°`}
+                            className="pointer-events-none absolute top-0 right-0.5 flex items-center gap-0.5 text-[10px] leading-none opacity-50 z-10 tabular-nums"
+                            title={wetterText(zellenWetter.code)}
                           >
-                            {wetterSymbol(zellenWetter.code)}
+                            <span className="text-[11px]">{wetterSymbol(zellenWetter.code)}</span>
+                            {zellenWetter.temp != null && <span>{Math.round(zellenWetter.temp)}°</span>}
                           </span>
                         )}
                         {istFerien ? (
