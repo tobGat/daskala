@@ -1691,6 +1691,16 @@ function registerIPC() {
     return true
   })
 
+  // Manuelle Reihenfolge der Klassen-Tabs speichern (Drag-and-Drop im Header).
+  ipcMain.handle('klassen:reorder', (_, updates) => {
+    const stmt = db.prepare('UPDATE klassen SET reihenfolge = ? WHERE id = ?')
+    const tx = db.transaction(() => {
+      for (const { id, reihenfolge } of updates) stmt.run(reihenfolge, id)
+    })
+    tx()
+    return true
+  })
+
   // Fächer
   ipcMain.handle('faecher:getAll', (_, klasseId) => {
     return db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasseId)

@@ -33,6 +33,7 @@ const api = {
     setTeamsLink: (id, link) => invoke('klassen:setTeamsLink', id, link),
     setIstKv: (id, istKv) => invoke('klassen:setIstKv', id, istKv),
     setSortierung: (id, modus) => invoke('klassen:setSortierung', id, modus),
+    reorder: (updates) => invoke('klassen:reorder', updates),
   },
 
   kv: {
