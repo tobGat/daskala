@@ -8,6 +8,14 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.0.62',
+    datum: 'Juli 2026',
+    punkte: [
+      'Schüler:innen-Listen lassen sich jetzt pro Klasse sortieren: nach Vorname, nach Nachname oder manuell. Bei „Manuell" bringst du die Reihenfolge per Drag-&-Drop selbst in Ordnung. Die Sortierung wählst du oben in der Notentabelle.',
+      'Neu in den Einstellungen: Anzeige der App-Version und ein Button „Auf Updates prüfen".',
+    ],
+  },
+  {
     version: '1.0.61',
     datum: 'Juli 2026',
     punkte: [
