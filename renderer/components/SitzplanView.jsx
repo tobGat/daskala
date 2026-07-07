@@ -52,7 +52,7 @@ export default function SitzplanView() {
   }, [contextMenu, eintragMenu])
 
   // ─── Drag: Tisch bewegen / duplizieren ──────────────────────────────────────
-  const onTischMouseDown = (e, tisch) => {
+  const onTischMouseDown = useCallback((e, tisch) => {
     if (!bearbeitungsModus) return
     e.preventDefault()
     e.stopPropagation()
@@ -83,28 +83,43 @@ export default function SitzplanView() {
       setGhostTische(selected.map(t => ({ tisch: t, x: t.x, y: t.y })))
     }
 
-    const onMove = (ev) => {
-      if (!dragRef.current || dragRef.current.type !== 'move') return
-      const dx = ev.clientX - dragRef.current.startX
-      const dy = ev.clientY - dragRef.current.startY
-      if (dragRef.current.isCtrl) {
-        // Originale bleiben – nur Ghosts bewegen
-        setGhostTische(dragRef.current.tische.map(orig => ({
+    // Bewegungen per requestAnimationFrame drosseln: Linux/HiDPI feuert sehr viele
+    // (teils gebrochene) mousemove-Events; ohne Drosselung löst jedes ein Re-Render
+    // aller Tische aus → Render-Sturm, der die App (v. a. unter Linux) abstürzen lässt.
+    // Ein State-Update pro Frame genügt.
+    let rafId = null
+    let letztesEv = null
+    const wendeFrameAn = () => {
+      rafId = null
+      const ev = letztesEv
+      const d = dragRef.current
+      if (!ev || !d || d.type !== 'move') return
+      const dx = ev.clientX - d.startX
+      const dy = ev.clientY - d.startY
+      if (d.isCtrl) {
+        setGhostTische(d.tische.map(orig => ({
           tisch: orig.tischObj,
           x: Math.max(0, orig.origX + dx),
           y: Math.max(0, orig.origY + dy),
         })))
       } else {
         setTische(prev => prev.map(t => {
-          const orig = dragRef.current.tische.find(dt => dt.id === t.id)
+          const orig = d.tische.find(dt => dt.id === t.id)
           if (!orig) return t
           return { ...t, x: Math.max(0, orig.origX + dx), y: Math.max(0, orig.origY + dy) }
         }))
       }
     }
 
+    const onMove = (ev) => {
+      if (!dragRef.current || dragRef.current.type !== 'move') return
+      letztesEv = ev
+      if (rafId == null) rafId = requestAnimationFrame(wendeFrameAn)
+    }
+
     const onUp = async (ev) => {
       if (!dragRef.current || dragRef.current.type !== 'move') return
+      if (rafId != null) { cancelAnimationFrame(rafId); rafId = null }
       const dx = ev.clientX - dragRef.current.startX
       const dy = ev.clientY - dragRef.current.startY
       const { isCtrl: ctrl, tische: origTische } = dragRef.current
@@ -121,6 +136,12 @@ export default function SitzplanView() {
         }
         await ladeTische()
       } else {
+        // Endposition sicher lokal setzen (ein gedrosselter letzter Frame könnte fehlen).
+        setTische(prev => prev.map(t => {
+          const orig = origTische.find(dt => dt.id === t.id)
+          if (!orig) return t
+          return { ...t, x: Math.max(0, orig.origX + dx), y: Math.max(0, orig.origY + dy) }
+        }))
         for (const orig of origTische) {
           const nx = Math.max(0, orig.origX + dx)
           const ny = Math.max(0, orig.origY + dy)
@@ -131,7 +152,7 @@ export default function SitzplanView() {
 
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }
+  }, [bearbeitungsModus, selectedIds, aktivesFach?.id, ladeTische])
 
   // ─── Rubber-band Selektion auf Canvas ───────────────────────────────────────
   const onCanvasMouseDown = (e) => {
@@ -216,19 +237,19 @@ export default function SitzplanView() {
   }
 
   // ─── Tisch löschen ─────────────────────────────────────────────────────────
-  const handleDeleteTisch = async (tischId) => {
+  const handleDeleteTisch = useCallback(async (tischId) => {
     await window.api.sitzplan.deleteTisch(tischId)
     setTische(prev => prev.filter(t => t.id !== tischId))
     setSelectedIds(prev => { const n = new Set(prev); n.delete(tischId); return n })
-  }
+  }, [])
 
   // ─── Sitz-Kontextmenü ──────────────────────────────────────────────────────
-  const handleSitzRechtsklick = (e, sitz) => {
+  const handleSitzRechtsklick = useCallback((e, sitz) => {
     if (bearbeitungsModus) return
     e.preventDefault()
     e.stopPropagation()
     setContextMenu({ x: e.clientX, y: e.clientY, sitz })
-  }
+  }, [bearbeitungsModus])
 
   const handleAssign = async (sitz, schuelerId) => {
     setContextMenu(null)
@@ -237,12 +258,12 @@ export default function SitzplanView() {
   }
 
   // ─── Sitz-Klick (Eintrag) ──────────────────────────────────────────────────
-  const handleSitzKlick = (e, sitz) => {
+  const handleSitzKlick = useCallback((e, sitz) => {
     if (bearbeitungsModus) return
     if (!sitz.schueler_id) return
     e.stopPropagation()
     setEintragMenu({ x: e.clientX, y: e.clientY, schueler_id: sitz.schueler_id })
-  }
+  }, [bearbeitungsModus])
 
   const heute = new Date().toISOString().split('T')[0]
 
@@ -444,7 +465,10 @@ export default function SitzplanView() {
   )
 }
 
-function Tisch({ tisch, bearbeitungsModus, selected, onMouseDown, onDelete, onSitzRechtsklick, onSitzKlick }) {
+// React.memo: Beim Verschieben ändert sich nur das tisch-Objekt der bewegten Tische
+// (neue x/y). Nicht bewegte Tische behalten ihre Referenz und überspringen dank memo
+// das Re-Render – zusammen mit der rAF-Drosselung bleibt der Ziehvorgang flüssig.
+const Tisch = React.memo(function Tisch({ tisch, bearbeitungsModus, selected, onMouseDown, onDelete, onSitzRechtsklick, onSitzKlick }) {
   const w = tischBreite(tisch.typ)
 
   return (
@@ -483,9 +507,9 @@ function Tisch({ tisch, bearbeitungsModus, selected, onMouseDown, onDelete, onSi
       </div>
     </div>
   )
-}
+})
 
-function SitzPlatz({ sitz, bearbeitungsModus, onRechtsklick, onKlick }) {
+const SitzPlatz = React.memo(function SitzPlatz({ sitz, bearbeitungsModus, onRechtsklick, onKlick }) {
   const belegt = !!sitz.schueler_id
 
   return (
@@ -513,4 +537,4 @@ function SitzPlatz({ sitz, bearbeitungsModus, onRechtsklick, onKlick }) {
       )}
     </div>
   )
-}
+})
