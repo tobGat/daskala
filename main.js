@@ -738,6 +738,8 @@ function initDB() {
     );
   `)
   spalteErgaenzen('sitzplan_tische', 'fach_id', 'INTEGER')
+  // Drehung eines Tisches in Grad (0/90/180/270) für den Sitzplan.
+  spalteErgaenzen('sitzplan_tische', 'rotation', 'INTEGER NOT NULL DEFAULT 0')
 
   // Sortierung der Schüler:innen-Liste pro Klasse: 'nachname' (Default), 'vorname' oder 'manuell'.
   spalteErgaenzen('klassen', 'sortierung', "TEXT DEFAULT 'nachname'")
@@ -3792,7 +3794,7 @@ function registerIPC() {
   // ─── Sitzplan ───────────────────────────────────────────────────────────────
   ipcMain.handle('sitzplan:getTische', (_, fachId) => {
     const rows = db.prepare(`
-      SELECT t.id as tisch_id, t.typ, t.x, t.y,
+      SELECT t.id as tisch_id, t.typ, t.x, t.y, t.rotation,
              s.id as sitz_id, s.position,
              s.schueler_id,
              sch.vorname, sch.nachname, sch.avatar
@@ -3806,7 +3808,7 @@ function registerIPC() {
     const map = {}
     for (const row of rows) {
       if (!map[row.tisch_id]) {
-        map[row.tisch_id] = { id: row.tisch_id, typ: row.typ, x: row.x, y: row.y, sitze: [] }
+        map[row.tisch_id] = { id: row.tisch_id, typ: row.typ, x: row.x, y: row.y, rotation: row.rotation ?? 0, sitze: [] }
       }
       if (row.sitz_id != null) {
         map[row.tisch_id].sitze.push({
@@ -3841,6 +3843,12 @@ function registerIPC() {
     return true
   })
 
+  ipcMain.handle('sitzplan:setRotation', (_, tischId, rotation) => {
+    const r = ((Number(rotation) % 360) + 360) % 360 // auf 0/90/180/270 normalisieren
+    db.prepare('UPDATE sitzplan_tische SET rotation = ? WHERE id = ?').run(r, tischId)
+    return true
+  })
+
   ipcMain.handle('sitzplan:assignSchueler', (_, sitzplatzId, schuelerId) => {
     db.prepare('UPDATE sitzplan_sitzplaetze SET schueler_id = ? WHERE id = ?')
       .run(schuelerId ?? null, sitzplatzId)
@@ -3852,8 +3860,8 @@ function registerIPC() {
     const sourceSitze = db.prepare('SELECT * FROM sitzplan_sitzplaetze WHERE tisch_id = ? ORDER BY position').all(sourceTischId)
     const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(fachId)
     const tisch = db.prepare(
-      'INSERT INTO sitzplan_tische (klasse_id, fach_id, typ, x, y) VALUES (?, ?, ?, ?, ?)'
-    ).run(fach.klasse_id, fachId, source.typ, x, y)
+      'INSERT INTO sitzplan_tische (klasse_id, fach_id, typ, x, y, rotation) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(fach.klasse_id, fachId, source.typ, x, y, source.rotation ?? 0)
     const newTischId = tisch.lastInsertRowid
     for (const sitz of sourceSitze) {
       db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position) VALUES (?, ?)')
