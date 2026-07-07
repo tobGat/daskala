@@ -24,6 +24,7 @@ export default function SitzplanView() {
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [selectionRect, setSelectionRect] = useState(null) // { x, y, w, h } in canvas coords
   const [ghostTische, setGhostTische] = useState([]) // { tisch, x, y } — Vorschau beim Strg+Drag
+  const [verschiebeModal, setVerschiebeModal] = useState(null) // { schuelerId, name, vonSitzId, zuSitzId }
 
   const dragRef = useRef(null)
   const canvasRef = useRef(null)
@@ -251,9 +252,43 @@ export default function SitzplanView() {
     setContextMenu({ x: e.clientX, y: e.clientY, sitz })
   }, [bearbeitungsModus])
 
+  // Sucht, ob ein Kind bereits an einem Platz im aktuellen Sitzplan sitzt.
+  const findePlatzierung = (schuelerId) => {
+    for (const t of tische) {
+      for (const s of (t.sitze || [])) {
+        if (s.schueler_id === schuelerId) return s
+      }
+    }
+    return null
+  }
+
   const handleAssign = async (sitz, schuelerId) => {
     setContextMenu(null)
+    // Kind schon woanders platziert? → nicht doppelt setzen, sondern nachfragen.
+    if (schuelerId != null) {
+      const vorhandener = findePlatzierung(schuelerId)
+      if (vorhandener && vorhandener.id !== sitz.id) {
+        const kind = schueler.find(s => s.id === schuelerId)
+        setVerschiebeModal({
+          schuelerId,
+          name: kind ? `${kind.vorname} ${kind.nachname}` : 'Das Kind',
+          vonSitzId: vorhandener.id,
+          zuSitzId: sitz.id,
+        })
+        return
+      }
+    }
     await window.api.sitzplan.assignSchueler(sitz.id, schuelerId)
+    await ladeTische()
+  }
+
+  // Kind vom alten Platz nehmen und auf den neuen setzen (nach Bestätigung).
+  const handleVerschieben = async () => {
+    if (!verschiebeModal) return
+    const { schuelerId, vonSitzId, zuSitzId } = verschiebeModal
+    setVerschiebeModal(null)
+    await window.api.sitzplan.assignSchueler(vonSitzId, null)
+    await window.api.sitzplan.assignSchueler(zuSitzId, schuelerId)
     await ladeTische()
   }
 
@@ -460,6 +495,23 @@ export default function SitzplanView() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Verschieben-Bestätigung: Kind ist bereits woanders platziert */}
+      {verschiebeModal && (
+        <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && setVerschiebeModal(null)}>
+          <div className="modal-box max-w-sm">
+            <h3 className="text-base font-semibold text-ink-900 dark:text-white mb-2">Schon platziert</h3>
+            <p className="text-sm text-ink-700 dark:text-paper-200 mb-5">
+              <span className="font-semibold">{verschiebeModal.name}</span> sitzt bereits an einem anderen Platz.
+              Auf den neuen Platz verschieben?
+            </p>
+            <div className="flex gap-3">
+              <button className="btn-secondary flex-1" onClick={() => setVerschiebeModal(null)}>Abbrechen</button>
+              <button className="btn-primary flex-1" onClick={handleVerschieben}>Verschieben</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
