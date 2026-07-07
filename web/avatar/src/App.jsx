@@ -36,11 +36,11 @@ export default function App() {
         <p>Bau dein eigenes Gesicht und schick den Code deiner Lehrkraft.</p>
       </div>
 
-      <div className="card glass-light">
+      <div className="card">
         <div className="editor">
           <div className="preview-col">
             <div className="preview" dangerouslySetInnerHTML={{ __html: svg }} />
-            <button className="btn btn-secondary btn-large" onClick={() => setOpts(randomOptions())}>🎲 Würfeln</button>
+            <button className="btn btn-ghost btn-large" onClick={() => setOpts(randomOptions())}>🎲 Würfeln</button>
           </div>
 
           <div className="controls">
@@ -117,11 +117,11 @@ export default function App() {
         </div>
       </div>
 
-      <div className="card glass" style={{ marginTop: '1.25rem' }}>
-        <div className="field-label" style={{ color: '#fff', opacity: .85 }}>Dein Code</div>
+      <div className="card code-card" style={{ marginTop: '1.25rem' }}>
+        <div className="field-label">Dein Code</div>
         <div className="code">{code}</div>
         <div className="row" style={{ marginTop: '.9rem' }}>
-          <button className="btn btn-primary" onClick={kopieren}>📋 Code kopieren</button>
+          <button className="btn btn-gold" onClick={kopieren}>📋 Code kopieren</button>
         </div>
         <p className={copied ? 'copied' : 'hint'}>
           {copied
