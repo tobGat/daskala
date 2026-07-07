@@ -8,6 +8,16 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.0.63',
+    datum: 'Juli 2026',
+    punkte: [
+      'Klassen-Reiter oben lassen sich jetzt per Drag-&-Drop in die gewünschte Reihenfolge ziehen.',
+      'Sitzplan: Tische lassen sich im Bearbeitungsmodus mit ⟳ um 90° drehen – die Namensschilder der Kinder bleiben dabei aufrecht und lesbar.',
+      'Sitzplan: Ein Kind kann nicht mehr versehentlich doppelt platziert werden. Setzt du es auf einen neuen Platz, wird gefragt, ob es dorthin verschoben werden soll.',
+      'Fehler behoben: Das Verschieben von Tischen im Sitzplan konnte (vor allem unter Linux) zu Abstürzen führen.',
+    ],
+  },
+  {
     version: '1.0.62',
     datum: 'Juli 2026',
     punkte: [
