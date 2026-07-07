@@ -41,6 +41,8 @@ const DOKU = [
     id: 'schueler', titel: 'Schüler:innen', bloecke: [
       'Über „Schüler:innen" verwaltest du die Klassenliste – einzeln, per Text oder per CSV-/Excel-Import.',
       'Beim Hinzufügen kannst du gleich auswählen, zu welchen Fächern die Person gehört (Fächer mit „(alle)" enthalten ohnehin die ganze Klasse). Nach Vor- und Nachname genügt die Enter-Taste: die Person wird gespeichert und der Cursor springt zurück ins Vorname-Feld – so trägst du zügig eine ganze Liste ein.',
+      { h: 'Sortierung der Liste' },
+      'Oben in der Notentabelle wählst du pro Klasse, wie die Liste sortiert wird: nach Vorname, nach Nachname oder Manuell. Bei „Manuell" bringst du die Reihenfolge über „↕ Reihenfolge bearbeiten" selbst in Ordnung – im Bearbeitungsmodus ziehst du die Einträge per Drag-&-Drop an die gewünschte Stelle. Die Sortierung gilt überall, wo die Klassenliste erscheint (Notentabelle, Kompetenzraster …).',
       { h: 'Avatare' },
       'Jede:r Schüler:in erhält automatisch einen Avatar aus dem Namen. Über den Avatar-Editor lassen sich Gesicht, Frisur, Farben und Accessoires anpassen.',
       { tipp: 'Die Avatare werden ohne Internet erzeugt (DiceBear „lorelei", CC0) und funktionieren komplett offline.' },

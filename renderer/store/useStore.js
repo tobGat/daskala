@@ -423,6 +423,20 @@ const useStore = create((set, get) => ({
     set({ schueler })
   },
 
+  // Sortier-Modus der aktiven Klasse setzen ('vorname' | 'nachname' | 'manuell')
+  // und die Liste in der neuen Reihenfolge nachladen.
+  setSchuelerSortierung: async (modus) => {
+    const { aktiveKlasse, klassen } = get()
+    if (!aktiveKlasse) return
+    await window.api.klassen.setSortierung(aktiveKlasse.id, modus)
+    const schueler = await window.api.schueler.getAll(aktiveKlasse.id)
+    set({
+      aktiveKlasse: { ...aktiveKlasse, sortierung: modus },
+      klassen: klassen.map((k) => (k.id === aktiveKlasse.id ? { ...k, sortierung: modus } : k)),
+      schueler,
+    })
+  },
+
   // ─── UI ──────────────────────────────────────────────────────────────────
   setCurrentView: (view) => set({ currentView: view }),
   setDetailSchueler: (schueler) => set({ detailSchueler: schueler }),

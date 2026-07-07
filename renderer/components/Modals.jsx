@@ -319,6 +319,64 @@ export function SchuelerVerwaltenModal() {
   const vornameRef = useRef(null)
   const nachnameRef = useRef(null)
 
+  // ── Manuelle Reihenfolge (Drag-and-Drop) ──────────────────────────────────
+  const istManuell = aktiveKlasse?.sortierung === 'manuell'
+  // Beim Öffnen über den „↕ Reihenfolge"-Button (openModal(..., { reorder:true }))
+  // direkt im Bearbeitungsmodus starten – aber nur bei manueller Sortierung.
+  const [reorderModus, setReorderModus] = useState(() => {
+    const st = useStore.getState()
+    return !!st.modalData?.reorder && st.aktiveKlasse?.sortierung === 'manuell'
+  })
+  const [reihenfolgeListe, setReihenfolgeListe] = useState(() =>
+    useStore.getState().modalData?.reorder ? [...useStore.getState().schueler] : []
+  )
+  const [dragId, setDragId] = useState(null)
+  const [dragOverId, setDragOverId] = useState(null)
+
+  // Robustheit: bricht der Drag ab (Esc, außerhalb), Zustand zurücksetzen.
+  useEffect(() => {
+    const clear = () => { setDragId(null); setDragOverId(null) }
+    window.addEventListener('dragend', clear)
+    return () => window.removeEventListener('dragend', clear)
+  }, [])
+
+  const startReorder = () => {
+    setReihenfolgeListe([...schueler])
+    setReorderModus(true)
+    setTab('liste')
+  }
+  const handleReorderDragStart = (e, id) => {
+    setDragId(id)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(id))
+  }
+  const handleReorderDragOver = (e, id) => {
+    e.preventDefault() // ohne preventDefault feuert onDrop nicht
+    e.dataTransfer.dropEffect = 'move'
+    if (id !== dragOverId) setDragOverId(id)
+  }
+  const handleReorderDrop = (e, zielId) => {
+    e.preventDefault()
+    const quelleId = dragId
+    setDragOverId(null)
+    setDragId(null)
+    if (quelleId == null || quelleId === zielId) return
+    setReihenfolgeListe(prev => {
+      const von = prev.findIndex(s => s.id === quelleId)
+      const bis = prev.findIndex(s => s.id === zielId)
+      if (von < 0 || bis < 0) return prev
+      const kopie = [...prev]
+      const [gezogen] = kopie.splice(von, 1)
+      kopie.splice(bis, 0, gezogen)
+      return kopie
+    })
+  }
+  const handleReihenfolgeSpeichern = async () => {
+    await window.api.schueler.reorder(reihenfolgeListe.map((s, i) => ({ id: s.id, reihenfolge: i })))
+    await ladeSchueler()
+    setReorderModus(false)
+  }
+
   // Fächer der Klasse laden; manuelle Fächer standardmäßig ausgewählt.
   useEffect(() => {
     if (!aktiveKlasse) return
@@ -444,9 +502,57 @@ export function SchuelerVerwaltenModal() {
 
         {/* Liste */}
         {tab === 'liste' && (
-          <div className="max-h-64 overflow-y-auto space-y-1">
+          <div>
+            {schueler.length > 0 && (
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-[11px] text-ink-400 dark:text-ink-500">
+                  {reorderModus ? 'Ziehen zum Sortieren' : `${schueler.length} Schüler:in${schueler.length === 1 ? '' : 'nen'}`}
+                </span>
+                {istManuell ? (
+                  reorderModus ? (
+                    <button
+                      className="text-xs px-2.5 py-1 rounded-lg font-semibold bg-coral-100 dark:bg-coral-900/40 text-coral-700 dark:text-coral-300 hover:bg-coral-200 dark:hover:bg-coral-900/60 transition-colors"
+                      onClick={handleReihenfolgeSpeichern}
+                    >
+                      ✓ Fertig
+                    </button>
+                  ) : (
+                    <button
+                      className="text-xs px-2.5 py-1 rounded-lg font-medium border border-paper-300 dark:border-ink-700 text-ink-500 dark:text-ink-400 hover:bg-paper-50 dark:hover:bg-ink-700 transition-colors"
+                      onClick={startReorder}
+                    >
+                      ↕ Reihenfolge bearbeiten
+                    </button>
+                  )
+                ) : (
+                  <span className="text-[11px] text-ink-400 dark:text-ink-500">Reihenfolge nur bei „Manuell"</span>
+                )}
+              </div>
+            )}
+            <div className="max-h-64 overflow-y-auto space-y-1">
             {schueler.length === 0 ? (
               <p className="text-sm text-ink-400 text-center py-4">Noch keine Schüler:innen</p>
+            ) : reorderModus ? (
+              reihenfolgeListe.map(s => (
+                <div
+                  key={s.id}
+                  draggable
+                  onDragStart={e => handleReorderDragStart(e, s.id)}
+                  onDragOver={e => handleReorderDragOver(e, s.id)}
+                  onDragLeave={() => setDragOverId(prev => (prev === s.id ? null : prev))}
+                  onDrop={e => handleReorderDrop(e, s.id)}
+                  className={`flex items-center gap-2 px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg cursor-grab active:cursor-grabbing
+                    ${dragOverId === s.id ? 'ring-2 ring-coral-400 ring-inset' : ''} ${dragId === s.id ? 'opacity-50' : ''}`}
+                >
+                  <svg className="w-4 h-4 text-ink-300 dark:text-ink-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <circle cx="9" cy="6" r="1.4" /><circle cx="15" cy="6" r="1.4" />
+                    <circle cx="9" cy="12" r="1.4" /><circle cx="15" cy="12" r="1.4" />
+                    <circle cx="9" cy="18" r="1.4" /><circle cx="15" cy="18" r="1.4" />
+                  </svg>
+                  <SchuelerAvatar schueler={s} size={28} />
+                  <span className="text-sm text-ink-900 dark:text-white flex-1">{s.nachname} {s.vorname}</span>
+                </div>
+              ))
             ) : schueler.map(s => (
               <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg">
                 <SchuelerAvatar schueler={s} size={28} />
@@ -508,6 +614,7 @@ export function SchuelerVerwaltenModal() {
                 )}
               </div>
             ))}
+            </div>
           </div>
         )}
 

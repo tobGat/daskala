@@ -739,6 +739,9 @@ function initDB() {
   `)
   spalteErgaenzen('sitzplan_tische', 'fach_id', 'INTEGER')
 
+  // Sortierung der Schüler:innen-Liste pro Klasse: 'nachname' (Default), 'vorname' oder 'manuell'.
+  spalteErgaenzen('klassen', 'sortierung', "TEXT DEFAULT 'nachname'")
+
   // ─── KV-Modul (Klassenvorstand) ──────────────────────────────────────────────
   spalteErgaenzen('klassen', 'ist_kv', 'INTEGER DEFAULT 0')
   spalteErgaenzen('klassen', 'ist_vorlage', 'INTEGER DEFAULT 0')
@@ -1681,6 +1684,13 @@ function registerIPC() {
     return true
   })
 
+  // Sortier-Modus der Schüler:innen-Liste dieser Klasse setzen (Whitelist-validiert).
+  ipcMain.handle('klassen:setSortierung', (_, id, modus) => {
+    const wert = ['vorname', 'nachname', 'manuell'].includes(modus) ? modus : 'nachname'
+    db.prepare('UPDATE klassen SET sortierung = ? WHERE id = ?').run(wert, id)
+    return true
+  })
+
   // Fächer
   ipcMain.handle('faecher:getAll', (_, klasseId) => {
     return db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasseId)
@@ -1957,9 +1967,16 @@ function registerIPC() {
     return true
   })
 
-  // Schüler:innen
+  // Schüler:innen. Reihenfolge richtet sich nach der pro Klasse gewählten Sortierung.
   ipcMain.handle('schueler:getAll', (_, klasseId) => {
-    return db.prepare('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY nachname, vorname').all(klasseId)
+    const modus = db.prepare('SELECT sortierung FROM klassen WHERE id = ?').get(klasseId)?.sortierung || 'nachname'
+    // ORDER-BY aus fester Whitelist (keine Nutzereingabe → sichere Interpolation).
+    const order = modus === 'vorname'
+      ? 'vorname COLLATE NOCASE, nachname COLLATE NOCASE'
+      : modus === 'manuell'
+        ? 'reihenfolge, nachname COLLATE NOCASE, vorname COLLATE NOCASE'
+        : 'nachname COLLATE NOCASE, vorname COLLATE NOCASE'
+    return db.prepare(`SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY ${order}`).all(klasseId)
   })
 
   ipcMain.handle('schueler:create', (_, { klasseId, vorname, nachname, fachIds = [] }) => {
