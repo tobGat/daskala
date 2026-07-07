@@ -267,7 +267,8 @@ async function doOpen(win) {
     neustartNachDatenwechsel()
     return true
   } catch (e) {
-    try { db = new Database(dbPath); db.pragma('journal_mode = WAL'); db.pragma('foreign_keys = ON') } catch {}
+    logError('datenbank:importieren', e)
+    try { db = new Database(dbPath); db.pragma('journal_mode = WAL'); db.pragma('foreign_keys = ON') } catch (e2) { logError('datenbank:importieren reopen', e2) }
     return null
   }
 }
@@ -1454,7 +1455,10 @@ function logError(context, err) {
       const msg = err && err.stack ? err.stack : String(err)
       fs.appendFileSync(path.join(userDataPath, 'error.log'), `${new Date().toISOString()} [${context}] ${msg}\n`)
     }
-  } catch {}
+  } catch {
+    // Bewusst still: Scheitert das Schreiben ins Log, darf der Logger nicht selbst werfen
+    // (sonst Endlosschleife). Die Konsolen-Ausgabe oben ist bereits erfolgt.
+  }
 }
 
 // Öffnet eine URL extern – aber nur mit sicheren Schemata (http/https/mailto).
@@ -1566,7 +1570,7 @@ function registerIPC() {
       kvElternkontakteCount = db.prepare(`SELECT COUNT(*) AS c FROM kv_elternkontakte WHERE schueler_id IN (SELECT id FROM schueler WHERE klasse_id = ?)`).get(id).c
       kvFehlstundenCount    = db.prepare(`SELECT COUNT(*) AS c FROM kv_fehlstunden WHERE schueler_id IN (SELECT id FROM schueler WHERE klasse_id = ?)`).get(id).c
       kvTriggerCount        = db.prepare('SELECT COUNT(*) AS c FROM kv_trigger WHERE klasse_id = ?').get(id).c
-    } catch {}
+    } catch (e) { logError('klassen:loeschInfo kv-zaehler', e) }
     return { klasse, fachCount, schuelerCount, noteCount, todoCount, terminCount, kvAktenvermerkeCount, kvElternkontakteCount, kvFehlstundenCount, kvTriggerCount }
   })
 
@@ -1582,13 +1586,13 @@ function registerIPC() {
         const fachPh = fachIds.map(() => '?').join(',')
         // Notenraster: Einträge + Historie + Spalten (kein CASCADE)
         db.prepare(`DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id IN (${fachPh}))`).run(...fachIds)
-        try { db.prepare(`DELETE FROM eintraege_verlauf WHERE fach_id IN (${fachPh})`).run(...fachIds) } catch {}
+        try { db.prepare(`DELETE FROM eintraege_verlauf WHERE fach_id IN (${fachPh})`).run(...fachIds) } catch (e) { logError('klassen:delete eintraege_verlauf(fach)', e) }
         db.prepare(`DELETE FROM spalten WHERE fach_id IN (${fachPh})`).run(...fachIds)
         // Zeugnisnoten, Notizen (kein CASCADE)
         db.prepare(`DELETE FROM zeugnisnoten WHERE fach_id IN (${fachPh})`).run(...fachIds)
         db.prepare(`DELETE FROM notizen WHERE fach_id IN (${fachPh})`).run(...fachIds)
         // Stundenplan-Einträge (kein CASCADE auf fach)
-        try { db.prepare(`DELETE FROM stunden_planung WHERE stundenplan_id IN (SELECT id FROM stundenplan WHERE fach_id IN (${fachPh}))`).run(...fachIds) } catch {}
+        try { db.prepare(`DELETE FROM stunden_planung WHERE stundenplan_id IN (SELECT id FROM stundenplan WHERE fach_id IN (${fachPh}))`).run(...fachIds) } catch (e) { logError('klassen:delete stunden_planung', e) }
         db.prepare(`DELETE FROM stundenplan WHERE fach_id IN (${fachPh})`).run(...fachIds)
       }
 
@@ -1598,7 +1602,7 @@ function registerIPC() {
         db.prepare(`DELETE FROM eintraege WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
         db.prepare(`DELETE FROM zeugnisnoten WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
         db.prepare(`DELETE FROM notizen WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
-        try { db.prepare(`DELETE FROM eintraege_verlauf WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds) } catch {}
+        try { db.prepare(`DELETE FROM eintraege_verlauf WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds) } catch (e) { logError('klassen:delete eintraege_verlauf(schueler)', e) }
       }
 
       // Faecher + Schüler (kein CASCADE auf klassen)
@@ -2356,7 +2360,7 @@ function registerIPC() {
       const delPlan    = db.prepare('DELETE FROM stundenplan WHERE stunde_id = ?')
       const delZeit    = db.prepare('DELETE FROM stundenzeiten WHERE id = ?')
       for (const id of entfernt) {
-        try { delPlanung.run(id) } catch {}
+        try { delPlanung.run(id) } catch (e) { logError('stundenzeiten:speichern stunden_planung', e) }
         delPlan.run(id)          // supplierstunden.stunde_id kaskadiert über stundenzeiten
         delZeit.run(id)          // supplierstunden ON DELETE CASCADE
       }
@@ -2788,7 +2792,7 @@ function registerIPC() {
     } catch (e) {
       logError('backup:wiederherstellen', e)
       // Falls die DB geschlossen wurde, aber das Kopieren scheiterte: wieder öffnen.
-      try { db = new Database(dbPath); db.pragma('journal_mode = WAL'); db.pragma('foreign_keys = ON') } catch {}
+      try { db = new Database(dbPath); db.pragma('journal_mode = WAL'); db.pragma('foreign_keys = ON') } catch (e2) { logError('backup:wiederherstellen reopen', e2) }
       return { ok: false, fehler: 'Wiederherstellung fehlgeschlagen.' }
     }
   })
