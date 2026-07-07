@@ -678,9 +678,15 @@ export default function Einstellungen({ onClose }) {
 
           {/* App-Sperre */}
           <Akkordeon id="sperre" icon="🔒" titel="App-Sperre" offen={offenerBereich} onToggle={toggleBereich}>
-            <p className="text-xs text-ink-400 dark:text-ink-500 mb-4">
+            <p className="text-xs text-ink-400 dark:text-ink-500 mb-2">
               Sperrt die App per Tastenkürzel <strong>Strg&nbsp;+&nbsp;L</strong> (Mac: Cmd&nbsp;+&nbsp;L); entsperrt wird
               mit deinem PIN. So haben Kinder bei kurzer Abwesenheit keinen Zugriff – die Inhalte werden dabei unkenntlich gemacht.
+            </p>
+            <p className="text-[11px] text-amber-700 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg px-3 py-2 mb-4">
+              <strong>Wichtig:</strong> Der PIN ist ein Sichtschutz gegen Zugriff im Vorbeigehen – <strong>keine
+              Verschlüsselung</strong>. Die Daten liegen unverschlüsselt auf dem Gerät; wer Zugriff auf die Datei hat,
+              kann sie unabhängig vom PIN lesen. Für echten Schutz sensibler Daten sperre bzw. verschlüssele zusätzlich
+              das Gerät (z.&nbsp;B. BitLocker).
             </p>
 
             {sperreAktiv ? (
