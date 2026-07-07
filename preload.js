@@ -5,7 +5,10 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args)
 
-contextBridge.exposeInMainWorld('api', {
+// Die komplette IPC-Brücke als benanntes Objekt. Dient zugleich als Typquelle:
+// renderer/window.d.ts leitet den Typ von window.api per `typeof` daraus ab,
+// sodass der Renderer Autovervollständigung über window.api.* bekommt.
+const api = {
   einstellungen: {
     get: (schluessel) => invoke('einstellungen:get', schluessel),
     set: (schluessel, wert) => invoke('einstellungen:set', schluessel, wert),
@@ -332,4 +335,9 @@ contextBridge.exposeInMainWorld('api', {
     oeffnen:            (data)              => invoke('materialien:oeffnen', data),
     ordnerOeffnen:      (abschnittId)       => invoke('materialien:ordnerOeffnen', abschnittId),
   },
-})
+}
+
+contextBridge.exposeInMainWorld('api', api)
+
+// Nur fürs Editor-Tooling (Typinferenz aus preload). Zur Laufzeit ignoriert Electron das.
+if (typeof module !== 'undefined') module.exports = { api }
