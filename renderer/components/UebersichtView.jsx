@@ -14,7 +14,7 @@ function Begruessung() {
   if (h < 13) return { text: 'Mittagspause?',        emoji: '🥪' }
   if (h < 17) return { text: 'Schönen Nachmittag',   emoji: '✨' }
   if (h < 21) return { text: 'Guten Abend',          emoji: '🌇' }
-  return       { text: 'Späte Stunde noch dran?',    emoji: '🌙' }
+  return       { text: 'Langer Tag heute?',          emoji: '🌙' }
 }
 
 function StatPill({ label, value, accent, emoji }) {
