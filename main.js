@@ -4668,6 +4668,21 @@ ipcMain.handle('update:installieren', () => {
   return true
 })
 
+// Manuelle Update-Prüfung (Button in den Einstellungen). Ist ein Update vorhanden,
+// lädt es dank autoDownload im Hintergrund; die vorhandenen Listener aus
+// setupAutoUpdate() zeigen dann das „Neu starten"-Banner. Im Dev-Build gibt es
+// keine Update-Konfiguration → ehrliche Rückmeldung statt Fehler.
+ipcMain.handle('update:pruefen', async () => {
+  if (!app.isPackaged) return { ok: false, grund: 'dev' }
+  try {
+    const r = await autoUpdater.checkForUpdates()
+    return { ok: true, version: r?.updateInfo?.version ?? null, aktuell: app.getVersion() }
+  } catch (e) {
+    logError('update:pruefen', e)
+    return { ok: false, grund: 'fehler' }
+  }
+})
+
 app.whenReady().then(() => {
   initPaths()
   initDB()

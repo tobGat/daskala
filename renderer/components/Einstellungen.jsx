@@ -6,6 +6,7 @@ import useStore from '../store/useStore'
 import AppZuruecksetzenModal from './AppZuruecksetzenModal'
 import BackupWiederherstellenModal from './BackupWiederherstellenModal'
 import FeedbackModal from './FeedbackModal'
+import { cmpVersion } from './ChangelogModal'
 
 // Einklappbarer Einstellungs-Bereich (Akkordeon).
 function Akkordeon({ id, icon, titel, offen, onToggle, danger, children }) {
@@ -77,6 +78,34 @@ export default function Einstellungen({ onClose }) {
   const [resetOffen, setResetOffen] = useState(false)
   const [wiederherstellenOffen, setWiederherstellenOffen] = useState(false)
   const [feedbackOffen, setFeedbackOffen] = useState(false)
+
+  // Version & manuelle Update-Prüfung
+  const [appVersion, setAppVersion] = useState('')
+  const [updateLaeuft, setUpdateLaeuft] = useState(false)
+  const [updateMeldung, setUpdateMeldung] = useState('')
+  useEffect(() => {
+    window.api.app?.version?.().then(v => setAppVersion(v || '')).catch(() => {})
+  }, [])
+  const handleUpdatePruefen = async () => {
+    setUpdateLaeuft(true)
+    setUpdateMeldung('')
+    try {
+      const r = await window.api.update?.pruefen?.()
+      if (!r || !r.ok) {
+        setUpdateMeldung(r?.grund === 'dev'
+          ? 'Update-Prüfung ist nur in der installierten App möglich.'
+          : 'Prüfung fehlgeschlagen. Bitte später erneut versuchen.')
+      } else if (r.version && r.aktuell && cmpVersion(r.version, r.aktuell) > 0) {
+        setUpdateMeldung(`Update ${r.version} gefunden – wird im Hintergrund geladen. Du wirst benachrichtigt, sobald es bereit ist.`)
+      } else {
+        setUpdateMeldung('Du hast die neueste Version. ✓')
+      }
+    } catch {
+      setUpdateMeldung('Prüfung fehlgeschlagen. Bitte später erneut versuchen.')
+    } finally {
+      setUpdateLaeuft(false)
+    }
+  }
   const [offenerBereich, setOffenerBereich] = useState(null)
   const toggleBereich = (id) => setOffenerBereich(o => (o === id ? null : id))
 
@@ -733,6 +762,22 @@ export default function Einstellungen({ onClose }) {
           </Akkordeon>
 
         </div>
+
+        {/* Version & Update-Prüfung */}
+        <div className="flex items-center justify-between gap-3 mt-4 px-1">
+          <div className="text-xs text-ink-500 dark:text-ink-400">
+            Version <span className="font-mono text-ink-700 dark:text-paper-200">{appVersion || '…'}</span>
+          </div>
+          <button
+            type="button"
+            className="text-xs px-3 py-1.5 rounded-lg font-medium border border-paper-300 dark:border-ink-700 text-ink-600 dark:text-ink-300 hover:bg-paper-50 dark:hover:bg-ink-800 transition-colors disabled:opacity-50"
+            onClick={handleUpdatePruefen}
+            disabled={updateLaeuft}
+          >
+            {updateLaeuft ? 'Prüfe…' : 'Auf Updates prüfen'}
+          </button>
+        </div>
+        {updateMeldung && <p className="text-xs text-ink-500 dark:text-ink-400 mt-1.5 px-1">{updateMeldung}</p>}
 
         {fehler && <p className="text-red-500 text-sm mt-4 mb-2">{fehler}</p>}
         {erfolg && <p className="text-green-600 text-sm mt-4 mb-2">Gespeichert ✓</p>}
