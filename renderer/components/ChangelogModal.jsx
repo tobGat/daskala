@@ -8,6 +8,15 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.0.61',
+    datum: 'Juli 2026',
+    punkte: [
+      'Fehler behoben: Ein Fach mit bereits erfassten Noten oder Notenspalten lässt sich jetzt zuverlässig löschen – die zugehörigen Notendaten werden dabei sauber mitentfernt.',
+      'Mehr Stabilität und Sicherheit im Hintergrund: robustere Datenbank-Aktualisierung und aussagekräftigere Fehlerprotokolle bei Problemen.',
+      'App-Sperre: klarer Hinweis in den Einstellungen, dass der PIN ein Sichtschutz und keine Verschlüsselung ist.',
+    ],
+  },
+  {
     version: '1.0.59',
     datum: 'Juli 2026',
     punkte: [
