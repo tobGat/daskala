@@ -305,6 +305,7 @@ const api = {
     createTisch: (fachId, typ, x, y) => invoke('sitzplan:createTisch', fachId, typ, x, y),
     deleteTisch: (tischId) => invoke('sitzplan:deleteTisch', tischId),
     moveTisch: (tischId, x, y) => invoke('sitzplan:moveTisch', tischId, x, y),
+    setRotation: (tischId, rotation) => invoke('sitzplan:setRotation', tischId, rotation),
     assignSchueler: (sitzplatzId, schuelerId) => invoke('sitzplan:assignSchueler', sitzplatzId, schuelerId),
     duplicateTisch: (fachId, sourceTischId, x, y) => invoke('sitzplan:duplicateTisch', fachId, sourceTischId, x, y),
   },

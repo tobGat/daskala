@@ -14,6 +14,29 @@ const SITZ_W = 75
 
 function tischBreite(typ) { return typ === 'doppel' ? DOPPEL_W : EINZEL_W }
 
+// Sichtbare Bounding-Box eines Tisches unter Berücksichtigung der Drehung.
+// Bei 90°/270° werden Breite/Höhe getauscht, um denselben Mittelpunkt zentriert –
+// so bleibt die Position beim Drehen stabil (Tisch dreht sich „an Ort und Stelle").
+function sichtbareBox(t) {
+  const w = tischBreite(t.typ)
+  const h = EINZEL_H
+  const vertikal = ((t.rotation ?? 0) % 180) === 90
+  if (!vertikal) return { x: t.x, y: t.y, w, h }
+  const cx = t.x + w / 2
+  const cy = t.y + h / 2
+  return { x: cx - h / 2, y: cy - w / 2, w: h, h: w }
+}
+
+// Flex-Richtung der Sitze je Drehung: hochkant → Spalte, 180°/270° → umgekehrte Reihenfolge.
+// Die vollen Klassennamen stehen hier als Literale, damit Tailwind sie erkennt.
+function flexRichtung(rotation) {
+  const rot = (((rotation ?? 0) % 360) + 360) % 360
+  if (rot === 90) return 'flex-col'
+  if (rot === 270) return 'flex-col-reverse'
+  if (rot === 180) return 'flex-row-reverse'
+  return 'flex-row'
+}
+
 export default function SitzplanView() {
   const { aktiveKlasse, schueler, aktivesFach, spalten, eintraege, aktiveSemester, fachSchuelerIds } = useStore()
 
@@ -208,8 +231,8 @@ export default function SitzplanView() {
       if (selW > 5 || selH > 5) {
         const newSel = new Set()
         tischeRef.current.forEach(t => {
-          const tw = tischBreite(t.typ)
-          if (t.x < selX + selW && t.x + tw > selX && t.y < selY + selH && t.y + EINZEL_H > selY) {
+          const b = sichtbareBox(t)
+          if (b.x < selX + selW && b.x + b.w > selX && b.y < selY + selH && b.y + b.h > selY) {
             newSel.add(t.id)
           }
         })
@@ -242,6 +265,15 @@ export default function SitzplanView() {
     await window.api.sitzplan.deleteTisch(tischId)
     setTische(prev => prev.filter(t => t.id !== tischId))
     setSelectedIds(prev => { const n = new Set(prev); n.delete(tischId); return n })
+  }, [])
+
+  // Tisch um 90° weiterdrehen (optimistisch wie moveTisch, kein Voll-Reload).
+  const handleRotate = useCallback(async (tischId) => {
+    const aktuell = tischeRef.current.find(t => t.id === tischId)
+    if (!aktuell) return
+    const neu = (((aktuell.rotation ?? 0) + 90) % 360)
+    setTische(prev => prev.map(t => (t.id === tischId ? { ...t, rotation: neu } : t)))
+    await window.api.sitzplan.setRotation(tischId, neu)
   }, [])
 
   // ─── Sitz-Kontextmenü ──────────────────────────────────────────────────────
@@ -384,20 +416,23 @@ export default function SitzplanView() {
             selected={selectedIds.has(tisch.id)}
             onMouseDown={onTischMouseDown}
             onDelete={handleDeleteTisch}
+            onRotate={handleRotate}
             onSitzRechtsklick={handleSitzRechtsklick}
             onSitzKlick={handleSitzKlick}
           />
         ))}
 
         {/* Ghost-Tische beim Strg+Drag */}
-        {ghostTische.map((g, i) => (
+        {ghostTische.map((g, i) => {
+          const box = sichtbareBox({ typ: g.tisch.typ, rotation: g.tisch.rotation, x: g.x, y: g.y })
+          return (
           <div
             key={i}
             className="absolute pointer-events-none"
-            style={{ left: g.x, top: g.y, width: tischBreite(g.tisch.typ), height: EINZEL_H, opacity: 0.65 }}
+            style={{ left: box.x, top: box.y, width: box.w, height: box.h, opacity: 0.65 }}
           >
             <div className="absolute inset-0 rounded-xl border-2 border-dashed border-coral-500 bg-coral-100 dark:bg-coral-900/60" />
-            <div className="absolute inset-0 flex items-center justify-center gap-2 px-2">
+            <div className={`absolute inset-0 flex items-center justify-center gap-2 px-2 ${flexRichtung(g.tisch.rotation)}`}>
               {g.tisch.sitze.map(sitz => (
                 <div
                   key={sitz.id}
@@ -409,7 +444,8 @@ export default function SitzplanView() {
               ))}
             </div>
           </div>
-        ))}
+          )
+        })}
 
         {/* Rubber-band Auswahlrechteck */}
         {selectionRect && (
@@ -520,13 +556,15 @@ export default function SitzplanView() {
 // React.memo: Beim Verschieben ändert sich nur das tisch-Objekt der bewegten Tische
 // (neue x/y). Nicht bewegte Tische behalten ihre Referenz und überspringen dank memo
 // das Re-Render – zusammen mit der rAF-Drosselung bleibt der Ziehvorgang flüssig.
-const Tisch = React.memo(function Tisch({ tisch, bearbeitungsModus, selected, onMouseDown, onDelete, onSitzRechtsklick, onSitzKlick }) {
-  const w = tischBreite(tisch.typ)
+const Tisch = React.memo(function Tisch({ tisch, bearbeitungsModus, selected, onMouseDown, onDelete, onRotate, onSitzRechtsklick, onSitzKlick }) {
+  // Drehung per Reflow: gedrehte Box + Flex-Richtung; die Karten bleiben aufrecht.
+  const box = sichtbareBox(tisch)
+  const drehbar = tisch.sitze.length > 1 // Einzeltisch ist quadratisch → Drehung ohne Effekt
 
   return (
     <div
       className={`absolute select-none ${bearbeitungsModus ? 'cursor-move' : ''}`}
-      style={{ left: tisch.x, top: tisch.y, width: w, height: EINZEL_H }}
+      style={{ left: box.x, top: box.y, width: box.w, height: box.h }}
       onMouseDown={e => onMouseDown(e, tisch)}
     >
       <div
@@ -538,6 +576,15 @@ const Tisch = React.memo(function Tisch({ tisch, bearbeitungsModus, selected, on
             : 'border-paper-300 dark:border-ink-600 bg-white dark:bg-ink-800'}`}
       />
 
+      {bearbeitungsModus && drehbar && (
+        <button
+          className="absolute -top-2 -left-2 z-10 w-5 h-5 rounded-full bg-ink-500 text-white text-xs flex items-center justify-center hover:bg-ink-600 shadow-sm"
+          onMouseDown={e => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onRotate(tisch.id) }}
+          title="Um 90° drehen"
+        >⟳</button>
+      )}
+
       {bearbeitungsModus && (
         <button
           className="absolute -top-2 -right-2 z-10 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600 shadow-sm"
@@ -546,7 +593,7 @@ const Tisch = React.memo(function Tisch({ tisch, bearbeitungsModus, selected, on
         >✕</button>
       )}
 
-      <div className="absolute inset-0 flex items-center justify-center gap-2 px-2">
+      <div className={`absolute inset-0 flex items-center justify-center gap-2 px-2 ${flexRichtung(tisch.rotation)}`}>
         {tisch.sitze.map(sitz => (
           <SitzPlatz
             key={sitz.id}
