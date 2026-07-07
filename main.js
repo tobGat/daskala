@@ -302,6 +302,28 @@ function spalteErgaenzen(tabelle, spalte, definition) {
   }
 }
 
+// Räumt alle Nicht-CASCADE-Kinddaten der angegebenen Fächer ab: Noten (über Spalten),
+// Änderungsverlauf, Spalten, Zeugnisnoten, Notizen und Stundenplan(-Planung).
+// Die faecher-Zeilen selbst bleiben stehen – der Aufrufer löscht sie danach; die
+// echten CASCADE-Kinder (schueler_niveau, fach_schueler, jahresplanung, sitzplan …)
+// räumt SQLite dabei automatisch ab. Aufrufer ist für die Transaktion zuständig.
+function raeumeFachDatenAuf(fachIds) {
+  const ids = (Array.isArray(fachIds) ? fachIds : [fachIds]).filter((x) => x != null)
+  if (ids.length === 0) return
+  const ph = ids.map(() => '?').join(',')
+  // Notenraster: Einträge (über Spalten) + Änderungsverlauf + Spalten
+  db.prepare(`DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id IN (${ph}))`).run(...ids)
+  db.prepare(`DELETE FROM eintraege_verlauf WHERE fach_id IN (${ph})`).run(...ids)
+  db.prepare(`DELETE FROM spalten WHERE fach_id IN (${ph})`).run(...ids)
+  // Zeugnisnoten + Notizen (kein CASCADE auf fach)
+  db.prepare(`DELETE FROM zeugnisnoten WHERE fach_id IN (${ph})`).run(...ids)
+  db.prepare(`DELETE FROM notizen WHERE fach_id IN (${ph})`).run(...ids)
+  // Stundenplan: Planung kaskadiert zwar über stundenplan, wird aber vor dem
+  // Löschen der stundenplan-Zeilen explizit entfernt (Reihenfolge/Klarheit).
+  db.prepare(`DELETE FROM stunden_planung WHERE stundenplan_id IN (SELECT id FROM stundenplan WHERE fach_id IN (${ph}))`).run(...ids)
+  db.prepare(`DELETE FROM stundenplan WHERE fach_id IN (${ph})`).run(...ids)
+}
+
 function initDB() {
   db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
@@ -1621,19 +1643,8 @@ function registerIPC() {
       const fachIds    = db.prepare('SELECT id FROM faecher WHERE klasse_id = ?').all(id).map(r => r.id)
       const schuelerIds = db.prepare('SELECT id FROM schueler WHERE klasse_id = ?').all(id).map(r => r.id)
 
-      if (fachIds.length > 0) {
-        const fachPh = fachIds.map(() => '?').join(',')
-        // Notenraster: Einträge + Historie + Spalten (kein CASCADE)
-        db.prepare(`DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id IN (${fachPh}))`).run(...fachIds)
-        try { db.prepare(`DELETE FROM eintraege_verlauf WHERE fach_id IN (${fachPh})`).run(...fachIds) } catch (e) { logError('klassen:delete eintraege_verlauf(fach)', e) }
-        db.prepare(`DELETE FROM spalten WHERE fach_id IN (${fachPh})`).run(...fachIds)
-        // Zeugnisnoten, Notizen (kein CASCADE)
-        db.prepare(`DELETE FROM zeugnisnoten WHERE fach_id IN (${fachPh})`).run(...fachIds)
-        db.prepare(`DELETE FROM notizen WHERE fach_id IN (${fachPh})`).run(...fachIds)
-        // Stundenplan-Einträge (kein CASCADE auf fach)
-        try { db.prepare(`DELETE FROM stunden_planung WHERE stundenplan_id IN (SELECT id FROM stundenplan WHERE fach_id IN (${fachPh}))`).run(...fachIds) } catch (e) { logError('klassen:delete stunden_planung', e) }
-        db.prepare(`DELETE FROM stundenplan WHERE fach_id IN (${fachPh})`).run(...fachIds)
-      }
+      // Fach-bezogene Nicht-CASCADE-Daten (Noten, Verlauf, Spalten, Zeugnis, Notizen, Stundenplan)
+      raeumeFachDatenAuf(fachIds)
 
       if (schuelerIds.length > 0) {
         const schuelerPh = schuelerIds.map(() => '?').join(',')
@@ -1696,7 +1707,13 @@ function registerIPC() {
   })
 
   ipcMain.handle('faecher:delete', (_, id) => {
-    db.prepare('DELETE FROM faecher WHERE id = ?').run(id)
+    // Zuerst alle Nicht-CASCADE-Kinddaten abräumen: sonst schlägt das Löschen bei
+    // vorhandenen Spalten/Noten/Zeugnisnoten/Stundenplan an foreign_keys=ON fehl
+    // (und hinterließe sonst verwaiste Zeilen). Alles atomar in einer Transaktion.
+    db.transaction(() => {
+      raeumeFachDatenAuf([id])
+      db.prepare('DELETE FROM faecher WHERE id = ?').run(id)
+    })()
     return true
   })
 
