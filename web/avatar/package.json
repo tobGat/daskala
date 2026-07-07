@@ -1,0 +1,22 @@
+{
+  "name": "avatar-werkstatt",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Avatar-Editor für Schüler:innen (avatar.schulapps.at) – erzeugt einen Code für Daskala.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@dicebear/core": "9.4.2",
+    "@dicebear/lorelei": "9.4.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0"
+  }
+}

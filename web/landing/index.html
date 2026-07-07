@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daskala — Digitales Notenbuch für österreichische Schulen</title>
+<meta name="description" content="Daskala ist ein offline-fähiges, quelloffenes Notenbuch für österreichische Schulen – geeignet für jede Schulstufe. Noten, Klassen und Jahresplanung – lokal auf deinem Gerät, ohne Cloud.">
+
+<link rel="icon" type="image/png" href="/daskala-favicon.png">
+<link rel="apple-touch-icon" href="/daskala-apple-touch-icon.png">
+
+<!-- Beim Hosten im Repo (z. B. /docs) kannst du die Font-Links behalten.
+     Das Logo unten liegt als daskalalogo.png im Repo-Root; für /docs ggf. Pfad anpassen. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ink:#10302F;
+    --ink-soft:#3B5957;
+    --teal:#238C90;
+    --teal-deep:#1C6A72;
+    --teal-mid:#40A6A4;
+    --green:#238C90;            /* Häkchen im Teal des Logos */
+    --gold:#EE9A22;             /* warmes Orange aus dem Logo */
+    --gold-deep:#B0600C;
+    --paper:#F5FAFA;
+    --paper-2:#ECF5F4;
+    --card:#FFFFFF;
+    --rule:rgba(32,112,120,.15);
+    --rule-strong:rgba(32,112,120,.30);
+    --shadow:0 1px 0 rgba(22,48,46,.04), 0 18px 40px -28px rgba(22,48,46,.4);
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0;
+    font-family:"Instrument Sans",system-ui,sans-serif;
+    color:var(--ink);
+    background:var(--paper);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit}
+  h1,h2,h3{font-family:"Fraunces",Georgia,serif;font-weight:600;line-height:1.08;letter-spacing:-.01em;margin:0}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+
+  /* ---- Notenbuch-Signatur: dünne Linien wie in einem Klassenbuch ---- */
+  .ruled{
+    background-image:linear-gradient(var(--rule) 1px,transparent 1px);
+    background-size:100% 34px;
+    background-position:0 8px;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    position:sticky;top:0;z-index:20;
+    background:rgba(246,250,248,.82);
+    backdrop-filter:saturate(1.4) blur(10px);
+    border-bottom:1px solid var(--rule);
+  }
+  .nav{display:flex;align-items:center;gap:20px;height:66px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:"Fraunces",serif;font-weight:600;font-size:1.22rem;letter-spacing:-.02em;text-decoration:none}
+  .brand img{width:34px;height:34px;border-radius:8px;display:block}
+  .brand .dot{color:var(--gold)}
+  .nav .links{display:flex;gap:26px;margin-left:auto;font-size:.95rem}
+  .nav .links a{text-decoration:none;color:var(--ink-soft);transition:color .15s}
+  .nav .links a:hover{color:var(--teal)}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    font-weight:600;font-size:.95rem;text-decoration:none;
+    padding:10px 18px;border-radius:10px;border:1px solid transparent;
+    transition:transform .12s ease, box-shadow .12s ease, background .15s;
+    white-space:nowrap;cursor:pointer;
+  }
+  .btn-gold{background:var(--gold);color:#3a2408;box-shadow:0 8px 18px -10px rgba(238,154,34,.9)}
+  .btn-gold:hover{transform:translateY(-1px)}
+  .btn-ghost{border-color:var(--rule-strong);color:var(--teal-deep);background:transparent}
+  .btn-ghost:hover{background:var(--paper-2)}
+  .nav .btn{padding:9px 15px}
+  @media(max-width:760px){.nav .links{display:none}}
+
+  /* ---------- Hero ---------- */
+  .hero{padding:74px 0 40px;position:relative;overflow:hidden}
+  .hero .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:52px;align-items:center}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:9px;
+    font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--teal-deep);
+    padding:6px 12px;border:1px solid var(--rule-strong);border-radius:999px;background:var(--card)
+  }
+  .eyebrow b{color:var(--gold-deep)}
+  .hero h1{font-size:clamp(2.6rem,6vw,4.2rem);margin:22px 0 0}
+  .hero h1 .accent{color:var(--teal);font-style:italic;font-weight:500}
+  .hero p.lead{font-size:1.18rem;color:var(--ink-soft);max-width:34ch;margin:20px 0 30px}
+  .hero .cta{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .hero .meta{margin-top:26px;display:flex;gap:22px;flex-wrap:wrap;font-size:.9rem;color:var(--ink-soft)}
+  .hero .meta span{display:inline-flex;align-items:center;gap:7px}
+  .tick{width:16px;height:16px;flex:0 0 16px;color:var(--green)}
+
+  /* ---------- Notenbuch-Karte (Signaturelement) ---------- */
+  .book{
+    background:var(--card);border-radius:16px;box-shadow:var(--shadow);
+    border:1px solid var(--rule);overflow:hidden;transform:rotate(-1.1deg);
+  }
+  .book .head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px;background:var(--teal-deep);color:#eafaf5;
+  }
+  .book .head .t{font-family:"Fraunces",serif;font-weight:600;font-size:1.05rem}
+  .book .head .k{font-size:.78rem;opacity:.8;letter-spacing:.04em}
+  .book table{width:100%;border-collapse:collapse;font-size:.94rem}
+  .book td{padding:11px 18px;border-bottom:1px solid var(--rule)}
+  .book tr:last-child td{border-bottom:0}
+  .book .name{color:var(--ink);font-weight:500}
+  .book .note{text-align:right}
+  .grade{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:28px;height:28px;border-radius:8px;font-weight:600;
+    font-family:"IBM Plex Mono",monospace;font-size:.9rem;
+  }
+  .g1{background:rgba(35,140,144,.16);color:#1c6a72}
+  .g2{background:rgba(64,166,164,.2);color:#1f7a7c}
+  .g3{background:rgba(238,154,34,.2);color:#b0600c}
+  .book .foot{padding:12px 18px;font-size:.8rem;color:var(--ink-soft);background:var(--paper-2);display:flex;justify-content:space-between}
+  @media(max-width:860px){
+    .hero .grid{grid-template-columns:1fr;gap:38px}
+    .book{transform:none;max-width:440px}
+  }
+
+  /* ---------- Sections ---------- */
+  section.band{padding:64px 0;border-top:1px solid var(--rule)}
+  .band.alt{background:var(--paper-2)}
+  .sec-head{max-width:56ch;margin-bottom:38px}
+  .sec-head .num{font-family:"IBM Plex Mono",monospace;font-size:.82rem;color:var(--gold-deep);letter-spacing:.1em}
+  .sec-head h2{font-size:clamp(1.8rem,3.6vw,2.5rem);margin:8px 0 12px}
+  .sec-head p{color:var(--ink-soft);font-size:1.06rem;margin:0}
+
+  /* ---------- Funktionen ---------- */
+  .feat{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:16px;overflow:hidden}
+  .feat .cell{background:var(--card);padding:26px 24px}
+  .feat .cell .ic{width:34px;height:34px;color:var(--teal);margin-bottom:14px}
+  .feat h3{font-size:1.16rem;margin-bottom:7px}
+  .feat p{margin:0;color:var(--ink-soft);font-size:.96rem}
+  @media(max-width:860px){.feat{grid-template-columns:1fr}}
+
+  /* ---------- Installation ---------- */
+  .install{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .panel{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:28px;box-shadow:var(--shadow)}
+  .panel .kicker{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--gold-deep);margin-bottom:6px}
+  .panel h3{font-size:1.35rem;margin-bottom:10px}
+  .panel p{color:var(--ink-soft);margin:0 0 18px}
+  .panel ol{margin:0 0 20px;padding-left:20px;color:var(--ink-soft)}
+  .panel ol li{margin-bottom:6px}
+  .panel ol li strong{color:var(--ink);font-weight:600}
+  .code{
+    position:relative;background:#0f2a28;border-radius:12px;padding:18px 16px;
+    color:#d6efe8;font-family:"IBM Plex Mono",monospace;font-size:.85rem;line-height:1.9;
+    overflow-x:auto;
+  }
+  .code .cmt{color:#6f9d92}
+  .code .cmd{color:#eafaf5}
+  .code .prompt{color:var(--gold);user-select:none}
+  .copy{
+    position:absolute;top:11px;right:11px;border:1px solid rgba(255,255,255,.16);
+    background:rgba(255,255,255,.06);color:#cfeee5;border-radius:8px;
+    font-family:"Instrument Sans",sans-serif;font-size:.76rem;font-weight:600;
+    padding:5px 10px;cursor:pointer;transition:background .15s
+  }
+  .copy:hover{background:rgba(255,255,255,.14)}
+  .copy.done{color:#9fe0d8;border-color:rgba(64,166,164,.55)}
+  .req{margin-top:18px;font-size:.86rem;color:var(--ink-soft);border-top:1px solid var(--rule);padding-top:14px}
+  .req b{color:var(--ink)}
+  @media(max-width:860px){.install{grid-template-columns:1fr}}
+
+  /* ---------- Datenschutz ---------- */
+  .privacy{display:grid;grid-template-columns:1.1fr .9fr;gap:44px;align-items:center}
+  .privacy ul{list-style:none;margin:22px 0 0;padding:0}
+  .privacy li{display:flex;gap:12px;margin-bottom:16px;font-size:1rem}
+  .privacy li .tick{margin-top:4px}
+  .lic-card{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:26px;box-shadow:var(--shadow)}
+  .lic-card .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.8rem;font-weight:500;background:var(--paper-2);border:1px solid var(--rule-strong);border-radius:8px;padding:4px 10px;color:var(--teal-deep)}
+  .lic-card h3{font-size:1.25rem;margin:14px 0 8px}
+  .lic-card p{color:var(--ink-soft);margin:0 0 8px;font-size:.95rem}
+  @media(max-width:860px){.privacy{grid-template-columns:1fr;gap:28px}}
+
+  /* ---------- Unterstützen / Ko-fi ---------- */
+  .kofi-card{max-width:420px;margin:0 auto;background:var(--card);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+  .kofi-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;background:var(--teal-deep);color:#eafaf5}
+  .kofi-head .t{display:inline-flex;align-items:center;gap:9px;font-family:"Fraunces",serif;font-weight:600;font-size:1.02rem}
+  .kofi-head a{color:#d8f3ec;font-size:.82rem;font-weight:600;text-decoration:none;white-space:nowrap;opacity:.9;transition:opacity .15s}
+  .kofi-head a:hover{opacity:1;text-decoration:underline}
+  .kofi-card iframe{display:block;width:100%;border:none;background:#fff}
+  .kofi-fallback{text-align:center;font-size:.9rem;color:var(--ink-soft);margin:18px 0 0}
+  .kofi-fallback a{color:var(--teal-deep);font-weight:600;text-decoration:none}
+  .kofi-fallback a:hover{text-decoration:underline}
+
+  /* ---------- CTA-Schluss ---------- */
+  .final{text-align:center;padding:78px 0}
+  .final h2{font-size:clamp(2rem,4.4vw,3rem);margin-bottom:14px}
+  .final p{color:var(--ink-soft);font-size:1.1rem;max-width:46ch;margin:0 auto 28px}
+  .final .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+  /* ---------- Impressum ---------- */
+  .imprint{max-width:62ch;font-size:1rem;color:var(--ink-soft)}
+  .imprint p{margin:0 0 14px}
+  .imprint strong{color:var(--ink);font-weight:600}
+  .imprint a{color:var(--teal-deep);font-weight:600;text-decoration:none}
+  .imprint a:hover{text-decoration:underline}
+  .imprint-addr{font-size:.82rem;color:var(--ink-soft);opacity:.75;margin:0 0 14px}
+  .imprint-note{font-size:.9rem;border-top:1px solid var(--rule);padding-top:14px;margin-top:20px}
+  /* Aufklappbares Impressum */
+  .imprint-toggle summary{display:inline-flex;list-style:none;cursor:pointer;user-select:none}
+  .imprint-toggle summary::-webkit-details-marker{display:none}
+  .imprint-toggle summary::marker{content:""}
+  .imprint-toggle summary .lbl-close{display:none}
+  .imprint-toggle[open] summary .lbl-open{display:none}
+  .imprint-toggle[open] summary .lbl-close{display:inline}
+  .imprint-toggle .imprint{margin-top:24px;animation:imprintIn .35s ease}
+  @keyframes imprintIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.imprint-toggle .imprint{animation:none}}
+
+  /* ---------- Footer ---------- */
+  footer{border-top:1px solid var(--rule);padding:30px 0;font-size:.9rem;color:var(--ink-soft)}
+  .foot-row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+  footer a{color:var(--teal-deep);text-decoration:none}
+  footer a:hover{text-decoration:underline}
+
+  /* ---------- Reveal ---------- */
+  .rv{opacity:0;transform:translateY(14px);transition:opacity .6s ease, transform .6s ease}
+  .rv.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top">
+      <img src="https://raw.githubusercontent.com/tobGat/daskala/master/daskalalogo.png" alt="Daskala Logo"
+           onerror="this.style.display='none'">
+      Daskala<span class="dot">.</span>
+    </a>
+    <nav class="links">
+      <a href="#funktionen">Funktionen</a>
+      <a href="#installation">Installation</a>
+      <a href="#datenschutz">Datenschutz</a>
+      <a href="https://github.com/tobGat/daskala">GitHub</a>
+    </nav>
+    <a class="btn btn-gold" href="https://github.com/tobGat/daskala/releases">Herunterladen</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero ruled">
+    <div class="wrap grid">
+      <div>
+        <span class="eyebrow">Für jede Schulstufe · <b>quelloffen</b></span>
+        <h1>Das <span class="accent">Notenbuch</span>, das offline bleibt.</h1>
+        <p class="lead">Daskala verwaltet Noten, Klassen und die Jahresplanung – als schlanke Desktop-App direkt auf deinem Rechner.</p>
+        <div class="cta">
+          <a class="btn btn-gold" href="https://github.com/tobGat/daskala/releases">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Für Windows &amp; Linux herunterladen
+          </a>
+          <a class="btn btn-ghost" href="#installation">So funktioniert die Installation</a>
+        </div>
+        <div class="meta">
+          <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Läuft ohne Internet</span>
+          <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Keine Cloud, keine Konten</span>
+          <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Kostenlos &amp; GPL-3.0</span>
+        </div>
+      </div>
+
+      <!-- Signatur: Mini-Notenbuch -->
+      <div class="book" aria-hidden="true">
+        <div class="head">
+          <span class="t">3b · Deutsch</span>
+          <span class="k mono">Sommersemester</span>
+        </div>
+        <table>
+          <tr><td class="name">Lena H.</td><td class="note"><span class="grade g1">1</span></td></tr>
+          <tr><td class="name">Jonas K.</td><td class="note"><span class="grade g2">2</span></td></tr>
+          <tr><td class="name">Amira S.</td><td class="note"><span class="grade g1">1</span></td></tr>
+          <tr><td class="name">Felix W.</td><td class="note"><span class="grade g3">3</span></td></tr>
+        </table>
+        <div class="foot"><span>Ø 1,75</span><span class="mono">lokal gespeichert</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FUNKTIONEN -->
+  <section class="band" id="funktionen">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <div class="num">01 — WAS DASKALA KANN</div>
+        <h2>Ein Werkzeug für den Notenalltag.</h2>
+        <p>Alles, was ein Notenbuch braucht – ohne Ablenkung, ohne Anmeldung, ohne Datenreise in die Cloud. Ursprünglich für die Mittelschule entwickelt und für jede Schulstufe geeignet.</p>
+      </div>
+      <div class="feat rv">
+        <div class="cell">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5.5L20 8.3l-4 4 1 5.7L12 15l-5 3 1-5.7-4-4 5.6-.8z"/></svg>
+          <h3>Noten &amp; Beurteilung</h3>
+          <p>Leistungen erfassen, gewichten und den Notenstand einer Klasse jederzeit im Blick behalten.</p>
+        </div>
+        <div class="cell">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <h3>Klassen &amp; Schüler:innen</h3>
+          <p>Klassenlisten anlegen und pflegen, mit freundlichen Avataren statt sensibler Fotos.</p>
+        </div>
+        <div class="cell">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <h3>Jahresplanung</h3>
+          <p>Das Schuljahr strukturieren und Beurteilungen den richtigen Zeiträumen zuordnen.</p>
+        </div>
+        <div class="cell">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+          <h3>Export &amp; Import</h3>
+          <p>Ergebnisse als Excel- oder Word-Datei ausgeben und Inhalte aus PDF einlesen.</p>
+        </div>
+        <div class="cell">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <h3>Läuft überall</h3>
+          <p>Eine installierte Desktop-App für Windows und Linux – kein Browser-Tab, kein Server, keine Abhängigkeit vom WLAN.</p>
+        </div>
+        <div class="cell">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <h3>Daten bleiben bei dir</h3>
+          <p>Alle Einträge liegen in einer lokalen Datenbank auf deinem Gerät – nichts verlässt den Rechner.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALLATION -->
+  <section class="band alt" id="installation">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <div class="num">02 — LOSLEGEN</div>
+        <h2>Installieren – auf zwei Wegen.</h2>
+        <p>Der einfache Weg für den Alltag, der zweite für alle, die selbst bauen oder mitentwickeln möchten.</p>
+      </div>
+
+      <div class="install">
+        <!-- Panel A -->
+        <div class="panel rv">
+          <span class="kicker">Empfohlen</span>
+          <h3>Fertige App installieren</h3>
+          <p>Der schnellste Weg – herunterladen, öffnen, fertig. Verfügbar für Windows und Linux.</p>
+          <ol>
+            <li>Auf der <strong>Releases-Seite</strong> die neueste Version öffnen.</li>
+            <li>Die passende Datei laden – <strong>Windows:</strong> Installer (.exe), <strong>Linux:</strong> AppImage oder .deb.</li>
+            <li>Ausführen bzw. installieren – fertig.</li>
+          </ol>
+          <a class="btn btn-gold" href="https://github.com/tobGat/daskala/releases" style="margin-bottom:6px">Zu den Releases</a>
+          <div class="req">
+            <b>Plattformen:</b> Windows (.exe-Installer) · Linux (AppImage &amp; .deb).<br>
+            <b>Updates:</b> Windows und die Linux-AppImage aktualisieren sich selbst; das .deb-Paket aktualisierst du über neue Releases.
+          </div>
+        </div>
+
+        <!-- Panel B -->
+        <div class="panel rv">
+          <span class="kicker">Für Entwickler:innen</span>
+          <h3>Aus dem Quellcode bauen</h3>
+          <p>Repository klonen, Abhängigkeiten installieren, starten oder ein eigenes Installationspaket bauen.</p>
+          <div class="code" id="code1">
+<span class="prompt">$</span> <span class="cmt"># Repository holen</span>
+<span class="prompt">$</span> <span class="cmd">git clone https://github.com/tobGat/daskala.git</span>
+<span class="prompt">$</span> <span class="cmd">cd daskala</span>
+
+<span class="prompt">$</span> <span class="cmt"># Abhängigkeiten (baut better-sqlite3 nativ)</span>
+<span class="prompt">$</span> <span class="cmd">npm install</span>
+
+<span class="prompt">$</span> <span class="cmt"># Entwicklungsmodus: Vite + Electron</span>
+<span class="prompt">$</span> <span class="cmd">npm run dev</span>
+
+<span class="prompt">$</span> <span class="cmt"># Paket fürs eigene System erzeugen: .exe (Windows) bzw. AppImage/.deb (Linux) → dist-electron/</span>
+<span class="prompt">$</span> <span class="cmd">npm run build</span>
+            <button class="copy" data-target="code1">Kopieren</button>
+          </div>
+          <div class="req">
+            <b>Voraussetzungen:</b> Node.js &amp; npm. Zum nativen Bauen von <span class="mono">better-sqlite3</span> werden Build-Werkzeuge benötigt – unter Windows die Visual-Studio-Build-Tools, unter Linux <span class="mono">build-essential</span> und Python.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DATENSCHUTZ / LIZENZ -->
+  <section class="band" id="datenschutz">
+    <div class="wrap privacy">
+      <div class="rv">
+        <div class="num" style="font-family:'IBM Plex Mono',monospace;font-size:.82rem;color:var(--gold-deep);letter-spacing:.1em">03 — HALTUNG</div>
+        <h2 style="font-size:clamp(1.8rem,3.6vw,2.5rem);margin:8px 0 4px">Datenschutz ist kein Feature. Es ist die Grundlage.</h2>
+        <ul>
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Schüler:innendaten bleiben lokal auf deinem Gerät gespeichert.</li>
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Keine Cloud, keine Konten, kein Tracking, kein WLAN nötig.</li>
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Quelloffen – jede Zeile ist nachvollziehbar und überprüfbar.</li>
+        </ul>
+      </div>
+      <div class="lic-card rv">
+        <span class="badge">GPL-3.0-or-later</span>
+        <h3>Freie Software</h3>
+        <p>Daskala darfst du kostenlos nutzen, weitergeben und verändern. Gibst du eine veränderte Version weiter, bleibt auch sie quelloffen unter der GPL-3.0 (Copyleft).</p>
+        <p>Die App nutzt Open-Source-Bibliotheken wie React, better-sqlite3, SheetJS und DiceBear; alle Lizenzhinweise liegen dem Installationspaket bei.</p>
+        <p><strong style="color:var(--ink)">Hobbyprojekt ohne Gewähr:</strong> Daskala entsteht in der Freizeit und wird ohne Gewährleistung bereitgestellt. Für verlorene oder beschädigte Daten wird keine Haftung übernommen – sichere deine Daten daher regelmäßig selbst.</p>
+        <p style="margin-top:14px"><a href="https://github.com/tobGat/daskala/blob/master/LICENSE" style="color:var(--teal-deep);font-weight:600;text-decoration:none">Lizenztext ansehen →</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- UNTERSTÜTZEN -->
+  <section class="band" id="unterstuetzen">
+    <div class="wrap">
+      <div class="sec-head rv" style="text-align:center;max-width:54ch;margin:0 auto 34px">
+        <div class="num">FREIWILLIG</div>
+        <h2>Daskala unterstützen</h2>
+        <p>Daskala ist und bleibt kostenlos. Wenn dir die App den Schulalltag erleichtert, kannst du das Hobbyprojekt mit einer kleinen Spende unterstützen – ganz freiwillig.</p>
+      </div>
+      <div class="kofi-card rv">
+        <div class="kofi-head">
+          <span class="t">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4Z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+            Unterstützen über Ko-fi
+          </span>
+          <a href="https://ko-fi.com/tobiasgatterbauer" target="_blank" rel="noopener">Auf Ko-fi öffnen ↗</a>
+        </div>
+        <iframe id="kofiframe" src="https://ko-fi.com/tobiasgatterbauer/?hidefeed=true&widget=true&embed=true&preview=true" style="border:none;display:block;width:100%;background:#fff;" height="600" title="tobiasgatterbauer" loading="lazy"></iframe>
+      </div>
+      <p class="kofi-fallback rv">Panel wird nicht angezeigt? <a href="https://ko-fi.com/tobiasgatterbauer" target="_blank" rel="noopener">Direkt auf Ko-fi unterstützen →</a></p>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="band alt">
+    <div class="wrap final rv">
+      <h2>Bereit fürs nächste Semester.</h2>
+      <p>Lade Daskala herunter oder wirf einen Blick in den Quellcode auf GitHub.</p>
+      <div class="cta">
+        <a class="btn btn-gold" href="https://github.com/tobGat/daskala/releases">Herunterladen</a>
+        <a class="btn btn-ghost" href="https://github.com/tobGat/daskala">Quellcode ansehen</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- IMPRESSUM -->
+  <section class="band" id="impressum">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <div class="num">04 — RECHTLICHES</div>
+        <h2>Impressum</h2>
+        <p>Angaben gemäß §5 E-Commerce-Gesetz (ECG) und §25 Mediengesetz – auf Klick einsehbar.</p>
+      </div>
+      <details class="imprint-toggle rv">
+        <summary class="btn btn-ghost">
+          <span class="lbl-open">Impressum anzeigen</span>
+          <span class="lbl-close">Impressum ausblenden</span>
+        </summary>
+        <div class="imprint">
+        <p><strong>Medieninhaber und für den Inhalt verantwortlich</strong><br>
+        Tobias Gatterbauer</p>
+        <p class="imprint-addr">Brucknerweg 10, 4780 Schärding · Lindenweg 4, 4783 Wernstein am Inn · Österreich</p>
+        <p><strong>E-Mail:</strong> <a href="mailto:t.gatterbauer@proton.me">t.gatterbauer@proton.me</a></p>
+        <p class="imprint-note">Daskala ist ein privates Hobbyprojekt, nichtkommerziell und quelloffen (Lizenz GPL-3.0-or-later). Die Software wird ohne Gewähr bereitgestellt; eine Haftung für Schäden aus der Nutzung – insbesondere für verlorene oder beschädigte Daten – ist, soweit gesetzlich zulässig, ausgeschlossen. Sichere deine Daten daher regelmäßig selbst. Für Inhalte externer Links (z. B. GitHub) sind die jeweiligen Betreiber verantwortlich.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot-row">
+    <div>Daskala · Digitales Notenbuch für österreichische Schulen</div>
+    <div>
+      <a href="#unterstuetzen">Unterstützen</a> ·
+      <a href="#impressum">Impressum</a> ·
+      <a href="https://github.com/tobGat/daskala">GitHub</a> ·
+      <a href="https://github.com/tobGat/daskala/blob/master/LICENSE">GPL-3.0</a> ·
+      <a href="https://github.com/tobGat/daskala/releases">Releases</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Kopier-Buttons
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var box = document.getElementById(btn.dataset.target);
+      var lines = [];
+      box.querySelectorAll('.cmd').forEach(function(c){ lines.push(c.textContent); });
+      var text = lines.join('\n');
+      navigator.clipboard.writeText(text).then(function(){
+        var old = btn.textContent;
+        btn.textContent = 'Kopiert';
+        btn.classList.add('done');
+        setTimeout(function(){ btn.textContent = old; btn.classList.remove('done'); }, 1600);
+      });
+    });
+  });
+
+  // Sanftes Einblenden beim Scrollen
+  var reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  if (!reduce && 'IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, {threshold:.12});
+    document.querySelectorAll('.rv').forEach(function(el){ io.observe(el); });
+  } else {
+    document.querySelectorAll('.rv').forEach(function(el){ el.classList.add('in'); });
+  }
+</script>
+</body>
+</html>
