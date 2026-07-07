@@ -264,6 +264,7 @@ const api = {
   update: {
     onStatus:     (cb) => { const h = (_e, data) => cb(data); ipcRenderer.on('update:status', h); return () => ipcRenderer.removeListener('update:status', h) },
     installieren: () => invoke('update:installieren'),
+    pruefen:      () => invoke('update:pruefen'),
   },
 
   dialog: {
