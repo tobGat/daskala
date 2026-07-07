@@ -1457,6 +1457,23 @@ function logError(context, err) {
   } catch {}
 }
 
+// Öffnet eine URL extern – aber nur mit sicheren Schemata (http/https/mailto).
+// Verhindert, dass importierte/gespeicherte Links via file:/javascript:/… Unerwünschtes auslösen.
+function oeffneExternSicher(url) {
+  try {
+    const u = new URL(String(url ?? ''))
+    if (u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'mailto:') {
+      shell.openExternal(url)
+      return true
+    }
+    logError('oeffneExternSicher', 'blockiertes Protokoll: ' + u.protocol + ' (' + String(url).slice(0, 80) + ')')
+    return false
+  } catch (e) {
+    logError('oeffneExternSicher', e)
+    return false
+  }
+}
+
 // ─── IPC Handler registrieren ─────────────────────────────────────────────────
 function registerIPC() {
   // Zentraler Fehler-Wrapper: fängt Ausnahmen aus ALLEN nachfolgend registrierten
@@ -2472,8 +2489,7 @@ function registerIPC() {
   })
 
   ipcMain.handle('shell:open', (_, url) => {
-    shell.openExternal(url)
-    return true
+    return oeffneExternSicher(url)
   })
 
   ipcMain.handle('app:clipboard', (_, text) => {
@@ -4075,7 +4091,7 @@ function registerIPC() {
   })
   ipcMain.handle('materialien:oeffnen', async (_, data) => {
     const { abschnittId, typ, ref } = data || {}
-    if (typ === 'link') { shell.openExternal(ref); return { ok: true } }
+    if (typ === 'link') { return { ok: oeffneExternSicher(ref) } }
     const dir = abschnittFolderIfExists(abschnittId)
     if (!dir) return { ok: false, grund: 'kein_ordner' }
     const err = await shell.openPath(path.join(dir, ref))
@@ -4527,6 +4543,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
     titleBarStyle: 'default',
     show: false,
@@ -4534,6 +4551,17 @@ function createWindow() {
   })
 
   win.once('ready-to-show', () => win.show())
+
+  // Härtung: keine neuen Fenster aus dem Renderer; externe Ziele nur über die
+  // Schema-Allowlist extern öffnen; keine Navigation aus der App heraus.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    oeffneExternSicher(url)
+    return { action: 'deny' }
+  })
+  win.webContents.on('will-navigate', (event, url) => {
+    const erlaubt = isDev ? url.startsWith('http://localhost:5173') : url.startsWith('file://')
+    if (!erlaubt) { event.preventDefault(); oeffneExternSicher(url) }
+  })
 
   // Tastenkürzel (Ersatz für das entfernte Menü): Rückgängig/Wiederholen, Öffnen, Speichern unter.
   win.webContents.on('before-input-event', (event, input) => {
