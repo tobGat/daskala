@@ -12,10 +12,14 @@
     "build": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "release": "node bump-version.js && npm run build -- --publish always",
     "preview": "vite preview",
+    "test": "node --test test/*.test.mjs",
+    "lint": "eslint .",
+    "format": "prettier --write \"renderer/**/*.{js,jsx,css}\" \"*.{js,json}\"",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3 || true"
   },
   "devDependencies": {
+    "@eslint/js": "^9.15.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.2",
@@ -23,7 +27,12 @@
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
     "electron-rebuild": "^3.2.9",
+    "eslint": "^9.15.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "globals": "^15.12.0",
     "postcss": "^8.4.47",
+    "prettier": "^3.4.1",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.6",
     "wait-on": "^8.0.1"

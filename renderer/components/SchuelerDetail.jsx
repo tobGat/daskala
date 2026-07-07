@@ -350,6 +350,7 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, klassenname, schue
       </section>
 
       {/* Kompetenzen – vorübergehend ausgeblendet, bis die Funktion vollständig eingebettet ist */}
+      {/* eslint-disable-next-line no-constant-binary-expression */}
       {false && kompBereiche.length > 0 && (
         <section>
           <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-2">Kompetenzen</p>

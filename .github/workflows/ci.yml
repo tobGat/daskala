@@ -1,0 +1,40 @@
+# Prüf-Pipeline: läuft bei jedem Push auf master und bei Pull Requests.
+# Fängt Lint-, Test- und Build-Fehler ab, bevor ein Release-Tag gesetzt wird.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # Electron-Binary & nativer Rebuild sind für Lint/Test/Renderer-Build nicht nötig.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Syntax-Check (main/preload)
+        run: node --check main.js && node --check preload.js
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Renderer-Build
+        run: npx vite build
