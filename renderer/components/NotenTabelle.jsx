@@ -232,6 +232,11 @@ function StatChip({ label, value, accent, emoji }) {
 }
 
 function NotenToolbar({ aktivesFach, schueler, spalten, eintraege, zeugnisnoten, aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt, openSpalteModal }) {
+  const aktiveKlasse = useStore(s => s.aktiveKlasse)
+  const setSchuelerSortierung = useStore(s => s.setSchuelerSortierung)
+  const openModal = useStore(s => s.openModal)
+  const sortierung = aktiveKlasse?.sortierung || 'nachname'
+
   // Anzahl Spalten im aktiven Semester
   const spaltenSemester = useMemo(
     () => spalten.filter(s => s.semester === aktiveSemester && !s.eingeklappt).length,
@@ -313,6 +318,36 @@ function NotenToolbar({ aktivesFach, schueler, spalten, eintraege, zeugnisnoten,
           S1 {semester1Eingeklappt ? '▸' : '◂'}
         </button>
       )}
+
+      <div className="w-px h-8 bg-paper-200 dark:bg-ink-800 flex-shrink-0" />
+
+      {/* Sortierung der Schüler:innen-Liste */}
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <span className="text-[11px] text-ink-400 dark:text-ink-500 hidden md:inline">Sortierung</span>
+        <div className="flex items-center gap-0.5 bg-paper-100 dark:bg-ink-800 rounded-xl p-0.5">
+          {[['vorname', 'Vorname'], ['nachname', 'Nachname'], ['manuell', 'Manuell']].map(([wert, label]) => (
+            <button
+              key={wert}
+              className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-all whitespace-nowrap
+                ${sortierung === wert
+                  ? 'bg-white dark:bg-ink-700 text-coral-600 dark:text-coral-300 shadow-soft'
+                  : 'text-ink-500 dark:text-ink-400 hover:text-ink-700 dark:hover:text-paper-200'}`}
+              onClick={() => setSchuelerSortierung(wert)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {sortierung === 'manuell' && (
+          <button
+            className="px-2 py-1 text-[11px] font-medium rounded-xl border border-paper-300 dark:border-ink-700 text-ink-500 dark:text-ink-400 hover:bg-paper-50 dark:hover:bg-ink-800 transition-all whitespace-nowrap"
+            onClick={() => openModal('schuelerVerwalten', { reorder: true })}
+            title="Reihenfolge der Schüler:innen per Ziehen bearbeiten"
+          >
+            ↕ Reihenfolge
+          </button>
+        )}
+      </div>
 
       {/* Stats */}
       <div className="flex items-center gap-1.5 ml-auto flex-wrap">
