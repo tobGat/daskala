@@ -280,10 +280,35 @@ function setupMenu() {
   Menu.setApplicationMenu(null)
 }
 
+// Aktuelle Schema-Version. Erhöhen, wenn eine neue EINMALIGE Migration
+// (Daten-Umbau / Tabellen-Rebuild) hinzukommt. Reine Spalten-Ergänzungen
+// brauchen das nicht – die laufen idempotent über spalteErgaenzen().
+const SCHEMA_VERSION = 1
+
+// Ergänzt eine Spalte nur, wenn sie laut PRAGMA table_info noch fehlt.
+// Ersetzt das frühere „ALTER TABLE … ADD COLUMN" in try/catch: kein
+// absichtliches Werfen bei jedem Start mehr, echte Fehler landen im Log.
+// Tabellen-/Spaltennamen sind ausschließlich feste Literale (keine Eingabe).
+function spalteErgaenzen(tabelle, spalte, definition) {
+  const vorhanden = db
+    .prepare(`PRAGMA table_info(${tabelle})`)
+    .all()
+    .some((c) => c.name === spalte)
+  if (vorhanden) return
+  try {
+    db.exec(`ALTER TABLE ${tabelle} ADD COLUMN ${spalte} ${definition}`)
+  } catch (e) {
+    logError(`migration:spalte ${tabelle}.${spalte}`, e)
+  }
+}
+
 function initDB() {
   db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
+
+  // Schema-Version einmalig lesen: steuert die nicht-idempotenten Migrationen unten.
+  const schemaVersion = db.pragma('user_version', { simple: true })
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS einstellungen (
@@ -420,26 +445,34 @@ function initDB() {
     );
   `)
 
-  // Spalten-Migration für ältere DBs
-  try { db.prepare('ALTER TABLE schueler ADD COLUMN lernschwaeche INTEGER DEFAULT 0').run() } catch {}
-  try { db.prepare('ALTER TABLE schueler ADD COLUMN legasthenie INTEGER DEFAULT 0').run() } catch {}
-  try { db.prepare('ALTER TABLE schueler ADD COLUMN spf INTEGER DEFAULT 0').run() } catch {}
-  try { db.prepare('ALTER TABLE schueler ADD COLUMN avatar TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE klassen ADD COLUMN farbe TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE faecher ADD COLUMN farbe TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN musizieren INTEGER DEFAULT 0').run() } catch {}
-  try { db.prepare('ALTER TABLE zeugnisnoten ADD COLUMN s1_eingerechnet INTEGER DEFAULT 0').run() } catch {}
+  // ── Spalten-Migration für ältere DBs (idempotent, nur falls Spalte fehlt) ──
+  spalteErgaenzen('schueler', 'lernschwaeche', 'INTEGER DEFAULT 0')
+  spalteErgaenzen('schueler', 'legasthenie', 'INTEGER DEFAULT 0')
+  spalteErgaenzen('schueler', 'spf', 'INTEGER DEFAULT 0')
+  spalteErgaenzen('schueler', 'avatar', 'TEXT')
+  spalteErgaenzen('klassen', 'farbe', 'TEXT')
+  spalteErgaenzen('faecher', 'farbe', 'TEXT')
+  spalteErgaenzen('stunden_planung', 'musizieren', 'INTEGER DEFAULT 0')
+  spalteErgaenzen('zeugnisnoten', 's1_eingerechnet', 'INTEGER DEFAULT 0')
 
-  // Fach-Gewichtung an neues Modell angleichen: MA & HÜ sind nur noch Einfluss (kein Gewicht mehr).
-  // Alte MA/HÜ-Fachgewichte entfernen, damit nur noch SA/Test/Individuell die Note gewichten.
-  try { db.prepare('UPDATE faecher SET gewichtung_ma = NULL, gewichtung_hue = NULL WHERE gewichtung_ma IS NOT NULL OR gewichtung_hue IS NOT NULL').run() } catch {}
   // Fach-spezifische Deckelung des MA/HÜ-Einflusses (NULL = globaler Standard).
   // MA & HÜ getrennt steuerbar; frühere gemeinsame Spalte 'ma_hue_max_einfluss' als Migrationsquelle.
-  try { db.prepare('ALTER TABLE faecher ADD COLUMN ma_hue_max_einfluss REAL').run() } catch {}
-  try { db.prepare('ALTER TABLE faecher ADD COLUMN ma_max_einfluss REAL').run() } catch {}
-  try { db.prepare('ALTER TABLE faecher ADD COLUMN hue_max_einfluss REAL').run() } catch {}
-  // Alten gemeinsamen Fach-Wert einmalig auf beide getrennten Spalten übertragen
-  try { db.prepare('UPDATE faecher SET ma_max_einfluss = ma_hue_max_einfluss, hue_max_einfluss = ma_hue_max_einfluss WHERE ma_hue_max_einfluss IS NOT NULL AND ma_max_einfluss IS NULL AND hue_max_einfluss IS NULL').run() } catch {}
+  spalteErgaenzen('faecher', 'ma_hue_max_einfluss', 'REAL')
+  spalteErgaenzen('faecher', 'ma_max_einfluss', 'REAL')
+  spalteErgaenzen('faecher', 'hue_max_einfluss', 'REAL')
+
+  // Einmalige Daten-Migrationen – dürfen NICHT bei jedem Start laufen (siehe user_version).
+  if (schemaVersion < 1) {
+    // Alte MA/HÜ-Fachgewichte entfernen: MA & HÜ sind nur noch Einfluss, kein Gewicht mehr.
+    try {
+      db.prepare('UPDATE faecher SET gewichtung_ma = NULL, gewichtung_hue = NULL WHERE gewichtung_ma IS NOT NULL OR gewichtung_hue IS NOT NULL').run()
+    } catch (e) { logError('migration:gewichtung-ma-hue-loeschen', e) }
+    // Alten gemeinsamen Wert einmalig auf beide getrennten Spalten übertragen.
+    // Muss einmalig sein – ein später bewusst geleerter Wert würde sonst neu befüllt.
+    try {
+      db.prepare('UPDATE faecher SET ma_max_einfluss = ma_hue_max_einfluss, hue_max_einfluss = ma_hue_max_einfluss WHERE ma_hue_max_einfluss IS NOT NULL AND ma_max_einfluss IS NULL AND hue_max_einfluss IS NULL').run()
+    } catch (e) { logError('migration:ma-hue-aufteilen', e) }
+  }
 
   // Todos-Tabelle
   db.exec(`
@@ -456,23 +489,23 @@ function initDB() {
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE SET NULL
     )
   `)
-  try { db.prepare('ALTER TABLE todos ADD COLUMN faelligkeit TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE todos ADD COLUMN erinnerung TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE spalten ADD COLUMN notiz TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE eintraege ADD COLUMN kommentar TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN hue_text TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN hue_frist_datum TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN link TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE stunden_planung ADD COLUMN entfall INTEGER DEFAULT 0').run() } catch {}
-  try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN titel TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN inhalt TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN hue_text TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN hue_frist_datum TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE supplierstunden ADD COLUMN link TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE termine ADD COLUMN stunde_id INTEGER').run() } catch {}
-  try { db.prepare('ALTER TABLE klassen ADD COLUMN teams_link TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE faecher ADD COLUMN benotungssystem TEXT DEFAULT \'standard\'').run() } catch {}
-  try { db.prepare('ALTER TABLE faecher ADD COLUMN alle_schueler INTEGER DEFAULT 1').run() } catch {}
+  spalteErgaenzen('todos', 'faelligkeit', 'TEXT')
+  spalteErgaenzen('todos', 'erinnerung', 'TEXT')
+  spalteErgaenzen('spalten', 'notiz', 'TEXT')
+  spalteErgaenzen('eintraege', 'kommentar', 'TEXT')
+  spalteErgaenzen('stunden_planung', 'hue_text', 'TEXT')
+  spalteErgaenzen('stunden_planung', 'hue_frist_datum', 'TEXT')
+  spalteErgaenzen('stunden_planung', 'link', 'TEXT')
+  spalteErgaenzen('stunden_planung', 'entfall', 'INTEGER DEFAULT 0')
+  spalteErgaenzen('supplierstunden', 'titel', 'TEXT')
+  spalteErgaenzen('supplierstunden', 'inhalt', 'TEXT')
+  spalteErgaenzen('supplierstunden', 'hue_text', 'TEXT')
+  spalteErgaenzen('supplierstunden', 'hue_frist_datum', 'TEXT')
+  spalteErgaenzen('supplierstunden', 'link', 'TEXT')
+  spalteErgaenzen('termine', 'stunde_id', 'INTEGER')
+  spalteErgaenzen('klassen', 'teams_link', 'TEXT')
+  spalteErgaenzen('faecher', 'benotungssystem', "TEXT DEFAULT 'standard'")
+  spalteErgaenzen('faecher', 'alle_schueler', 'INTEGER DEFAULT 1')
 
   // Fach-spezifische Schüler-Teilmenge (Gruppen). Nur befüllt, wenn faecher.alle_schueler = 0.
   db.exec(`
@@ -598,9 +631,12 @@ function initDB() {
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
     );
   `)
-  // Migration: datum_von/datum_bis nullable machen + reihenfolge hinzufügen
-  try { db.prepare('ALTER TABLE jahresplanung_abschnitte ADD COLUMN reihenfolge INTEGER NOT NULL DEFAULT 0').run() } catch {}
-  try {
+  // Migration: datum_von/datum_bis nullable machen + reihenfolge hinzufügen.
+  // reihenfolge muss VOR dem evtl. Tabellen-Rebuild existieren (wird dort referenziert).
+  spalteErgaenzen('jahresplanung_abschnitte', 'reihenfolge', 'INTEGER NOT NULL DEFAULT 0')
+  // Einmaliger Tabellen-Rebuild (nur sehr alte DBs) – hier vor abschnitt_materialien,
+  // das per FK auf diese Tabelle verweist; darum an dieser Stelle und nicht zentral.
+  if (schemaVersion < 1) try {
     // Prüfe ob datum_von noch NOT NULL ist (alte DBs)
     const info = db.prepare("PRAGMA table_info(jahresplanung_abschnitte)").all()
     const vonCol = info.find(c => c.name === 'datum_von')
@@ -623,9 +659,9 @@ function initDB() {
         ALTER TABLE jahresplanung_abschnitte_new RENAME TO jahresplanung_abschnitte;
       `)
     }
-  } catch {}
+  } catch (e) { logError('migration:jahresplanung-datum-nullable', e) }
   // Leaf-Ordnername pro Abschnitt (Materialordner). Elternpfade werden live abgeleitet.
-  try { db.prepare('ALTER TABLE jahresplanung_abschnitte ADD COLUMN material_ordner TEXT').run() } catch {}
+  spalteErgaenzen('jahresplanung_abschnitte', 'material_ordner', 'TEXT')
 
   // Materialien pro Abschnitt: Links + optionale Datei-Metadaten (Sidecar keyed by Dateiname).
   // Dokumente selbst liegen als Dateien im Ordner (Wahrheit), hier nur Metadaten.
@@ -679,15 +715,15 @@ function initDB() {
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE SET NULL
     );
   `)
-  try { db.prepare('ALTER TABLE sitzplan_tische ADD COLUMN fach_id INTEGER').run() } catch {}
+  spalteErgaenzen('sitzplan_tische', 'fach_id', 'INTEGER')
 
   // ─── KV-Modul (Klassenvorstand) ──────────────────────────────────────────────
-  try { db.prepare('ALTER TABLE klassen ADD COLUMN ist_kv INTEGER DEFAULT 0').run() } catch {}
-  try { db.prepare('ALTER TABLE klassen ADD COLUMN ist_vorlage INTEGER DEFAULT 0').run() } catch {}
-  try { db.prepare('ALTER TABLE schuljahre ADD COLUMN start_datum TEXT').run() } catch {}
-  try { db.prepare('ALTER TABLE schuljahre ADD COLUMN end_datum TEXT').run() } catch {}
+  spalteErgaenzen('klassen', 'ist_kv', 'INTEGER DEFAULT 0')
+  spalteErgaenzen('klassen', 'ist_vorlage', 'INTEGER DEFAULT 0')
+  spalteErgaenzen('schuljahre', 'start_datum', 'TEXT')
+  spalteErgaenzen('schuljahre', 'end_datum', 'TEXT')
   // Sub-Aufgaben: parent_id auf eigene Tabelle, NULL = Top-Level
-  try { db.prepare('ALTER TABLE kv_jahresaufgaben ADD COLUMN parent_id INTEGER REFERENCES kv_jahresaufgaben(id) ON DELETE CASCADE').run() } catch {}
+  spalteErgaenzen('kv_jahresaufgaben', 'parent_id', 'INTEGER REFERENCES kv_jahresaufgaben(id) ON DELETE CASCADE')
 
   db.exec(`
     -- Jahresaufgaben-Templates
@@ -933,6 +969,9 @@ function initDB() {
 
   const semester = month >= 9 || month <= 1 ? '1' : '2'
   insertEinstellung.run('semester_aktuell', semester)
+
+  // Alle einmaligen Migrationen dieser Version sind durchlaufen → Schema-Version festschreiben.
+  if (schemaVersion < SCHEMA_VERSION) db.pragma(`user_version = ${SCHEMA_VERSION}`)
 }
 
 // ─── Backup ───────────────────────────────────────────────────────────────────
