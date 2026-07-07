@@ -232,6 +232,19 @@ const useStore = create((set, get) => ({
     }
   },
 
+  // Neue Reihenfolge der Klassen-Tabs (Drag-and-Drop) übernehmen und speichern.
+  // Optimistisch: nur das klassen-Array wird umsortiert – kein teurer Voll-Reload
+  // der aktiven Klasse. Bei einem Fehler wird die Liste sicherheitshalber neu geladen.
+  setKlassenReihenfolge: async (neu) => {
+    const mitReihenfolge = neu.map((k, i) => ({ ...k, reihenfolge: i }))
+    set({ klassen: mitReihenfolge })
+    try {
+      await window.api.klassen.reorder(mitReihenfolge.map(k => ({ id: k.id, reihenfolge: k.reihenfolge })))
+    } catch {
+      await get().ladeAktiveKlassenliste()
+    }
+  },
+
   // ─── Fächer ──────────────────────────────────────────────────────────────
   setAktivesFach: async (fach) => {
     set({ aktivesFach: fach })

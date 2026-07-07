@@ -32,7 +32,7 @@ export default function KlassenTabs() {
   const {
     klassen, aktiveKlasse, setAktiveKlasse,
     schuljahre, aktuellesSchuljahr, setAktuellesSchuljahr,
-    openModal, ladeAktiveKlassenliste,
+    openModal, ladeAktiveKlassenliste, setKlassenReihenfolge,
     vorlagenModus, setVorlagenModus,
     currentView, setCurrentView,
     einstellungen, pushToast,
@@ -50,6 +50,36 @@ export default function KlassenTabs() {
   const [loeschModal, setLoeschModal] = useState(null) // { klasse, stats }
   const [dupModal, setDupModal] = useState(null) // { klasse, name, mitPlanung, mitSchueler }
   const [dupLaeuft, setDupLaeuft] = useState(false)
+  const [dragKlasseId, setDragKlasseId] = useState(null)
+  const [dragOverKlasseId, setDragOverKlasseId] = useState(null)
+
+  // ── Klassen-Tabs per Drag-and-Drop sortieren ──────────────────────────────
+  const handleTabDragStart = (e, id) => {
+    setDragKlasseId(id)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(id))
+  }
+  const handleTabDragOver = (e, id) => {
+    if (dragKlasseId == null || id === dragKlasseId) return
+    e.preventDefault() // ohne preventDefault feuert onDrop nicht
+    e.dataTransfer.dropEffect = 'move'
+    if (id !== dragOverKlasseId) setDragOverKlasseId(id)
+  }
+  const handleTabDragEnd = () => { setDragKlasseId(null); setDragOverKlasseId(null) }
+  const handleTabDrop = (e, zielId) => {
+    e.preventDefault()
+    const quelleId = dragKlasseId
+    setDragKlasseId(null)
+    setDragOverKlasseId(null)
+    if (quelleId == null || quelleId === zielId) return
+    const von = klassen.findIndex(k => k.id === quelleId)
+    const bis = klassen.findIndex(k => k.id === zielId)
+    if (von < 0 || bis < 0) return
+    const neu = [...klassen]
+    const [gezogen] = neu.splice(von, 1)
+    neu.splice(bis, 0, gezogen)
+    setKlassenReihenfolge(neu)
+  }
 
   const handleDuplizieren = async () => {
     if (!dupModal) return
@@ -152,10 +182,18 @@ export default function KlassenTabs() {
               />
             ) : (
               <button
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-semibold rounded-2xl whitespace-nowrap transition-all duration-150
+                draggable
+                onDragStart={e => handleTabDragStart(e, k.id)}
+                onDragOver={e => handleTabDragOver(e, k.id)}
+                onDragLeave={() => setDragOverKlasseId(prev => (prev === k.id ? null : prev))}
+                onDrop={e => handleTabDrop(e, k.id)}
+                onDragEnd={handleTabDragEnd}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-semibold rounded-2xl whitespace-nowrap transition-all duration-150 active:cursor-grabbing
                   ${aktiveKlasse?.id === k.id && currentView !== 'stundenplan'
                     ? 'bg-white dark:bg-ink-800 text-ink-900 dark:text-paper-100 shadow-soft'
-                    : 'text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-200 hover:bg-paper-200/70 dark:hover:bg-ink-800/70'}`}
+                    : 'text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-200 hover:bg-paper-200/70 dark:hover:bg-ink-800/70'}
+                  ${dragOverKlasseId === k.id && dragKlasseId !== k.id ? 'ring-2 ring-coral-400/70' : ''}
+                  ${dragKlasseId === k.id ? 'opacity-40' : ''}`}
                 onClick={e => {
                   if (vorlagenModus) {
                     setAktiveKlasse(k)
