@@ -233,6 +233,7 @@ contextBridge.exposeInMainWorld('api', {
   app: {
     reset: () => invoke('app:reset'),
     version: () => invoke('app:version'),
+    clipboard: (text) => invoke('app:clipboard', text),
   },
 
   sperre: {
@@ -274,6 +275,7 @@ contextBridge.exposeInMainWorld('api', {
     allSchuelerPdf: () => invoke('export:allSchuelerPdf'),
     fachPlanungDocx: (fachId, fachName, klasseName, wochenDaten) => invoke('export:fachPlanungDocx', fachId, fachName, klasseName, wochenDaten),
     jahresplanungPdf: (fachId) => invoke('export:jahresplanungPdf', fachId),
+    jahresplanungDocx: (fachId) => invoke('export:jahresplanungDocx', fachId),
   },
 
   import: {

@@ -5,7 +5,7 @@ import React, { useMemo, useState } from 'react'
 import { createAvatar } from '@dicebear/core'
 import * as lorelei from '@dicebear/lorelei'
 import useStore from '../store/useStore'
-import { SKIN, HAIR, variantsOf, parseAvatarOptions, hashFromString } from '../utils/avatar'
+import { SKIN, HAIR, variantsOf, parseAvatarOptions, hashFromString, optionsToCode, codeToOptions } from '../utils/avatar'
 
 const MERKMALE = [
   { key: 'head',     label: 'Gesichtsform' },
@@ -76,6 +76,19 @@ export default function AvatarEditorModal({ schueler, onClose, onSaved }) {
   const [opts, setOpts] = useState(() => parseAvatarOptions(schueler) ?? seedToOptions(schueler))
   const [saving, setSaving] = useState(false)
   const [pickerCat, setPickerCat] = useState(null)
+  const [codeInput, setCodeInput] = useState('')
+  const pushToast = useStore(s => s.pushToast)
+
+  const codeUebernehmen = () => {
+    const o = codeToOptions(codeInput)
+    if (o) { setOpts(o); setCodeInput(''); pushToast?.('Avatar aus Code übernommen.', 'success') }
+    else pushToast?.('Ungültiger Avatar-Code.', 'error')
+  }
+  const codeKopieren = async () => {
+    const code = optionsToCode(opts)
+    const ok = await window.api.app.clipboard(code)
+    pushToast?.(ok ? `Code kopiert: ${code}` : 'Kopieren fehlgeschlagen.', ok ? 'success' : 'error')
+  }
 
   const previewSvg = useMemo(() => {
     try { return createAvatar(lorelei, { size: 160, ...opts }).toString() } catch { return '' }
@@ -228,7 +241,25 @@ export default function AvatarEditorModal({ schueler, onClose, onSaved }) {
           </div>
         </div>
 
-        <div className="flex gap-3 mt-5">
+        {/* Avatar-Code (Web-Editor avatar.schulapps.at) */}
+        <div className="mt-4 pt-3 border-t border-paper-100 dark:border-ink-800">
+          <div className="flex items-center gap-2">
+            <input
+              className="input flex-1 text-sm font-mono"
+              placeholder="Code einfügen, z. B. DSK1-3-12-5-…"
+              value={codeInput}
+              onChange={e => setCodeInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') codeUebernehmen() }}
+            />
+            <button className="btn-secondary text-sm flex-shrink-0" onClick={codeUebernehmen} disabled={!codeInput.trim()}>Übernehmen</button>
+            <button className="btn-secondary text-sm flex-shrink-0" onClick={codeKopieren} title="Aktuellen Avatar als Code kopieren">Code&nbsp;kopieren</button>
+          </div>
+          <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1.5">
+            Schüler:innen erstellen ihren Avatar auf <span className="font-medium">avatar.schulapps.at</span> und schicken dir den Code – hier einfügen und übernehmen.
+          </p>
+        </div>
+
+        <div className="flex gap-3 mt-4">
           <button className="btn-secondary text-sm" onClick={zuruecksetzen} disabled={saving} title="Zurück auf automatisches Gesicht aus dem Namen">Zurücksetzen</button>
           <button className="btn-secondary flex-1 text-sm" onClick={onClose} disabled={saving}>Abbrechen</button>
           <button className="btn-primary flex-1 text-sm" onClick={speichern} disabled={saving}>{saving ? 'Speichern…' : 'Speichern'}</button>

@@ -98,8 +98,10 @@ const DOKU = [
         '„Vorlagen" (Tab-Leiste) schaltet in den Vorlagenmodus – erkennbar am grünen Leuchtrahmen',
         'Vorlage samt Jahresplanung und Materialien anlegen',
         '„Klasse aus Vorlage erstellen": eine oder mehrere Klassen auf einmal (Namensliste), wahlweise inkl. Planung',
+        '„Export" (rechts) speichert die Jahresplanung als tabellarisches Word-Dokument',
         '„Vorlagenmodus beenden" kehrt zu den echten Klassen zurück',
       ] },
+      'Im Vorlagenmodus geht es ausschließlich um die Jahresplanung – Schüler:innen werden dort nicht verwaltet.',
     ],
   },
   {
@@ -155,6 +157,8 @@ const DOKU = [
     id: 'lizenz', titel: 'Über Daskala', bloecke: [
       'Daskala ist freie Software unter der GNU GPL-3.0 (Open Source). Du darfst die App kostenlos nutzen, weitergeben und verändern; weitergegebene Varianten müssen ebenfalls offen bleiben.',
       'Details in den Dateien LICENSE und THIRD-PARTY-NOTICES.txt.',
+      { h: 'Feedback' },
+      'Über „💬 Feedback" (oben in den Einstellungen) kannst du deine Meinung, Ideen oder Probleme direkt loswerden – der Bogen öffnet dein Mailprogramm mit vorausgefülltem Text. Ohne Mailprogramm einfach „Text kopieren" und die Nachricht selbst senden.',
       { h: 'Updates' },
       'Beim Start prüft Daskala automatisch auf eine neuere Version und lädt sie im Hintergrund. Sobald ein Update bereit ist, kannst du es über „Jetzt neu starten" sofort installieren – andernfalls wird es beim nächsten Beenden übernommen. Vor jeder Installation legt Daskala automatisch eine Sicherung deiner Daten an. Nach dem Update zeigt ein kurzes Fenster die wichtigsten Neuerungen.',
     ],

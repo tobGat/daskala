@@ -73,3 +73,49 @@ export function avatarSvg(schueler, size = 64) {
   _cache.set(key, svg)
   return svg
 }
+
+// ─── Teilbarer Avatar-Code (App ⇄ Web-Editor avatar.schulapps.at) ─────────────
+// Format: DSK1-hd-ha-ey-eb-no-mo-sk-hc-gl-ea-be
+//   hd..mo = Varianten-Nummer (aus „variantNN"); sk/hc = Index in SKIN/HAIR;
+//   gl/ea/be = Varianten-Nummer wenn aktiv, sonst 0.
+// WICHTIG: App und Web müssen dieselbe lorelei-Version + dieselben Paletten nutzen.
+// Format: DSK1-hd-ha-ey-eb-no-mo-sk-hc-gl-ea-be
+//   hd..mo = Index in variantsOf(cat) (0-basiert); sk/hc = Index in SKIN/HAIR;
+//   gl/ea/be = 0 wenn aus, sonst (Varianten-Index + 1).
+// App und Web-Editor (avatar.schulapps.at) MÜSSEN dieselbe lorelei-Version nutzen.
+export const CODE_PREFIX = 'DSK1'
+const vidx = (cat, v) => Math.max(0, variantsOf(cat).indexOf(v))
+const vat = (cat, i) => { const vs = variantsOf(cat); return vs[Math.min(vs.length - 1, Math.max(0, i))] || vs[0] }
+
+export function optionsToCode(opts) {
+  const o = opts || {}
+  const parts = [
+    vidx('head', o.head?.[0]), vidx('hair', o.hair?.[0]), vidx('eyes', o.eyes?.[0]),
+    vidx('eyebrows', o.eyebrows?.[0]), vidx('nose', o.nose?.[0]), vidx('mouth', o.mouth?.[0]),
+    Math.max(0, SKIN.indexOf(o.skinColor?.[0])),
+    Math.max(0, HAIR.indexOf(o.hairColor?.[0])),
+    o.glassesProbability === 100 ? vidx('glasses', o.glasses?.[0]) + 1 : 0,
+    o.earringsProbability === 100 ? vidx('earrings', o.earrings?.[0]) + 1 : 0,
+    o.beardProbability === 100 ? vidx('beard', o.beard?.[0]) + 1 : 0,
+  ]
+  return CODE_PREFIX + '-' + parts.join('-')
+}
+
+export function codeToOptions(code) {
+  const t = String(code || '').trim().toUpperCase().split('-')
+  if (t[0] !== CODE_PREFIX || t.length < 12) return null
+  const n = t.slice(1, 12).map(x => parseInt(x, 10) || 0)
+  const [hd, ha, ey, eb, no, mo, sk, hc, gl, ea, be] = n
+  const hcHex = HAIR[hc] || HAIR[0]
+  const o = {
+    skinColor: [SKIN[sk] || SKIN[0]],
+    hairColor: [hcHex], eyebrowsColor: [hcHex],
+    head: [vat('head', hd)], hair: [vat('hair', ha)], eyes: [vat('eyes', ey)],
+    eyebrows: [vat('eyebrows', eb)], nose: [vat('nose', no)], mouth: [vat('mouth', mo)],
+    glassesProbability: gl ? 100 : 0, earringsProbability: ea ? 100 : 0, beardProbability: be ? 100 : 0,
+  }
+  if (gl) o.glasses = [vat('glasses', gl - 1)]
+  if (ea) o.earrings = [vat('earrings', ea - 1)]
+  if (be) o.beard = [vat('beard', be - 1)]
+  return o
+}

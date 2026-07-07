@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
 import AppZuruecksetzenModal from './AppZuruecksetzenModal'
 import BackupWiederherstellenModal from './BackupWiederherstellenModal'
+import FeedbackModal from './FeedbackModal'
 
 // Einklappbarer Einstellungs-Bereich (Akkordeon).
 function Akkordeon({ id, icon, titel, offen, onToggle, danger, children }) {
@@ -75,6 +76,7 @@ export default function Einstellungen({ onClose }) {
   }
   const [resetOffen, setResetOffen] = useState(false)
   const [wiederherstellenOffen, setWiederherstellenOffen] = useState(false)
+  const [feedbackOffen, setFeedbackOffen] = useState(false)
   const [offenerBereich, setOffenerBereich] = useState(null)
   const toggleBereich = (id) => setOffenerBereich(o => (o === id ? null : id))
 
@@ -285,6 +287,12 @@ export default function Einstellungen({ onClose }) {
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Einstellungen</h2>
           <div className="flex items-center gap-3">
+            <button
+              className="text-sm font-medium text-coral-600 hover:text-coral-700"
+              onClick={() => setFeedbackOffen(true)}
+            >
+              💬 Feedback
+            </button>
             <button
               className="text-sm font-medium text-coral-600 hover:text-coral-700"
               onClick={() => { onClose(); useStore.getState().openModal('dokumentation') }}
@@ -733,6 +741,7 @@ export default function Einstellungen({ onClose }) {
     </div>
     {resetOffen && <AppZuruecksetzenModal onClose={() => { setResetOffen(false); ladeBackupStatus() }} />}
     {wiederherstellenOffen && <BackupWiederherstellenModal onClose={() => setWiederherstellenOffen(false)} />}
+    {feedbackOffen && <FeedbackModal onClose={() => setFeedbackOffen(false)} />}
     </>
   )
 }
