@@ -1,7 +1,8 @@
 # Landing-Page – `daskala.schulapps.at`
 
-Statische Website (eine `index.html` + zwei Icons). Wird unter
-`daskala.schulapps.at` ausgeliefert (nginx-Root `/var/www/daskala`).
+Statische Website (`index.html`, Logo/Icons, `daskala-og.png`, `robots.txt`,
+`sitemap.xml`). Wird unter `daskala.schulapps.at` ausgeliefert
+(nginx-Root `/var/www/daskala`).
 
 Kein Build nötig – die Dateien werden direkt hochgeladen.
 
@@ -15,6 +16,7 @@ ssh -t claude@46.225.168.25 "sudo rsync -a --delete --exclude DEPLOY.md /tmp/das
 das Ersetzen der Dateien.)
 
 ## Hinweis
-Die Seite lädt Google Fonts, das Ko-fi-Widget und das Logo von GitHub – bewusst
-externe Ressourcen (Landing-Page, nicht die App). Die App selbst und der
-Avatar-Editor sind demgegenüber vollständig offline/CDN-frei.
+Die Seite lädt Google Fonts und das Ko-fi-Widget extern – bewusst (Landing-Page,
+nicht die App). Logo, Icons und OG-Bild werden dagegen selbst gehostet (kein
+GitHub-Hotlink mehr, wichtig für Ladezeit/SEO). Die App selbst und der
+Avatar-Editor sind vollständig offline/CDN-frei.
