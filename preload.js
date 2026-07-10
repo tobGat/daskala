@@ -23,7 +23,6 @@ const api = {
   klassen: {
     getAll: (schuljahrId) => invoke('klassen:getAll', schuljahrId),
     getVorlagen: () => invoke('klassen:getVorlagen'),
-    ausVorlage: (data) => invoke('klassen:ausVorlage', data),
     duplizieren: (data) => invoke('klassen:duplizieren', data),
     create: (data) => invoke('klassen:create', data),
     delete: (id) => invoke('klassen:delete', id),
@@ -89,6 +88,7 @@ const api = {
 
   faecher: {
     getAll: (klasseId) => invoke('faecher:getAll', klasseId),
+    getAllImSchuljahr: (schuljahrId) => invoke('faecher:getAllImSchuljahr', schuljahrId),
     create: (data) => invoke('faecher:create', data),
     delete: (id) => invoke('faecher:delete', id),
     rename: (id, name) => invoke('faecher:rename', id, name),
@@ -325,6 +325,7 @@ const api = {
     delete:            (id)                    => invoke('jahresplanung:delete', id),
     getFaecherMitPlan: ()                      => invoke('jahresplanung:getFaecherMitPlan'),
     importVonFach:     (quellId, zielId, options) => invoke('jahresplanung:importVonFach', quellId, zielId, options),
+    anwendenAufFaecher:(quellId, zielIds, options) => invoke('jahresplanung:anwendenAufFaecher', quellId, zielIds, options),
     swap:              (idA, idB)              => invoke('jahresplanung:swap', idA, idB),
   },
 

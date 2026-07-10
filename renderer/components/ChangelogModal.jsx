@@ -8,6 +8,16 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.0.64',
+    datum: 'Juli 2026',
+    punkte: [
+      'Vorlagen neu gedacht: Eine Fach-Jahresplanung lässt sich jetzt direkt auf ein oder mehrere bestehende Fächer anwenden – auch über mehrere Klassen gleichzeitig (z. B. „Musikplanung 1. Klasse" auf Musik in 1a, 1b und 1c). Die bisherige „Klasse aus Vorlage erstellen"-Funktion entfällt dafür.',
+      'Jahresplanung: Abschnitte haben jetzt ein eigenes Feld für Lernziele.',
+      'Jahresplanung: Beim Überfahren eines Abschnitts erscheint ein großer Tooltip mit Zeitraum, Inhalt und Lernzielen.',
+      'PDF-/Word-Export der Jahresplanung: je Abschnitt jetzt mit gut sichtbarem Zeitraum (Beginn/Ende), Inhalt, Lernzielen und Materiallisten.',
+    ],
+  },
+  {
     version: '1.0.63',
     datum: 'Juli 2026',
     punkte: [

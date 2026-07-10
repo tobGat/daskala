@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import useStore from '../store/useStore'
 import { berechneSchulferien, ferienFuerTag } from '../utils/schulferien'
 
@@ -269,16 +270,72 @@ function MonatKalender({ year, month, abschnitte, aktivesFach, dragOverDate, onD
   )
 }
 
+// ─── Abschnitt-Detail-Tooltip (Hover) ───────────────────────────────────────
+function AbschnittTooltip({ abschnitt, farbe, rect }) {
+  const istGeplant = !!abschnitt.datum_von
+  const inhalt = (abschnitt.inhalt ?? '').trim()
+  const lernziele = (abschnitt.lernziele ?? '').trim()
+  const W = 340
+  const flip = rect.right + 8 + W > window.innerWidth - 8
+  const left = flip ? Math.max(8, rect.left - 8 - W) : rect.right + 8
+  const top = Math.max(8, Math.min(rect.top, window.innerHeight - 320))
+  return createPortal(
+    <div className="fixed z-[1000] pointer-events-none" style={{ left, top, width: W }}>
+      <div className="rounded-xl border border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-900 shadow-2xl overflow-hidden">
+        <div className="h-1.5" style={{ backgroundColor: farbe }} />
+        <div className="p-3.5 max-h-[70vh] overflow-y-auto">
+          <div className="text-sm font-semibold text-ink-900 dark:text-white mb-1">{abschnitt.titel || 'Ohne Titel'}</div>
+          <div className="text-[11px] font-medium mb-2.5" style={{ color: farbe }}>
+            {istGeplant ? `${formatDatum(abschnitt.datum_von)} – ${formatDatum(abschnitt.datum_bis)}` : 'Noch nicht eingeplant'}
+          </div>
+          {inhalt && (
+            <div className="mb-2.5">
+              <div className="text-[10px] font-bold uppercase tracking-wide text-ink-400 mb-1">Inhalt</div>
+              <div className="text-xs text-ink-600 dark:text-paper-300 whitespace-pre-wrap leading-relaxed">{inhalt}</div>
+            </div>
+          )}
+          {lernziele && (
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: farbe }}>Lernziele</div>
+              <div className="text-xs text-ink-600 dark:text-paper-300 whitespace-pre-wrap leading-relaxed">{lernziele}</div>
+            </div>
+          )}
+          {!inhalt && !lernziele && (
+            <div className="text-xs text-ink-400 italic">Keine weiteren Details hinterlegt.</div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ─── Abschnitt-Karte (linke Seite) ──────────────────────────────────────────
 function AbschnittKarte({ abschnitt, aktivesFach, istSelektiert, onClick, onCalendarDragStart, onListDragStart, onListDrop, listDragOverId }) {
   const farbe = abschnitt.farbe ?? aktivesFach?.farbe ?? '#6366f1'
   const istGeplant = !!abschnitt.datum_von
   const istDropTarget = listDragOverId === abschnitt.id
+  const cardRef = useRef(null)
+  const timerRef = useRef(null)
+  const [tipRect, setTipRect] = useState(null)
+  const showTip = () => {
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      const r = cardRef.current?.getBoundingClientRect()
+      if (r) setTipRect({ top: r.top, left: r.left, right: r.right, bottom: r.bottom })
+    }, 180)
+  }
+  const hideTip = () => { clearTimeout(timerRef.current); setTipRect(null) }
+  useEffect(() => () => clearTimeout(timerRef.current), [])
 
   return (
     <div
+      ref={cardRef}
       draggable
+      onMouseEnter={showTip}
+      onMouseLeave={hideTip}
       onDragStart={(e) => {
+        hideTip()
         // Drag nicht starten wenn aus einem Input/Textarea
         const tag = e.target.tagName
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
@@ -333,13 +390,14 @@ function AbschnittKarte({ abschnitt, aktivesFach, istSelektiert, onClick, onCale
           )}
         </div>
       </div>
+      {tipRect && <AbschnittTooltip abschnitt={abschnitt} farbe={farbe} rect={tipRect} />}
     </div>
   )
 }
 
 // ─── Hauptkomponente ─────────────────────────────────────────────────────────
 export default function JahresplanungView() {
-  const { aktivesFach, einstellungen, aktuellesSchuljahr, pushToast, vorlagenModus, aktiveKlasse, setVorlagenModus } = useStore()
+  const { aktivesFach, einstellungen, aktuellesSchuljahr, pushToast, vorlagenModus, aktiveKlasse } = useStore()
   const [abschnitte, setAbschnitte] = useState([])
   const [selektiert, setSelektiert] = useState(null)
   const [istNeu, setIstNeu] = useState(false)
@@ -348,16 +406,20 @@ export default function JahresplanungView() {
   const [importQuellen, setImportQuellen] = useState([])
   const [importiertVon, setImportiertVon] = useState(null)
 
-  // Klasse(n)-aus-Vorlage
-  const [vorlageModal, setVorlageModal] = useState(false)
-  const [vorlageNamen, setVorlageNamen] = useState([''])
-  const [vorlageMitPlanung, setVorlageMitPlanung] = useState(true)
-  const [vorlageLaeuft, setVorlageLaeuft] = useState(false)
+  // Planung auf Fächer anwenden (nur Vorlagen-Modus)
+  const [anwendenModal, setAnwendenModal] = useState(false)
+  const [anwendenZiele, setAnwendenZiele] = useState([])                    // Fächer des Schuljahrs
+  const [anwendenAuswahl, setAnwendenAuswahl] = useState(() => new Set())   // gewählte Ziel-Fach-IDs
+  const [anwendenErsetzen, setAnwendenErsetzen] = useState(false)
+  const [anwendenTermine, setAnwendenTermine] = useState(false)
+  const [anwendenMaterialien, setAnwendenMaterialien] = useState(true)
+  const [anwendenLaeuft, setAnwendenLaeuft] = useState(false)
 
   // Formular
   const [formTitel, setFormTitel] = useState('')
   const [formFarbe, setFormFarbe] = useState(null)
   const [formInhalt, setFormInhalt] = useState('')
+  const [formLernziele, setFormLernziele] = useState('')
 
   // Materialien
   const [materialien, setMaterialien] = useState({ root: false, ordner: null, dateien: [], links: [] })
@@ -464,42 +526,46 @@ export default function JahresplanungView() {
     finally { setExportLaeuft(false) }
   }
 
-  // ─── Klasse(n) aus Vorlage erstellen ─────────────────────────────────────
-  const openVorlageModal = () => {
-    setVorlageNamen([aktiveKlasse?.name ?? ''])
-    setVorlageMitPlanung(true)
-    setVorlageModal(true)
+  // ─── Planung auf Fächer anwenden ─────────────────────────────────────────
+  const openAnwendenModal = async () => {
+    if (!aktivesFach || !aktuellesSchuljahr) return
+    const faecher = await window.api.faecher.getAllImSchuljahr(aktuellesSchuljahr.id)
+    setAnwendenZiele(faecher)
+    setAnwendenAuswahl(new Set())
+    setAnwendenErsetzen(false)
+    setAnwendenTermine(false)
+    setAnwendenMaterialien(true)
+    setAnwendenModal(true)
   }
-  const setVorlageNameAt = (i, val) => setVorlageNamen(prev => prev.map((n, idx) => idx === i ? val : n))
-  const addVorlageName = () => setVorlageNamen(prev => [...prev, ''])
-  const removeVorlageName = (i) => setVorlageNamen(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev)
-
-  const handleKlasseAusVorlage = async () => {
-    if (!aktiveKlasse || !aktuellesSchuljahr) return
-    const namen = vorlageNamen.map(n => n.trim()).filter(Boolean)
-    if (namen.length === 0) return
-    setVorlageLaeuft(true)
+  const toggleAnwendenFach = (id) => setAnwendenAuswahl(prev => {
+    const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n
+  })
+  const toggleAnwendenKlasse = (faecherDerKlasse) => setAnwendenAuswahl(prev => {
+    const n = new Set(prev)
+    const alleDrin = faecherDerKlasse.every(f => n.has(f.id))
+    for (const f of faecherDerKlasse) { if (alleDrin) n.delete(f.id); else n.add(f.id) }
+    return n
+  })
+  const waehleGleichnamige = () => {
+    const name = aktivesFach?.name?.trim().toLowerCase()
+    setAnwendenAuswahl(new Set(anwendenZiele.filter(f => f.name.trim().toLowerCase() === name).map(f => f.id)))
+  }
+  const handleAnwenden = async () => {
+    if (!aktivesFach || anwendenAuswahl.size === 0) return
+    setAnwendenLaeuft(true)
     try {
-      const ids = []
-      for (const name of namen) {
-        const id = await window.api.klassen.ausVorlage({
-          vorlagenKlasseId: aktiveKlasse.id,
-          schuljahrId: aktuellesSchuljahr.id,
-          neuerName: name,
-          mitPlanung: vorlageMitPlanung,
-        })
-        if (id) ids.push(id)
-      }
-      setVorlageModal(false)
-      if (ids.length === 0) { pushToast('Klasse konnte nicht erstellt werden.', 'error'); return }
-      pushToast(ids.length === 1 ? 'Klasse aus Vorlage erstellt.' : `${ids.length} Klassen aus Vorlage erstellt.`, 'success')
-      // Vorlagenmodus verlassen und die erste neue Klasse anzeigen
-      await setVorlagenModus(false)
-      const { klassen, setAktiveKlasse } = useStore.getState()
-      const neu = klassen.find(k => k.id === ids[0])
-      if (neu) await setAktiveKlasse(neu)
+      const res = await window.api.jahresplanung.anwendenAufFaecher(
+        aktivesFach.id, [...anwendenAuswahl],
+        { ohneTermine: !anwendenTermine, ersetzen: anwendenErsetzen, mitMaterialien: anwendenMaterialien }
+      )
+      setAnwendenModal(false)
+      const n = res?.anzahlZiele ?? anwendenAuswahl.size
+      pushToast(`Planung auf ${n} ${n === 1 ? 'Fach' : 'Fächer'} angewendet.`, 'success')
+    } catch (e) {
+      console.error('anwendenAufFaecher:', e)
+      pushToast('Anwenden fehlgeschlagen.', 'error')
     } finally {
-      setVorlageLaeuft(false)
+      setAnwendenLaeuft(false)
     }
   }
 
@@ -511,6 +577,7 @@ export default function JahresplanungView() {
     setFormTitel(abschnitt.titel)
     setFormFarbe(abschnitt.farbe)
     setFormInhalt(abschnitt.inhalt ?? '')
+    setFormLernziele(abschnitt.lernziele ?? '')
   }
 
   const neuOeffnen = () => {
@@ -520,6 +587,7 @@ export default function JahresplanungView() {
     setFormTitel('')
     setFormFarbe(null)
     setFormInhalt('')
+    setFormLernziele('')
   }
 
   const panelSchliessen = () => {
@@ -536,6 +604,7 @@ export default function JahresplanungView() {
         fachId: aktivesFach.id,
         titel: formTitel.trim(),
         inhalt: formInhalt,
+        lernziele: formLernziele,
         datumVon: null,
         datumBis: null,
         farbe: formFarbe,
@@ -544,6 +613,7 @@ export default function JahresplanungView() {
       const res = await window.api.jahresplanung.update(selektiert.id, {
         titel: formTitel.trim(),
         inhalt: formInhalt,
+        lernziele: formLernziele,
         datumVon: selektiert.datum_von,
         datumBis: selektiert.datum_bis,
         farbe: formFarbe,
@@ -568,6 +638,7 @@ export default function JahresplanungView() {
     await window.api.jahresplanung.update(selektiert.id, {
       titel: selektiert.titel,
       inhalt: selektiert.inhalt,
+      lernziele: selektiert.lernziele,
       datumVon: null,
       datumBis: null,
       farbe: selektiert.farbe,
@@ -605,6 +676,7 @@ export default function JahresplanungView() {
         await window.api.jahresplanung.update(id, {
           titel: abschnitt.titel,
           inhalt: abschnitt.inhalt,
+          lernziele: abschnitt.lernziele,
           datumVon: abschnitt.datum_von,
           datumBis: dateStr,
           farbe: abschnitt.farbe,
@@ -629,6 +701,7 @@ export default function JahresplanungView() {
     await window.api.jahresplanung.update(abschnitt.id, {
       titel: abschnitt.titel,
       inhalt: abschnitt.inhalt,
+      lernziele: abschnitt.lernziele,
       datumVon: dateStr,
       datumBis: datumBis,
       farbe: abschnitt.farbe,
@@ -707,10 +780,11 @@ export default function JahresplanungView() {
         {vorlagenModus ? (
           <button
             className="btn-primary text-xs ml-auto"
-            onClick={openVorlageModal}
-            title="Aus dieser Vorlage eine echte Klasse erstellen"
+            onClick={openAnwendenModal}
+            disabled={abschnitte.length === 0}
+            title={abschnitte.length === 0 ? 'Diese Vorlage hat noch keine Abschnitte' : 'Diese Fach-Planung auf bestehende Fächer anwenden'}
           >
-            Klasse aus Vorlage erstellen
+            Planung auf Fächer anwenden
           </button>
         ) : (
           <button
@@ -857,6 +931,18 @@ export default function JahresplanungView() {
                       onChange={e => setFormInhalt(e.target.value)}
                       rows={4}
                       placeholder="Inhalte, Notizen…"
+                      className="w-full text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 placeholder-ink-400 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400 resize-none"
+                    />
+                  </div>
+
+                  {/* Lernziele */}
+                  <div>
+                    <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Lernziele</label>
+                    <textarea
+                      value={formLernziele}
+                      onChange={e => setFormLernziele(e.target.value)}
+                      rows={3}
+                      placeholder={'Ein Lernziel pro Zeile, z. B.\n- Notenwerte erkennen\n- Rhythmen klatschen'}
                       className="w-full text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 placeholder-ink-400 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400 resize-none"
                     />
                   </div>
@@ -1068,49 +1154,77 @@ export default function JahresplanungView() {
         </div>
       )}
 
-      {/* ─── Klasse(n)-aus-Vorlage-Modal ───────────────────────────────── */}
-      {vorlageModal && (
-        <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && setVorlageModal(false)}>
-          <div className="modal-box max-w-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-ink-800 dark:text-paper-100">Klasse(n) aus Vorlage erstellen</h3>
-              <button onClick={() => setVorlageModal(false)} className="text-ink-400 hover:text-ink-600 text-sm">✕</button>
+      {/* ─── Planung-auf-Fächer-anwenden-Modal ─────────────────────────── */}
+      {anwendenModal && (
+        <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && setAnwendenModal(false)}>
+          <div className="modal-box max-w-lg">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-base font-semibold text-ink-800 dark:text-paper-100">Planung anwenden — {aktivesFach?.name}</h3>
+              <button onClick={() => setAnwendenModal(false)} className="text-ink-400 hover:text-ink-600 text-sm">✕</button>
             </div>
-            <p className="text-xs text-ink-500 dark:text-ink-400 mb-4">
-              Erstellt im Schuljahr <span className="font-medium">{aktuellesSchuljahr?.bezeichnung}</span> aus der Vorlage „{aktiveKlasse?.name}" eine oder mehrere Klassen (je inkl. aller Fächer).
+            <p className="text-xs text-ink-500 dark:text-ink-400 mb-3">
+              Überträgt {abschnitte.length} Abschnitt{abschnitte.length === 1 ? '' : 'e'} der Vorlage „{aktiveKlasse?.name} · {aktivesFach?.name}" auf die gewählten Fächer.
             </p>
-            <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Klassennamen</label>
-            <div className="flex flex-col gap-1.5 mb-2">
-              {vorlageNamen.map((n, i) => (
-                <div key={i} className="flex items-center gap-1.5">
-                  <input
-                    value={n}
-                    onChange={e => setVorlageNameAt(i, e.target.value)}
-                    placeholder={`z.B. ${i === 0 ? '3A' : '3' + String.fromCharCode(66 + i)}`}
-                    className="flex-1 text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 placeholder-ink-400 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
-                    autoFocus={i === vorlageNamen.length - 1}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addVorlageName() } }}
-                  />
-                  {vorlageNamen.length > 1 && (
-                    <button onClick={() => removeVorlageName(i)} className="w-7 h-7 flex items-center justify-center rounded-md text-ink-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0" title="Entfernen">✕</button>
-                  )}
-                </div>
-              ))}
+
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-ink-500 dark:text-ink-400">Ziel-Fächer</label>
+              <button onClick={waehleGleichnamige} className="text-xs font-medium text-coral-600 hover:text-coral-700">
+                Alle „{aktivesFach?.name}" wählen
+              </button>
             </div>
-            <button onClick={addVorlageName} className="text-xs font-medium text-coral-600 hover:text-coral-700 mb-4 flex items-center gap-1">
-              <span className="text-sm leading-none">＋</span> weitere Klasse
-            </button>
-            <label className="flex items-start gap-2 cursor-pointer select-none mb-5">
-              <input type="checkbox" checked={vorlageMitPlanung} onChange={e => setVorlageMitPlanung(e.target.checked)} className="mt-0.5" />
-              <span className="text-sm text-ink-700 dark:text-paper-200">
-                Jahresplanung samt Materialien übernehmen
-                <span className="block text-[11px] text-ink-400">Abschnitte, Dokumente und Links werden je Klasse mitkopiert (ohne Kalender-Termine).</span>
-              </span>
-            </label>
+            <div className="max-h-64 overflow-y-auto border border-paper-200 dark:border-ink-700 rounded-lg p-2 mb-4 space-y-2">
+              {anwendenZiele.length === 0 ? (
+                <p className="text-sm text-ink-400 text-center py-3">Keine Fächer im Schuljahr.</p>
+              ) : Object.entries(
+                anwendenZiele.reduce((acc, f) => { (acc[f.klasse_name] = acc[f.klasse_name] || []).push(f); return acc }, {})
+              ).map(([klasseName, faecher]) => {
+                const alleDrin = faecher.every(f => anwendenAuswahl.has(f.id))
+                return (
+                  <div key={klasseName}>
+                    <button onClick={() => toggleAnwendenKlasse(faecher)} className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-500 dark:text-ink-400 uppercase tracking-wide mb-1 hover:text-coral-600">
+                      <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[9px] ${alleDrin ? 'bg-coral-600 border-coral-600 text-white' : 'border-paper-300 dark:border-ink-600'}`}>{alleDrin ? '✓' : ''}</span>
+                      {klasseName}
+                    </button>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 pl-1">
+                      {faecher.map(f => (
+                        <label key={f.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input type="checkbox" checked={anwendenAuswahl.has(f.id)} onChange={() => toggleAnwendenFach(f.id)} />
+                          {f.farbe && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: f.farbe }} />}
+                          <span className="text-ink-700 dark:text-paper-200 truncate">{f.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="space-y-2 mb-4">
+              <div className="flex gap-2">
+                {[[false, 'Anhängen'], [true, 'Ersetzen']].map(([val, label]) => (
+                  <button key={String(val)} type="button" onClick={() => setAnwendenErsetzen(val)}
+                    className={`flex-1 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${anwendenErsetzen === val
+                      ? 'border-coral-500 bg-coral-50 text-coral-700 dark:bg-coral-900 dark:text-coral-300 dark:border-coral-600'
+                      : 'border-paper-200 dark:border-ink-700 text-ink-600 dark:text-ink-400 hover:bg-paper-50 dark:hover:bg-ink-800'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {anwendenErsetzen && <p className="text-[11px] text-amber-600 dark:text-amber-400">Bestehende Planung der Ziel-Fächer wird vorher gelöscht.</p>}
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={anwendenTermine} onChange={e => setAnwendenTermine(e.target.checked)} />
+                <span className="text-ink-700 dark:text-paper-200">Termine übernehmen <span className="text-[11px] text-ink-400">(sonst unplatziert im Ziel-Kalender)</span></span>
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={anwendenMaterialien} onChange={e => setAnwendenMaterialien(e.target.checked)} />
+                <span className="text-ink-700 dark:text-paper-200">Materialien mitkopieren <span className="text-[11px] text-ink-400">(Dokumente &amp; Links)</span></span>
+              </label>
+            </div>
+
             <div className="flex gap-3">
-              <button className="btn-secondary flex-1" onClick={() => setVorlageModal(false)}>Abbrechen</button>
-              <button className="btn-primary flex-1" onClick={handleKlasseAusVorlage} disabled={vorlageLaeuft || !vorlageNamen.some(n => n.trim())}>
-                {vorlageLaeuft ? 'Erstelle…' : `Erstellen${vorlageNamen.filter(n => n.trim()).length > 1 ? ` (${vorlageNamen.filter(n => n.trim()).length})` : ''}`}
+              <button className="btn-secondary flex-1" onClick={() => setAnwendenModal(false)}>Abbrechen</button>
+              <button className="btn-primary flex-1" onClick={handleAnwenden} disabled={anwendenLaeuft || anwendenAuswahl.size === 0}>
+                {anwendenLaeuft ? 'Wende an…' : `Anwenden${anwendenAuswahl.size > 0 ? ` (${anwendenAuswahl.size})` : ''}`}
               </button>
             </div>
           </div>
