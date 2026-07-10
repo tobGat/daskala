@@ -684,6 +684,7 @@ function initDB() {
   } catch (e) { logError('migration:jahresplanung-datum-nullable', e) }
   // Leaf-Ordnername pro Abschnitt (Materialordner). Elternpfade werden live abgeleitet.
   spalteErgaenzen('jahresplanung_abschnitte', 'material_ordner', 'TEXT')
+  spalteErgaenzen('jahresplanung_abschnitte', 'lernziele', 'TEXT')
 
   // Materialien pro Abschnitt: Links + optionale Datei-Metadaten (Sidecar keyed by Dateiname).
   // Dokumente selbst liegen als Dateien im Ordner (Wahrheit), hier nur Metadaten.
@@ -1706,6 +1707,17 @@ function registerIPC() {
   // Fächer
   ipcMain.handle('faecher:getAll', (_, klasseId) => {
     return db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasseId)
+  })
+
+  // Alle Fächer echter Klassen eines Schuljahrs (für den Ziel-Picker beim Anwenden von Vorlagen).
+  ipcMain.handle('faecher:getAllImSchuljahr', (_, schuljahrId) => {
+    return db.prepare(`
+      SELECT f.id, f.name, f.farbe, f.klasse_id,
+             k.name AS klasse_name, k.farbe AS klasse_farbe, k.reihenfolge AS klasse_reihenfolge
+      FROM faecher f JOIN klassen k ON k.id = f.klasse_id
+      WHERE k.schuljahr_id = ? AND k.ist_vorlage = 0
+      ORDER BY k.reihenfolge, k.name, f.reihenfolge, f.name
+    `).all(schuljahrId)
   })
 
   ipcMain.handle('faecher:create', (_, { klasseId, name, farbe, benotungssystem, alleSchueler = 1, schuelerIds = [] }) => {
@@ -3411,7 +3423,9 @@ function registerIPC() {
 
     const bloecke = abschnitte.map(a => {
       const { dateien, links } = sammleMaterialien(a.id)
-      const zeitraum = a.datum_von ? `<span class="zeit">${fdat(a.datum_von)} – ${fdat(a.datum_bis)}</span>` : ''
+      const zeitraum = a.datum_von
+        ? `<div class="zeit">${fdat(a.datum_von)} – ${fdat(a.datum_bis)}</div>`
+        : `<div class="zeit zeit-leer">Nicht eingeplant</div>`
       let mat = ''
       if (dateien.length || links.length) {
         mat += '<div class="mat"><div class="mat-t">Materialien</div><ul>'
@@ -3419,9 +3433,13 @@ function registerIPC() {
         for (const l of links) mat += `<li>🔗 ${esc(l.anzeigename || l.ref)}${l.anzeigename ? ` <span class="url">(${esc(l.ref)})</span>` : ''}${l.beschreibung ? ` – <span class="beschr">${esc(l.beschreibung)}</span>` : ''}</li>`
         mat += '</ul></div>'
       }
+      const lz = (a.lernziele && a.lernziele.trim())
+        ? `<div class="lz"><div class="lz-t">Lernziele</div><div class="lz-b">${fmt(a.lernziele)}</div></div>` : ''
       return `<div class="abschnitt" style="border-left-color:${esc(a.farbe || '#6366f1')}">
-        <div class="a-kopf"><span class="a-titel">${esc(a.titel || 'Ohne Titel')}</span>${zeitraum}</div>
+        <div class="a-kopf"><span class="a-titel">${esc(a.titel || 'Ohne Titel')}</span></div>
+        ${zeitraum}
         ${a.inhalt ? `<div class="inhalt">${fmt(a.inhalt)}</div>` : ''}
+        ${lz}
         ${mat}
       </div>`
     }).join('')
@@ -3433,10 +3451,14 @@ function registerIPC() {
       h1{font-size:22px;font-weight:300;margin-bottom:2px}
       .meta{font-size:11px;color:#666;margin-bottom:20px}
       .abschnitt{margin-bottom:16px;padding:8px 12px;border-left:4px solid #6366f1;page-break-inside:avoid}
-      .a-kopf{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:4px}
+      .a-kopf{margin-bottom:1px}
       .a-titel{font-size:14px;font-weight:700;color:#111}
-      .zeit{font-size:10px;color:#888;white-space:nowrap}
+      .zeit{font-size:11px;font-weight:600;color:#374151;margin-bottom:6px}
+      .zeit-leer{font-weight:400;font-style:italic;color:#9ca3af}
       .inhalt{font-size:11px;color:#333;line-height:1.5;margin-bottom:6px}
+      .lz{margin-top:4px;margin-bottom:6px}
+      .lz-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6366f1;margin-bottom:2px}
+      .lz-b{font-size:11px;color:#333;line-height:1.5}
       .mat{margin-top:4px}
       .mat-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#888;margin-bottom:2px}
       .mat ul{list-style:none;padding-left:0}
@@ -3510,11 +3532,17 @@ function registerIPC() {
 
     const dataRows = abschnitte.map((a, idx) => {
       const shading = idx % 2 === 1 ? { fill: 'F4F5FB' } : undefined
-      const zeitraum = a.datum_von ? `${fdat(a.datum_von)} –\n${fdat(a.datum_bis)}` : ''
+      const zeitraum = a.datum_von ? `${fdat(a.datum_von)} –\n${fdat(a.datum_bis)}` : 'Nicht eingeplant'
       return new TableRow({ children: [
-        new TableCell({ width: { size: 1600, type: WidthType.DXA }, borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: textParas(zeitraum, { color: '666666', size: 16 }) }),
+        new TableCell({ width: { size: 1600, type: WidthType.DXA }, borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: textParas(zeitraum, { color: a.datum_von ? '374151' : '9CA3AF', size: 16, bold: !!a.datum_von }) }),
         new TableCell({ width: { size: 2500, type: WidthType.DXA }, borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: [new Paragraph({ children: [new TextRun({ text: a.titel || 'Ohne Titel', bold: true, size: 20, font: 'Arial' })] })] }),
-        new TableCell({ borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: textParas(a.inhalt) }),
+        new TableCell({ borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: [
+          ...textParas(a.inhalt),
+          ...(a.lernziele && a.lernziele.trim() ? [
+            new Paragraph({ spacing: { before: 60, after: 20 }, children: [new TextRun({ text: 'Lernziele', bold: true, size: 16, font: 'Arial', color: '6366F1' })] }),
+            ...textParas(a.lernziele),
+          ] : []),
+        ] }),
         new TableCell({ width: { size: 2600, type: WidthType.DXA }, borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: matParas(a) }),
       ] })
     })
@@ -3938,13 +3966,13 @@ function registerIPC() {
   )
   ipcMain.handle('jahresplanung:create', (_, d) => {
     const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(d.fachId).m
-    const id = Number(db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?)').run(d.fachId, d.titel, d.inhalt ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, maxOrd + 1).lastInsertRowid)
+    const id = Number(db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?)').run(d.fachId, d.titel, d.inhalt ?? '', d.lernziele ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, maxOrd + 1).lastInsertRowid)
     try { if (materialRoot()) { ensureAbschnittFolder(id); schreibeMaterialIndex(id) } } catch (e) { logError('jahresplanung:create ordner', e) }
     return id
   })
   ipcMain.handle('jahresplanung:update', (_, id, d) => {
     const alt = db.prepare('SELECT titel, fach_id, material_ordner FROM jahresplanung_abschnitte WHERE id=?').get(id)
-    db.prepare('UPDATE jahresplanung_abschnitte SET titel=?, inhalt=?, datum_von=?, datum_bis=?, farbe=? WHERE id=?').run(d.titel, d.inhalt ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, id)
+    db.prepare('UPDATE jahresplanung_abschnitte SET titel=?, inhalt=?, lernziele=?, datum_von=?, datum_bis=?, farbe=? WHERE id=?').run(d.titel, d.inhalt ?? '', d.lernziele ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, id)
     let ordnerWarnung = null
     const root = materialRoot()
     if (root && alt && alt.material_ordner && d.titel != null && d.titel !== alt.titel) {
@@ -3981,16 +4009,41 @@ function registerIPC() {
     const ohneTermine = options && options.ohneTermine === true
     const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY reihenfolge').all(quellFachId)
     const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(zielFachId).m
-    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?)')
+    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?)')
     db.transaction(() => {
       abschnitte.forEach((a, i) => insert.run(
-        zielFachId, a.titel, a.inhalt,
+        zielFachId, a.titel, a.inhalt, a.lernziele,
         ohneTermine ? null : a.datum_von,
         ohneTermine ? null : a.datum_bis,
         a.farbe, maxOrd + 1 + i
       ))
     })()
     return true
+  })
+  // Eine Fach-Planung (z. B. eine Vorlage) auf MEHRERE Ziel-Fächer anwenden.
+  // ohneTermine (Default true) = Datumsangaben strippen; ersetzen = Ziel-Planung vorher löschen;
+  // mitMaterialien (Default true) = Dokumente/Links je Abschnitt mitkopieren.
+  ipcMain.handle('jahresplanung:anwendenAufFaecher', (_, quellFachId, zielFachIds, options = {}) => {
+    const ohneTermine = options.ohneTermine !== false
+    const ersetzen = options.ersetzen === true
+    const mitMaterialien = options.mitMaterialien !== false
+    const ziele = (Array.isArray(zielFachIds) ? zielFachIds : []).filter(id => id && id !== quellFachId)
+    const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY reihenfolge, id').all(quellFachId)
+    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?)')
+    const tx = db.transaction(() => {
+      for (const zielFachId of ziele) {
+        if (ersetzen) db.prepare('DELETE FROM jahresplanung_abschnitte WHERE fach_id = ?').run(zielFachId)
+        const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(zielFachId).m
+        abschnitte.forEach((a, i) => {
+          const na = insert.run(zielFachId, a.titel, a.inhalt, a.lernziele,
+            ohneTermine ? null : a.datum_von, ohneTermine ? null : a.datum_bis,
+            a.farbe, maxOrd + 1 + i)
+          if (mitMaterialien) kopiereMaterialien(a.id, na.lastInsertRowid)
+        })
+      }
+    })
+    tx()
+    return { ok: true, anzahlZiele: ziele.length, anzahlAbschnitte: abschnitte.length }
   })
   ipcMain.handle('jahresplanung:swap', (_, idA, idB) => {
     const a = db.prepare('SELECT datum_von, datum_bis, reihenfolge FROM jahresplanung_abschnitte WHERE id = ?').get(idA)
@@ -4219,41 +4272,6 @@ function registerIPC() {
     } catch (e) { logError('kopiereMaterialien', e) }
   }
 
-  // Aus einer Vorlagenklasse eine echte Klasse erstellen (Fächer, optional Jahresplanung + Materialien).
-  ipcMain.handle('klassen:ausVorlage', (_, { vorlagenKlasseId, schuljahrId, neuerName, mitPlanung }) => {
-    const tx = db.transaction(() => {
-      const vorlage = db.prepare('SELECT * FROM klassen WHERE id=?').get(vorlagenKlasseId)
-      if (!vorlage) return null
-      const maxReihen = db.prepare('SELECT MAX(reihenfolge) as m FROM klassen WHERE schuljahr_id=?').get(schuljahrId)?.m ?? 0
-      const nk = db.prepare('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link, ist_vorlage) VALUES (?,?,?,?,?,0)')
-        .run(schuljahrId, (neuerName && neuerName.trim()) || vorlage.name, vorlage.farbe ?? null, maxReihen + 1, vorlage.teams_link ?? null)
-      const neueKlasseId = nk.lastInsertRowid
-
-      const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id=? ORDER BY reihenfolge, id').all(vorlagenKlasseId)
-      for (const f of faecher) {
-        const nf = db.prepare(`INSERT INTO faecher
-          (klasse_id, name, farbe, reihenfolge, benotungssystem, alle_schueler,
-           gewichtung_sa, gewichtung_t, gewichtung_custom, ma_max_einfluss, hue_max_einfluss)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(
-          neueKlasseId, f.name, f.farbe ?? null, f.reihenfolge, f.benotungssystem ?? 'standard', f.alle_schueler ?? 1,
-          f.gewichtung_sa, f.gewichtung_t, f.gewichtung_custom, f.ma_max_einfluss, f.hue_max_einfluss)
-        const neuFachId = nf.lastInsertRowid
-        initKompetenzVorlagen(neuFachId, f.name)
-        if (mitPlanung) {
-          const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id').all(f.id)
-          for (const a of abschnitte) {
-            // Ohne Termine übernehmen (im neuen Kalender frei platzierbar)
-            const na = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?)')
-              .run(neuFachId, a.titel, a.inhalt, null, null, a.farbe, a.reihenfolge)
-            kopiereMaterialien(a.id, na.lastInsertRowid)
-          }
-        }
-      }
-      return neueKlasseId
-    })
-    return tx()
-  })
-
   // Eine echte Klasse duplizieren: Fächer immer; optional Jahresplanung+Materialien und/oder Schüler:innen (ohne Noten).
   ipcMain.handle('klassen:duplizieren', (_, { klasseId, neuerName, mitPlanung, mitSchueler }) => {
     const tx = db.transaction(() => {
@@ -4305,8 +4323,8 @@ function registerIPC() {
         if (mitPlanung) {
           const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id').all(f.id)
           for (const a of abschnitte) {
-            const na = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?)')
-              .run(neuFachId, a.titel, a.inhalt, a.datum_von, a.datum_bis, a.farbe, a.reihenfolge)
+            const na = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?)')
+              .run(neuFachId, a.titel, a.inhalt, a.lernziele, a.datum_von, a.datum_bis, a.farbe, a.reihenfolge)
             kopiereMaterialien(a.id, na.lastInsertRowid)
           }
         }

@@ -81,29 +81,29 @@ const DOKU = [
     id: 'jahresplanung', titel: 'Jahresplanung & Materialien', bloecke: [
       'In der Jahresplanung gliederst du das Schuljahr in Abschnitte und ziehst sie per Drag-&-Drop in den Kalender.',
       { h: 'Abschnitte' },
-      'Über „+ Neuer Abschnitt" legst du Titel, Farbe und Inhalt an. Ein Klick auf einen Abschnitt öffnet das Bearbeiten-Modal.',
+      'Über „+ Neuer Abschnitt" legst du Titel, Farbe, Inhalt und Lernziele an. Ein Klick auf einen Abschnitt öffnet das Bearbeiten-Modal. Fährst du mit der Maus über einen Abschnitt, zeigt ein großer Tooltip die Details (Zeitraum, Inhalt, Lernziele).',
       { h: 'Materialien' },
       'Zu jedem Abschnitt kannst du Dokumente (werden in einen echten Ordner kopiert) und Links (mit Anzeigename/Beschreibung) hinterlegen. Der Wurzelordner wird beim ersten Mal abgefragt und ist in den Einstellungen änderbar.',
       { ul: [
         'Struktur auf der Festplatte: Schuljahr / Klasse / Fach / Abschnitt',
         'Auch manuell in den Ordner gelegte Dateien erscheinen in der App',
         '„Ordner öffnen" öffnet den Abschnitts-Ordner im Explorer',
-        '„Exportieren" erzeugt die gesamte Jahresplanung inkl. Materiallisten als PDF',
+        '„Exportieren" erzeugt die gesamte Jahresplanung als PDF – je Abschnitt mit Zeitraum (Beginn/Ende), Inhalt, Lernzielen und Materiallisten',
       ] },
       { tipp: 'Benennst du eine Klasse, ein Fach oder einen Abschnitt um, wird der zugehörige Ordner automatisch mit umbenannt.' },
     ],
   },
   {
-    id: 'vorlagen', titel: 'Vorlagenklassen', bloecke: [
-      'Mit Vorlagenklassen planst du ein Fach einmal (Abschnitte + Materialien) und erstellst daraus beliebig oft echte Klassen.',
+    id: 'vorlagen', titel: 'Vorlagen (Fach-Planungen)', bloecke: [
+      'Vorlagen sind Jahresplanungen für Fächer: Du planst ein Fach einmal (Abschnitte + Materialien) und wendest diese Planung anschließend auf beliebig viele bestehende Fächer an – auch über mehrere Klassen hinweg (z. B. „Musikplanung 1. Klasse" auf Musik in 1a, 1b und 1c gleichzeitig).',
       { ul: [
         '„Vorlagen" (Tab-Leiste) schaltet in den Vorlagenmodus – erkennbar am grünen Leuchtrahmen',
-        'Vorlage samt Jahresplanung und Materialien anlegen',
-        '„Klasse aus Vorlage erstellen": eine oder mehrere Klassen auf einmal (Namensliste), wahlweise inkl. Planung',
-        '„Export" (rechts) speichert die Jahresplanung als tabellarisches Word-Dokument',
+        'Vorlagen werden hier als Fächer in Vorlagen-Gruppen angelegt und samt Jahresplanung + Materialien bearbeitet',
+        '„Planung auf Fächer anwenden": Ziel-Fächer über Klassen hinweg auswählen (Komfort: „Alle gleichnamigen Fächer wählen")',
+        'Anhängen (ergänzt die Abschnitte) oder Ersetzen (löscht die bestehende Ziel-Planung vorher); optional Termine und Materialien mitkopieren',
         '„Vorlagenmodus beenden" kehrt zu den echten Klassen zurück',
       ] },
-      'Im Vorlagenmodus geht es ausschließlich um die Jahresplanung – Schüler:innen werden dort nicht verwaltet.',
+      'Standardmäßig werden die Termine gestrippt – jede Ziel-Klasse platziert die Abschnitte auf ihrem eigenen Kalender. Im Vorlagenmodus geht es ausschließlich um die Jahresplanung; Schüler:innen werden dort nicht verwaltet.',
     ],
   },
   {
