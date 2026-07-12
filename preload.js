@@ -280,8 +280,7 @@ const api = {
     allSchuelerExcel: () => invoke('export:allSchuelerExcel'),
     allSchuelerPdf: () => invoke('export:allSchuelerPdf'),
     fachPlanungDocx: (fachId, fachName, klasseName, wochenDaten) => invoke('export:fachPlanungDocx', fachId, fachName, klasseName, wochenDaten),
-    jahresplanungPdf: (fachId) => invoke('export:jahresplanungPdf', fachId),
-    jahresplanungDocx: (fachId) => invoke('export:jahresplanungDocx', fachId),
+    jahresplanungOdt: (fachId) => invoke('export:jahresplanungOdt', fachId),
   },
 
   import: {
@@ -326,7 +325,12 @@ const api = {
     getFaecherMitPlan: ()                      => invoke('jahresplanung:getFaecherMitPlan'),
     importVonFach:     (quellId, zielId, options) => invoke('jahresplanung:importVonFach', quellId, zielId, options),
     anwendenAufFaecher:(quellId, zielIds, options) => invoke('jahresplanung:anwendenAufFaecher', quellId, zielIds, options),
+    importVonDatei:    (fachId, filePath, options) => invoke('jahresplanung:importVonDatei', fachId, filePath, options),
     swap:              (idA, idB)              => invoke('jahresplanung:swap', idA, idB),
+  },
+
+  datei: {
+    speichereText: (content, defaultName, filters) => invoke('datei:speichereText', content, defaultName, filters),
   },
 
   materialien: {

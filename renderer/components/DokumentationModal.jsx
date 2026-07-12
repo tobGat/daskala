@@ -81,14 +81,14 @@ const DOKU = [
     id: 'jahresplanung', titel: 'Jahresplanung & Materialien', bloecke: [
       'In der Jahresplanung gliederst du das Schuljahr in Abschnitte und ziehst sie per Drag-&-Drop in den Kalender.',
       { h: 'Abschnitte' },
-      'Über „+ Neuer Abschnitt" legst du Titel, Farbe, Inhalt und Lernziele an. Ein Klick auf einen Abschnitt öffnet das Bearbeiten-Modal. Fährst du mit der Maus über einen Abschnitt, zeigt ein großer Tooltip die Details (Zeitraum, Inhalt, Lernziele).',
+      'Über „+ Neuer Abschnitt" legst du Titel, Farbe, Inhalt, Lernziele und Kompetenzen (Lehrplan) an. Ein Klick auf einen Abschnitt öffnet das Bearbeiten-Modal. Fährst du mit der Maus über einen Abschnitt, wird der Kalender leicht abgeblendet und ein großer Tooltip zeigt mittig die Details (Zeitraum, Inhalt, Lernziele, Kompetenzen).',
       { h: 'Materialien' },
       'Zu jedem Abschnitt kannst du Dokumente (werden in einen echten Ordner kopiert) und Links (mit Anzeigename/Beschreibung) hinterlegen. Der Wurzelordner wird beim ersten Mal abgefragt und ist in den Einstellungen änderbar.',
       { ul: [
         'Struktur auf der Festplatte: Schuljahr / Klasse / Fach / Abschnitt',
         'Auch manuell in den Ordner gelegte Dateien erscheinen in der App',
         '„Ordner öffnen" öffnet den Abschnitts-Ordner im Explorer',
-        '„Exportieren" erzeugt die gesamte Jahresplanung als PDF – je Abschnitt mit Zeitraum (Beginn/Ende), Inhalt, Lernzielen und Materiallisten',
+        '„Exportieren" erzeugt die gesamte Jahresplanung als ODT-Dokument (Tabelle im Querformat): Spalten Zeitraum, Inhalt, Zielsetzungen, Kompetenzen und Materialien je Abschnitt – bearbeitbar in Word, LibreOffice usw.',
       ] },
       { tipp: 'Benennst du eine Klasse, ein Fach oder einen Abschnitt um, wird der zugehörige Ordner automatisch mit umbenannt.' },
     ],
@@ -104,6 +104,18 @@ const DOKU = [
         '„Vorlagenmodus beenden" kehrt zu den echten Klassen zurück',
       ] },
       'Standardmäßig werden die Termine gestrippt – jede Ziel-Klasse platziert die Abschnitte auf ihrem eigenen Kalender. Im Vorlagenmodus geht es ausschließlich um die Jahresplanung; Schüler:innen werden dort nicht verwaltet.',
+    ],
+  },
+  {
+    id: 'ki', titel: 'Jahresplanung mit KI', bloecke: [
+      'Du kannst eine Jahresplanung mit Hilfe eines Chatbots (z. B. ChatGPT oder Claude) erstellen lassen und sie anschließend importieren.',
+      { ul: [
+        'Einstellungen → „KI-Unterstützung" → „Anleitung für Chatbot exportieren (.md)": speichert eine Anleitungsdatei mit Ausgabeschema und Kontext (Schuljahr, Ferien/Feiertage, Farbpalette, deine Klassen & Fächer).',
+        'Diese .md-Datei einem Chatbot geben. Er fragt zuerst nach Fach, Inhalten, Schwerpunkten und Materialien (Dateien kannst du im Chat hochladen) und erstellt daraus die Planung.',
+        'Die vom Chatbot gelieferte JSON als Datei speichern.',
+        'In der Jahresplanung das Ziel-Fach wählen → „Importieren" → „Aus Datei (KI-Planung)" → die JSON wählen. Die Abschnitte werden angehängt.',
+      ] },
+      { tipp: 'Die Datumsangaben lassen sich nach dem Import im Kalender frei anpassen; ohne Datum bleiben Abschnitte „nicht eingeplant", bis du sie platzierst.' },
     ],
   },
   {
