@@ -685,6 +685,7 @@ function initDB() {
   // Leaf-Ordnername pro Abschnitt (Materialordner). Elternpfade werden live abgeleitet.
   spalteErgaenzen('jahresplanung_abschnitte', 'material_ordner', 'TEXT')
   spalteErgaenzen('jahresplanung_abschnitte', 'lernziele', 'TEXT')
+  spalteErgaenzen('jahresplanung_abschnitte', 'kompetenzen', 'TEXT')
 
   // Materialien pro Abschnitt: Links + optionale Datei-Metadaten (Sidecar keyed by Dateiname).
   // Dokumente selbst liegen als Dateien im Ordner (Wahrheit), hier nur Metadaten.
@@ -3127,6 +3128,19 @@ function registerIPC() {
     return result.canceled ? null : result.filePath
   })
 
+  // Generischer Text-Datei-Export (Speicherort per Dialog wählen, Inhalt kommt aus dem Renderer).
+  ipcMain.handle('datei:speichereText', async (_, content, defaultName, filters) => {
+    const result = await dialog.showSaveDialog({ defaultPath: defaultName, filters })
+    if (result.canceled) return false
+    try {
+      fs.writeFileSync(result.filePath, String(content ?? ''), 'utf-8')
+      return true
+    } catch (e) {
+      logError('datei:speichereText', e)
+      return false
+    }
+  })
+
   // Export: JSON
   ipcMain.handle('export:toJson', async () => {
     const savePath = await dialog.showSaveDialog({
@@ -3411,80 +3425,9 @@ function registerIPC() {
     }
   })
 
-  // ─── Export: gesamte Jahresplanung als PDF (inkl. Materiallisten) ─────────────
-  ipcMain.handle('export:jahresplanungPdf', async (_, fachId) => {
-    const h = abschnittHierarchie(fachId)
-    if (!h) return false
-    const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id').all(fachId)
-
-    const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    const fmt = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>').replace(/^- (.+)/gm, '• $1').replace(/\n/g, '<br/>')
-    const fdat = (d) => { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${parseInt(dd)}.${parseInt(m)}.${y}` }
-
-    const bloecke = abschnitte.map(a => {
-      const { dateien, links } = sammleMaterialien(a.id)
-      const zeitraum = a.datum_von
-        ? `<div class="zeit">${fdat(a.datum_von)} – ${fdat(a.datum_bis)}</div>`
-        : `<div class="zeit zeit-leer">Nicht eingeplant</div>`
-      let mat = ''
-      if (dateien.length || links.length) {
-        mat += '<div class="mat"><div class="mat-t">Materialien</div><ul>'
-        for (const d of dateien) mat += `<li>📄 ${esc(d.anzeigename || d.ref)}${d.fehlt ? ' <span class="fehlt">(Datei fehlt)</span>' : ''}${d.beschreibung ? ` – <span class="beschr">${esc(d.beschreibung)}</span>` : ''}</li>`
-        for (const l of links) mat += `<li>🔗 ${esc(l.anzeigename || l.ref)}${l.anzeigename ? ` <span class="url">(${esc(l.ref)})</span>` : ''}${l.beschreibung ? ` – <span class="beschr">${esc(l.beschreibung)}</span>` : ''}</li>`
-        mat += '</ul></div>'
-      }
-      const lz = (a.lernziele && a.lernziele.trim())
-        ? `<div class="lz"><div class="lz-t">Lernziele</div><div class="lz-b">${fmt(a.lernziele)}</div></div>` : ''
-      return `<div class="abschnitt" style="border-left-color:${esc(a.farbe || '#6366f1')}">
-        <div class="a-kopf"><span class="a-titel">${esc(a.titel || 'Ohne Titel')}</span></div>
-        ${zeitraum}
-        ${a.inhalt ? `<div class="inhalt">${fmt(a.inhalt)}</div>` : ''}
-        ${lz}
-        ${mat}
-      </div>`
-    }).join('')
-
-    const css = `
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a1a}
-      @page{size:A4;margin:1.5cm}
-      h1{font-size:22px;font-weight:300;margin-bottom:2px}
-      .meta{font-size:11px;color:#666;margin-bottom:20px}
-      .abschnitt{margin-bottom:16px;padding:8px 12px;border-left:4px solid #6366f1;page-break-inside:avoid}
-      .a-kopf{margin-bottom:1px}
-      .a-titel{font-size:14px;font-weight:700;color:#111}
-      .zeit{font-size:11px;font-weight:600;color:#374151;margin-bottom:6px}
-      .zeit-leer{font-weight:400;font-style:italic;color:#9ca3af}
-      .inhalt{font-size:11px;color:#333;line-height:1.5;margin-bottom:6px}
-      .lz{margin-top:4px;margin-bottom:6px}
-      .lz-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6366f1;margin-bottom:2px}
-      .lz-b{font-size:11px;color:#333;line-height:1.5}
-      .mat{margin-top:4px}
-      .mat-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#888;margin-bottom:2px}
-      .mat ul{list-style:none;padding-left:0}
-      .mat li{font-size:11px;color:#333;margin:2px 0}
-      .beschr{color:#666}
-      .url{color:#888;font-size:10px}
-      .fehlt{color:#dc2626;font-size:10px}
-    `
-    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>${css}</style></head>
-      <body><h1>Jahresplanung – ${esc(h.fach_name)}</h1>
-      <div class="meta">${esc(h.klasse_name)} · ${esc(h.schuljahr_bez)} · Exportiert am ${new Date().toLocaleDateString('de-AT')}</div>
-      ${bloecke || '<p style="color:#888">Keine Abschnitte vorhanden.</p>'}</body></html>`
-
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: `Jahresplanung_${sanitizeSegment(h.fach_name)}_${sanitizeSegment(h.klasse_name)}.pdf`,
-      filters: [{ name: 'PDF', extensions: ['pdf'] }],
-    })
-    if (savePath.canceled) return false
-    const buf = await htmlZuPdf(html)
-    fs.writeFileSync(savePath.filePath, buf)
-    return true
-  })
-
-  // ─── Export: Jahresplanung als DOCX (tabellarisch, Querformat) ────────────
-  ipcMain.handle('export:jahresplanungDocx', async (_, fachId) => {
-    const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, HeadingLevel, BorderStyle, PageOrientation } = require('docx')
+  // ─── Export: Jahresplanung als ODT (tabellarisch, Querformat) ─────────────
+  ipcMain.handle('export:jahresplanungOdt', async (_, fachId) => {
+    const JSZip = require('jszip')
     const h = abschnittHierarchie(fachId)
     if (!h) return false
     const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id').all(fachId)
@@ -3492,78 +3435,96 @@ function registerIPC() {
       dialog.showMessageBox({ type: 'info', message: 'Keine Abschnitte in der Jahresplanung vorhanden.' })
       return false
     }
-
+    const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
     const fdat = (d) => { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${parseInt(dd)}.${parseInt(m)}.${y}` }
-    const thin = { style: BorderStyle.SINGLE, size: 1, color: 'D5D8E0' }
-    const cellBorders = { top: thin, bottom: thin, left: thin, right: thin }
-    const cellMargins = { top: 60, bottom: 60, left: 90, right: 90 }
-
-    // Text mit einfachen Markdown-/Aufzählungs-Ersetzungen → Absätze
-    const textParas = (raw, extra = {}) => {
-      const paras = []
-      for (let line of String(raw || '').split('\n')) {
-        if (!line.trim()) continue
-        line = line.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/^\s*[-*]\s+/, '• ')
-        paras.push(new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: line, size: 18, font: 'Arial', ...extra })] }))
-      }
-      if (paras.length === 0) paras.push(new Paragraph({ children: [] }))
-      return paras
+    // Mehrzeiliger Text → ODT-Absätze (grobe Markdown-Bereinigung, "- " → "• ").
+    const absaetze = (raw, style) => {
+      const zeilen = String(raw || '').split('\n')
+        .map(l => l.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/^\s*[-*]\s+/, '• ').trimEnd())
+        .filter(l => l.trim() !== '')
+      if (zeilen.length === 0) return `<text:p text:style-name="${style}"/>`
+      return zeilen.map(l => `<text:p text:style-name="${style}">${esc(l)}</text:p>`).join('')
     }
-    const matParas = (a) => {
+    const matZelle = (a) => {
       const { dateien, links } = sammleMaterialien(a.id)
-      const paras = []
-      for (const d of dateien) paras.push(new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: `• ${d.anzeigename || d.ref}${d.fehlt ? ' (fehlt)' : ''}`, size: 16, font: 'Arial' })] }))
-      for (const l of links) paras.push(new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: `• ${l.anzeigename || l.ref}`, size: 16, font: 'Arial', color: '2563EB' })] }))
-      if (paras.length === 0) paras.push(new Paragraph({ children: [new TextRun({ text: '', size: 16 })] }))
-      return paras
+      const items = []
+      for (const d of dateien) items.push(`• ${d.anzeigename || d.ref}${d.fehlt ? ' (fehlt)' : ''}`)
+      for (const l of links) items.push(`• ${l.anzeigename || l.ref}`)
+      if (items.length === 0) return `<text:p text:style-name="PStd"/>`
+      return items.map(t => `<text:p text:style-name="PStd">${esc(t)}</text:p>`).join('')
+    }
+    const zeile = (a) => {
+      const zeitraum = a.datum_von ? `${fdat(a.datum_von)} – ${fdat(a.datum_bis)}` : 'Nicht eingeplant'
+      const inhalt = `<text:p text:style-name="PTitel">${esc(a.titel || 'Ohne Titel')}</text:p>` + absaetze(a.inhalt, 'PStd')
+      const ziele = (a.lernziele && a.lernziele.trim()) ? absaetze(a.lernziele, 'PStd') : '<text:p text:style-name="PStd">–</text:p>'
+      const komp = (a.kompetenzen && a.kompetenzen.trim()) ? absaetze(a.kompetenzen, 'PStd') : '<text:p text:style-name="PStd">–</text:p>'
+      return '<table:table-row>'
+        + `<table:table-cell table:style-name="Zelle"><text:p text:style-name="${a.datum_von ? 'PZeit' : 'PZeitLeer'}">${esc(zeitraum)}</text:p></table:table-cell>`
+        + `<table:table-cell table:style-name="Zelle">${inhalt}</table:table-cell>`
+        + `<table:table-cell table:style-name="Zelle">${ziele}</table:table-cell>`
+        + `<table:table-cell table:style-name="Zelle">${komp}</table:table-cell>`
+        + `<table:table-cell table:style-name="Zelle">${matZelle(a)}</table:table-cell>`
+        + '</table:table-row>'
     }
 
-    const headerCell = (text, width) => new TableCell({
-      ...(width ? { width: { size: width, type: WidthType.DXA } } : {}),
-      borders: cellBorders, margins: cellMargins, shading: { fill: '4F46E5' },
-      children: [new Paragraph({ children: [new TextRun({ text, bold: true, size: 18, font: 'Arial', color: 'FFFFFF' })] })],
-    })
-    const headerRow = new TableRow({ tableHeader: true, children: [
-      headerCell('Zeitraum', 1600),
-      headerCell('Abschnitt', 2500),
-      headerCell('Inhalt', null),
-      headerCell('Materialien', 2600),
-    ] })
+    const content = `<?xml version="1.0" encoding="UTF-8"?>`
+      + `<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" office:version="1.2">`
+      + `<office:automatic-styles>`
+      + `<style:style style:name="Tabelle1" style:family="table"><style:table-properties style:width="26.7cm" table:align="margins"/></style:style>`
+      + `<style:style style:name="Tabelle1.A" style:family="table-column"><style:table-column-properties style:column-width="3.2cm"/></style:style>`
+      + `<style:style style:name="Tabelle1.B" style:family="table-column"><style:table-column-properties style:column-width="8.3cm"/></style:style>`
+      + `<style:style style:name="Tabelle1.C" style:family="table-column"><style:table-column-properties style:column-width="5.3cm"/></style:style>`
+      + `<style:style style:name="Tabelle1.D" style:family="table-column"><style:table-column-properties style:column-width="5.3cm"/></style:style>`
+      + `<style:style style:name="Tabelle1.E" style:family="table-column"><style:table-column-properties style:column-width="4.6cm"/></style:style>`
+      + `<style:style style:name="Zelle" style:family="table-cell"><style:table-cell-properties fo:border="0.5pt solid #99a0ad" fo:padding="0.12cm"/></style:style>`
+      + `<style:style style:name="Kopf" style:family="table-cell"><style:table-cell-properties fo:border="0.5pt solid #99a0ad" fo:padding="0.14cm" fo:background-color="#4f46e5"/></style:style>`
+      + `<style:style style:name="PStd" style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.05cm"/><style:text-properties fo:font-size="10pt"/></style:style>`
+      + `<style:style style:name="PTitel" style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.1cm"/><style:text-properties fo:font-size="11pt" fo:font-weight="bold"/></style:style>`
+      + `<style:style style:name="PZeit" style:family="paragraph"><style:text-properties fo:font-size="10pt" fo:font-weight="bold" fo:color="#374151"/></style:style>`
+      + `<style:style style:name="PZeitLeer" style:family="paragraph"><style:text-properties fo:font-size="10pt" fo:font-style="italic" fo:color="#9aa0ac"/></style:style>`
+      + `<style:style style:name="PKopf" style:family="paragraph"><style:text-properties fo:font-size="10pt" fo:font-weight="bold" fo:color="#ffffff"/></style:style>`
+      + `<style:style style:name="PTitelDoc" style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.05cm"/><style:text-properties fo:font-size="16pt" fo:font-weight="bold"/></style:style>`
+      + `<style:style style:name="PMeta" style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.3cm"/><style:text-properties fo:font-size="9pt" fo:color="#888888"/></style:style>`
+      + `</office:automatic-styles>`
+      + `<office:body><office:text>`
+      + `<text:p text:style-name="PTitelDoc">Jahresplanung – ${esc(h.fach_name)}</text:p>`
+      + `<text:p text:style-name="PMeta">${esc(h.klasse_name)} · ${esc(h.schuljahr_bez)} · Exportiert am ${new Date().toLocaleDateString('de-AT')}</text:p>`
+      + `<table:table table:name="Jahresplanung" table:style-name="Tabelle1">`
+      + `<table:table-column table:style-name="Tabelle1.A"/><table:table-column table:style-name="Tabelle1.B"/><table:table-column table:style-name="Tabelle1.C"/><table:table-column table:style-name="Tabelle1.D"/><table:table-column table:style-name="Tabelle1.E"/>`
+      + `<table:table-header-rows><table:table-row>`
+      + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Zeitraum</text:p></table:table-cell>`
+      + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Inhalt</text:p></table:table-cell>`
+      + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Zielsetzungen</text:p></table:table-cell>`
+      + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Kompetenzen</text:p></table:table-cell>`
+      + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Materialien</text:p></table:table-cell>`
+      + `</table:table-row></table:table-header-rows>`
+      + abschnitte.map(zeile).join('')
+      + `</table:table></office:text></office:body></office:document-content>`
 
-    const dataRows = abschnitte.map((a, idx) => {
-      const shading = idx % 2 === 1 ? { fill: 'F4F5FB' } : undefined
-      const zeitraum = a.datum_von ? `${fdat(a.datum_von)} –\n${fdat(a.datum_bis)}` : 'Nicht eingeplant'
-      return new TableRow({ children: [
-        new TableCell({ width: { size: 1600, type: WidthType.DXA }, borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: textParas(zeitraum, { color: a.datum_von ? '374151' : '9CA3AF', size: 16, bold: !!a.datum_von }) }),
-        new TableCell({ width: { size: 2500, type: WidthType.DXA }, borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: [new Paragraph({ children: [new TextRun({ text: a.titel || 'Ohne Titel', bold: true, size: 20, font: 'Arial' })] })] }),
-        new TableCell({ borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: [
-          ...textParas(a.inhalt),
-          ...(a.lernziele && a.lernziele.trim() ? [
-            new Paragraph({ spacing: { before: 60, after: 20 }, children: [new TextRun({ text: 'Lernziele', bold: true, size: 16, font: 'Arial', color: '6366F1' })] }),
-            ...textParas(a.lernziele),
-          ] : []),
-        ] }),
-        new TableCell({ width: { size: 2600, type: WidthType.DXA }, borders: cellBorders, margins: cellMargins, shading, verticalAlign: 'top', children: matParas(a) }),
-      ] })
-    })
+    const styles = `<?xml version="1.0" encoding="UTF-8"?>`
+      + `<office:document-styles xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" office:version="1.2">`
+      + `<office:automatic-styles><style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="29.7cm" fo:page-height="21cm" style:print-orientation="landscape" fo:margin-top="1.5cm" fo:margin-bottom="1.5cm" fo:margin-left="1.5cm" fo:margin-right="1.5cm"/></style:page-layout></office:automatic-styles>`
+      + `<office:master-styles><style:master-page style:name="Standard" style:page-layout-name="pm1"/></office:master-styles>`
+      + `</office:document-styles>`
 
-    const table = new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...dataRows] })
-
-    const doc = new Document({ sections: [{
-      properties: { page: { size: { orientation: PageOrientation.LANDSCAPE }, margin: { top: 720, bottom: 720, left: 720, right: 720 } } },
-      children: [
-        new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `Jahresplanung – ${h.fach_name}`, font: 'Arial' })] }),
-        new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: `${h.klasse_name} · ${h.schuljahr_bez} · Exportiert am ${new Date().toLocaleDateString('de-AT')}`, size: 18, font: 'Arial', color: '999999' })] }),
-        table,
-      ],
-    }] })
+    const manifest = `<?xml version="1.0" encoding="UTF-8"?>`
+      + `<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">`
+      + `<manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/>`
+      + `<manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>`
+      + `<manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/>`
+      + `</manifest:manifest>`
 
     const savePath = await dialog.showSaveDialog({
-      defaultPath: `Jahresplanung_${sanitizeSegment(h.fach_name)}_${sanitizeSegment(h.klasse_name)}.docx`,
-      filters: [{ name: 'Word-Dokument', extensions: ['docx'] }],
+      defaultPath: `Jahresplanung_${sanitizeSegment(h.fach_name)}_${sanitizeSegment(h.klasse_name)}.odt`,
+      filters: [{ name: 'OpenDocument-Text', extensions: ['odt'] }],
     })
     if (savePath.canceled) return false
-    const buf = await Packer.toBuffer(doc)
+    const zip = new JSZip()
+    zip.file('mimetype', 'application/vnd.oasis.opendocument.text', { compression: 'STORE' })
+    zip.file('META-INF/manifest.xml', manifest)
+    zip.file('styles.xml', styles)
+    zip.file('content.xml', content)
+    const buf = await zip.generateAsync({ type: 'nodebuffer' })
     fs.writeFileSync(savePath.filePath, buf)
     return true
   })
@@ -3966,13 +3927,13 @@ function registerIPC() {
   )
   ipcMain.handle('jahresplanung:create', (_, d) => {
     const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(d.fachId).m
-    const id = Number(db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?)').run(d.fachId, d.titel, d.inhalt ?? '', d.lernziele ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, maxOrd + 1).lastInsertRowid)
+    const id = Number(db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)').run(d.fachId, d.titel, d.inhalt ?? '', d.lernziele ?? '', d.kompetenzen ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, maxOrd + 1).lastInsertRowid)
     try { if (materialRoot()) { ensureAbschnittFolder(id); schreibeMaterialIndex(id) } } catch (e) { logError('jahresplanung:create ordner', e) }
     return id
   })
   ipcMain.handle('jahresplanung:update', (_, id, d) => {
     const alt = db.prepare('SELECT titel, fach_id, material_ordner FROM jahresplanung_abschnitte WHERE id=?').get(id)
-    db.prepare('UPDATE jahresplanung_abschnitte SET titel=?, inhalt=?, lernziele=?, datum_von=?, datum_bis=?, farbe=? WHERE id=?').run(d.titel, d.inhalt ?? '', d.lernziele ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, id)
+    db.prepare('UPDATE jahresplanung_abschnitte SET titel=?, inhalt=?, lernziele=?, kompetenzen=?, datum_von=?, datum_bis=?, farbe=? WHERE id=?').run(d.titel, d.inhalt ?? '', d.lernziele ?? '', d.kompetenzen ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, id)
     let ordnerWarnung = null
     const root = materialRoot()
     if (root && alt && alt.material_ordner && d.titel != null && d.titel !== alt.titel) {
@@ -4009,10 +3970,10 @@ function registerIPC() {
     const ohneTermine = options && options.ohneTermine === true
     const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY reihenfolge').all(quellFachId)
     const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(zielFachId).m
-    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?)')
+    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)')
     db.transaction(() => {
       abschnitte.forEach((a, i) => insert.run(
-        zielFachId, a.titel, a.inhalt, a.lernziele,
+        zielFachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen,
         ohneTermine ? null : a.datum_von,
         ohneTermine ? null : a.datum_bis,
         a.farbe, maxOrd + 1 + i
@@ -4029,13 +3990,13 @@ function registerIPC() {
     const mitMaterialien = options.mitMaterialien !== false
     const ziele = (Array.isArray(zielFachIds) ? zielFachIds : []).filter(id => id && id !== quellFachId)
     const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY reihenfolge, id').all(quellFachId)
-    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?)')
+    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)')
     const tx = db.transaction(() => {
       for (const zielFachId of ziele) {
         if (ersetzen) db.prepare('DELETE FROM jahresplanung_abschnitte WHERE fach_id = ?').run(zielFachId)
         const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(zielFachId).m
         abschnitte.forEach((a, i) => {
-          const na = insert.run(zielFachId, a.titel, a.inhalt, a.lernziele,
+          const na = insert.run(zielFachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen,
             ohneTermine ? null : a.datum_von, ohneTermine ? null : a.datum_bis,
             a.farbe, maxOrd + 1 + i)
           if (mitMaterialien) kopiereMaterialien(a.id, na.lastInsertRowid)
@@ -4044,6 +4005,63 @@ function registerIPC() {
     })
     tx()
     return { ok: true, anzahlZiele: ziele.length, anzahlAbschnitte: abschnitte.length }
+  })
+  // Import einer vom Chatbot erzeugten JSON-Datei in ein Fach (robustes Parsen + Validierung).
+  ipcMain.handle('jahresplanung:importVonDatei', (_, fachId, filePath, options = {}) => {
+    const ersetzen = options.ersetzen === true
+    let roh
+    try { roh = fs.readFileSync(filePath, 'utf-8') }
+    catch (e) { logError('importVonDatei:read', e); return { ok: false, fehler: 'Datei konnte nicht gelesen werden.' } }
+
+    // Robust: Code-Fences (```json …```) entfernen; sonst den äußersten {…}/[…]-Block extrahieren.
+    const parseJson = (text) => {
+      let t = String(text).trim()
+      const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i)
+      if (fence) t = fence[1].trim()
+      try { return JSON.parse(t) } catch {}
+      const m = t.match(/[[{][\s\S]*[\]}]/)
+      if (m) { try { return JSON.parse(m[0]) } catch {} }
+      return undefined
+    }
+    const parsed = parseJson(roh)
+    if (parsed === undefined) return { ok: false, fehler: 'Die Datei enthält kein gültiges JSON.' }
+
+    const liste = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.abschnitte) ? parsed.abschnitte : null)
+    if (!liste) return { ok: false, fehler: 'Kein „abschnitte"-Array in der Datei gefunden.' }
+
+    const istDatum = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)
+    const istFarbe = (s) => typeof s === 'string' && /^#[0-9a-fA-F]{6}$/.test(s)
+    // Strings direkt; Arrays (falls der Chatbot Listen liefert) zeilenweise zusammenführen.
+    const str = (v) => Array.isArray(v)
+      ? v.map(x => (x == null ? '' : (typeof x === 'object' ? String(x.text ?? x.titel ?? x.name ?? x.kompetenz ?? '') : String(x)))).filter(s => s.trim() !== '').join('\n')
+      : (v == null ? '' : String(v))
+    const pickDatum = (...vals) => { for (const v of vals) if (istDatum(v)) return v; return null }
+    const norm = liste.map(a => (a && typeof a === 'object') ? {
+      titel: str(a.titel ?? a.title).trim(),
+      inhalt: str(a.inhalt ?? a.beschreibung),
+      lernziele: str(a.lernziele ?? a.lernziel ?? a.ziele),
+      kompetenzen: str(a.kompetenzen ?? a.kompetenz),
+      datum_von: pickDatum(a.datum_von, a.datumVon, a.von),
+      datum_bis: pickDatum(a.datum_bis, a.datumBis, a.bis),
+      farbe: istFarbe(a.farbe ?? a.color) ? (a.farbe ?? a.color) : null,
+    } : null).filter(a => a && a.titel)
+
+    if (norm.length === 0) return { ok: false, fehler: 'Keine gültigen Abschnitte (mit Titel) gefunden.' }
+
+    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)')
+    const neueIds = []
+    db.transaction(() => {
+      if (ersetzen) db.prepare('DELETE FROM jahresplanung_abschnitte WHERE fach_id = ?').run(fachId)
+      const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(fachId).m
+      norm.forEach((a, i) => {
+        const info = insert.run(fachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen, a.datum_von, a.datum_bis, a.farbe, maxOrd + 1 + i)
+        neueIds.push(Number(info.lastInsertRowid))
+      })
+    })()
+    // Material-Ordner je Abschnitt anlegen (konsistent mit jahresplanung:create)
+    try { if (materialRoot()) for (const id of neueIds) { ensureAbschnittFolder(id); schreibeMaterialIndex(id) } }
+    catch (e) { logError('importVonDatei:ordner', e) }
+    return { ok: true, anzahl: neueIds.length }
   })
   ipcMain.handle('jahresplanung:swap', (_, idA, idB) => {
     const a = db.prepare('SELECT datum_von, datum_bis, reihenfolge FROM jahresplanung_abschnitte WHERE id = ?').get(idA)
@@ -4323,8 +4341,8 @@ function registerIPC() {
         if (mitPlanung) {
           const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id').all(f.id)
           for (const a of abschnitte) {
-            const na = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?)')
-              .run(neuFachId, a.titel, a.inhalt, a.lernziele, a.datum_von, a.datum_bis, a.farbe, a.reihenfolge)
+            const na = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)')
+              .run(neuFachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen, a.datum_von, a.datum_bis, a.farbe, a.reihenfolge)
             kopiereMaterialien(a.id, na.lastInsertRowid)
           }
         }

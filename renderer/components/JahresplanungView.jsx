@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import useStore from '../store/useStore'
 import { berechneSchulferien, ferienFuerTag } from '../utils/schulferien'
 
@@ -270,67 +269,90 @@ function MonatKalender({ year, month, abschnitte, aktivesFach, dragOverDate, onD
   )
 }
 
+// Textarea, die mit dem Inhalt mitwächst (kein eigenes Scrollen → das Modal scrollt als Ganzes).
+function AutoTextarea({ value, onChange, placeholder, className, minRows = 3 }) {
+  const ref = useRef(null)
+  const resize = () => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }
+  useEffect(() => { resize() }, [value])
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={e => { onChange(e); resize() }}
+      placeholder={placeholder}
+      className={className}
+      style={{ overflow: 'hidden', resize: 'none', minHeight: (minRows * 20 + 16) + 'px' }}
+    />
+  )
+}
+
 // ─── Abschnitt-Detail-Tooltip (Hover) ───────────────────────────────────────
-function AbschnittTooltip({ abschnitt, farbe, rect }) {
+// Detail-Karte, die zentral über dem Kalender angezeigt wird (Positionierung übernimmt der Aufrufer).
+function AbschnittTooltip({ abschnitt, farbe }) {
   const istGeplant = !!abschnitt.datum_von
   const inhalt = (abschnitt.inhalt ?? '').trim()
   const lernziele = (abschnitt.lernziele ?? '').trim()
-  const W = 340
-  const flip = rect.right + 8 + W > window.innerWidth - 8
-  const left = flip ? Math.max(8, rect.left - 8 - W) : rect.right + 8
-  const top = Math.max(8, Math.min(rect.top, window.innerHeight - 320))
-  return createPortal(
-    <div className="fixed z-[1000] pointer-events-none" style={{ left, top, width: W }}>
-      <div className="rounded-xl border border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-900 shadow-2xl overflow-hidden">
-        <div className="h-1.5" style={{ backgroundColor: farbe }} />
-        <div className="p-3.5 max-h-[70vh] overflow-y-auto">
-          <div className="text-sm font-semibold text-ink-900 dark:text-white mb-1">{abschnitt.titel || 'Ohne Titel'}</div>
-          <div className="text-[11px] font-medium mb-2.5" style={{ color: farbe }}>
-            {istGeplant ? `${formatDatum(abschnitt.datum_von)} – ${formatDatum(abschnitt.datum_bis)}` : 'Noch nicht eingeplant'}
-          </div>
-          {inhalt && (
-            <div className="mb-2.5">
-              <div className="text-[10px] font-bold uppercase tracking-wide text-ink-400 mb-1">Inhalt</div>
-              <div className="text-xs text-ink-600 dark:text-paper-300 whitespace-pre-wrap leading-relaxed">{inhalt}</div>
-            </div>
-          )}
-          {lernziele && (
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: farbe }}>Lernziele</div>
-              <div className="text-xs text-ink-600 dark:text-paper-300 whitespace-pre-wrap leading-relaxed">{lernziele}</div>
-            </div>
-          )}
-          {!inhalt && !lernziele && (
-            <div className="text-xs text-ink-400 italic">Keine weiteren Details hinterlegt.</div>
-          )}
+  const kompetenzen = (abschnitt.kompetenzen ?? '').trim()
+  const leer = !inhalt && !lernziele && !kompetenzen
+  return (
+    <div className="w-[min(56rem,95vw)] max-h-[90vh] rounded-2xl border border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-900 shadow-2xl overflow-hidden flex flex-col">
+      <div className="h-2 flex-shrink-0" style={{ backgroundColor: farbe }} />
+      <div className="p-5 overflow-y-auto">
+        <div className="text-base font-semibold text-ink-900 dark:text-white mb-0.5">{abschnitt.titel || 'Ohne Titel'}</div>
+        <div className="text-xs font-medium mb-3" style={{ color: farbe }}>
+          {istGeplant ? `${formatDatum(abschnitt.datum_von)} – ${formatDatum(abschnitt.datum_bis)}` : 'Noch nicht eingeplant'}
         </div>
+        {leer ? (
+          <div className="text-xs text-ink-400 italic">Keine weiteren Details hinterlegt.</div>
+        ) : (
+          <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+            {inhalt && (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-ink-400 mb-0.5">Inhalt</div>
+                <div className="text-xs text-ink-600 dark:text-paper-300 whitespace-pre-wrap leading-relaxed">{inhalt}</div>
+              </div>
+            )}
+            <div className="flex flex-col gap-3">
+              {lernziele && (
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: farbe }}>Lernziele</div>
+                  <div className="text-xs text-ink-600 dark:text-paper-300 whitespace-pre-wrap leading-relaxed">{lernziele}</div>
+                </div>
+              )}
+              {kompetenzen && (
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-ink-400 mb-0.5">Kompetenzen (Lehrplan)</div>
+                  <div className="text-xs text-ink-600 dark:text-paper-300 whitespace-pre-wrap leading-relaxed">{kompetenzen}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
-    </div>,
-    document.body
+    </div>
   )
 }
 
 // ─── Abschnitt-Karte (linke Seite) ──────────────────────────────────────────
-function AbschnittKarte({ abschnitt, aktivesFach, istSelektiert, onClick, onCalendarDragStart, onListDragStart, onListDrop, listDragOverId }) {
+function AbschnittKarte({ abschnitt, aktivesFach, istSelektiert, onClick, onCalendarDragStart, onListDragStart, onListDrop, listDragOverId, onHover, onHoverEnd }) {
   const farbe = abschnitt.farbe ?? aktivesFach?.farbe ?? '#6366f1'
   const istGeplant = !!abschnitt.datum_von
   const istDropTarget = listDragOverId === abschnitt.id
-  const cardRef = useRef(null)
   const timerRef = useRef(null)
-  const [tipRect, setTipRect] = useState(null)
   const showTip = () => {
     clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => {
-      const r = cardRef.current?.getBoundingClientRect()
-      if (r) setTipRect({ top: r.top, left: r.left, right: r.right, bottom: r.bottom })
-    }, 180)
+    timerRef.current = setTimeout(() => onHover(abschnitt), 180)
   }
-  const hideTip = () => { clearTimeout(timerRef.current); setTipRect(null) }
+  const hideTip = () => { clearTimeout(timerRef.current); onHoverEnd() }
   useEffect(() => () => clearTimeout(timerRef.current), [])
 
   return (
     <div
-      ref={cardRef}
       draggable
       onMouseEnter={showTip}
       onMouseLeave={hideTip}
@@ -390,7 +412,6 @@ function AbschnittKarte({ abschnitt, aktivesFach, istSelektiert, onClick, onCale
           )}
         </div>
       </div>
-      {tipRect && <AbschnittTooltip abschnitt={abschnitt} farbe={farbe} rect={tipRect} />}
     </div>
   )
 }
@@ -399,6 +420,7 @@ function AbschnittKarte({ abschnitt, aktivesFach, istSelektiert, onClick, onCale
 export default function JahresplanungView() {
   const { aktivesFach, einstellungen, aktuellesSchuljahr, pushToast, vorlagenModus, aktiveKlasse } = useStore()
   const [abschnitte, setAbschnitte] = useState([])
+  const [hoverAbschnitt, setHoverAbschnitt] = useState(null)   // für den zentralen Detail-Tooltip über dem Kalender
   const [selektiert, setSelektiert] = useState(null)
   const [istNeu, setIstNeu] = useState(false)
   const [loeschenBestaetigung, setLoeschenBestaetigung] = useState(false)
@@ -420,6 +442,7 @@ export default function JahresplanungView() {
   const [formFarbe, setFormFarbe] = useState(null)
   const [formInhalt, setFormInhalt] = useState('')
   const [formLernziele, setFormLernziele] = useState('')
+  const [formKompetenzen, setFormKompetenzen] = useState('')
 
   // Materialien
   const [materialien, setMaterialien] = useState({ root: false, ordner: null, dateien: [], links: [] })
@@ -522,7 +545,7 @@ export default function JahresplanungView() {
   const handleExport = async () => {
     if (!aktivesFach) return
     setExportLaeuft(true)
-    try { await window.api.export.jahresplanungPdf(aktivesFach.id) }
+    try { await window.api.export.jahresplanungOdt(aktivesFach.id) }
     finally { setExportLaeuft(false) }
   }
 
@@ -578,6 +601,7 @@ export default function JahresplanungView() {
     setFormFarbe(abschnitt.farbe)
     setFormInhalt(abschnitt.inhalt ?? '')
     setFormLernziele(abschnitt.lernziele ?? '')
+    setFormKompetenzen(abschnitt.kompetenzen ?? '')
   }
 
   const neuOeffnen = () => {
@@ -588,6 +612,7 @@ export default function JahresplanungView() {
     setFormFarbe(null)
     setFormInhalt('')
     setFormLernziele('')
+    setFormKompetenzen('')
   }
 
   const panelSchliessen = () => {
@@ -605,6 +630,7 @@ export default function JahresplanungView() {
         titel: formTitel.trim(),
         inhalt: formInhalt,
         lernziele: formLernziele,
+        kompetenzen: formKompetenzen,
         datumVon: null,
         datumBis: null,
         farbe: formFarbe,
@@ -614,6 +640,7 @@ export default function JahresplanungView() {
         titel: formTitel.trim(),
         inhalt: formInhalt,
         lernziele: formLernziele,
+        kompetenzen: formKompetenzen,
         datumVon: selektiert.datum_von,
         datumBis: selektiert.datum_bis,
         farbe: formFarbe,
@@ -639,6 +666,7 @@ export default function JahresplanungView() {
       titel: selektiert.titel,
       inhalt: selektiert.inhalt,
       lernziele: selektiert.lernziele,
+      kompetenzen: selektiert.kompetenzen,
       datumVon: null,
       datumBis: null,
       farbe: selektiert.farbe,
@@ -677,6 +705,7 @@ export default function JahresplanungView() {
           titel: abschnitt.titel,
           inhalt: abschnitt.inhalt,
           lernziele: abschnitt.lernziele,
+          kompetenzen: abschnitt.kompetenzen,
           datumVon: abschnitt.datum_von,
           datumBis: dateStr,
           farbe: abschnitt.farbe,
@@ -702,6 +731,7 @@ export default function JahresplanungView() {
       titel: abschnitt.titel,
       inhalt: abschnitt.inhalt,
       lernziele: abschnitt.lernziele,
+      kompetenzen: abschnitt.kompetenzen,
       datumVon: dateStr,
       datumBis: datumBis,
       farbe: abschnitt.farbe,
@@ -760,6 +790,29 @@ export default function JahresplanungView() {
     setTimeout(() => setImportiertVon(null), 3000)
   }
 
+  // Import einer vom Chatbot erzeugten JSON-Datei (siehe Einstellungen → KI-Unterstützung).
+  const [kiImportLaeuft, setKiImportLaeuft] = useState(false)
+  const handleKiImport = async () => {
+    const p = await window.api.dialog.openFile([{ name: 'JSON', extensions: ['json'] }])
+    if (!p) return
+    setKiImportLaeuft(true)
+    try {
+      const res = await window.api.jahresplanung.importVonDatei(aktivesFach.id, p, { ersetzen: false })
+      if (res?.ok) {
+        await ladeAbschnitte()
+        setImportModal(false)
+        pushToast(`${res.anzahl} Abschnitt${res.anzahl === 1 ? '' : 'e'} importiert.`, 'success')
+      } else {
+        pushToast(res?.fehler || 'Import fehlgeschlagen.', 'error')
+      }
+    } catch (e) {
+      console.error('KI-Import:', e)
+      pushToast('Import fehlgeschlagen.', 'error')
+    } finally {
+      setKiImportLaeuft(false)
+    }
+  }
+
   const panelOffen = istNeu || selektiert !== null
 
   if (!aktivesFach) {
@@ -791,14 +844,14 @@ export default function JahresplanungView() {
             className="btn-secondary text-xs ml-auto"
             onClick={handleImportOeffnen}
           >
-            Übernehmen
+            Importieren
           </button>
         )}
         <button
           className="btn-secondary text-xs"
           onClick={handleExport}
           disabled={exportLaeuft || abschnitte.length === 0}
-          title="Gesamte Jahresplanung inkl. Materiallisten als PDF exportieren"
+          title="Gesamte Jahresplanung als ODT (Tabelle, Querformat) exportieren"
         >
           {exportLaeuft ? 'Exportiere…' : 'Exportieren'}
         </button>
@@ -840,6 +893,8 @@ export default function JahresplanungView() {
                 onListDragStart={handleListDragStart}
                 onListDrop={handleListDrop}
                 listDragOverId={listDragOverId}
+                onHover={setHoverAbschnitt}
+                onHoverEnd={() => setHoverAbschnitt(null)}
               />
             ))}
             {abschnitte.length === 0 && !istNeu && (
@@ -854,7 +909,7 @@ export default function JahresplanungView() {
           {/* Bearbeitungs-Modal */}
           {panelOffen && (
             <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && panelSchliessen()}>
-              <div className="modal-box max-w-xl w-full flex flex-col max-h-[85vh]">
+              <div className="modal-box max-w-5xl w-full flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-base font-semibold text-ink-800 dark:text-paper-100">
                     {istNeu ? 'Neuer Abschnitt' : 'Abschnitt bearbeiten'}
@@ -923,28 +978,45 @@ export default function JahresplanungView() {
                     </div>
                   </div>
 
+                  {/* Zwei Spalten: links Inhalt, rechts Lernziele + Kompetenzen */}
+                  <div className="grid grid-cols-2 gap-4">
                   {/* Inhalt */}
                   <div>
                     <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Inhalt / Notizen</label>
-                    <textarea
+                    <AutoTextarea
                       value={formInhalt}
                       onChange={e => setFormInhalt(e.target.value)}
-                      rows={4}
+                      minRows={9}
                       placeholder="Inhalte, Notizen…"
                       className="w-full text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 placeholder-ink-400 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400 resize-none"
                     />
                   </div>
 
+                  <div className="flex flex-col gap-4">
                   {/* Lernziele */}
                   <div>
                     <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Lernziele</label>
-                    <textarea
+                    <AutoTextarea
                       value={formLernziele}
                       onChange={e => setFormLernziele(e.target.value)}
-                      rows={3}
+                      minRows={4}
                       placeholder={'Ein Lernziel pro Zeile, z. B.\n- Notenwerte erkennen\n- Rhythmen klatschen'}
                       className="w-full text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 placeholder-ink-400 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400 resize-none"
                     />
+                  </div>
+
+                  {/* Kompetenzen (Lehrplan) */}
+                  <div>
+                    <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Kompetenzen (Lehrplan)</label>
+                    <AutoTextarea
+                      value={formKompetenzen}
+                      onChange={e => setFormKompetenzen(e.target.value)}
+                      minRows={4}
+                      placeholder={'Eine Kompetenz pro Zeile (aus dem Lehrplan)'}
+                      className="w-full text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 placeholder-ink-400 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400 resize-none"
+                    />
+                  </div>
+                  </div>
                   </div>
 
                   {/* Materialien (nur für gespeicherte Abschnitte) */}
@@ -1058,26 +1130,34 @@ export default function JahresplanungView() {
         </div>
 
         {/* ─── Rechte Seite: Kalender ───────────────────────────────────── */}
-        <div className="flex-1 overflow-auto p-4">
-          <div className="grid grid-cols-3 gap-5 xl:grid-cols-4">
-            {monate.map(({ year, month }, i) => (
-              <MonatKalender
-                key={i}
-                year={year}
-                month={month}
-                abschnitte={abschnitte}
-                aktivesFach={aktivesFach}
-                dragOverDate={dragOverDate}
-                onDrop={handleDrop}
-                onDragOverDay={handleDragOverDay}
-                onDragLeaveDay={handleDragLeaveDay}
-                onAbschnittKlick={abschnittWaehlen}
-                resizingId={resizingId}
-                onResizeStart={(id) => setResizingId(id)}
-                schulferien={schulferien}
-              />
-            ))}
+        <div className="flex-1 relative overflow-hidden">
+          <div className={`h-full overflow-auto p-4 transition-[filter] duration-150 ${hoverAbschnitt ? 'blur-sm pointer-events-none select-none' : ''}`}>
+            <div className="grid grid-cols-3 gap-5 xl:grid-cols-4">
+              {monate.map(({ year, month }, i) => (
+                <MonatKalender
+                  key={i}
+                  year={year}
+                  month={month}
+                  abschnitte={abschnitte}
+                  aktivesFach={aktivesFach}
+                  dragOverDate={dragOverDate}
+                  onDrop={handleDrop}
+                  onDragOverDay={handleDragOverDay}
+                  onDragLeaveDay={handleDragLeaveDay}
+                  onAbschnittKlick={abschnittWaehlen}
+                  resizingId={resizingId}
+                  onResizeStart={(id) => setResizingId(id)}
+                  schulferien={schulferien}
+                />
+              ))}
+            </div>
           </div>
+          {/* Zentraler Detail-Tooltip beim Hover über einen Abschnitt (Kalender darunter geblurrt) */}
+          {hoverAbschnitt && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center p-6 pointer-events-none bg-black/5 dark:bg-black/25">
+              <AbschnittTooltip abschnitt={hoverAbschnitt} farbe={hoverAbschnitt.farbe ?? aktivesFach?.farbe ?? '#6366f1'} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -1091,6 +1171,25 @@ export default function JahresplanungView() {
               </h3>
               <button onClick={() => setImportModal(false)} className="text-ink-400 hover:text-ink-600 text-sm">✕</button>
             </div>
+
+            {/* Aus Datei (KI-Planung) – immer verfügbar */}
+            <div className="mb-3 pb-3 border-b border-paper-100 dark:border-ink-800">
+              <p className="text-[10px] font-semibold text-coral-500 uppercase tracking-wide mb-1 flex items-center gap-1">
+                <span aria-hidden>🤖</span> Aus Datei (KI-Planung)
+              </p>
+              <button
+                onClick={handleKiImport}
+                disabled={kiImportLaeuft}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-paper-200 dark:border-ink-700 hover:border-coral-300 hover:bg-paper-50 dark:hover:bg-ink-800 text-left transition-colors disabled:opacity-60"
+              >
+                <span className="text-sm font-medium text-ink-700 dark:text-paper-200 flex-1">
+                  {kiImportLaeuft ? 'Importiere…' : 'JSON-Datei wählen…'}
+                </span>
+                <span className="text-xs text-ink-400">vom Chatbot</span>
+              </button>
+              <p className="text-[10px] text-ink-400 mt-1">Anleitung dazu: Einstellungen → KI-Unterstützung.</p>
+            </div>
+
             {importQuellen.length === 0 ? (
               <p className="text-sm text-ink-400 text-center py-4">
                 Keine anderen Fächer mit Jahresplanung vorhanden.

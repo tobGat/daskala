@@ -8,6 +8,17 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.0.65',
+    datum: 'Juli 2026',
+    punkte: [
+      'Neu: Jahresplanung mit KI. In den Einstellungen unter „KI-Unterstützung" exportierst du eine Anleitung für einen Chatbot (z. B. ChatGPT oder Claude). Dieser fragt nach Fach, Inhalten, Schwerpunkten und Materialien und erstellt daraus eine Planung, die du beim gewünschten Fach über „Importieren → Aus Datei" übernimmst.',
+      'Jahresplanungs-Abschnitte haben jetzt zusätzlich ein Feld für Kompetenzen (Lehrplan) – sichtbar im Tooltip und im Export.',
+      'Der Export der Jahresplanung erfolgt jetzt als ODT-Dokument (Tabelle im Querformat: Zeitraum, Inhalt, Zielsetzungen, Kompetenzen, Materialien) – bearbeitbar in Word, LibreOffice und Co.',
+      'Beim Überfahren eines Abschnitts erscheinen die Details in einem großen, zweispaltigen Tooltip mittig über dem leicht abgeblendeten Kalender.',
+      'Das Fenster zum Bearbeiten eines Abschnitts ist größer und zweispaltig; die Textfelder wachsen mit dem Inhalt mit.',
+    ],
+  },
+  {
     version: '1.0.64',
     datum: 'Juli 2026',
     punkte: [

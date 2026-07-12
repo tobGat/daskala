@@ -7,6 +7,7 @@ import AppZuruecksetzenModal from './AppZuruecksetzenModal'
 import BackupWiederherstellenModal from './BackupWiederherstellenModal'
 import FeedbackModal from './FeedbackModal'
 import { cmpVersion } from './ChangelogModal'
+import { berechneSchulferien } from '../utils/schulferien'
 
 // Einklappbarer Einstellungs-Bereich (Akkordeon).
 function Akkordeon({ id, icon, titel, offen, onToggle, danger, children }) {
@@ -32,8 +33,106 @@ function Akkordeon({ id, icon, titel, offen, onToggle, danger, children }) {
   )
 }
 
+// Gültige Farbwerte für die KI-Anleitung (identisch zur Palette der Jahresplanung).
+const KI_FARBEN = ['#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#64748b']
+
+// Erzeugt die Markdown-Anleitung, die die Lehrkraft einem Chatbot gibt.
+function baueKiPrompt({ bez, startJahr, endJahr, ferienData, faecherListe }) {
+  const fdat = (d) => { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${parseInt(dd)}.${parseInt(m)}.${y}` }
+  const L = []
+  L.push('# Jahresplanung erstellen – Anleitung für den Chatbot', '')
+  L.push('Du hilfst einer **österreichischen Lehrkraft**, eine **Jahresplanung für ein Unterrichtsfach** zu erstellen. Das Ergebnis wird in die Schul-App **Daskala** importiert.', '')
+
+  L.push('## So gehst du vor')
+  L.push('1. **Stelle zuerst Rückfragen – plane noch nicht!** Frage die Lehrkraft nach allem, was du für eine gute Planung brauchst, z. B.:')
+  L.push('   - Für welches **Fach**, welche **Schulstufe/Klasse** und welchen **Schultyp** (VS, MS, AHS, PTS, …)?')
+  L.push('   - Welche **Inhalte/Themen** und **Schwerpunkte** sollen vorkommen? Gibt es einen **Lehrplan- oder Kompetenzbezug**?')
+  L.push('   - Welche **Materialien/Dateien** stehen zur Verfügung (Schulbuch, Skripten, Links)? Die Lehrkraft darf Dateien direkt hier in den Chat hochladen.')
+  L.push('   - Wie viele **Wochenstunden**? Gibt es besondere **Termine, Projekte oder Exkursionen**?')
+  L.push('   - Wann finden **Schularbeiten** statt? Bitte um die Termine – die Planung soll thematisch darauf hinführen (passende Themen und Wiederholung rechtzeitig vor jeder Schularbeit).')
+  L.push('2. Frage so lange nach, bis du genug weißt. **Erst dann** erstellst du die Planung.')
+  L.push('3. Gib die fertige Planung als **herunterladbare Datei** aus, die die Lehrkraft direkt als **.json** speichern kann (bei Claude z. B. als Datei/Artefakt zum Download, bei ChatGPT als Datei-Download) – **nicht nur als Text zum Kopieren**. Nur wenn Datei-Downloads nicht möglich sind, gib die JSON stattdessen in einem einzigen Code-Block aus. Anschließend importiert die Lehrkraft die Datei in Daskala.', '')
+
+  L.push('## Ausgabeformat (genau dieses Schema)')
+  L.push('```json')
+  L.push('{')
+  L.push('  "typ": "daskala-jahresplanung",')
+  L.push('  "version": 1,')
+  L.push('  "abschnitte": [')
+  L.push('    {')
+  L.push('      "titel": "Kurzer Titel des Abschnitts",')
+  L.push('      "inhalt": "Themen, Stoff, Notizen. Aufzählungen mit \'- \' je Zeile.",')
+  L.push('      "lernziele": "- Erstes Lernziel\\n- Zweites Lernziel",')
+  L.push('      "kompetenzen": "- Kompetenz aus dem Lehrplan\\n- weitere Kompetenz",')
+  L.push(`      "farbe": "${KI_FARBEN[0]}",`)
+  L.push(`      "datum_von": "${startJahr}-09-15",`)
+  L.push(`      "datum_bis": "${startJahr}-10-10"`)
+  L.push('    }')
+  L.push('  ]')
+  L.push('}')
+  L.push('```', '')
+
+  L.push('## Regeln')
+  L.push('- **abschnitte**: sinnvoll **6–12** Stück, in zeitlicher Reihenfolge.')
+  L.push('- **Keine parallelen Abschnitte / keine Überschneidungen**: Die Abschnitte laufen streng **nacheinander**; ihre Zeiträume dürfen sich **nicht überlappen** (der nächste beginnt erst nach dem Ende des vorigen). Ein durchgehendes Begleitthema (z. B. Rechtschreibung), das eigentlich parallel mitläuft, bekommt **keinen eigenen, zeitgleichen Abschnitt**, sondern wird im **Inhalt des jeweiligen Hauptabschnitts** vermerkt – die App kann parallele Abschnitte nicht darstellen.')
+  L.push('- **titel** kurz; **inhalt** = Themen/Stoff; **lernziele** = ein Ziel je Zeile, beginnend mit "- " (im JSON als \\n getrennt).')
+  L.push('- **kompetenzen**: liste je Abschnitt die passenden **Kompetenzen aus dem jeweiligen Lehrplan** auf (ein Eintrag je Zeile mit "- "); orientiere dich am österreichischen Lehrplan des genannten Fachs und Schultyps.')
+  L.push('- **Schulstufe & Schultyp berücksichtigen**: Niveau, Umfang, Themen und Kompetenzen an die genannte Schulstufe und den Schultyp (VS, MS, AHS, PTS, …) anpassen.')
+  L.push('- **Umlaute & Sonderzeichen korrekt** verwenden: ä, ö, ü, Ä, Ö, Ü, ß direkt schreiben – KEINE Umschreibungen wie ae/oe/ue/ss.')
+  L.push('- **datum_von/datum_bis**: Format JJJJ-MM-TT, innerhalb des Schuljahrs, **Ferien und Feiertage aussparen** (siehe unten). Wenn die Lehrkraft die Termine lieber selbst setzt, gib `null` an.')
+  L.push('- **Wochenenden beachten**: an **Samstagen und Sonntagen findet kein Unterricht** statt. Ein Abschnitt/Thema darf **nicht an einem Wochenende beginnen** (`datum_von` = Werktag Mo–Fr). Wochenenden müssen nicht eigens ausgewiesen werden – ein laufender Abschnitt geht einfach darüber weiter; rechne die unterrichtsfreien Tage aber bei der Dauer mit ein.')
+  L.push('- **Schularbeiten einplanen**: richte die Abschnitte zeitlich und thematisch auf die genannten **Schularbeitstermine** aus (relevanter Stoff und Wiederholung rechtzeitig davor).')
+  L.push('- **farbe**: ein Hex-Wert aus der Palette unten – oder das Feld weglassen.')
+  L.push('- Richte Inhalte und Lernziele an den **im Gespräch genannten Themen und Materialien** aus.', '')
+
+  L.push('## Kontext')
+  L.push(`- **Schuljahr**: ${bez || '(unbekannt)'} – läuft von **September ${startJahr}** bis **Juli ${endJahr}**.`)
+  L.push(`- **Farbpalette** (gültige Werte für "farbe"): ${KI_FARBEN.join(', ')}`, '')
+
+  if (ferienData && (ferienData.ferien?.length || ferienData.feiertage?.length)) {
+    L.push('## Ferien & schulfreie Tage (nicht verplanen)')
+    for (const f of ferienData.ferien || []) L.push(`- ${f.name}: ${fdat(f.von)} – ${fdat(f.bis)}`)
+    for (const f of ferienData.feiertage || []) L.push(`- ${f.name}: ${fdat(f.datum)}`)
+    L.push('')
+  } else {
+    L.push('## Ferien & schulfreie Tage')
+    L.push('(In der App ist kein Bundesland gewählt – bitte Ferien und Feiertage des jeweiligen Bundeslands selbst berücksichtigen.)', '')
+  }
+
+  L.push('## Vorhandene Klassen & Fächer (zur Orientierung)')
+  if (faecherListe && faecherListe.length) {
+    for (const f of faecherListe) L.push(`- ${f.klasse_name} · ${f.name}`)
+  } else {
+    L.push('(keine Fächer gefunden)')
+  }
+  L.push('')
+  return L.join('\n')
+}
+
 export default function Einstellungen({ onClose }) {
-  const { gewichtungGlobal, theme, setTheme, einstellungen, pushToast } = useStore()
+  const { gewichtungGlobal, theme, setTheme, einstellungen, pushToast, aktuellesSchuljahr } = useStore()
+  const [kiExportLaeuft, setKiExportLaeuft] = useState(false)
+
+  // Baut die Chatbot-Anleitung und speichert sie als Markdown-Datei.
+  const handleKiExport = async () => {
+    setKiExportLaeuft(true)
+    try {
+      const bez = aktuellesSchuljahr?.bezeichnung ?? ''
+      const startJahr = parseInt(bez.split('/')[0]) || new Date().getFullYear()
+      const ferienData = (bez && einstellungen?.bundesland) ? berechneSchulferien(bez, einstellungen.bundesland) : null
+      let faecherListe = []
+      try { if (aktuellesSchuljahr) faecherListe = await window.api.faecher.getAllImSchuljahr(aktuellesSchuljahr.id) } catch { /* egal */ }
+      const md = baueKiPrompt({ bez, startJahr, endJahr: startJahr + 1, ferienData, faecherListe })
+      const name = `daskala-jahresplanung-anleitung${bez ? '_' + bez.replace('/', '-') : ''}.md`
+      const ok = await window.api.datei.speichereText(md, name, [{ name: 'Markdown', extensions: ['md'] }])
+      if (ok) pushToast('Anleitung exportiert.', 'success')
+    } catch (e) {
+      console.error('KI-Export:', e)
+      pushToast('Export fehlgeschlagen.', 'error')
+    } finally {
+      setKiExportLaeuft(false)
+    }
+  }
 
   // Nur noch SA, Test, Individuell bilden die Note → beim Laden auf 100 % normieren
   // (Mitarbeit/Hausübung zählen als Einfluss, nicht als Gewicht).
@@ -649,6 +748,28 @@ export default function Einstellungen({ onClose }) {
                   </div>
                 </div>
               </div>
+            </div>
+          </Akkordeon>
+
+          {/* KI-Unterstützung */}
+          <Akkordeon id="ki" icon="🤖" titel="KI-Unterstützung" offen={offenerBereich} onToggle={toggleBereich}>
+            <p className="text-sm text-ink-600 dark:text-paper-300 mb-3">
+              Erstelle eine Jahresplanung mit Hilfe eines Chatbots (z.&nbsp;B. ChatGPT oder Claude):
+            </p>
+            <ol className="text-sm text-ink-600 dark:text-paper-300 space-y-1 mb-3 list-decimal pl-5">
+              <li>Anleitung als Markdown-Datei exportieren.</li>
+              <li>Die Datei einem Chatbot geben – er fragt nach Fach, Inhalten und Materialien und erstellt daraus die Planung.</li>
+              <li>Die erzeugte JSON-Datei im Jahresplanungs-Bereich beim gewünschten Fach über „Importieren → Aus Datei" importieren.</li>
+            </ol>
+            <div className="flex flex-wrap gap-3">
+              <button className="btn-secondary" onClick={handleKiExport} disabled={kiExportLaeuft}>
+                {kiExportLaeuft ? 'Exportiere…' : 'Anleitung für Chatbot exportieren (.md)'}
+              </button>
+            </div>
+            <div className="rounded-xl border border-paper-200 dark:border-ink-700 p-3 mt-3">
+              <p className="text-[11px] text-ink-400 leading-snug">
+                Die Anleitung enthält das genaue Ausgabeschema sowie Kontext (Schuljahr, Zeitraum, Ferien/Feiertage, Farbpalette, deine Klassen&nbsp;&amp;&nbsp;Fächer), damit der Chatbot eine passende, importierbare Planung erzeugt. Die Datumsangaben kannst du danach im Kalender frei anpassen.
+              </p>
             </div>
           </Akkordeon>
 
