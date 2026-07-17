@@ -2213,6 +2213,17 @@ function registerIPC() {
     return true
   })
 
+  // Spalten wieder chronologisch (nach Datum) sortieren; Spalten ohne Datum ans Ende.
+  ipcMain.handle('spalten:sortChronologisch', (_, fachId, semester) => {
+    const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? AND semester = ? ORDER BY datum IS NULL, datum, id').all(fachId, semester)
+    const stmt = db.prepare('UPDATE spalten SET reihenfolge = ? WHERE id = ?')
+    const tx = db.transaction(() => {
+      spalten.forEach((s, i) => stmt.run(i + 1, s.id))
+    })
+    tx()
+    return true
+  })
+
   // Einträge
   ipcMain.handle('eintraege:getAll', (_, fachId) => {
     return db.prepare(`

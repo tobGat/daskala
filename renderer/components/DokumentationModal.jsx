@@ -59,6 +59,7 @@ const DOKU = [
         'HÜ – Hausübung (✓ / ✗)',
       ] },
       'Klicke in eine Zelle und tippe die Note bzw. das Symbol. Änderungen lassen sich rückgängig machen (Strg+Z).',
+      'Per Rechtsklick auf einen Spaltenkopf sortierst du die Spalten „Nach Kategorie" (gruppiert nach SA, Test, MA …) oder wieder „Chronologisch" (nach Datum).',
       { tipp: 'Semester 1 lässt sich einklappen, um in Semester 2 mehr Platz zu haben.' },
     ],
   },
