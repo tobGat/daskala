@@ -5,7 +5,7 @@ import React, { useMemo, useState } from 'react'
 import { createAvatar } from '@dicebear/core'
 import * as lorelei from '@dicebear/lorelei'
 import useStore from '../store/useStore'
-import { SKIN, HAIR, variantsOf, parseAvatarOptions, hashFromString, optionsToCode, codeToOptions } from '../utils/avatar'
+import { SKIN, HAIR, variantsOf, parseAvatarOptions, autoOptions, optionsToCode, codeToOptions } from '../utils/avatar'
 
 const MERKMALE = [
   { key: 'head',     label: 'Gesichtsform' },
@@ -20,21 +20,7 @@ const OPTIONAL = [
   { key: 'earrings', prob: 'earringsProbability',  label: 'Ohrringe' },
   { key: 'beard',    prob: 'beardProbability',     label: 'Bart' },
 ]
-const ALL_CATS = [...MERKMALE.map(m => m.key), ...OPTIONAL.map(o => o.key)]
-
 const rand = (arr) => arr[Math.floor(Math.random() * arr.length)]
-
-// Deterministischer, aber expliziter Startzustand aus dem Namen (nah am Auto-Avatar).
-function seedToOptions(schueler) {
-  const name = (schueler?.vorname ?? '') + (schueler?.nachname ?? '')
-  const hc = HAIR[hashFromString('hair' + name) % HAIR.length]
-  const o = { skinColor: [SKIN[hashFromString('skin' + name) % SKIN.length]], hairColor: [hc], eyebrowsColor: [hc], glassesProbability: 0, earringsProbability: 0, beardProbability: 0 }
-  for (const cat of ALL_CATS) {
-    const vs = variantsOf(cat)
-    if (vs.length) o[cat] = [vs[hashFromString(cat + name) % vs.length]]
-  }
-  return o
-}
 
 const LABEL_MAP = Object.fromEntries(MERKMALE.map(m => [m.key, m.label]))
 
@@ -73,7 +59,7 @@ function VariantPicker({ cat, opts, onPick, onClose }) {
 }
 
 export default function AvatarEditorModal({ schueler, onClose, onSaved }) {
-  const [opts, setOpts] = useState(() => parseAvatarOptions(schueler) ?? seedToOptions(schueler))
+  const [opts, setOpts] = useState(() => parseAvatarOptions(schueler) ?? autoOptions(schueler))
   const [saving, setSaving] = useState(false)
   const [pickerCat, setPickerCat] = useState(null)
   const [codeInput, setCodeInput] = useState('')
