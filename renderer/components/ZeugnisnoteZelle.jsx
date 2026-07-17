@@ -79,8 +79,9 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
         if      (wert === '+') maPlus++
         else if (wert === '-') maMinus++
       } else if (spalte.kategorie === 'HÜ') {
-        if      (wert === '✓')                 huePos++
-        else if (wert === '✗' || wert === '—') hueNeg++
+        if      (wert === '✓') huePos++
+        else if (wert === '✗') hueNeg++
+        // '—' = "nicht gewertet / entfällt": bewusst ohne Noteneinfluss, zählt nicht mit.
       } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
         const n = parseInt(wert)
         if (n >= 1 && n <= 5) { basis[spalte.kategorie].werte.push(n + offsetFor(spalte.datum)); basis[spalte.kategorie].eingaben.push(n) }

@@ -245,9 +245,10 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, klassenname, schue
   const maPos = maEintr.filter(e => e.wert === '+').length
   const maNeg = maEintr.filter(e => e.wert === '-').length
 
-  const hueEintr = fachEintraege.filter(e => e.kategorie === 'HÜ' && e.wert)
+  // '—' = "nicht gewertet / entfällt": bewusst ohne Noteneinfluss, wird hier ausgeklammert.
+  const hueEintr = fachEintraege.filter(e => e.kategorie === 'HÜ' && e.wert && e.wert !== '—')
   const huePos = hueEintr.filter(e => e.wert === '✓').length
-  const hueNeg = hueEintr.filter(e => e.wert === '✗' || e.wert === '—').length
+  const hueNeg = hueEintr.filter(e => e.wert === '✗').length
 
   // Zeugnisnoten
   const znS1 = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 1)

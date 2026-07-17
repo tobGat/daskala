@@ -103,7 +103,7 @@ function bauePdfHtml(profil, klassenname) {
     const maPos = maEintr.filter(e => e.wert === '+').length
     const maNeg = maEintr.filter(e => e.wert === '-').length
     const maGes = maEintr.length
-    const hueEintr = fachEintr.filter(e => e.kategorie === 'HÜ' && e.wert)
+    const hueEintr = fachEintr.filter(e => e.kategorie === 'HÜ' && e.wert && e.wert !== '—')
     const huePos = hueEintr.filter(e => e.wert === '✓').length
     const hueGes = hueEintr.length
     const fachNotizen = notizen.filter(n => n.fach_id === fach.id)
@@ -1299,7 +1299,8 @@ function berechneZeugnisnote(fachId, schuelerId, semester) {
       else if (wert === '-') maMinus++
     } else if (spalte.kategorie === 'HÜ') {
       if (wert === '✓') huePos++
-      else if (wert === '✗' || wert === '—') hueNeg++
+      else if (wert === '✗') hueNeg++
+      // '—' = "nicht gewertet / entfällt": bewusst ohne Noteneinfluss, zählt nicht mit.
     } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
       const n = parseInt(wert)
       if (n >= 1 && n <= 5) basisWerte[spalte.kategorie].push(n + offsetFor(spalte.datum))

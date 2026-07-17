@@ -122,9 +122,10 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
     ? niveauBgKlasse(niveauHier)
     : ''
 
-  const titleStr = isDifferenziert
+  const hueHinweis = spalte.kategorie === 'HÜ' ? ' · ✓ gemacht / ✗ nicht gemacht / — nicht gewertet' : ''
+  const titleStr = (isDifferenziert
     ? `${schueler.nachname} ${schueler.vorname} | ${spalte.kuerzel} ${spalte.datum ?? ''} · Niveau: ${niveauHier}`
-    : `${schueler.nachname} ${schueler.vorname} | ${spalte.kuerzel} ${spalte.datum ?? ''}`
+    : `${schueler.nachname} ${schueler.vorname} | ${spalte.kuerzel} ${spalte.datum ?? ''}`) + hueHinweis
 
   return (
     <td className="p-0 relative" style={{ width: 38, minWidth: 38 }}>
