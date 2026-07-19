@@ -8,6 +8,18 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.0.66',
+    datum: 'Juli 2026',
+    punkte: [
+      'Notentabelle: Spalten lassen sich per Rechtsklick auf den Spaltenkopf wahlweise „nach Kategorie" oder wieder „chronologisch" (nach Datum) sortieren.',
+      'Hausübungen haben jetzt einen dritten Zustand „—" (nicht gewertet / entfällt): ein sichtbarer Vermerk ohne Einfluss auf die Note – im Unterschied zu einer leeren Zelle.',
+      'Differenzierte Fächer (AHS/ST): Im Leistungsdiagramm des Schüler:innen-Profils werden Niveau-Wechsel dargestellt – farbig hinterlegte Bereiche (grün AHS / gelb ST) mit Wechsel-Markierung. An jedem Schularbeits-/Test-Punkt stehen zudem Datum und Thema (das Thema gibst du beim Anlegen der SA-/Test-Spalte ein).',
+      'Schüler:innen-Profil: Semester- und Zeugnisnoten je Fach sind mit einem farbigen Kästchen hervorgehoben (grün 1 bis rot 5).',
+      'Korrektur: Im Schüler:innen-Profil wurden Semester-/Zeugnisnoten differenzierter Fächer falsch (auf der internen Skala) angezeigt – sie erscheinen jetzt korrekt auf dem aktuellen Niveau.',
+      'Behoben: Der Avatar-Editor zeigte vor dem ersten Speichern ein anderes Gesicht als die App; der Avatar wird im PDF-Export nun vollständig dargestellt; das Popup zur manuellen Zeugnisnote erscheint wieder vollständig im Vordergrund.',
+    ],
+  },
+  {
     version: '1.0.65',
     datum: 'Juli 2026',
     punkte: [

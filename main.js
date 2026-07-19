@@ -103,7 +103,7 @@ function bauePdfHtml(profil, klassenname) {
     const maPos = maEintr.filter(e => e.wert === '+').length
     const maNeg = maEintr.filter(e => e.wert === '-').length
     const maGes = maEintr.length
-    const hueEintr = fachEintr.filter(e => e.kategorie === 'HÜ' && e.wert)
+    const hueEintr = fachEintr.filter(e => e.kategorie === 'HÜ' && e.wert && e.wert !== '—')
     const huePos = hueEintr.filter(e => e.wert === '✓').length
     const hueGes = hueEintr.length
     const fachNotizen = notizen.filter(n => n.fach_id === fach.id)
@@ -143,8 +143,10 @@ function bauePdfHtml(profil, klassenname) {
   ].join('')
 
   // Avatar-SVG wird vom Renderer erzeugt und in profil.avatarSvg mitgeliefert (kein DiceBear im Main-Prozess).
+  // Das SVG hat eine feste width/height (z. B. 96px); ohne Skalierung würde es im 56px-Kasten abgeschnitten.
+  // Wir zwingen es per Inline-Style, den Kasten zu füllen (viewBox skaliert korrekt).
   const avatarBox = avatarSvg
-    ? `<div style="width:56px;height:56px;border-radius:50%;overflow:hidden;flex-shrink:0">${avatarSvg}</div>`
+    ? `<div style="width:56px;height:56px;border-radius:50%;overflow:hidden;flex-shrink:0">${avatarSvg.replace('<svg ', '<svg preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block" ')}</div>`
     : ''
 
   return `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#1a1a1a;background:#fff}@page{size:A4 portrait;margin:1.5cm}</style></head><body><div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #e5e7eb">${avatarBox}<div style="flex:1"><div style="display:flex;align-items:baseline;gap:4px;flex-wrap:wrap"><h1 style="font-size:20px;font-weight:700;color:#1a1a1a">${esc(schueler.nachname)} ${esc(schueler.vorname)}</h1>${badges}</div><div style="font-size:11px;color:#6b7280;margin-top:3px">${esc(klassenname)}</div><div style="font-size:10px;color:#9ca3af;margin-top:1px">Leistungsprofil · exportiert am ${datum} · Daskala</div></div></div>${sectionsHtml}</body></html>`
@@ -1299,7 +1301,8 @@ function berechneZeugnisnote(fachId, schuelerId, semester) {
       else if (wert === '-') maMinus++
     } else if (spalte.kategorie === 'HÜ') {
       if (wert === '✓') huePos++
-      else if (wert === '✗' || wert === '—') hueNeg++
+      else if (wert === '✗') hueNeg++
+      // '—' = "nicht gewertet / entfällt": bewusst ohne Noteneinfluss, zählt nicht mit.
     } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
       const n = parseInt(wert)
       if (n >= 1 && n <= 5) basisWerte[spalte.kategorie].push(n + offsetFor(spalte.datum))
@@ -2114,7 +2117,7 @@ function registerIPC() {
 
     const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE schueler_id = ?').all(schuelerId)
     const eintraege = db.prepare(`
-      SELECT e.wert, e.kommentar, s.kategorie, s.datum, s.kuerzel, s.semester, s.fach_id, s.reihenfolge
+      SELECT e.wert, e.kommentar, s.kategorie, s.datum, s.kuerzel, s.notiz, s.semester, s.fach_id, s.reihenfolge
       FROM eintraege e
       JOIN spalten s ON e.spalte_id = s.id
       WHERE e.schueler_id = ? AND e.wert IS NOT NULL
@@ -2130,7 +2133,12 @@ function registerIPC() {
     db.prepare('SELECT fach_id, niveau FROM schueler_niveau WHERE schueler_id = ?')
       .all(schuelerId)
       .forEach(r => { niveaus[r.fach_id] = r.niveau })
-    return { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus }
+    // Niveau-Historie je Fach (für die Darstellung von AHS/ST-Wechseln im Leistungsdiagramm)
+    const niveauHistorie = {}
+    db.prepare(`SELECT fach_id, niveau, gueltig_ab FROM schueler_niveau_historie
+      WHERE schueler_id = ? ORDER BY fach_id, gueltig_ab DESC, id DESC`).all(schuelerId)
+      .forEach(r => { (niveauHistorie[r.fach_id] ??= []).push({ niveau: r.niveau, gueltig_ab: r.gueltig_ab }) })
+    return { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus, niveauHistorie }
   })
 
   ipcMain.handle('schueler:exportProfilPDF', async (_, { profil, klassenname }) => {
@@ -2205,6 +2213,17 @@ function registerIPC() {
 
   ipcMain.handle('spalten:sortByKategorie', (_, fachId, semester) => {
     const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? AND semester = ? ORDER BY kategorie, datum').all(fachId, semester)
+    const stmt = db.prepare('UPDATE spalten SET reihenfolge = ? WHERE id = ?')
+    const tx = db.transaction(() => {
+      spalten.forEach((s, i) => stmt.run(i + 1, s.id))
+    })
+    tx()
+    return true
+  })
+
+  // Spalten wieder chronologisch (nach Datum) sortieren; Spalten ohne Datum ans Ende.
+  ipcMain.handle('spalten:sortChronologisch', (_, fachId, semester) => {
+    const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? AND semester = ? ORDER BY datum IS NULL, datum, id').all(fachId, semester)
     const stmt = db.prepare('UPDATE spalten SET reihenfolge = ? WHERE id = ?')
     const tx = db.transaction(() => {
       spalten.forEach((s, i) => stmt.run(i + 1, s.id))

@@ -79,8 +79,9 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
         if      (wert === '+') maPlus++
         else if (wert === '-') maMinus++
       } else if (spalte.kategorie === 'HÜ') {
-        if      (wert === '✓')                 huePos++
-        else if (wert === '✗' || wert === '—') hueNeg++
+        if      (wert === '✓') huePos++
+        else if (wert === '✗') hueNeg++
+        // '—' = "nicht gewertet / entfällt": bewusst ohne Noteneinfluss, zählt nicht mit.
       } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
         const n = parseInt(wert)
         if (n >= 1 && n <= 5) { basis[spalte.kategorie].werte.push(n + offsetFor(spalte.datum)); basis[spalte.kategorie].eingaben.push(n) }
@@ -386,12 +387,21 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
         </TooltipPortal>
       )}
 
-      {/* Manuell-Eingabe Popup */}
-      {manuellPopup && (
+      {/* Manuell-Eingabe Popup — via Portal, damit es nicht im sticky-Kontext der ZN-Zelle abgeschnitten wird */}
+      {manuellPopup && ReactDOM.createPortal((() => {
+        const rect = cellRef.current?.getBoundingClientRect()
+        const popupW = 200
+        const estH = istTie ? 260 : 210
+        let left = rect ? rect.right - popupW : 8
+        let top = rect ? rect.bottom + 2 : 8
+        if (left < 8) left = 8
+        if (left + popupW > window.innerWidth - 8) left = window.innerWidth - 8 - popupW
+        if (rect && top + estH > window.innerHeight - 8) top = Math.max(8, rect.top - estH - 2)
+        return (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setManuellPopup(false)} />
-          <div className="absolute z-50 bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg shadow-xl p-2"
-            style={{ top: '100%', right: 0, marginTop: 2, minWidth: 140 }}>
+          <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setManuellPopup(false)} />
+          <div className="fixed bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg shadow-xl p-2"
+            style={{ left, top, zIndex: 9999, minWidth: 140, width: popupW }}>
             <p className="text-xs text-ink-500 dark:text-ink-400 mb-2 px-1">
               {semester === 3 ? 'Zeugnisnote' : `Semesternote ${semester}`}
             </p>
@@ -457,7 +467,8 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
             )}
           </div>
         </>
-      )}
+        )
+      })(), document.body)}
 
       {/* Rechtsklick-Menü */}
       {contextMenu && (

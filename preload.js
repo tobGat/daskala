@@ -127,6 +127,7 @@ const api = {
     toggleEingeklappt: (id) => invoke('spalten:toggleEingeklappt', id),
     setEingeklappt: (ids, wert) => invoke('spalten:setEingeklappt', ids, wert),
     sortByKategorie: (fachId, semester) => invoke('spalten:sortByKategorie', fachId, semester),
+    sortChronologisch: (fachId, semester) => invoke('spalten:sortChronologisch', fachId, semester),
   },
 
   eintraege: {

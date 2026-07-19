@@ -231,26 +231,11 @@ function StatChip({ label, value, accent, emoji }) {
   )
 }
 
-function NotenToolbar({ aktivesFach, schueler, spalten, eintraege, zeugnisnoten, aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt, openSpalteModal }) {
+function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt, openSpalteModal }) {
   const aktiveKlasse = useStore(s => s.aktiveKlasse)
   const setSchuelerSortierung = useStore(s => s.setSchuelerSortierung)
   const openModal = useStore(s => s.openModal)
   const sortierung = aktiveKlasse?.sortierung || 'nachname'
-
-  // Anzahl Spalten im aktiven Semester
-  const spaltenSemester = useMemo(
-    () => spalten.filter(s => s.semester === aktiveSemester && !s.eingeklappt).length,
-    [spalten, aktiveSemester]
-  )
-
-  // Anzahl eingetragene Noten (in den nicht-eingeklappten Spalten des aktiven Semesters)
-  const eintragsAnzahl = useMemo(() => {
-    const ids = new Set(spalten.filter(s => s.semester === aktiveSemester && !s.eingeklappt).map(s => s.id))
-    return Object.entries(eintraege).filter(([key, val]) => {
-      const spalteId = parseInt(key.split('_')[0])
-      return ids.has(spalteId) && val
-    }).length
-  }, [spalten, eintraege, aktiveSemester])
 
   // Klassen-ZN-Durchschnitt für das aktive Semester
   const klassenDurchschnitt = useMemo(() => {
@@ -351,18 +336,6 @@ function NotenToolbar({ aktivesFach, schueler, spalten, eintraege, zeugnisnoten,
 
       {/* Stats */}
       <div className="flex items-center gap-1.5 ml-auto flex-wrap">
-        <StatChip
-          label="Spalten"
-          value={spaltenSemester}
-          emoji="📋"
-          accent="bg-mint-50 text-mint-700 dark:bg-mint-900/30 dark:text-mint-300"
-        />
-        <StatChip
-          label="Noten"
-          value={eintragsAnzahl}
-          emoji="✍️"
-          accent="bg-lavender-50 text-lavender-700 dark:bg-lavender-900/30 dark:text-lavender-300"
-        />
         {klassenDurchschnitt != null && (
           <StatChip
             label="Ø Klasse"
@@ -391,7 +364,7 @@ function NotenToolbar({ aktivesFach, schueler, spalten, eintraege, zeugnisnoten,
 // ─── Haupt-Tabelle ────────────────────────────────────────────────────────────
 export default function NotenTabelle() {
   const {
-    schueler, spalten, aktivesFach, eintraege, zeugnisnoten,
+    schueler, spalten, aktivesFach, zeugnisnoten,
     aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt,
     setDetailSchueler, openModal,
     ladeSpalten, refreshZeugnisnoten,
@@ -452,6 +425,13 @@ export default function NotenTabelle() {
     setSpaltenContextMenu(null)
   }
 
+  const handleSortierenChrono = async (semester) => {
+    if (!aktivesFach) return
+    await window.api.spalten.sortChronologisch(aktivesFach.id, semester)
+    await ladeSpalten()
+    setSpaltenContextMenu(null)
+  }
+
   const openSpalteModal = useCallback(() => openModal('spalteHinzufuegen'), [openModal])
 
   // ── Empty State: Kein Fach ──
@@ -503,8 +483,6 @@ export default function NotenTabelle() {
         <NotenToolbar
           aktivesFach={aktivesFach}
           schueler={sichtbareSchueler}
-          spalten={spalten}
-          eintraege={eintraege}
           zeugnisnoten={zeugnisnoten}
           aktiveSemester={aktiveSemester}
           semester1Eingeklappt={semester1Eingeklappt}
@@ -632,6 +610,9 @@ export default function NotenTabelle() {
             <div className="context-menu-separator" />
             <div className="context-menu-item" onClick={() => handleSortieren(spaltenContextMenu.spalte.semester)}>
               Nach Kategorie sortieren (S{spaltenContextMenu.spalte.semester})
+            </div>
+            <div className="context-menu-item" onClick={() => handleSortierenChrono(spaltenContextMenu.spalte.semester)}>
+              Chronologisch sortieren (S{spaltenContextMenu.spalte.semester})
             </div>
             <div className="context-menu-separator" />
             <div className="context-menu-item" onClick={() => handleSpalteBearbeiten(spaltenContextMenu.spalte)}>
@@ -812,14 +793,14 @@ function SpalteBearbeitenModal({ spalte, onSpeichern, onClose }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1">
-              Notiz <span className="font-normal text-ink-400">(Tooltip am Spaltenkopf)</span>
+              {spalte.kategorie === 'MA' || spalte.kategorie === 'HÜ' ? 'Notiz' : 'Thema'} <span className="font-normal text-ink-400">(Tooltip am Spaltenkopf)</span>
             </label>
             <textarea
               className="input resize-none"
               rows={2}
               value={notiz}
               onChange={e => setNotiz(e.target.value)}
-              placeholder="z.B. Thema, Hinweise…"
+              placeholder={spalte.kategorie === 'MA' || spalte.kategorie === 'HÜ' ? 'z.B. Hinweise…' : 'z.B. Rechtschreibung, Bruchrechnen…'}
             />
           </div>
         </div>

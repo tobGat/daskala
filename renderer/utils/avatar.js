@@ -53,6 +53,25 @@ export function parseAvatarOptions(schueler) {
   try { return JSON.parse(schueler.avatar)?.options ?? null } catch { return null }
 }
 
+// ─── Auto-Avatar aus dem Namen: EXPLIZITE, deterministische Optionen ───
+// Wird von der Anzeige (avatarSvg) UND vom Editor als Startzustand genutzt, damit die
+// Editor-Vorschau exakt dem angezeigten Avatar entspricht (kein Sprung beim ersten Speichern).
+const AUTO_OPTION_CATS = ['head', 'hair', 'eyes', 'eyebrows', 'nose', 'mouth', 'glasses', 'earrings', 'beard']
+export function autoOptions(schueler) {
+  const name = (schueler?.vorname ?? '') + (schueler?.nachname ?? '')
+  const hc = HAIR[hashFromString('hair' + name) % HAIR.length]
+  const o = {
+    skinColor: [SKIN[hashFromString('skin' + name) % SKIN.length]],
+    hairColor: [hc], eyebrowsColor: [hc],
+    glassesProbability: 0, earringsProbability: 0, beardProbability: 0,
+  }
+  for (const cat of AUTO_OPTION_CATS) {
+    const vs = variantsOf(cat)
+    if (vs.length) o[cat] = [vs[hashFromString(cat + name) % vs.length]]
+  }
+  return o
+}
+
 // ─── SVG-String erzeugen (mit Modul-Cache gegen CPU-Last) ───
 const _cache = new Map()
 function cacheKey(schueler, size) {
@@ -63,11 +82,7 @@ export function avatarSvg(schueler, size = 64) {
   const key = cacheKey(schueler, size)
   const hit = _cache.get(key)
   if (hit !== undefined) return hit
-  const opts = parseAvatarOptions(schueler)
-  // Auto-aus-Name: deterministisch aus dem Namen; Haut- und Haarfarbe variieren (Haare = Augenbrauen).
-  const name = `${schueler?.vorname ?? ''}${schueler?.nachname ?? ''}`
-  const hc = HAIR[hashFromString('hair' + name) % HAIR.length]
-  const base = opts ?? { seed: name, skinColor: SKIN, hairColor: [hc], eyebrowsColor: [hc] }
+  const base = parseAvatarOptions(schueler) ?? autoOptions(schueler)
   let svg = ''
   try { svg = createAvatar(lorelei, { size, ...base }).toString() } catch { svg = '' }
   _cache.set(key, svg)
