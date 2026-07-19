@@ -677,18 +677,20 @@ export default function SchuelerDetail() {
                             {fach.name}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 pl-4">
+                        <div className="flex items-center gap-2.5 pl-4">
                           {[['SN 1', nS1], ['SN 2', nS2], ['ZN', nEN]].map(([label, n]) => (
-                            <span
-                              key={label}
-                              className={`text-[9px] font-bold px-1 py-0.5 rounded ${
-                                n != null
-                                  ? 'text-white'
-                                  : 'text-ink-400 dark:text-ink-600 bg-paper-100 dark:bg-ink-800'
-                              }`}
-                              style={n != null ? { backgroundColor: noteZuFarbe(n) } : undefined}
-                            >
-                              {label} {n ?? '–'}
+                            <span key={label} className="inline-flex items-center gap-1">
+                              <span className="text-[9px] font-medium text-ink-400 dark:text-ink-500">{label}</span>
+                              <span
+                                className={`inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 rounded text-[10px] font-bold leading-none ${
+                                  n != null
+                                    ? 'text-white shadow-sm'
+                                    : 'text-ink-400 dark:text-ink-600 bg-paper-100 dark:bg-ink-800'
+                                }`}
+                                style={n != null ? { backgroundColor: noteZuFarbe(n) } : undefined}
+                              >
+                                {n ?? '–'}
+                              </span>
                             </span>
                           ))}
                         </div>
