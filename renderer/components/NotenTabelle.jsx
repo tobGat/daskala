@@ -793,14 +793,14 @@ function SpalteBearbeitenModal({ spalte, onSpeichern, onClose }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1">
-              Notiz <span className="font-normal text-ink-400">(Tooltip am Spaltenkopf)</span>
+              {spalte.kategorie === 'MA' || spalte.kategorie === 'HÜ' ? 'Notiz' : 'Thema'} <span className="font-normal text-ink-400">(Tooltip am Spaltenkopf)</span>
             </label>
             <textarea
               className="input resize-none"
               rows={2}
               value={notiz}
               onChange={e => setNotiz(e.target.value)}
-              placeholder="z.B. Thema, Hinweise…"
+              placeholder={spalte.kategorie === 'MA' || spalte.kategorie === 'HÜ' ? 'z.B. Hinweise…' : 'z.B. Rechtschreibung, Bruchrechnen…'}
             />
           </div>
         </div>

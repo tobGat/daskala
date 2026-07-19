@@ -119,17 +119,17 @@ export default function SpalteHinzufuegen({ onClose }) {
           />
         </div>
 
-        {/* Notiz */}
+        {/* Thema / Notiz */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1">
-            Notiz <span className="text-ink-400 font-normal">(optional, erscheint als Tooltip)</span>
+            {istEinfluss ? 'Notiz' : 'Thema'} <span className="text-ink-400 font-normal">(optional, erscheint als Tooltip)</span>
           </label>
           <textarea
             className="input resize-none"
             rows={2}
             value={notiz}
             onChange={e => setNotiz(e.target.value)}
-            placeholder="z.B. Thema, Hinweise…"
+            placeholder={istEinfluss ? 'z.B. Hinweise…' : 'z.B. Rechtschreibung, Bruchrechnen…'}
           />
         </div>
 

@@ -7,6 +7,7 @@ import SchuelerKVSection from './kv/SchuelerKVSection'
 import SchuelerAvatar from './SchuelerAvatar'
 import AvatarEditorModal from './AvatarEditorModal'
 import { avatarSvg } from '../utils/avatar'
+import { niveauZurZeit } from '../utils/niveau'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function noteZuFarbe(note) {
@@ -29,12 +30,16 @@ function formatDatum(d) {
   catch { return d }
 }
 
-// ─── SA/T-Liniendiagramm (Notenverlauf) ──────────────────────────────────────
-function NotenChart({ eintraege }) {
-  const W = 540, H = 180
-  const padL = 32, padT = 20, padR = 14, padB = 24
+// ─── SA/T-Liniendiagramm (Notenverlauf) mit Niveau (AHS/ST) + Datum/Thema ─────
+function NotenChart({ eintraege, istDifferenziert = false, historie = [], aktuellesNiveau = 'AHS' }) {
+  const W = 540, H = 196
+  const padL = 32, padT = 18, padR = 14
   const plotW = W - padL - padR
-  const plotH = H - padT - padB
+  const plotH = 116
+  const gridBottom = padT + plotH
+  const yDate = gridBottom + 16
+  const yThema = gridBottom + 27
+  const yLegend = H - 6
 
   const sa = eintraege.filter(e => e.kategorie === 'SA' && istGueltigeNote(e.wert))
     .sort((a, b) => a.semester - b.semester || a.reihenfolge - b.reihenfolge)
@@ -44,6 +49,9 @@ function NotenChart({ eintraege }) {
 
   const all = [...sa.map(p => ({ p, typ: 'SA' })), ...t.map(p => ({ p, typ: 'T' }))]
     .sort((a, b) => a.p.semester - b.p.semester || a.p.reihenfolge - b.p.reihenfolge)
+  // Niveau je Punkt zum Zeitpunkt der Note (nur bei differenzierten Fächern)
+  if (istDifferenziert) all.forEach(it => { it.niveau = niveauZurZeit(historie, it.p.datum, aktuellesNiveau) })
+
   const n = all.length
   const positions = all.map((_, i) => padL + (n === 1 ? plotW / 2 : i / (n - 1) * plotW))
   const idxMap = new Map(all.map((item, i) => [item, i]))
@@ -53,8 +61,66 @@ function NotenChart({ eintraege }) {
   const saItems = all.filter(it => it.typ === 'SA')
   const tItems = all.filter(it => it.typ === 'T')
 
+  // Zusammenhängende Runs gleichen Niveaus → Regionen, Grenzen, Linien-Unterbrechung.
+  // Bei nicht-differenzierten Fächern ist it.niveau überall undefined → ein Run → durchgehende Linie.
+  const runsOf = (items) => items.reduce((runs, it) => {
+    const last = runs[runs.length - 1]
+    if (last && last.niveau === it.niveau) last.items.push(it)
+    else runs.push({ niveau: it.niveau, items: [it] })
+    return runs
+  }, [])
+
+  let regionen = [], grenzen = []
+  if (istDifferenziert) {
+    const allRuns = []
+    all.forEach((it, i) => {
+      const last = allRuns[allRuns.length - 1]
+      if (last && last.niveau === it.niveau) last.endIdx = i
+      else allRuns.push({ niveau: it.niveau, startIdx: i, endIdx: i })
+    })
+    regionen = allRuns.map((run, k) => {
+      const left = k === 0 ? padL : (positions[run.startIdx - 1] + positions[run.startIdx]) / 2
+      const right = k === allRuns.length - 1 ? (W - padR) : (positions[run.endIdx] + positions[run.endIdx + 1]) / 2
+      return { x: left, w: right - left, niveau: run.niveau }
+    })
+    grenzen = allRuns.slice(0, -1).map((run, k) => ({
+      x: (positions[run.endIdx] + positions[run.endIdx + 1]) / 2,
+      von: run.niveau, nach: allRuns[k + 1].niveau,
+    }))
+  }
+  const niveauFill = niv => niv === 'ST' ? 'rgba(234,179,8,0.12)' : 'rgba(34,197,94,0.10)'
+  const kurzDatum = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' }) : ''
+  const kurzThema = th => { const s = (th ?? '').trim(); return s.length > 16 ? s.slice(0, 15) + '…' : s }
+
+  const linie = (items, color, width, op) => runsOf(items)
+    .filter(r => r.items.length > 1)
+    .map((r, ri) => (
+      <polyline key={`ln-${color}-${ri}`}
+        points={r.items.map(it => `${xOf(it).toFixed(1)},${yOf(it.p.wert).toFixed(1)}`).join(' ')}
+        fill="none" stroke={color} strokeWidth={width} strokeOpacity={op}
+      />
+    ))
+
+  const punkt = (it, i, color, r, labelColor) => {
+    const x = xOf(it), y = yOf(it.p.wert)
+    const titel = `${it.p.kuerzel || it.typ} · ${formatDatum(it.p.datum)}${it.p.notiz ? ' · ' + it.p.notiz : ''} · Note ${it.p.wert}`
+    return (
+      <g key={`${it.typ}-${i}`}>
+        <title>{titel}</title>
+        <circle cx={x} cy={y} r={r} fill={color} stroke="white" strokeWidth={1.4} />
+        <text x={x} y={y - r - 4} textAnchor="middle" fontSize={9} fontWeight="bold" fill={labelColor}>{it.p.kuerzel || it.typ}</text>
+        <text x={x} y={yDate} textAnchor="middle" fontSize={8} fill="#8a8178">{kurzDatum(it.p.datum)}</text>
+        {it.p.notiz && <text x={x} y={yThema} textAnchor="middle" fontSize={8} fill="#a59c91">{kurzThema(it.p.notiz)}</text>}
+      </g>
+    )
+  }
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+      {/* Niveau-Regionen (Hintergrund grün AHS / gelb ST) */}
+      {regionen.map((rg, i) => (
+        <rect key={`rg-${i}`} x={rg.x} y={padT} width={rg.w} height={plotH} fill={niveauFill(rg.niveau)} />
+      ))}
       {/* Grid */}
       {[1, 2, 3, 4, 5].map(grade => (
         <g key={grade}>
@@ -62,42 +128,36 @@ function NotenChart({ eintraege }) {
           <text x={padL - 5} y={yOf(grade) + 3} textAnchor="end" fontSize={10} fill="#a59c91">{grade}</text>
         </g>
       ))}
-      {/* SA Linie + Punkte */}
-      {saItems.length > 1 && (
-        <polyline
-          points={saItems.map(it => `${xOf(it).toFixed(1)},${yOf(it.p.wert).toFixed(1)}`).join(' ')}
-          fill="none" stroke="#fb6936" strokeWidth={2} strokeOpacity={0.6}
-        />
-      )}
-      {saItems.map((it, i) => (
-        <g key={`sa-${i}`}>
-          <circle cx={xOf(it)} cy={yOf(it.p.wert)} r={6} fill="#fb6936" stroke="white" strokeWidth={1.5} />
-          <text x={xOf(it)} y={yOf(it.p.wert) - 10} textAnchor="middle" fontSize={9} fontWeight="bold" fill="#c43a14">
-            {it.p.kuerzel || 'SA'}
-          </text>
+      {/* Niveau-Wechsel-Marker */}
+      {grenzen.map((g, i) => (
+        <g key={`gr-${i}`}>
+          <line x1={g.x} y1={padT} x2={g.x} y2={gridBottom} stroke="#94a3b8" strokeWidth={1} strokeDasharray="3,3" />
+          <text x={g.x} y={padT - 6} textAnchor="middle" fontSize={8} fontWeight="bold" fill="#64748b">{g.von}→{g.nach}</text>
         </g>
       ))}
-      {/* T Linie + Punkte */}
-      {tItems.length > 1 && (
-        <polyline
-          points={tItems.map(it => `${xOf(it).toFixed(1)},${yOf(it.p.wert).toFixed(1)}`).join(' ')}
-          fill="none" stroke="#8b66f5" strokeWidth={1.5} strokeOpacity={0.5}
-        />
+      {istDifferenziert && grenzen.length === 0 && (
+        <text x={W - padR} y={padT - 6} textAnchor="end" fontSize={8} fontWeight="bold" fill="#64748b">Niveau: {aktuellesNiveau}</text>
       )}
-      {tItems.map((it, i) => (
-        <g key={`t-${i}`}>
-          <circle cx={xOf(it)} cy={yOf(it.p.wert)} r={4.5} fill="#8b66f5" stroke="white" strokeWidth={1.2} />
-          <text x={xOf(it)} y={yOf(it.p.wert) - 8} textAnchor="middle" fontSize={9} fontWeight="bold" fill="#623bc4">
-            {it.p.kuerzel || 'T'}
-          </text>
-        </g>
-      ))}
-      {/* Legend */}
+      {/* Noten-Linien (an Niveau-Grenzen unterbrochen) */}
+      {linie(saItems, '#fb6936', 2, 0.6)}
+      {linie(tItems, '#8b66f5', 1.5, 0.5)}
+      {/* Punkte + Kürzel + Datum/Thema */}
+      {saItems.map((it, i) => punkt(it, i, '#fb6936', 6, '#c43a14'))}
+      {tItems.map((it, i) => punkt(it, i, '#8b66f5', 4.5, '#623bc4'))}
+      {/* Legende */}
       <g>
-        <circle cx={padL + 4} cy={H - 6} r={4} fill="#fb6936" />
-        <text x={padL + 12} y={H - 3} fontSize={9} fill="#5e544c">Schularbeit</text>
-        <circle cx={padL + 80} cy={H - 6} r={3.5} fill="#8b66f5" />
-        <text x={padL + 88} y={H - 3} fontSize={9} fill="#5e544c">Test</text>
+        <circle cx={padL + 4} cy={yLegend} r={4} fill="#fb6936" />
+        <text x={padL + 12} y={yLegend + 3} fontSize={9} fill="#5e544c">Schularbeit</text>
+        <circle cx={padL + 80} cy={yLegend} r={3.5} fill="#8b66f5" />
+        <text x={padL + 88} y={yLegend + 3} fontSize={9} fill="#5e544c">Test</text>
+        {istDifferenziert && (
+          <>
+            <rect x={padL + 128} y={yLegend - 4} width={9} height={9} rx={1.5} fill="rgba(34,197,94,0.35)" />
+            <text x={padL + 141} y={yLegend + 3} fontSize={9} fill="#5e544c">AHS</text>
+            <rect x={padL + 176} y={yLegend - 4} width={9} height={9} rx={1.5} fill="rgba(234,179,8,0.45)" />
+            <text x={padL + 189} y={yLegend + 3} fontSize={9} fill="#5e544c">ST</text>
+          </>
+        )}
       </g>
     </svg>
   )
@@ -191,9 +251,12 @@ function StatBar({ label, positiv, negativ, gesamt, posColor, negColor, posLabel
 }
 
 // ─── Fach-Detail im Modal ─────────────────────────────────────────────────────
-function FachDetail({ fach, eintraege, zeugnisnoten, notizen, klassenname, schueler }) {
+function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, niveaus, klassenname, schueler }) {
   const fachEintraege = eintraege.filter(e => e.fach_id === fach.id)
   const fachNotizen   = notizen.filter(n => n.fach_id === fach.id)
+  const istDifferenziert = fach.benotungssystem === 'differenziert'
+  const fachHistorie = niveauHistorie?.[fach.id] ?? []
+  const aktNiveau = niveaus?.[fach.id] ?? 'AHS'
 
   // Notizen sind 1:1 pro Fach in der DB; wir nutzen sie als Free-Text-Editor
   const initialNotiz = fachNotizen[0]?.text ?? ''
@@ -311,7 +374,7 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, klassenname, schue
         <section>
           <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-2">Leistungsentwicklung</p>
           <div className="bg-paper-50 dark:bg-ink-900/40 border border-paper-200 dark:border-ink-800 rounded-xl p-3">
-            <NotenChart eintraege={fachEintraege} />
+            <NotenChart eintraege={fachEintraege} istDifferenziert={istDifferenziert} historie={fachHistorie} aktuellesNiveau={aktNiveau} />
           </div>
         </section>
       )}
@@ -646,6 +709,8 @@ export default function SchuelerDetail() {
                     eintraege={profil.eintraege}
                     zeugnisnoten={profil.zeugnisnoten}
                     notizen={profil.notizen}
+                    niveauHistorie={profil.niveauHistorie}
+                    niveaus={profil.niveaus}
                     klassenname={aktiveKlasse?.name ?? ''}
                     schueler={detailSchueler}
                   />

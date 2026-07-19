@@ -2115,7 +2115,7 @@ function registerIPC() {
 
     const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE schueler_id = ?').all(schuelerId)
     const eintraege = db.prepare(`
-      SELECT e.wert, e.kommentar, s.kategorie, s.datum, s.kuerzel, s.semester, s.fach_id, s.reihenfolge
+      SELECT e.wert, e.kommentar, s.kategorie, s.datum, s.kuerzel, s.notiz, s.semester, s.fach_id, s.reihenfolge
       FROM eintraege e
       JOIN spalten s ON e.spalte_id = s.id
       WHERE e.schueler_id = ? AND e.wert IS NOT NULL
@@ -2131,7 +2131,12 @@ function registerIPC() {
     db.prepare('SELECT fach_id, niveau FROM schueler_niveau WHERE schueler_id = ?')
       .all(schuelerId)
       .forEach(r => { niveaus[r.fach_id] = r.niveau })
-    return { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus }
+    // Niveau-Historie je Fach (für die Darstellung von AHS/ST-Wechseln im Leistungsdiagramm)
+    const niveauHistorie = {}
+    db.prepare(`SELECT fach_id, niveau, gueltig_ab FROM schueler_niveau_historie
+      WHERE schueler_id = ? ORDER BY fach_id, gueltig_ab DESC, id DESC`).all(schuelerId)
+      .forEach(r => { (niveauHistorie[r.fach_id] ??= []).push({ niveau: r.niveau, gueltig_ab: r.gueltig_ab }) })
+    return { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus, niveauHistorie }
   })
 
   ipcMain.handle('schueler:exportProfilPDF', async (_, { profil, klassenname }) => {
