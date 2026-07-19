@@ -7,7 +7,7 @@ import SchuelerKVSection from './kv/SchuelerKVSection'
 import SchuelerAvatar from './SchuelerAvatar'
 import AvatarEditorModal from './AvatarEditorModal'
 import { avatarSvg } from '../utils/avatar'
-import { niveauZurZeit } from '../utils/niveau'
+import { niveauZurZeit, niveauOffset } from '../utils/niveau'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function noteZuFarbe(note) {
@@ -28,6 +28,14 @@ function formatDatum(d) {
   if (!d) return '—'
   try { return new Date(d + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' }) }
   catch { return d }
+}
+
+// Interne Zeugnisnote (bei differenzierten Fächern 1–7) → angezeigte Note (1–5) auf dem aktuellen Niveau.
+// offset = niveauOffset(aktuelles Niveau) bei differenzierten Fächern, sonst 0.
+function znAnzeige(zn, offset = 0) {
+  const intern = zn?.note_manuell ?? zn?.note_berechnet
+  if (intern == null) return null
+  return Math.max(1, Math.min(5, Math.round(intern - offset)))
 }
 
 // ─── SA/T-Liniendiagramm (Notenverlauf) mit Niveau (AHS/ST) + Datum/Thema ─────
@@ -313,11 +321,12 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
   const huePos = hueEintr.filter(e => e.wert === '✓').length
   const hueNeg = hueEintr.filter(e => e.wert === '✗').length
 
-  // Zeugnisnoten
+  // Zeugnisnoten (differenzierte Fächer speichern intern 1–7 → auf aktuelles Niveau umrechnen)
   const znS1 = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 1)
   const znS2 = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 2)
   const znEN = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 3)
-  const anzeige = (zn) => zn?.note_manuell ?? (zn?.note_berechnet ? Math.round(zn.note_berechnet) : null)
+  const znOffset = istDifferenziert ? niveauOffset(aktNiveau) : 0
+  const anzeige = (zn) => znAnzeige(zn, znOffset)
 
   // Verlauf
   const [verlaufOffen, setVerlaufOffen] = useState(false)
@@ -655,8 +664,9 @@ export default function SchuelerDetail() {
                     const znEN = profil.zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 3)
                     const znS2 = profil.zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 2)
                     const znS1 = profil.zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 1)
-                    const ad = (zn) => zn?.note_manuell ?? (zn?.note_berechnet ? Math.round(zn.note_berechnet) : null)
-                    const nEN = ad(znEN), nS2 = ad(znS2), nS1 = ad(znS1)
+                    // Differenzierte Fächer speichern intern (1–7) → auf aktuelles Niveau umrechnen.
+                    const off = fach.benotungssystem === 'differenziert' ? niveauOffset(profil.niveaus?.[fach.id] ?? 'AHS') : 0
+                    const nEN = znAnzeige(znEN, off), nS2 = znAnzeige(znS2, off), nS1 = znAnzeige(znS1, off)
                     const selected = !kvAktiv && selectedFachId === fach.id
                     return (
                       <button
