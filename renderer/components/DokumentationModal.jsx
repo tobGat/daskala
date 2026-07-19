@@ -46,6 +46,8 @@ const DOKU = [
       { h: 'Avatare' },
       'Jede:r Schüler:in erhält automatisch einen Avatar aus dem Namen. Über den Avatar-Editor lassen sich Gesicht, Frisur, Farben und Accessoires anpassen.',
       { tipp: 'Die Avatare werden ohne Internet erzeugt (DiceBear „lorelei", CC0) und funktionieren komplett offline.' },
+      { h: 'Leistungsprofil' },
+      'Ein Klick auf eine:n Schüler:in öffnet das Profil: links alle Fächer mit farbig hervorgehobenen Semester-/Zeugnisnoten (grün 1 bis rot 5), rechts die Details samt Leistungsdiagramm (Schularbeiten/Tests mit Datum und Thema). Über „PDF" exportierst du das Profil.',
     ],
   },
   {
@@ -61,6 +63,7 @@ const DOKU = [
       'Der graue Strich „—" bei einer Hausübung bedeutet „nicht gewertet / entfällt" (z. B. entschuldigt oder dispensiert): Er fließt bewusst nicht in die Note ein und zählt auch nicht zur HÜ-Quote – anders als eine leere Zelle steht er als sichtbarer Vermerk.',
       'Klicke in eine Zelle und tippe die Note bzw. das Symbol. Änderungen lassen sich rückgängig machen (Strg+Z).',
       'Per Rechtsklick auf einen Spaltenkopf sortierst du die Spalten „Nach Kategorie" (gruppiert nach SA, Test, MA …) oder wieder „Chronologisch" (nach Datum).',
+      'Bei Schularbeiten, Tests und Individuell-Spalten kannst du ein Thema hinterlegen (z. B. „Bruchrechnen"). Es erscheint als Tooltip am Spaltenkopf und im Leistungsdiagramm des Schüler:innen-Profils.',
       { tipp: 'Semester 1 lässt sich einklappen, um in Semester 2 mehr Platz zu haben.' },
     ],
   },
@@ -77,6 +80,7 @@ const DOKU = [
       'Liegt eine Note genau zwischen zwei Stufen (z. B. 2,5), wird die Kommastelle ausgegraut angezeigt und du wählst per Klick die bessere oder schlechtere Note.',
       { h: 'Differenzierte Beurteilung (AHS/ST)' },
       'Stellst du ein Fach auf „AHS/ST" um, wird pro Schüler:in ein Niveau geführt; die Berechnung erfolgt intern differenziert und wird korrekt auf die angezeigte Note umgerechnet.',
+      'Im Schüler:innen-Profil zeigt das Leistungsdiagramm Niveau-Wechsel (AHS↔ST) als farbig hinterlegte Bereiche (grün AHS / gelb ST) mit Wechsel-Markierung; jeder Schularbeits-/Test-Punkt trägt Datum und Thema.',
     ],
   },
   {
