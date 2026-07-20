@@ -194,7 +194,7 @@ export default function KlassenTabs() {
                     setAktiveKlasse(k)
                     setKlasseDropdown(null)
                     setCurrentView('jahresplanung')
-                  } else if (currentView === 'stundenplan') {
+                  } else if (currentView === 'stundenplan' || currentView === 'kv') {
                     setAktiveKlasse(k)
                     setKlasseDropdown(null)
                     setCurrentView('notentabelle')
