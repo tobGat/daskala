@@ -127,6 +127,7 @@ const DOKU = [
   {
     id: 'stundenplan', titel: 'Stundenplan & Ferien', bloecke: [
       'Der Stundenplan ist im Dashboard sichtbar. Über „Bearbeiten" pflegst du die Stunden und – kompakt im selben Screen – die Stunden-/Pausenzeiten.',
+      'Im Bearbeitungsmodus verschiebst du Stunden per Drag & Drop in einen anderen Slot; ziehst du eine Stunde auf einen bereits belegten Slot, werden die beiden getauscht. Eine hinterlegte Wochen-Planung wandert dabei mit.',
       { h: 'Ferien' },
       'Wählst du in den Einstellungen dein Bundesland, werden die österreichischen Schulferien und Feiertage automatisch berechnet und im Kalender angezeigt. Eigene Ferien/Feiertage kannst du zusätzlich pflegen.',
       { h: 'Wettervorschau' },

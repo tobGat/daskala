@@ -2528,6 +2528,23 @@ function registerIPC() {
     return true
   })
 
+  // Stunde per Drag & Drop in einen anderen Slot verschieben. Die id bleibt erhalten,
+  // damit die Wochen-Planung (stunden_planung, per stundenplan_id) mitwandert.
+  // Ist der Ziel-Slot belegt, werden die beiden Stunden getauscht (transaktional).
+  ipcMain.handle('stundenplan:verschieben', (_, id, wochentag, stundeId) => {
+    const eintrag = db.prepare('SELECT wochentag, stunde_id FROM stundenplan WHERE id = ?').get(id)
+    if (!eintrag) return false
+    if (eintrag.wochentag === wochentag && eintrag.stunde_id === stundeId) return true
+    const belegt = db.prepare('SELECT id FROM stundenplan WHERE wochentag = ? AND stunde_id = ? AND id != ?')
+      .get(wochentag, stundeId, id)
+    const setSlot = db.prepare('UPDATE stundenplan SET wochentag = ?, stunde_id = ? WHERE id = ?')
+    db.transaction(() => {
+      if (belegt) setSlot.run(eintrag.wochentag, eintrag.stunde_id, belegt.id) // Tausch: Ziel-Eintrag auf Quell-Slot
+      setSlot.run(wochentag, stundeId, id)
+    })()
+    return true
+  })
+
   ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => {
     return db.prepare(`
       SELECT sp.id, sp.wochentag, sp.stunde_id, sp.fach_id,

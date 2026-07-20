@@ -184,6 +184,8 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const [stundenzeiten, setStundenzeiten] = useState([])
   const [stundenplanEintraege, setStundenplanEintraege] = useState([])
   const [bearbeitungsModus, setBearbeitungsModus] = useState(false)
+  const [dragEintragId, setDragEintragId] = useState(null)      // id der per Drag gezogenen Stunde
+  const [dragOverSlot, setDragOverSlot] = useState(null)        // { wochentag, stundeId } — Ziel-Highlight
   const [zeitenModalOffen, setZeitenModalOffen] = useState(false)
   const [slotModal, setSlotModal] = useState(null)
   const [planungModal, setPlanungModal] = useState(null) // { eintrag, wocheDatum } or { supplier, wocheDatum, stunde }
@@ -287,6 +289,13 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
       .then(results => setAlleFaecher(results.flat()))
   }, [klassen])
 
+  // Drag-Zustand aufräumen, falls außerhalb einer Zelle losgelassen wird.
+  useEffect(() => {
+    const clear = () => { setDragEintragId(null); setDragOverSlot(null) }
+    window.addEventListener('dragend', clear)
+    return () => window.removeEventListener('dragend', clear)
+  }, [])
+
   const eintragFuerSlot = (wochentag, stundeId) =>
     stundenplanEintraege.find(e => e.wochentag === wochentag && e.stunde_id === stundeId)
 
@@ -308,6 +317,34 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
     } else if (supplier) {
       setPlanungModal({ supplier, wocheDatum, stunde })
     }
+  }
+
+  // ── Drag & Drop: Stunden im Bearbeitungsmodus zwischen Slots verschieben ──
+  const dragAufraeumen = () => { setDragEintragId(null); setDragOverSlot(null) }
+
+  const handleSlotDragStart = (e, eintrag) => {
+    setDragEintragId(eintrag.id)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(eintrag.id)) // nötig, damit Drop (z.B. Firefox) feuert
+  }
+
+  const handleSlotDragOver = (e, wochentag, stundeId) => {
+    if (!bearbeitungsModus || dragEintragId == null) return
+    e.preventDefault() // ohne preventDefault feuert onDrop nicht
+    e.dataTransfer.dropEffect = 'move'
+    if (!dragOverSlot || dragOverSlot.wochentag !== wochentag || dragOverSlot.stundeId !== stundeId) {
+      setDragOverSlot({ wochentag, stundeId })
+    }
+  }
+
+  const handleSlotDrop = async (e, wochentag, stundeId) => {
+    if (!bearbeitungsModus) return
+    e.preventDefault()
+    const id = dragEintragId
+    dragAufraeumen()
+    if (id == null) return
+    await window.api.stundenplan.verschieben(id, wochentag, stundeId)
+    await laden()
   }
 
   const handleSlotContextMenu = (e, wochentag, stunde) => {
@@ -571,14 +608,26 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                       ? wetter?.[tagDatum]?.stunden?.[stunde.beginn?.slice(0, 2)]
                       : null
 
+                    // Drag & Drop (nur Bearbeitungsmodus)
+                    const istDragOver = bearbeitungsModus && dragEintragId != null &&
+                      dragOverSlot?.wochentag === wochentag && dragOverSlot?.stundeId === stunde.id
+                    const istGezogen = bearbeitungsModus && !!eintrag && dragEintragId === eintrag.id
+
                     return (
                       <td
                         key={tagIdx}
                         className={`relative px-1 py-1 h-14 align-top border border-paper-200 dark:border-ink-800 transition-colors
                           ${istFerien ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''}
                           ${istAktuell && !istFerien ? 'ring-2 ring-coral-400 ring-inset' : ''}
-                          ${!istFerien && bearbeitungsModus ? 'cursor-pointer hover:bg-coral-50/50 dark:hover:bg-coral-900/30' : ''}
+                          ${istDragOver ? 'ring-2 ring-coral-500 ring-inset bg-coral-50/60 dark:bg-coral-900/40' : ''}
+                          ${istGezogen ? 'opacity-50' : ''}
+                          ${!istFerien && bearbeitungsModus ? (eintrag ? 'cursor-move' : 'cursor-pointer') + ' hover:bg-coral-50/50 dark:hover:bg-coral-900/30' : ''}
                           ${!istFerien && !bearbeitungsModus && (eintrag || supplier) ? 'cursor-pointer hover:opacity-80' : ''}`}
+                        draggable={bearbeitungsModus && !!eintrag}
+                        onDragStart={eintrag ? (e => handleSlotDragStart(e, eintrag)) : undefined}
+                        onDragOver={e => handleSlotDragOver(e, wochentag, stunde.id)}
+                        onDrop={e => handleSlotDrop(e, wochentag, stunde.id)}
+                        onDragEnd={dragAufraeumen}
                         onClick={() => !istFerien && handleSlotClick(wochentag, stunde)}
                         onContextMenu={e => istFerien ? e.preventDefault() : handleSlotContextMenu(e, wochentag, stunde)}
                         title={istFerien ? ferienInfo.name : tooltipText}

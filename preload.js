@@ -174,6 +174,7 @@ const api = {
     create: (data) => invoke('stundenplan:create', data),
     delete: (id) => invoke('stundenplan:delete', id),
     update: (id, data) => invoke('stundenplan:update', id, data),
+    verschieben: (id, wochentag, stundeId) => invoke('stundenplan:verschieben', id, wochentag, stundeId),
   },
 
   supplierstunden: {
