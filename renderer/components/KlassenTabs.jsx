@@ -31,7 +31,6 @@ const ALLE_KLASSEN_VIEWS = [
 export default function KlassenTabs() {
   const {
     klassen, aktiveKlasse, setAktiveKlasse,
-    schuljahre, aktuellesSchuljahr, setAktuellesSchuljahr,
     openModal, ladeAktiveKlassenliste, setKlassenReihenfolge,
     vorlagenModus, setVorlagenModus,
     currentView, setCurrentView,
@@ -114,11 +113,6 @@ export default function KlassenTabs() {
     if (res?.ordnerWarnung) pushToast(res.ordnerWarnung, 'error')
     await ladeAktiveKlassenliste()
     setRenameId(null)
-  }
-
-  const schuljahrWechseln = async (e) => {
-    const sj = schuljahre.find(s => s.id === parseInt(e.target.value))
-    if (sj) await setAktuellesSchuljahr(sj)
   }
 
   return (
@@ -260,17 +254,6 @@ export default function KlassenTabs() {
         </button>
 
         {!vorlagenModus && (<>
-        <select
-          className="text-xs font-medium bg-white dark:bg-ink-800 border border-paper-300 dark:border-ink-700 rounded-xl px-2.5 py-1.5 cursor-pointer
-            text-ink-700 dark:text-ink-300 focus:outline-none focus:ring-2 focus:ring-coral-400/30 focus:border-coral-400 transition-all"
-          value={aktuellesSchuljahr?.id ?? ''}
-          onChange={schuljahrWechseln}
-        >
-          {schuljahre.filter(s => !s.archiviert).map(s => (
-            <option key={s.id} value={s.id}>{s.bezeichnung}</option>
-          ))}
-        </select>
-
         <button
           className="text-ink-500 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-paper-200 dark:hover:bg-ink-800 transition-all"
           onClick={() => openModal('einstellungen')}
