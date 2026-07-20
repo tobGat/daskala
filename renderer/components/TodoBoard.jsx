@@ -59,133 +59,10 @@ function detectErinnerungOption(faelligkeit, erinnerung) {
 }
 
 
-function TodoKarte({ todo, klassen = [], faecher = [], onToggle, onDelete, onEditFull, flashRef, flashed }) {
-  const [editModus, setEditModus] = useState(false)
-  const [editTitel, setEditTitel] = useState('')
-  const [editFaelligkeit, setEditFaelligkeit] = useState('')
-  const [editErinnerungOption, setEditErinnerungOption] = useState('')
-  const [editErinnerungDatum, setEditErinnerungDatum] = useState('')
-  const [editFachId, setEditFachId] = useState('')
-  const titelInputRef = useRef(null)
-
-  const startEdit = () => {
-    setEditTitel(todo.titel)
-    setEditFaelligkeit(todo.faelligkeit ?? '')
-    const opt = detectErinnerungOption(todo.faelligkeit, todo.erinnerung)
-    setEditErinnerungOption(opt)
-    setEditErinnerungDatum(todo.erinnerung ?? '')
-    setEditFachId(todo.fach_id ? String(todo.fach_id) : '')
-    setEditModus(true)
-    setTimeout(() => titelInputRef.current?.focus(), 50)
-  }
-
-  const handleFaelligkeitChange = (val) => {
-    setEditFaelligkeit(val)
-    if (editErinnerungOption && editErinnerungOption !== 'custom') {
-      setEditErinnerungDatum(berechneErinnerungsDatum(val, editErinnerungOption))
-    }
-  }
-
-  const handleErinnerungOptionChange = (val) => {
-    setEditErinnerungOption(val)
-    if (val && val !== 'custom') {
-      setEditErinnerungDatum(berechneErinnerungsDatum(editFaelligkeit, val))
-    } else if (val === '') {
-      setEditErinnerungDatum('')
-    }
-  }
-
-  const speichernEdit = async () => {
-    const erinnerung = editErinnerungOption === '' ? null : (editErinnerungDatum || null)
-    await onEditFull(todo.id, {
-      titel: editTitel.trim() || todo.titel,
-      faelligkeit: editFaelligkeit || null,
-      erinnerung,
-      fachId: editFachId ? parseInt(editFachId) : null,
-    })
-    setEditModus(false)
-  }
-
+function TodoKarte({ todo, klassen = [], onToggle, onDelete, onEdit, flashRef, flashed }) {
   const faelligkeit = datumsAnzeige(todo.faelligkeit)
   const erinnerung  = datumsAnzeige(todo.erinnerung)
   const klasse = klassen.find(k => k.id === todo.klasse_id)
-
-  if (editModus) {
-    return (
-      <div className="space-y-2 bg-coral-50 dark:bg-ink-800 rounded-2xl p-3 border border-coral-200 dark:border-coral-700/60 shadow-softer animate-pop-in">
-        <input
-          ref={titelInputRef}
-          className="w-full text-sm bg-transparent outline-none text-ink-800 dark:text-paper-100 placeholder:text-ink-400 dark:placeholder:text-ink-500 border-b border-coral-200 dark:border-ink-700 pb-1 font-medium"
-          value={editTitel}
-          onChange={e => setEditTitel(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') speichernEdit()
-            if (e.key === 'Escape') setEditModus(false)
-          }}
-        />
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-ink-500 flex-shrink-0">📅 Fällig:</span>
-          <input
-            type="date"
-            className="flex-1 text-xs bg-transparent outline-none text-ink-700 dark:text-ink-300 cursor-pointer"
-            value={editFaelligkeit}
-            onChange={e => handleFaelligkeitChange(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-ink-500 flex-shrink-0">🔔</span>
-          <select
-            className="flex-1 text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 cursor-pointer border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-0.5"
-            value={editErinnerungOption}
-            onChange={e => handleErinnerungOptionChange(e.target.value)}
-          >
-            {ERINNERUNG_OPTIONEN.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
-        {editErinnerungOption === 'custom' && (
-          <div className="flex items-center gap-1.5 pl-3.5">
-            <input
-              type="date"
-              className="flex-1 text-xs bg-transparent outline-none text-ink-700 dark:text-ink-300 cursor-pointer"
-              value={editErinnerungDatum}
-              onChange={e => setEditErinnerungDatum(e.target.value)}
-            />
-          </div>
-        )}
-        {editErinnerungOption && editErinnerungOption !== 'custom' && editErinnerungDatum && (
-          <div className="pl-3.5 text-[10px] text-amber-600 dark:text-amber-400">
-            {new Date(editErinnerungDatum + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-          </div>
-        )}
-        {faecher.length > 0 && (
-          <select
-            className="w-full text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-0.5"
-            value={editFachId}
-            onChange={e => setEditFachId(e.target.value)}
-          >
-            <option value="">Kein Fach</option>
-            {faecher.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-        )}
-        <div className="flex gap-1.5 pt-0.5">
-          <button
-            className="flex-1 text-xs py-1.5 rounded-xl bg-coral-500 text-white hover:bg-coral-600 active:scale-[0.98] transition-all font-semibold shadow-softer"
-            onClick={speichernEdit}
-          >
-            Speichern
-          </button>
-          <button
-            className="text-xs px-2.5 py-1.5 rounded-xl text-ink-500 hover:bg-paper-200 dark:hover:bg-ink-700 transition-colors"
-            onClick={() => setEditModus(false)}
-          >
-            ✕
-          </button>
-        </div>
-      </div>
-    )
-  }
 
   // Hintergrund- und Border-Farbe: Klassenfarbe (subtil) oder Coral-Fallback
   const bgColor  = klasse?.farbe ? klasse.farbe + '1a' : 'rgb(251 105 54 / 0.06)'
@@ -246,7 +123,7 @@ function TodoKarte({ todo, klassen = [], faecher = [], onToggle, onDelete, onEdi
         {!todo.erledigt && (
           <button
             className="text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 text-xs w-5 h-5 flex items-center justify-center rounded transition-colors"
-            onClick={startEdit}
+            onClick={() => onEdit(todo)}
             title="Bearbeiten"
           >✎</button>
         )}
@@ -260,18 +137,32 @@ function TodoKarte({ todo, klassen = [], faecher = [], onToggle, onDelete, onEdi
   )
 }
 
-function NeueingabeForm({ klassen, faecher = [], onSpeichern, onAbbrechen }) {
-  const [titel, setTitel] = useState('')
-  const [klasseId, setKlasseId] = useState('')
-  const [fachId, setFachId] = useState('')
-  const [faelligkeit, setFaelligkeit] = useState('')
-  const [erinnerungOption, setErinnerungOption] = useState('')
-  const [erinnerungDatum, setErinnerungDatum] = useState('')
+function TodoModal({ initial, klassen, onSpeichern, onAbbrechen }) {
+  const [titel, setTitel] = useState(initial?.titel ?? '')
+  const [klasseId, setKlasseId] = useState(initial?.klasse_id ? String(initial.klasse_id) : '')
+  const [fachId, setFachId] = useState(initial?.fach_id ? String(initial.fach_id) : '')
+  const [faecher, setFaecher] = useState([])
+  const [faelligkeit, setFaelligkeit] = useState(initial?.faelligkeit ?? '')
+  const [erinnerungOption, setErinnerungOption] = useState(detectErinnerungOption(initial?.faelligkeit, initial?.erinnerung))
+  const [erinnerungDatum, setErinnerungDatum] = useState(initial?.erinnerung ?? '')
   const inputRef = useRef(null)
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 50)
-  }, [])
+    const onKey = e => { if (e.key === 'Escape') onAbbrechen() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onAbbrechen])
+
+  // Fächer der gewählten Klasse laden (Fach ist damit auch beim Erstellen wählbar)
+  useEffect(() => {
+    if (!klasseId) { setFaecher([]); return }
+    let aktiv = true
+    window.api.faecher.getAll(parseInt(klasseId))
+      .then(f => { if (aktiv) setFaecher(f) })
+      .catch(() => { if (aktiv) setFaecher([]) })
+    return () => { aktiv = false }
+  }, [klasseId])
 
   const handleFaelligkeitChange = (val) => {
     setFaelligkeit(val)
@@ -279,105 +170,94 @@ function NeueingabeForm({ klassen, faecher = [], onSpeichern, onAbbrechen }) {
       setErinnerungDatum(berechneErinnerungsDatum(val, erinnerungOption))
     }
   }
-
   const handleErinnerungOptionChange = (val) => {
     setErinnerungOption(val)
-    if (val && val !== 'custom') {
-      setErinnerungDatum(berechneErinnerungsDatum(faelligkeit, val))
-    } else if (val === '') {
-      setErinnerungDatum('')
-    }
+    if (val && val !== 'custom') setErinnerungDatum(berechneErinnerungsDatum(faelligkeit, val))
+    else if (val === '') setErinnerungDatum('')
   }
 
   const speichern = async () => {
     const t = titel.trim()
+    if (!t) return
     const er = erinnerungOption === '' ? null : (erinnerungDatum || null)
-    if (t) await onSpeichern(t, klasseId ? parseInt(klasseId) : null, fachId ? parseInt(fachId) : null, faelligkeit || null, er)
-    onAbbrechen()
+    await onSpeichern({
+      titel: t,
+      klasseId: klasseId ? parseInt(klasseId) : null,
+      fachId: fachId ? parseInt(fachId) : null,
+      faelligkeit: faelligkeit || null,
+      erinnerung: er,
+    })
   }
 
+  const labelCls = 'block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1'
+
   return (
-    <div className="space-y-2 bg-coral-50 dark:bg-ink-800 rounded-2xl p-3 border border-coral-200 dark:border-coral-700/60 shadow-softer animate-pop-in">
-      <input
-        ref={inputRef}
-        className="w-full text-sm bg-transparent outline-none text-ink-800 dark:text-paper-100 placeholder:text-ink-400 dark:placeholder:text-ink-500 border-b border-coral-200 dark:border-ink-700 pb-1 font-medium"
-        placeholder="Titel…"
-        value={titel}
-        onChange={e => setTitel(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === 'Enter') speichern()
-          if (e.key === 'Escape') onAbbrechen()
-        }}
-      />
-      {klassen.length > 0 && (
-        <select
-          className="w-full text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-1"
-          value={klasseId}
-          onChange={e => { setKlasseId(e.target.value); setFachId('') }}
-        >
-          <option value="">Keine Klasse</option>
-          {klassen.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
-        </select>
-      )}
-      <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-ink-500 flex-shrink-0">📅 Fällig:</span>
-        <input
-          type="date"
-          className="flex-1 text-xs bg-transparent outline-none text-ink-700 dark:text-ink-300 cursor-pointer"
-          value={faelligkeit}
-          onChange={e => handleFaelligkeitChange(e.target.value)}
-        />
-      </div>
-      <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-ink-500 flex-shrink-0">🔔</span>
-        <select
-          className="flex-1 text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 cursor-pointer border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-0.5"
-          value={erinnerungOption}
-          onChange={e => handleErinnerungOptionChange(e.target.value)}
-        >
-          {ERINNERUNG_OPTIONEN.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </div>
-      {erinnerungOption === 'custom' && (
-        <div className="flex items-center gap-1.5 pl-3.5">
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onAbbrechen()}>
+      <div className="modal-box">
+        <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-5">{initial ? 'Todo bearbeiten' : 'Neues Todo'}</h2>
+
+        <div className="mb-4">
+          <label className={labelCls}>Titel</label>
           <input
-            type="date"
-            className="flex-1 text-xs bg-transparent outline-none text-ink-700 dark:text-ink-300 cursor-pointer"
-            value={erinnerungDatum}
-            onChange={e => setErinnerungDatum(e.target.value)}
+            ref={inputRef}
+            className="input"
+            placeholder="z.B. Hefte korrigieren"
+            value={titel}
+            onChange={e => setTitel(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') speichern() }}
           />
         </div>
-      )}
-      {erinnerungOption && erinnerungOption !== 'custom' && erinnerungDatum && (
-        <div className="pl-3.5 text-[10px] text-amber-600 dark:text-amber-400">
-          {new Date(erinnerungDatum + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+
+        {klassen.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className={labelCls}>Klasse</label>
+              <select className="input" value={klasseId} onChange={e => { setKlasseId(e.target.value); setFachId('') }}>
+                <option value="">Keine Klasse</option>
+                {klassen.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Fach</label>
+              <select className="input" value={fachId} onChange={e => setFachId(e.target.value)} disabled={!klasseId || faecher.length === 0}>
+                <option value="">Kein Fach</option>
+                {faecher.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className={labelCls}>Fällig</label>
+            <input type="date" className="input" value={faelligkeit} onChange={e => handleFaelligkeitChange(e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>Erinnerung</label>
+            <select className="input" value={erinnerungOption} onChange={e => handleErinnerungOptionChange(e.target.value)}>
+              {ERINNERUNG_OPTIONEN.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
         </div>
-      )}
-      {faecher.length > 0 && (
-        <select
-          className="w-full text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-1 mt-0.5"
-          value={fachId}
-          onChange={e => setFachId(e.target.value)}
-        >
-          <option value="">Kein Fach</option>
-          {faecher.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-        </select>
-      )}
-      <div className="flex gap-1.5 pt-0.5">
-        <button
-          className="flex-1 text-xs py-1.5 rounded-xl bg-coral-500 text-white hover:bg-coral-600 active:scale-[0.98] transition-all font-semibold shadow-softer"
-          onClick={speichern}
-        >
-          Hinzufügen
-        </button>
-        <button
-          className="text-xs px-2.5 py-1.5 rounded-xl text-ink-500 hover:bg-paper-200 dark:hover:bg-ink-700 transition-colors"
-          onClick={onAbbrechen}
-        >
-          ✕
-        </button>
+
+        {erinnerungOption === 'custom' && (
+          <div className="mb-4">
+            <label className={labelCls}>Erinnerungsdatum</label>
+            <input type="date" className="input" value={erinnerungDatum} onChange={e => setErinnerungDatum(e.target.value)} />
+          </div>
+        )}
+        {erinnerungOption && erinnerungOption !== 'custom' && erinnerungDatum && (
+          <p className="-mt-2 mb-4 text-xs text-amber-600 dark:text-amber-400">
+            🔔 {new Date(erinnerungDatum + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+          </p>
+        )}
+
+        <div className="flex gap-3">
+          <button className="btn-secondary flex-1" onClick={onAbbrechen}>Abbrechen</button>
+          <button className="btn-primary flex-1" onClick={speichern} disabled={!titel.trim()}>
+            {initial ? 'Speichern' : 'Hinzufügen'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -385,7 +265,7 @@ function NeueingabeForm({ klassen, faecher = [], onSpeichern, onAbbrechen }) {
 
 export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
   const { klassen, todos, ladeTodos } = useStore()
-  const [neueingabe, setNeueingabe] = useState(false)
+  const [formModal, setFormModal] = useState(null) // null | { initial: null|todo }
   const [erledigtOffen, setErledigtOffen] = useState(false)
   const [flashedId, setFlashedId] = useState(null)
   const itemRefs = useRef({})
@@ -404,9 +284,14 @@ export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
     return () => clearTimeout(t)
   }, [highlightedTodoId])
 
-  const todoErstellen = async (titel, klasseId, fachId, faelligkeit, erinnerung) => {
-    await window.api.todos?.create({ titel, klasseId, fachId, faelligkeit, erinnerung })
+  const todoSpeichern = async (data) => {
+    if (formModal?.initial) {
+      await window.api.todos?.update(formModal.initial.id, data)
+    } else {
+      await window.api.todos?.create(data)
+    }
     await ladeTodos()
+    setFormModal(null)
   }
 
   const todoToggle = async (id) => {
@@ -416,11 +301,6 @@ export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
 
   const todoLoeschen = async (id) => {
     await window.api.todos?.delete(id)
-    await ladeTodos()
-  }
-
-  const todoBearbeiten = async (id, { titel, faelligkeit, erinnerung, fachId }) => {
-    await window.api.todos?.update(id, { titel, fachId, faelligkeit, erinnerung })
     await ladeTodos()
   }
 
@@ -434,15 +314,6 @@ export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
     })
   const alleErledigt = todos.filter(t => t.erledigt)
 
-  // Fächer pro Klasse für Edit-Modus laden (lazy)
-  const [klasseFaecher, setKlasseFaecher] = useState({})
-  const ladeFaecher = async (klasseId) => {
-    if (!klasseId || klasseFaecher[klasseId]) return klasseFaecher[klasseId] ?? []
-    const f = await window.api.faecher.getAll(klasseId)
-    setKlasseFaecher(prev => ({ ...prev, [klasseId]: f }))
-    return f
-  }
-
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white dark:bg-ink-900">
 
@@ -453,7 +324,7 @@ export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
         </span>
         <button
           className="text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 w-7 h-7 flex items-center justify-center rounded-xl hover:bg-coral-50 dark:hover:bg-coral-900/30 transition-all active:scale-95"
-          onClick={() => setNeueingabe(v => !v)}
+          onClick={() => setFormModal({ initial: null })}
           title="ToDo hinzufügen"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -465,16 +336,7 @@ export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
       {/* Liste */}
       <div className="flex-1 overflow-y-auto">
         <div className="px-3 py-3 space-y-1.5">
-          {neueingabe && (
-            <NeueingabeForm
-              klassen={klassen}
-              faecher={[]}
-              onSpeichern={todoErstellen}
-              onAbbrechen={() => setNeueingabe(false)}
-            />
-          )}
-
-          {offen.length === 0 && !neueingabe && (
+          {offen.length === 0 && (
             <div className="text-center py-8 text-ink-400">
               <div className="text-3xl mb-2">🌿</div>
               <p className="text-xs">Keine offenen ToDos — gute Arbeit!</p>
@@ -486,13 +348,9 @@ export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
               key={todo.id}
               todo={todo}
               klassen={klassen}
-              faecher={klasseFaecher[todo.klasse_id] ?? []}
               onToggle={todoToggle}
               onDelete={todoLoeschen}
-              onEditFull={async (id, data) => {
-                await ladeFaecher(todo.klasse_id)
-                await todoBearbeiten(id, data)
-              }}
+              onEdit={t => setFormModal({ initial: t })}
               flashRef={el => { itemRefs.current[todo.id] = el }}
               flashed={flashedId === todo.id}
             />
@@ -517,7 +375,7 @@ export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
                       klassen={klassen}
                       onToggle={todoToggle}
                       onDelete={todoLoeschen}
-                      onEditFull={todoBearbeiten}
+                      onEdit={t => setFormModal({ initial: t })}
                       flashRef={el => { itemRefs.current[todo.id] = el }}
                       flashed={flashedId === todo.id}
                     />
@@ -528,6 +386,15 @@ export default function TodoBoard({ highlightedTodoId, onHighlightCleared }) {
           )}
         </div>
       </div>
+
+      {formModal && (
+        <TodoModal
+          initial={formModal.initial}
+          klassen={klassen}
+          onSpeichern={todoSpeichern}
+          onAbbrechen={() => setFormModal(null)}
+        />
+      )}
     </div>
   )
 }

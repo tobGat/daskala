@@ -2859,9 +2859,9 @@ function registerIPC() {
     return info.lastInsertRowid
   })
 
-  ipcMain.handle('todos:update', (_, id, { titel, fachId, faelligkeit, erinnerung }) => {
-    db.prepare('UPDATE todos SET titel = ?, fach_id = ?, faelligkeit = ?, erinnerung = ? WHERE id = ?')
-      .run(titel, fachId ?? null, faelligkeit ?? null, erinnerung ?? null, id)
+  ipcMain.handle('todos:update', (_, id, { titel, klasseId, fachId, faelligkeit, erinnerung }) => {
+    db.prepare('UPDATE todos SET titel = ?, klasse_id = ?, fach_id = ?, faelligkeit = ?, erinnerung = ? WHERE id = ?')
+      .run(titel, klasseId ?? null, fachId ?? null, faelligkeit ?? null, erinnerung ?? null, id)
     return true
   })
 
