@@ -33,15 +33,6 @@ function toDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// Montag der Woche finden (für Semesterferien)
-function montagDerWoche(date) {
-  const d = new Date(date)
-  const dow = d.getDay()
-  const diff = dow === 0 ? -6 : 1 - dow
-  d.setDate(d.getDate() + diff)
-  return d
-}
-
 // ─── Semesterferien-Gruppen ──────────────────────────────────────────────────
 // Ost (Gruppe 1): Wien, Niederösterreich, Burgenland → 1. Woche im Februar
 // West (Gruppe 2): OÖ, Stmk, Ktn, Sbg, Tirol, Vbg → 2. Woche im Februar

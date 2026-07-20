@@ -232,7 +232,7 @@ function doBackupCreate() {
     fs.copyFileSync(dbPath, backupPath)
     markiereBackupGemacht()
     return backupPath
-  } catch (e) {
+  } catch {
     return null
   }
 }
@@ -247,7 +247,7 @@ async function doSaveAs(win) {
     fs.copyFileSync(dbPath, result.filePath)
     markiereBackupGemacht()
     return result.filePath
-  } catch (e) {
+  } catch {
     return null
   }
 }
@@ -2899,7 +2899,7 @@ function registerIPC() {
         .filter(f => f.endsWith('.sqlite'))
         .sort()
         .reverse()
-    } catch (e) {
+    } catch {
       return []
     }
   })
@@ -3584,7 +3584,7 @@ function registerIPC() {
 
   // ─── Export: Fach-Planung als DOCX ────────────────────────────────────────
   ipcMain.handle('export:fachPlanungDocx', async (_, fachId, fachName, klasseName, wochenDaten) => {
-    const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, BorderStyle, HeadingLevel } = require('docx')
+    const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, BorderStyle, HeadingLevel } = require('docx')
 
     const WOCHENTAGE = ['', 'Mo', 'Di', 'Mi', 'Do', 'Fr']
 
@@ -3609,8 +3609,6 @@ function registerIPC() {
         AND sp.woche_datum = ?
     `)
 
-    const noBorder = { style: BorderStyle.NONE, size: 0 }
-    const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder }
     const thinBorder = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
     const cellBorders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
 
@@ -4727,7 +4725,7 @@ function registerIPC() {
   })
 
   // Fehlstunden
-  ipcMain.handle('kv:fehlstunden:getAlleFuerSchueler', (_, schuelerId, schuljahrId) => {
+  ipcMain.handle('kv:fehlstunden:getAlleFuerSchueler', (_, schuelerId, _schuljahrId) => {
     // Schuljahr-Filterung: Wir kennen kein start/end pro Datensatz; nutze Bezeichnung
     // → Pragmatic: alle Fehlstunden zurückgeben (das Frontend kann filtern wenn nötig)
     return db.prepare('SELECT * FROM kv_fehlstunden WHERE schueler_id = ? ORDER BY datum DESC, id DESC').all(schuelerId)

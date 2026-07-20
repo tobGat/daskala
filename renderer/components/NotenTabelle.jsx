@@ -697,7 +697,7 @@ export default function NotenTabelle() {
 }
 
 // ─── Niveau-Wechsel-Popup ────────────────────────────────────────────────────
-function NiveauWechselPopup({ schuelerId, schuelerName, aktuellesNiveau, historie, anchorRect, onWechsel, onDeleteEintrag, onClose }) {
+function NiveauWechselPopup({ schuelerName, aktuellesNiveau, historie, anchorRect, onWechsel, onDeleteEintrag, onClose }) {
   const heute = new Date().toISOString().slice(0, 10)
   const zielNiveau = aktuellesNiveau === 'AHS' ? 'ST' : 'AHS'
   const [datum, setDatum] = useState(heute)

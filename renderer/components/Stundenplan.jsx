@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import useStore from '../store/useStore'
-import PlanungModal, { toLocalDateStr, berechneFristDatum, naechsteLektionDatum, formatFristDatum } from './PlanungModal'
+import PlanungModal, { toLocalDateStr, berechneFristDatum } from './PlanungModal'
 import { berechneSchulferien, ferienFuerTag, mergeFerien } from '../utils/schulferien'
 
 function getMontag(wochenOffset) {
@@ -927,7 +927,7 @@ function NotizModal({ eintrag, wochentag, wocheDatum, wochenDaten, stundenzeiten
   )
 }
 
-function SupplierPlanungModal({ supplier, stunde, wocheDatum, onClose, onGespeichert }) {
+function SupplierPlanungModal({ supplier, wocheDatum, onClose, onGespeichert }) {
   const [titel, setTitel] = useState(supplier.titel ?? '')
   const [inhalt, setInhalt] = useState(supplier.inhalt ?? '')
   const [hueText, setHueText] = useState(supplier.hue_text ?? '')

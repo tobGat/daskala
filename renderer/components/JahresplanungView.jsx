@@ -27,7 +27,7 @@ function addDays(dateStr, days) {
 
 function formatDatum(dateStr) {
   if (!dateStr) return ''
-  const [y, m, d] = dateStr.split('-')
+  const [, m, d] = dateStr.split('-')
   return `${parseInt(d)}.${parseInt(m)}.`
 }
 
@@ -119,7 +119,6 @@ function MonatKalender({ year, month, abschnitte, aktivesFach, dragOverDate, onD
 
               // Bestimme ob dieser Tag im Resize-Abschnitt (erweitert) liegt
               const inPreviewRange = istResizing && previewBis && dateStr && dateStr >= previewVon && dateStr <= previewBis
-              const previewStart = inPreviewRange && dateStr === previewVon
               const previewEnd = inPreviewRange && dateStr === previewBis
 
               return (

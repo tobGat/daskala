@@ -63,7 +63,7 @@ const KompetenzZelle = memo(function KompetenzZelle({ kompetenzbereichId, schuel
 })
 
 // ─── Notiz-Popup ─────────────────────────────────────────────────────────────
-function KompetenzNotizPopup({ notiz, onSave, onClose, anchorRef }) {
+function KompetenzNotizPopup({ notiz, onSave, onClose }) {
   const [text, setText] = useState(notiz)
   const popupRef = useRef(null)
 
@@ -183,7 +183,7 @@ export default function KompetenzrasterView() {
             ['G', 'Grundniveau', 'text-amber-600'],
             ['E', 'Erweitert', 'text-coral-600'],
             ['V', 'Vertieft', 'text-emerald-600'],
-          ].map(([k, label, cls]) => (
+          ].map(([k, , cls]) => (
             <span key={k} className={`${cls} font-bold`}>{k}</span>
           ))}
         </div>
