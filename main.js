@@ -3231,7 +3231,7 @@ function registerIPC() {
         znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
     })
 
-    const header = ['Name', ...spalten.map(s => `${s.kuerzel} ${s.datum ?? ''}`), 'SN 1', 'SN 2']
+    const header = ['Name', ...spalten.map(s => `${s.kuerzel} ${s.datum ?? ''}`), 'SN 1', 'SN 2', 'ZN']
     const rows = [header]
 
     for (const s of schueler) {
@@ -3241,6 +3241,7 @@ function registerIPC() {
       }
       row.push(znMap[`${s.id}_1`] ?? '')
       row.push(znMap[`${s.id}_2`] ?? '')
+      row.push(znMap[`${s.id}_3`] ?? '')
       rows.push(row)
     }
 
@@ -3726,12 +3727,12 @@ function registerIPC() {
             znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
         })
 
-        const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum.slice(5).replace('-', '.') : ''}`), 'SN 1', 'SN 2']
+        const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum.slice(5).replace('-', '.') : ''}`), 'SN 1', 'SN 2', 'ZN']
         const rows = [header]
         for (const s of rosterFuerFach(fach.id)) {
           const badges = [s.lernschwaeche ? 'LS' : null, s.legasthenie ? 'LEG' : null].filter(Boolean)
           const name = `${s.nachname} ${s.vorname}${badges.length ? ' [' + badges.join(' ') + ']' : ''}`
-          const row = [name, ...spalten.map(sp => entryMap[`${sp.id}_${s.id}`] ?? ''), znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '']
+          const row = [name, ...spalten.map(sp => entryMap[`${sp.id}_${s.id}`] ?? ''), znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '', znMap[`${s.id}_3`] ?? '']
           rows.push(row)
         }
 
