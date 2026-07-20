@@ -240,18 +240,21 @@ export default function KlassenTabs() {
 
       {/* Schuljahr + Aktionen rechts */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        {/* Vorlagen-Modus umschalten (immer sichtbar) */}
-        <button
-          className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all
-            ${vorlagenModus
-              ? 'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300'
-              : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
-          onClick={() => setVorlagenModus(!vorlagenModus)}
-          title={vorlagenModus ? 'Zurück zu den echten Klassen' : 'Vorlagenklassen mit fertigen Jahresplanungen verwalten'}
-        >
-          <span aria-hidden>{vorlagenModus ? '✕' : '📐'}</span>
-          {vorlagenModus ? 'Vorlagenmodus beenden' : 'Vorlagen'}
-        </button>
+        {/* Vorlagen-Modus umschalten – nur wenn das Planungsmodul aktiv ist (Vorlagen sind
+            Fach-Jahresplanungen). Im aktiven Vorlagenmodus bleibt der Button sichtbar, damit man ihn beenden kann. */}
+        {(planungAktiv || vorlagenModus) && (
+          <button
+            className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all
+              ${vorlagenModus
+                ? 'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300'
+                : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
+            onClick={() => setVorlagenModus(!vorlagenModus)}
+            title={vorlagenModus ? 'Zurück zu den echten Klassen' : 'Vorlagenklassen mit fertigen Jahresplanungen verwalten'}
+          >
+            <span aria-hidden>{vorlagenModus ? '✕' : '📐'}</span>
+            {vorlagenModus ? 'Vorlagenmodus beenden' : 'Vorlagen'}
+          </button>
+        )}
 
         {!vorlagenModus && (<>
         <button
