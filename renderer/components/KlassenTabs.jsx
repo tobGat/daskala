@@ -154,10 +154,11 @@ export default function KlassenTabs() {
               ? 'bg-white dark:bg-ink-800 text-coral-600 dark:text-coral-300 shadow-soft'
               : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
           onClick={() => setCurrentView('kv')}
-          title="Klassenvorstand: Jahresplaner, Wochenroutine, Trigger"
+          title="Klassenvorstand: Jahresplaner, Wochenroutine, Trigger (Beta)"
         >
           <span aria-hidden>📜</span>
           KV
+          <span className="text-[8px] font-bold uppercase tracking-wide leading-none px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">Beta</span>
         </button>
       )}
 

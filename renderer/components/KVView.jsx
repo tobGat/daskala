@@ -72,7 +72,10 @@ export default function KVView() {
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-2xl leading-none" aria-hidden>📜</span>
             <div className="leading-tight">
-              <div className="text-base font-bold text-ink-800 dark:text-paper-100 font-display">Klassenvorstand</div>
+              <div className="flex items-center gap-1.5">
+                <div className="text-base font-bold text-ink-800 dark:text-paper-100 font-display">Klassenvorstand</div>
+                <span className="text-[9px] font-bold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" title="Diese Funktion befindet sich in Erprobung.">Beta</span>
+              </div>
               <div className="text-[11px] text-ink-500 dark:text-ink-400">
                 {aktuellesSchuljahr?.bezeichnung ?? '—'}
               </div>
