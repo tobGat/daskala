@@ -277,9 +277,9 @@ const api = {
 
   export: {
     toJson: () => invoke('export:toJson'),
-    toExcel: (fachId) => invoke('export:toExcel', fachId),
+    fachOds: (fachId) => invoke('export:fachOds', fachId),
     planungPdf: (wochen, einzeln) => invoke('export:planungPdf', wochen, einzeln),
-    allSchuelerExcel: () => invoke('export:allSchuelerExcel'),
+    allSchuelerOds: () => invoke('export:allSchuelerOds'),
     allSchuelerPdf: () => invoke('export:allSchuelerPdf'),
     fachPlanungDocx: (fachId, fachName, klasseName, wochenDaten) => invoke('export:fachPlanungDocx', fachId, fachName, klasseName, wochenDaten),
     jahresplanungOdt: (fachId) => invoke('export:jahresplanungOdt', fachId),

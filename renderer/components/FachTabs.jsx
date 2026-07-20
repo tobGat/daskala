@@ -61,7 +61,7 @@ export default function FachTabs() {
 
   const handleExport = async () => {
     if (!aktivesFach) return
-    await window.api.export.toExcel(aktivesFach.id)
+    await window.api.export.fachOds(aktivesFach.id)
   }
 
   const handleJahresplanungExport = async () => {
@@ -147,7 +147,7 @@ export default function FachTabs() {
             <button
               className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 hover:border-paper-300 dark:hover:border-ink-600 transition-colors"
               onClick={vorlagenModus ? handleJahresplanungExport : handleExport}
-              title={vorlagenModus ? 'Jahresplanung als ODT exportieren' : 'Als Excel exportieren'}
+              title={vorlagenModus ? 'Jahresplanung als ODT exportieren' : 'Als ODS-Tabelle exportieren'}
             >
               Export
             </button>

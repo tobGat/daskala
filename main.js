@@ -3201,13 +3201,13 @@ function registerIPC() {
     return true
   })
 
-  // Export: Excel
-  ipcMain.handle('export:toExcel', async (_, fachId) => {
+  // Export: Noten eines Fachs als ODS-Tabelle
+  ipcMain.handle('export:fachOds', async (_, fachId) => {
     const XLSX = require('xlsx')
 
     const savePath = await dialog.showSaveDialog({
-      defaultPath: 'noten_export.xlsx',
-      filters: [{ name: 'Excel', extensions: ['xlsx'] }],
+      defaultPath: 'noten_export.ods',
+      filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
     })
     if (savePath.canceled) return false
 
@@ -3246,8 +3246,8 @@ function registerIPC() {
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, `${fach.klasse_name} ${fach.name}`)
-    XLSX.writeFile(wb, savePath.filePath)
+    XLSX.utils.book_append_sheet(wb, ws, `${fach.klasse_name} ${fach.name}`.slice(0, 31))
+    XLSX.writeFile(wb, savePath.filePath, { bookType: 'ods' })
     return true
   })
 
@@ -3688,12 +3688,12 @@ function registerIPC() {
     return true
   })
 
-  // ─── Export: Alle Schüler:innen Excel ─────────────────────────────────────
-  ipcMain.handle('export:allSchuelerExcel', async () => {
+  // ─── Export: Alle Schüler:innen als ODS ───────────────────────────────────
+  ipcMain.handle('export:allSchuelerOds', async () => {
     const XLSX = require('xlsx')
     const savePath = await dialog.showSaveDialog({
-      defaultPath: 'daskala_noten.xlsx',
-      filters: [{ name: 'Excel', extensions: ['xlsx'] }],
+      defaultPath: 'daskala_noten.ods',
+      filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
     })
     if (savePath.canceled) return false
 
@@ -3740,7 +3740,7 @@ function registerIPC() {
       }
     }
 
-    XLSX.writeFile(wb, savePath.filePath)
+    XLSX.writeFile(wb, savePath.filePath, { bookType: 'ods' })
     return true
   })
 

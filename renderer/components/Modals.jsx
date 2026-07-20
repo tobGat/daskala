@@ -1078,9 +1078,9 @@ export function ExportierenModal() {
   const { closeModal } = useStore()
   const [laden, setLaden] = useState(false)
 
-  const handleExcel = async () => {
-    setLaden('excel')
-    await window.api.export.allSchuelerExcel()
+  const handleOds = async () => {
+    setLaden('ods')
+    await window.api.export.allSchuelerOds()
     setLaden(false)
   }
 
@@ -1123,15 +1123,15 @@ export function ExportierenModal() {
 
           <button
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-paper-200 dark:border-ink-700 hover:bg-paper-50 dark:hover:bg-ink-800 transition-colors text-left"
-            onClick={handleExcel}
+            onClick={handleOds}
             disabled={laden !== false}
           >
             <span className="text-lg">📊</span>
             <div>
               <div className="text-sm font-medium text-ink-800 dark:text-paper-200">
-                {laden === 'excel' ? 'Exportieren…' : 'Als Excel exportieren'}
+                {laden === 'ods' ? 'Exportieren…' : 'Als ODS-Tabelle exportieren'}
               </div>
-              <div className="text-xs text-ink-400">Ein Tabellenblatt pro Klasse und Fach</div>
+              <div className="text-xs text-ink-400">Ein Tabellenblatt pro Klasse und Fach (OpenDocument)</div>
             </div>
           </button>
         </div>
