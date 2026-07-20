@@ -118,8 +118,8 @@ export default function UebersichtView() {
           <div className="w-px h-8 bg-paper-200 dark:bg-ink-800 flex-shrink-0" />
 
           <div className="flex items-center gap-2 flex-wrap">
-            <StatPill label="ToDos"   value={offeneTodos}     emoji="✏️" accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300" />
-            <StatPill label="Termine" value={naechsteTermine} emoji="📅" accent="bg-mint-50 text-mint-700 dark:bg-mint-900/30 dark:text-mint-300" />
+            <StatPill label={offeneTodos === 1 ? 'ToDo' : 'ToDos'}         value={offeneTodos}     emoji="✏️" accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300" />
+            <StatPill label={naechsteTermine === 1 ? 'Termin' : 'Termine'} value={naechsteTermine} emoji="📅" accent="bg-mint-50 text-mint-700 dark:bg-mint-900/30 dark:text-mint-300" />
           </div>
         </div>
       </div>
