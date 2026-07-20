@@ -231,11 +231,15 @@ function StatChip({ label, value, accent, emoji }) {
   )
 }
 
-function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt, openSpalteModal }) {
+function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt }) {
   const aktiveKlasse = useStore(s => s.aktiveKlasse)
   const setSchuelerSortierung = useStore(s => s.setSchuelerSortierung)
   const openModal = useStore(s => s.openModal)
   const sortierung = aktiveKlasse?.sortierung || 'nachname'
+
+  const handleExport = async () => {
+    if (aktivesFach) await window.api.export.fachOds(aktivesFach.id)
+  }
 
   // Klassen-ZN-Durchschnitt für das aktive Semester
   const klassenDurchschnitt = useMemo(() => {
@@ -345,17 +349,24 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
           />
         )}
 
-        {/* Spalte hinzufügen Button */}
-        <button
-          className="ml-1 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-coral-500 text-white hover:bg-coral-600 active:scale-[0.98] transition-all shadow-soft"
-          onClick={openSpalteModal}
-          title="Neue Spalte hinzufügen"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Spalte
-        </button>
+        {/* Klassenspezifische Aktionen (früher in der Fach-Reiterleiste) */}
+        {aktiveKlasse && (
+          <button
+            className="ml-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 hover:border-paper-300 dark:hover:border-ink-600 transition-colors"
+            onClick={() => openModal('schuelerVerwalten')}
+          >
+            Schüler:innen
+          </button>
+        )}
+        {aktivesFach && (
+          <button
+            className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 hover:border-paper-300 dark:hover:border-ink-600 transition-colors"
+            onClick={handleExport}
+            title="Als ODS-Tabelle exportieren"
+          >
+            Export
+          </button>
+        )}
       </div>
     </div>
   )
@@ -487,7 +498,6 @@ export default function NotenTabelle() {
           aktiveSemester={aktiveSemester}
           semester1Eingeklappt={semester1Eingeklappt}
           setSemester1Eingeklappt={setSemester1Eingeklappt}
-          openSpalteModal={openSpalteModal}
         />
 
         {/* Tabelle */}

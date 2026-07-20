@@ -59,17 +59,6 @@ export default function FachTabs() {
     setContextMenu({ x: e.clientX, y: e.clientY, fach })
   }
 
-  const handleExport = async () => {
-    if (!aktivesFach) return
-    await window.api.export.fachOds(aktivesFach.id)
-  }
-
-  const handleJahresplanungExport = async () => {
-    if (!aktivesFach) return
-    const ok = await window.api.export.jahresplanungOdt(aktivesFach.id)
-    if (ok) pushToast('Jahresplanung als ODT exportiert.', 'success')
-  }
-
   return (
     <div className="flex items-center px-3 bg-white dark:bg-ink-900 border-b border-paper-300 dark:border-ink-700/80">
 
@@ -131,29 +120,6 @@ export default function FachTabs() {
           </button>
         )}
       </div>
-
-      {/* Aktionen rechts */}
-      {(aktiveKlasse || aktivesFach) && (
-        <div className="flex items-center gap-1 ml-2 pl-3 py-1 flex-shrink-0 border-l border-paper-300 dark:border-ink-700">
-          {aktiveKlasse && !vorlagenModus && (
-            <button
-              className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 hover:border-paper-300 dark:hover:border-ink-600 transition-colors"
-              onClick={() => openModal('schuelerVerwalten')}
-            >
-              Schüler:innen
-            </button>
-          )}
-          {aktivesFach && (
-            <button
-              className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 hover:border-paper-300 dark:hover:border-ink-600 transition-colors"
-              onClick={vorlagenModus ? handleJahresplanungExport : handleExport}
-              title={vorlagenModus ? 'Jahresplanung als ODT exportieren' : 'Als ODS-Tabelle exportieren'}
-            >
-              Export
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Kontext-Menü */}
       {contextMenu && (
