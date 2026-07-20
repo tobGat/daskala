@@ -31,7 +31,6 @@ const ALLE_KLASSEN_VIEWS = [
 export default function KlassenTabs() {
   const {
     klassen, aktiveKlasse, setAktiveKlasse,
-    schuljahre, aktuellesSchuljahr, setAktuellesSchuljahr,
     openModal, ladeAktiveKlassenliste, setKlassenReihenfolge,
     vorlagenModus, setVorlagenModus,
     currentView, setCurrentView,
@@ -116,11 +115,6 @@ export default function KlassenTabs() {
     setRenameId(null)
   }
 
-  const schuljahrWechseln = async (e) => {
-    const sj = schuljahre.find(s => s.id === parseInt(e.target.value))
-    if (sj) await setAktuellesSchuljahr(sj)
-  }
-
   return (
     <div className="flex items-center gap-2 px-3 py-2 bg-paper-100 dark:bg-ink-900 border-b border-paper-200 dark:border-ink-800">
 
@@ -154,10 +148,11 @@ export default function KlassenTabs() {
               ? 'bg-white dark:bg-ink-800 text-coral-600 dark:text-coral-300 shadow-soft'
               : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
           onClick={() => setCurrentView('kv')}
-          title="Klassenvorstand: Jahresplaner, Wochenroutine, Trigger"
+          title="Klassenvorstand: Jahresplaner, Wochenroutine, Trigger (Beta)"
         >
           <span aria-hidden>📜</span>
           KV
+          <span className="text-[8px] font-bold uppercase tracking-wide leading-none px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">Beta</span>
         </button>
       )}
 
@@ -199,7 +194,7 @@ export default function KlassenTabs() {
                     setAktiveKlasse(k)
                     setKlasseDropdown(null)
                     setCurrentView('jahresplanung')
-                  } else if (currentView === 'stundenplan') {
+                  } else if (currentView === 'stundenplan' || currentView === 'kv') {
                     setAktiveKlasse(k)
                     setKlasseDropdown(null)
                     setCurrentView('notentabelle')
@@ -245,39 +240,23 @@ export default function KlassenTabs() {
 
       {/* Schuljahr + Aktionen rechts */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        {/* Vorlagen-Modus umschalten (immer sichtbar) */}
-        <button
-          className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all
-            ${vorlagenModus
-              ? 'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300'
-              : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
-          onClick={() => setVorlagenModus(!vorlagenModus)}
-          title={vorlagenModus ? 'Zurück zu den echten Klassen' : 'Vorlagenklassen mit fertigen Jahresplanungen verwalten'}
-        >
-          <span aria-hidden>{vorlagenModus ? '✕' : '📐'}</span>
-          {vorlagenModus ? 'Vorlagenmodus beenden' : 'Vorlagen'}
-        </button>
+        {/* Vorlagen-Modus umschalten – nur wenn das Planungsmodul aktiv ist (Vorlagen sind
+            Fach-Jahresplanungen). Im aktiven Vorlagenmodus bleibt der Button sichtbar, damit man ihn beenden kann. */}
+        {(planungAktiv || vorlagenModus) && (
+          <button
+            className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all
+              ${vorlagenModus
+                ? 'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300'
+                : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
+            onClick={() => setVorlagenModus(!vorlagenModus)}
+            title={vorlagenModus ? 'Zurück zu den echten Klassen' : 'Vorlagenklassen mit fertigen Jahresplanungen verwalten'}
+          >
+            <span aria-hidden>{vorlagenModus ? '✕' : '📐'}</span>
+            {vorlagenModus ? 'Vorlagenmodus beenden' : 'Vorlagen'}
+          </button>
+        )}
 
         {!vorlagenModus && (<>
-        <select
-          className="text-xs font-medium bg-white dark:bg-ink-800 border border-paper-300 dark:border-ink-700 rounded-xl px-2.5 py-1.5 cursor-pointer
-            text-ink-700 dark:text-ink-300 focus:outline-none focus:ring-2 focus:ring-coral-400/30 focus:border-coral-400 transition-all"
-          value={aktuellesSchuljahr?.id ?? ''}
-          onChange={schuljahrWechseln}
-        >
-          {schuljahre.filter(s => !s.archiviert).map(s => (
-            <option key={s.id} value={s.id}>{s.bezeichnung}</option>
-          ))}
-        </select>
-
-        <button
-          className="text-xs font-medium text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-200 px-3 py-1.5 rounded-xl hover:bg-paper-200 dark:hover:bg-ink-800 transition-all"
-          onClick={() => openModal('archiv')}
-          title="Archiv"
-        >
-          Archiv
-        </button>
-
         <button
           className="text-ink-500 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-paper-200 dark:hover:bg-ink-800 transition-all"
           onClick={() => openModal('einstellungen')}

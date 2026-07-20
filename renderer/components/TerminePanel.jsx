@@ -21,7 +21,10 @@ function TerminForm({ initial, klassen, stundenzeiten, onSpeichern, onAbbrechen 
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 50)
-  }, [])
+    const onKey = e => { if (e.key === 'Escape') onAbbrechen() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onAbbrechen])
 
   const speichern = async () => {
     const t = titel.trim()
@@ -35,98 +38,80 @@ function TerminForm({ initial, klassen, stundenzeiten, onSpeichern, onAbbrechen 
     })
   }
 
+  const labelCls = 'block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1'
+
   return (
-    <div className="space-y-2 bg-coral-50 dark:bg-ink-800 rounded-2xl p-3 border border-coral-200 dark:border-coral-700/60 shadow-softer animate-pop-in">
-      <input
-        ref={inputRef}
-        className="w-full text-sm bg-transparent outline-none text-ink-800 dark:text-paper-100 placeholder:text-ink-400 dark:placeholder:text-ink-500 border-b border-coral-200 dark:border-ink-700 pb-1 font-medium"
-        placeholder="Titel…"
-        value={titel}
-        onChange={e => setTitel(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') speichern(); if (e.key === 'Escape') onAbbrechen() }}
-      />
-      <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-ink-500 dark:text-ink-500 flex-shrink-0">📅 Datum:</span>
-        <input
-          type="date"
-          className="flex-1 text-xs bg-transparent outline-none text-ink-700 dark:text-ink-300 cursor-pointer"
-          value={datum}
-          onChange={e => setDatum(e.target.value)}
-        />
-      </div>
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onAbbrechen()}>
+      <div className="modal-box">
+        <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-5">{initial ? 'Termin bearbeiten' : 'Neuer Termin'}</h2>
 
-      {/* Zeit-Modus Toggle */}
-      <div className="flex rounded-lg overflow-hidden border border-coral-200 dark:border-ink-700 text-[10px]">
-        <button
-          className={`flex-1 py-1 transition-colors font-medium ${zeitModus === 'uhrzeit' ? 'bg-coral-500 text-white' : 'text-ink-600 dark:text-ink-400 hover:bg-coral-100 dark:hover:bg-ink-700'}`}
-          onClick={() => setZeitModus('uhrzeit')}
-          type="button"
-        >Uhrzeit</button>
-        <button
-          className={`flex-1 py-1 transition-colors font-medium ${zeitModus === 'stunde' ? 'bg-coral-500 text-white' : 'text-ink-600 dark:text-ink-400 hover:bg-coral-100 dark:hover:bg-ink-700'}`}
-          onClick={() => setZeitModus('stunde')}
-          type="button"
-        >Unterrichtsstunde</button>
-      </div>
-
-      {zeitModus === 'uhrzeit' ? (
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-ink-500 flex-shrink-0">🕐 Uhrzeit:</span>
+        <div className="mb-4">
+          <label className={labelCls}>Titel</label>
           <input
-            type="time"
-            className="flex-1 text-xs bg-transparent outline-none text-ink-700 dark:text-ink-300 cursor-pointer"
-            value={uhrzeit}
-            onChange={e => setUhrzeit(e.target.value)}
+            ref={inputRef}
+            className="input"
+            placeholder="z.B. Elternabend"
+            value={titel}
+            onChange={e => setTitel(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') speichern() }}
           />
         </div>
-      ) : (
-        <select
-          className="w-full text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-1"
-          value={stundeId}
-          onChange={e => setStundeId(e.target.value)}
-        >
-          <option value="">Stunde wählen…</option>
-          {stundenzeiten.map(s => (
-            <option key={s.id} value={s.id}>{s.stunde}. Stunde {s.beginn ? `(${s.beginn})` : ''}</option>
-          ))}
-        </select>
-      )}
 
-      {klassen.length > 0 && (
-        <select
-          className="w-full text-xs bg-white dark:bg-ink-700 outline-none text-ink-700 dark:text-ink-300 border border-coral-200 dark:border-ink-700 rounded-lg px-2 py-1"
-          value={klasseId}
-          onChange={e => setKlasseId(e.target.value)}
-        >
-          <option value="">Keine Klasse</option>
-          {klassen.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
-        </select>
-      )}
-      <input
-        className="w-full text-xs bg-transparent outline-none text-ink-700 dark:text-ink-300 placeholder:text-ink-400 dark:placeholder:text-ink-600 border-t border-coral-200 dark:border-ink-700 pt-1.5"
-        placeholder="Notiz (optional)"
-        value={notiz}
-        onChange={e => setNotiz(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') speichern(); if (e.key === 'Escape') onAbbrechen() }}
-      />
-      <div className="flex gap-1.5 pt-0.5">
-        <button
-          className="flex-1 text-xs py-1.5 rounded-xl bg-coral-500 text-white hover:bg-coral-600 active:scale-[0.98] transition-all font-semibold shadow-softer"
-          onClick={speichern}
-        >
-          {initial ? 'Speichern' : 'Hinzufügen'}
-        </button>
-        <button
-          className="text-xs px-2.5 py-1.5 rounded-xl text-ink-500 hover:bg-paper-200 dark:hover:bg-ink-700 transition-colors"
-          onClick={onAbbrechen}
-        >✕</button>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className={labelCls}>Datum</label>
+            <input type="date" className="input" value={datum} onChange={e => setDatum(e.target.value)} />
+          </div>
+          {klassen.length > 0 && (
+            <div>
+              <label className={labelCls}>Klasse</label>
+              <select className="input" value={klasseId} onChange={e => setKlasseId(e.target.value)}>
+                <option value="">Keine Klasse</option>
+                {klassen.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
+
+        <div className="mb-4">
+          <label className={labelCls}>Zeit</label>
+          <div className="flex rounded-lg overflow-hidden border border-paper-200 dark:border-ink-700 text-xs mb-2">
+            <button type="button" className={`flex-1 py-1.5 font-medium transition-colors ${zeitModus === 'uhrzeit' ? 'bg-coral-500 text-white' : 'text-ink-600 dark:text-ink-400 hover:bg-paper-100 dark:hover:bg-ink-700'}`} onClick={() => setZeitModus('uhrzeit')}>Uhrzeit</button>
+            <button type="button" className={`flex-1 py-1.5 font-medium transition-colors ${zeitModus === 'stunde' ? 'bg-coral-500 text-white' : 'text-ink-600 dark:text-ink-400 hover:bg-paper-100 dark:hover:bg-ink-700'}`} onClick={() => setZeitModus('stunde')}>Unterrichtsstunde</button>
+          </div>
+          {zeitModus === 'uhrzeit' ? (
+            <input type="time" className="input" value={uhrzeit} onChange={e => setUhrzeit(e.target.value)} />
+          ) : (
+            <select className="input" value={stundeId} onChange={e => setStundeId(e.target.value)}>
+              <option value="">Stunde wählen…</option>
+              {stundenzeiten.map(s => <option key={s.id} value={s.id}>{s.stunde}. Stunde {s.beginn ? `(${s.beginn})` : ''}</option>)}
+            </select>
+          )}
+        </div>
+
+        <div className="mb-6">
+          <label className={labelCls}>Notiz <span className="font-normal text-ink-400">(optional)</span></label>
+          <input
+            className="input"
+            placeholder="Notiz"
+            value={notiz}
+            onChange={e => setNotiz(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') speichern() }}
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <button className="btn-secondary flex-1" onClick={onAbbrechen}>Abbrechen</button>
+          <button className="btn-primary flex-1" onClick={speichern} disabled={!titel.trim() || !datum}>
+            {initial ? 'Speichern' : 'Hinzufügen'}
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
 function TerminKarte({ termin, klassen, stundenzeiten, onDelete, onEdit, flashRef, flashed }) {
-  const [editModus, setEditModus] = useState(false)
   const heute = localDateStr(new Date())
   const vergangen = termin.datum < heute
 
@@ -135,18 +120,6 @@ function TerminKarte({ termin, klassen, stundenzeiten, onDelete, onEdit, flashRe
     : null
   const stundeLabel = stundeNummer != null ? `${stundeNummer}. Std` : null
   const klassenFarbe = klassen.find(k => k.id === termin.klasse_id)?.farbe ?? null
-
-  if (editModus) {
-    return (
-      <TerminForm
-        initial={termin}
-        klassen={klassen}
-        stundenzeiten={stundenzeiten}
-        onSpeichern={async (data) => { await onEdit(termin.id, data); setEditModus(false) }}
-        onAbbrechen={() => setEditModus(false)}
-      />
-    )
-  }
 
   // Default-Farbe (kein klassenFarbe): subtiler Coral-Hauch
   const bgColor  = klassenFarbe ? klassenFarbe + '1a' : 'rgb(251 105 54 / 0.06)'
@@ -185,7 +158,7 @@ function TerminKarte({ termin, klassen, stundenzeiten, onDelete, onEdit, flashRe
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
         <button
           className="text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 text-xs w-5 h-5 flex items-center justify-center rounded transition-colors"
-          onClick={() => setEditModus(true)}
+          onClick={() => onEdit(termin)}
           title="Bearbeiten"
         >✎</button>
         <button
@@ -200,7 +173,7 @@ function TerminKarte({ termin, klassen, stundenzeiten, onDelete, onEdit, flashRe
 
 export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighlightCleared }) {
   const { termine, ladeTermine, klassen, aktuellesSchuljahr } = useStore()
-  const [neueingabe, setNeueingabe] = useState(false)
+  const [formModal, setFormModal] = useState(null) // null | { initial: null|termin }
   const [vergangeneOffen, setVergangeneOffen] = useState(false)
   const [flashedId, setFlashedId] = useState(null)
   const [stundenzeiten, setStundenzeiten] = useState([])
@@ -226,23 +199,18 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
     return () => clearTimeout(t)
   }, [highlightedTerminId])
 
-  const terminErstellen = async (data) => {
-    if (!aktuellesSchuljahr) { console.warn('[TerminePanel] kein aktuellesSchuljahr'); return }
+  const terminSpeichern = async (data) => {
     try {
-      await window.api.termine.create({ ...data, schuljahrId: aktuellesSchuljahr.id })
+      if (formModal?.initial) {
+        await window.api.termine.update(formModal.initial.id, data)
+      } else {
+        if (!aktuellesSchuljahr) { console.warn('[TerminePanel] kein aktuellesSchuljahr'); return }
+        await window.api.termine.create({ ...data, schuljahrId: aktuellesSchuljahr.id })
+      }
       await ladeTermine()
-      setNeueingabe(false)
+      setFormModal(null)
     } catch (err) {
-      console.error('[TerminePanel] Fehler beim Erstellen:', err)
-    }
-  }
-
-  const terminBearbeiten = async (id, data) => {
-    try {
-      await window.api.termine.update(id, data)
-      await ladeTermine()
-    } catch (err) {
-      console.error('[TerminePanel] Fehler beim Bearbeiten:', err)
+      console.error('[TerminePanel] Fehler beim Speichern:', err)
     }
   }
 
@@ -275,7 +243,7 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
         </span>
         <button
           className="text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 w-7 h-7 flex items-center justify-center rounded-xl hover:bg-coral-50 dark:hover:bg-coral-900/30 transition-all active:scale-95"
-          onClick={() => setNeueingabe(v => !v)}
+          onClick={() => setFormModal({ initial: null })}
           title="Termin hinzufügen"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -287,16 +255,7 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
       {/* Liste */}
       <div className="overflow-y-auto flex-1">
         <div className="px-3 py-3 space-y-1.5">
-          {neueingabe && (
-            <TerminForm
-              klassen={klassen}
-              stundenzeiten={stundenzeiten}
-              onSpeichern={terminErstellen}
-              onAbbrechen={() => setNeueingabe(false)}
-            />
-          )}
-
-          {kommend.length === 0 && !neueingabe && (
+          {kommend.length === 0 && (
             <div className="text-center py-8 text-ink-400">
               <div className="text-3xl mb-2">📭</div>
               <p className="text-xs">Keine bevorstehenden Termine</p>
@@ -310,7 +269,7 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
               klassen={klassen}
               stundenzeiten={stundenzeiten}
               onDelete={terminLoeschen}
-              onEdit={terminBearbeiten}
+              onEdit={t => setFormModal({ initial: t })}
               flashRef={el => { itemRefs.current[t.id] = el }}
               flashed={flashedId === t.id}
             />
@@ -334,7 +293,7 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
                       klassen={klassen}
                       stundenzeiten={stundenzeiten}
                       onDelete={terminLoeschen}
-                      onEdit={terminBearbeiten}
+                      onEdit={t => setFormModal({ initial: t })}
                       flashRef={el => { itemRefs.current[t.id] = el }}
                       flashed={flashedId === t.id}
                     />
@@ -345,6 +304,16 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
           )}
         </div>
       </div>
+
+      {formModal && (
+        <TerminForm
+          initial={formModal.initial}
+          klassen={klassen}
+          stundenzeiten={stundenzeiten}
+          onSpeichern={terminSpeichern}
+          onAbbrechen={() => setFormModal(null)}
+        />
+      )}
     </div>
   )
 }

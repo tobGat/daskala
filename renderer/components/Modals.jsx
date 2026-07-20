@@ -1078,9 +1078,9 @@ export function ExportierenModal() {
   const { closeModal } = useStore()
   const [laden, setLaden] = useState(false)
 
-  const handleExcel = async () => {
-    setLaden('excel')
-    await window.api.export.allSchuelerExcel()
+  const handleOds = async () => {
+    setLaden('ods')
+    await window.api.export.allSchuelerOds()
     setLaden(false)
   }
 
@@ -1123,15 +1123,15 @@ export function ExportierenModal() {
 
           <button
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-paper-200 dark:border-ink-700 hover:bg-paper-50 dark:hover:bg-ink-800 transition-colors text-left"
-            onClick={handleExcel}
+            onClick={handleOds}
             disabled={laden !== false}
           >
             <span className="text-lg">📊</span>
             <div>
               <div className="text-sm font-medium text-ink-800 dark:text-paper-200">
-                {laden === 'excel' ? 'Exportieren…' : 'Als Excel exportieren'}
+                {laden === 'ods' ? 'Exportieren…' : 'Als ODS-Tabelle exportieren'}
               </div>
-              <div className="text-xs text-ink-400">Ein Tabellenblatt pro Klasse und Fach</div>
+              <div className="text-xs text-ink-400">Ein Tabellenblatt pro Klasse und Fach (OpenDocument)</div>
             </div>
           </button>
         </div>
@@ -1316,36 +1316,3 @@ export function FerienModal() {
   )
 }
 
-// ─── Archiv-Modal ─────────────────────────────────────────────────────────────
-export function ArchivModal() {
-  const { closeModal, schuljahre } = useStore()
-  const archivierteSj = schuljahre.filter(s => s.archiviert)
-
-  return (
-    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && closeModal()}>
-      <div className="modal-box">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Archiv</h2>
-          <button className="text-ink-400 hover:text-ink-600 text-xl" onClick={closeModal}>✕</button>
-        </div>
-
-        {archivierteSj.length === 0 ? (
-          <p className="text-sm text-ink-400 text-center py-6">Noch keine archivierten Schuljahre</p>
-        ) : (
-          <div className="space-y-2">
-            {archivierteSj.map(sj => (
-              <div key={sj.id} className="flex items-center justify-between px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg">
-                <span className="text-sm font-medium text-ink-700 dark:text-paper-300">{sj.bezeichnung}</span>
-                <span className="text-xs text-ink-400 bg-paper-200 dark:bg-ink-700 px-2 py-0.5 rounded">Archiviert</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-5">
-          <button className="btn-secondary w-full" onClick={closeModal}>Schließen</button>
-        </div>
-      </div>
-    </div>
-  )
-}

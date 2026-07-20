@@ -25,6 +25,21 @@ async function htmlZuPdf(htmlContent) {
   return pdfBuffer
 }
 
+// Dateinamen-Baustein: Schrägstriche → Bindestrich (z.B. Schuljahr „2026/27"),
+// sonstige für Dateinamen ungültige Zeichen entfernen, Leerzeichen → _.
+function dateiTeil(s) {
+  return String(s ?? '').trim()
+    .replace(/[/\\]+/g, '-')
+    .replace(/[:*?"<>|]+/g, '')
+    .replace(/\s+/g, '_') || 'export'
+}
+
+// Heutiges Datum als TT-MM-JJJJ für Export-Dateinamen.
+function exportDatum() {
+  const d = new Date()
+  return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`
+}
+
 // ─── Leistungsprofil-PDF-HTML ─────────────────────────────────────────────────
 function bauePdfHtml(profil, klassenname) {
   const { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus = {}, avatarSvg } = profil
@@ -2143,7 +2158,7 @@ function registerIPC() {
 
   ipcMain.handle('schueler:exportProfilPDF', async (_, { profil, klassenname }) => {
     const { filePath, canceled } = await dialog.showSaveDialog({
-      defaultPath: `Leistungsprofil_${profil.schueler.nachname}_${profil.schueler.vorname}.pdf`,
+      defaultPath: `Leistungsprofil_${dateiTeil(profil.schueler.nachname)}_${dateiTeil(profil.schueler.vorname)}_${exportDatum()}.pdf`,
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     })
     if (canceled || !filePath) return false
@@ -2528,6 +2543,23 @@ function registerIPC() {
     return true
   })
 
+  // Stunde per Drag & Drop in einen anderen Slot verschieben. Die id bleibt erhalten,
+  // damit die Wochen-Planung (stunden_planung, per stundenplan_id) mitwandert.
+  // Ist der Ziel-Slot belegt, werden die beiden Stunden getauscht (transaktional).
+  ipcMain.handle('stundenplan:verschieben', (_, id, wochentag, stundeId) => {
+    const eintrag = db.prepare('SELECT wochentag, stunde_id FROM stundenplan WHERE id = ?').get(id)
+    if (!eintrag) return false
+    if (eintrag.wochentag === wochentag && eintrag.stunde_id === stundeId) return true
+    const belegt = db.prepare('SELECT id FROM stundenplan WHERE wochentag = ? AND stunde_id = ? AND id != ?')
+      .get(wochentag, stundeId, id)
+    const setSlot = db.prepare('UPDATE stundenplan SET wochentag = ?, stunde_id = ? WHERE id = ?')
+    db.transaction(() => {
+      if (belegt) setSlot.run(eintrag.wochentag, eintrag.stunde_id, belegt.id) // Tausch: Ziel-Eintrag auf Quell-Slot
+      setSlot.run(wochentag, stundeId, id)
+    })()
+    return true
+  })
+
   ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => {
     return db.prepare(`
       SELECT sp.id, sp.wochentag, sp.stunde_id, sp.fach_id,
@@ -2842,9 +2874,9 @@ function registerIPC() {
     return info.lastInsertRowid
   })
 
-  ipcMain.handle('todos:update', (_, id, { titel, fachId, faelligkeit, erinnerung }) => {
-    db.prepare('UPDATE todos SET titel = ?, fach_id = ?, faelligkeit = ?, erinnerung = ? WHERE id = ?')
-      .run(titel, fachId ?? null, faelligkeit ?? null, erinnerung ?? null, id)
+  ipcMain.handle('todos:update', (_, id, { titel, klasseId, fachId, faelligkeit, erinnerung }) => {
+    db.prepare('UPDATE todos SET titel = ?, klasse_id = ?, fach_id = ?, faelligkeit = ?, erinnerung = ? WHERE id = ?')
+      .run(titel, klasseId ?? null, fachId ?? null, faelligkeit ?? null, erinnerung ?? null, id)
     return true
   })
 
@@ -3163,7 +3195,7 @@ function registerIPC() {
   // Export: JSON
   ipcMain.handle('export:toJson', async () => {
     const savePath = await dialog.showSaveDialog({
-      defaultPath: 'daskala_export.json',
+      defaultPath: `daskala_export_${exportDatum()}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }],
     })
     if (savePath.canceled) return false
@@ -3184,17 +3216,18 @@ function registerIPC() {
     return true
   })
 
-  // Export: Excel
-  ipcMain.handle('export:toExcel', async (_, fachId) => {
+  // Export: Noten eines Fachs als ODS-Tabelle
+  ipcMain.handle('export:fachOds', async (_, fachId) => {
     const XLSX = require('xlsx')
+    const fach = db.prepare('SELECT f.*, k.name AS klasse_name FROM faecher f JOIN klassen k ON f.klasse_id = k.id WHERE f.id = ?').get(fachId)
+    if (!fach) return false
 
     const savePath = await dialog.showSaveDialog({
-      defaultPath: 'noten_export.xlsx',
-      filters: [{ name: 'Excel', extensions: ['xlsx'] }],
+      defaultPath: `export_noten_${dateiTeil(fach.klasse_name)}_${dateiTeil(fach.name)}_${exportDatum()}.ods`,
+      filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
     })
     if (savePath.canceled) return false
 
-    const fach = db.prepare('SELECT f.*, k.name AS klasse_name FROM faecher f JOIN klassen k ON f.klasse_id = k.id WHERE f.id = ?').get(fachId)
     const schueler = rosterFuerFach(fachId)
     const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge').all(fachId)
     const eintraege = db.prepare('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)').all(fachId)
@@ -3214,7 +3247,7 @@ function registerIPC() {
         znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
     })
 
-    const header = ['Name', ...spalten.map(s => `${s.kuerzel} ${s.datum ?? ''}`), 'SN 1', 'SN 2']
+    const header = ['Name', ...spalten.map(s => `${s.kuerzel} ${s.datum ?? ''}`), 'SN 1', 'SN 2', 'ZN']
     const rows = [header]
 
     for (const s of schueler) {
@@ -3224,13 +3257,14 @@ function registerIPC() {
       }
       row.push(znMap[`${s.id}_1`] ?? '')
       row.push(znMap[`${s.id}_2`] ?? '')
+      row.push(znMap[`${s.id}_3`] ?? '')
       rows.push(row)
     }
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, `${fach.klasse_name} ${fach.name}`)
-    XLSX.writeFile(wb, savePath.filePath)
+    XLSX.utils.book_append_sheet(wb, ws, `${fach.klasse_name} ${fach.name}`.slice(0, 31))
+    XLSX.writeFile(wb, savePath.filePath, { bookType: 'ods' })
     return true
   })
 
@@ -3434,7 +3468,7 @@ function registerIPC() {
       return true
     } else {
       const savePath = await dialog.showSaveDialog({
-        defaultPath: 'planung_export.pdf',
+        defaultPath: `planung_export_${exportDatum()}.pdf`,
         filters: [{ name: 'PDF', extensions: ['pdf'] }],
       })
       if (savePath.canceled) return false
@@ -3534,7 +3568,7 @@ function registerIPC() {
       + `</manifest:manifest>`
 
     const savePath = await dialog.showSaveDialog({
-      defaultPath: `Jahresplanung_${sanitizeSegment(h.fach_name)}_${sanitizeSegment(h.klasse_name)}.odt`,
+      defaultPath: `Jahresplanung_${sanitizeSegment(h.fach_name)}_${sanitizeSegment(h.klasse_name)}_${exportDatum()}.odt`,
       filters: [{ name: 'OpenDocument-Text', extensions: ['odt'] }],
     })
     if (savePath.canceled) return false
@@ -3671,17 +3705,16 @@ function registerIPC() {
     return true
   })
 
-  // ─── Export: Alle Schüler:innen Excel ─────────────────────────────────────
-  ipcMain.handle('export:allSchuelerExcel', async () => {
+  // ─── Export: Alle Schüler:innen als ODS ───────────────────────────────────
+  ipcMain.handle('export:allSchuelerOds', async () => {
     const XLSX = require('xlsx')
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: 'daskala_noten.xlsx',
-      filters: [{ name: 'Excel', extensions: ['xlsx'] }],
-    })
-    if (savePath.canceled) return false
-
     const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
     if (!aktuellesSchuljahr) return false
+    const savePath = await dialog.showSaveDialog({
+      defaultPath: `daskala_noten_${dateiTeil(aktuellesSchuljahr.bezeichnung)}_${exportDatum()}.ods`,
+      filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
+    })
+    if (savePath.canceled) return false
 
     const wb = XLSX.utils.book_new()
     const klassen = db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name').all(aktuellesSchuljahr.id)
@@ -3709,12 +3742,12 @@ function registerIPC() {
             znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
         })
 
-        const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum.slice(5).replace('-', '.') : ''}`), 'SN 1', 'SN 2']
+        const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum.slice(5).replace('-', '.') : ''}`), 'SN 1', 'SN 2', 'ZN']
         const rows = [header]
         for (const s of rosterFuerFach(fach.id)) {
           const badges = [s.lernschwaeche ? 'LS' : null, s.legasthenie ? 'LEG' : null].filter(Boolean)
           const name = `${s.nachname} ${s.vorname}${badges.length ? ' [' + badges.join(' ') + ']' : ''}`
-          const row = [name, ...spalten.map(sp => entryMap[`${sp.id}_${s.id}`] ?? ''), znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '']
+          const row = [name, ...spalten.map(sp => entryMap[`${sp.id}_${s.id}`] ?? ''), znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '', znMap[`${s.id}_3`] ?? '']
           rows.push(row)
         }
 
@@ -3723,23 +3756,14 @@ function registerIPC() {
       }
     }
 
-    XLSX.writeFile(wb, savePath.filePath)
+    XLSX.writeFile(wb, savePath.filePath, { bookType: 'ods' })
     return true
   })
 
   // ─── Export: Alle Schüler:innen PDF ───────────────────────────────────────
-  ipcMain.handle('export:allSchuelerPdf', async () => {
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: 'daskala_noten.pdf',
-      filters: [{ name: 'PDF', extensions: ['pdf'] }],
-    })
-    if (savePath.canceled) return false
-
-    const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
-    if (!aktuellesSchuljahr) return false
-
-    const klassen = db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name').all(aktuellesSchuljahr.id)
-
+  // Vollständige Notenübersicht (alle Klassen/Fächer eines Schuljahres) als HTML für den PDF-Export.
+  function baueNotenUebersichtHtml(schuljahr, titelPrefix = '') {
+    const klassen = db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name').all(schuljahr.id)
     const css = `
       *{box-sizing:border-box;margin:0;padding:0}
       body{font-family:Arial,sans-serif;font-size:10px;color:#1a1a1a}
@@ -3758,12 +3782,9 @@ function registerIPC() {
       .badge.leg{background:#ede9fe;color:#5b21b6}
       tr:nth-child(even) td{background:#fafafa}
     `
+    const escHtml = (t) => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
 
-    function escHtml(t) {
-      return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    }
-
-    let bodyHtml = `<h1>Notenübersicht – Daskala</h1><div class="schuljahr">${escHtml(aktuellesSchuljahr.bezeichnung)}</div>`
+    let bodyHtml = `<h1>Notenübersicht – Daskala</h1><div class="schuljahr">${titelPrefix}${escHtml(schuljahr.bezeichnung)}</div>`
 
     for (const klasse of klassen) {
       const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasse.id)
@@ -3790,22 +3811,102 @@ function registerIPC() {
 
         const thead = `<tr><th class="name">Name</th>${spalten.map(sp =>
           `<th>${escHtml(sp.kuerzel)}${sp.datum ? '<br>' + sp.datum.slice(5).replace('-', '.') : ''}</th>`
-        ).join('')}<th>SN 1</th><th>SN 2</th></tr>`
+        ).join('')}<th>SN 1</th><th>SN 2</th><th>ZN</th></tr>`
 
         const tbody = rosterFuerFach(fach.id).map(s => {
           const lsBadge = s.lernschwaeche ? '<span class="badge">LS</span>' : ''
           const legBadge = s.legasthenie ? '<span class="badge leg">LEG</span>' : ''
           const cells = spalten.map(sp => `<td>${escHtml(entryMap[`${sp.id}_${s.id}`] ?? '')}</td>`).join('')
-          return `<tr><td class="name">${escHtml(s.nachname)} ${escHtml(s.vorname)}${lsBadge}${legBadge}</td>${cells}<td class="zn">${znMap[`${s.id}_1`] ?? ''}</td><td class="zn">${znMap[`${s.id}_2`] ?? ''}</td></tr>`
+          return `<tr><td class="name">${escHtml(s.nachname)} ${escHtml(s.vorname)}${lsBadge}${legBadge}</td>${cells}<td class="zn">${znMap[`${s.id}_1`] ?? ''}</td><td class="zn">${znMap[`${s.id}_2`] ?? ''}</td><td class="zn">${znMap[`${s.id}_3`] ?? ''}</td></tr>`
         }).join('')
 
         bodyHtml += `<div class="klasse-fach"><div class="klasse-fach-titel">${escHtml(klasse.name)} · ${escHtml(fach.name)}</div><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`
       }
     }
+    return `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>${css}</style></head><body>${bodyHtml}</body></html>`
+  }
 
-    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>${css}</style></head><body>${bodyHtml}</body></html>`
-    const buf = await htmlZuPdf(html)
+  ipcMain.handle('export:allSchuelerPdf', async () => {
+    const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
+    if (!aktuellesSchuljahr) return false
+    const savePath = await dialog.showSaveDialog({
+      defaultPath: `daskala_noten_${dateiTeil(aktuellesSchuljahr.bezeichnung)}_${exportDatum()}.pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    })
+    if (savePath.canceled) return false
+    const buf = await htmlZuPdf(baueNotenUebersichtHtml(aktuellesSchuljahr))
     fs.writeFileSync(savePath.filePath, buf)
+    return true
+  })
+
+  // Archiviertes Schuljahr vollständig als PDF exportieren (Notenübersicht aller Klassen/Fächer).
+  ipcMain.handle('export:archivPdf', async (_, schuljahrId) => {
+    const schuljahr = db.prepare('SELECT * FROM schuljahre WHERE id = ?').get(schuljahrId)
+    if (!schuljahr) return false
+    const savePath = await dialog.showSaveDialog({
+      defaultPath: `Daskala_Archiv_${dateiTeil(schuljahr.bezeichnung)}_${exportDatum()}.pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    })
+    if (savePath.canceled) return false
+    const buf = await htmlZuPdf(baueNotenUebersichtHtml(schuljahr, 'Archiv · '))
+    fs.writeFileSync(savePath.filePath, buf)
+    return true
+  })
+
+  // Archiviertes Schuljahr vollständig als ODS exportieren (je Klasse+Fach ein Tabellenblatt).
+  ipcMain.handle('export:archivOds', async (_, schuljahrId) => {
+    const schuljahr = db.prepare('SELECT * FROM schuljahre WHERE id = ?').get(schuljahrId)
+    if (!schuljahr) return false
+    const XLSX = require('xlsx')
+    const savePath = await dialog.showSaveDialog({
+      defaultPath: `Daskala_Archiv_${dateiTeil(schuljahr.bezeichnung)}_${exportDatum()}.ods`,
+      filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
+    })
+    if (savePath.canceled) return false
+
+    const klassen = db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name').all(schuljahrId)
+    const wb = XLSX.utils.book_new()
+    const usedNames = new Set()
+    for (const klasse of klassen) {
+      const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasse.id)
+      for (const fach of faecher) {
+        const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge').all(fach.id)
+        const eintraege = db.prepare('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)').all(fach.id)
+        const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fach.id)
+        const entryMap = {}
+        eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
+        const istDiff = fach.benotungssystem === 'differenziert'
+        const niveauMap = {}
+        if (istDiff) {
+          db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fach.id)
+            .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
+        }
+        const znMap = {}
+        zeugnisnoten.forEach(z => {
+          znMap[`${z.schueler_id}_${z.semester}`] =
+            znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
+        })
+
+        const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum : ''}`), 'SN 1', 'SN 2', 'ZN']
+        const rows = [header]
+        for (const s of rosterFuerFach(fach.id)) {
+          const row = [`${s.nachname} ${s.vorname}`]
+          for (const sp of spalten) row.push(entryMap[`${sp.id}_${s.id}`] ?? '')
+          row.push(znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '', znMap[`${s.id}_3`] ?? '')
+          rows.push(row)
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(rows)
+        // Blattname: max. 31 Zeichen, ohne Sonderzeichen, eindeutig
+        let basis = `${klasse.name} ${fach.name}`.replace(/[:\\/?*[\]]/g, ' ').slice(0, 31).trim() || 'Blatt'
+        let name = basis, i = 2
+        while (usedNames.has(name)) { name = basis.slice(0, 28) + '~' + i; i++ }
+        usedNames.add(name)
+        XLSX.utils.book_append_sheet(wb, ws, name)
+      }
+    }
+    if (wb.SheetNames.length === 0) return false
+    XLSX.writeFile(wb, savePath.filePath, { bookType: 'ods' })
     return true
   })
 

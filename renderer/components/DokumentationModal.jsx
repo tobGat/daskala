@@ -127,6 +127,7 @@ const DOKU = [
   {
     id: 'stundenplan', titel: 'Stundenplan & Ferien', bloecke: [
       'Der Stundenplan ist im Dashboard sichtbar. Über „Bearbeiten" pflegst du die Stunden und – kompakt im selben Screen – die Stunden-/Pausenzeiten.',
+      'Im Bearbeitungsmodus verschiebst du Stunden per Drag & Drop in einen anderen Slot; ziehst du eine Stunde auf einen bereits belegten Slot, werden die beiden getauscht. Eine hinterlegte Wochen-Planung wandert dabei mit.',
       { h: 'Ferien' },
       'Wählst du in den Einstellungen dein Bundesland, werden die österreichischen Schulferien und Feiertage automatisch berechnet und im Kalender angezeigt. Eigene Ferien/Feiertage kannst du zusätzlich pflegen.',
       { h: 'Wettervorschau' },
@@ -141,6 +142,7 @@ const DOKU = [
         'Pro Schüler:in: „bleibt" oder „scheidet aus"',
         'Das alte Schuljahr wird archiviert und schreibgeschützt',
       ] },
+      'Archivierte Schuljahre findest du unter Einstellungen → „Archiv". Von dort exportierst du ein abgeschlossenes Jahr vollständig als Tabelle (ODS) oder als PDF (Notenübersicht aller Klassen und Fächer).',
       { tipp: 'Kalender und Ferienberechnung stellen sich automatisch auf das aktive Schuljahr um.' },
     ],
   },
@@ -150,7 +152,7 @@ const DOKU = [
       { ul: [
         'Backup erstellen / JSON-Export',
         '„Öffnen…" / „Speichern unter…" für die Datenbankdatei',
-        'Noten-Exporte als Excel und PDF (pro Fach oder gesamt)',
+        'Noten-Exporte als ODS-Tabelle und PDF (pro Fach oder gesamt)',
       ] },
       { h: 'Automatische Sicherung' },
       'Aktiviere „Automatische Sicherung bei jedem Start" und wähle einen Zielordner (z. B. USB-Stick oder Cloud-Ordner). Daskala legt dort sparsam Kopien ab: höchstens einmal pro Tag und nur, wenn sich seit der letzten Sicherung etwas geändert hat. Wie viele Sicherungen aufbewahrt werden (Standard: 10), stellst du daneben ein – ältere werden automatisch gelöscht, es sammeln sich also keine Massen an Dateien an.',

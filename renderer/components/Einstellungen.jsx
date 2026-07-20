@@ -110,7 +110,7 @@ function baueKiPrompt({ bez, startJahr, endJahr, ferienData, faecherListe }) {
 }
 
 export default function Einstellungen({ onClose }) {
-  const { gewichtungGlobal, theme, setTheme, einstellungen, pushToast, aktuellesSchuljahr } = useStore()
+  const { gewichtungGlobal, theme, setTheme, einstellungen, pushToast, aktuellesSchuljahr, schuljahre } = useStore()
   const [kiExportLaeuft, setKiExportLaeuft] = useState(false)
 
   // Baut die Chatbot-Anleitung und speichert sie als Markdown-Datei.
@@ -207,6 +207,22 @@ export default function Einstellungen({ onClose }) {
   }
   const [offenerBereich, setOffenerBereich] = useState(null)
   const toggleBereich = (id) => setOffenerBereich(o => (o === id ? null : id))
+
+  const archivierteSchuljahre = (schuljahre ?? []).filter(s => s.archiviert)
+  const [archivBusy, setArchivBusy] = useState(false)
+  const archivExport = async (sj, format) => {
+    setArchivBusy(true)
+    try {
+      const ok = format === 'ods'
+        ? await window.api.export.archivOds(sj.id)
+        : await window.api.export.archivPdf(sj.id)
+      if (ok) pushToast(`Archiv ${sj.bezeichnung} als ${format.toUpperCase()} exportiert.`, 'success')
+    } catch {
+      pushToast('Export fehlgeschlagen.', 'error')
+    } finally {
+      setArchivBusy(false)
+    }
+  }
 
   // App-Sperre (PIN)
   const [sperreAktiv, setSperreAktiv] = useState(einstellungen['sperre_aktiv'] === '1')
@@ -587,6 +603,28 @@ export default function Einstellungen({ onClose }) {
                 </button>
               </div>
             </div>
+          </Akkordeon>
+
+          {/* Archiv */}
+          <Akkordeon id="archiv" icon="🗄️" titel="Archiv" offen={offenerBereich} onToggle={toggleBereich}>
+            <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">
+              Abgeschlossene (archivierte) Schuljahre. Ein Jahr lässt sich vollständig als Tabelle (ODS) oder als PDF exportieren.
+            </p>
+            {archivierteSchuljahre.length === 0 ? (
+              <p className="text-sm text-ink-400 text-center py-4">Noch keine archivierten Schuljahre.</p>
+            ) : (
+              <div className="space-y-2">
+                {archivierteSchuljahre.map(sj => (
+                  <div key={sj.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-paper-200 dark:border-ink-700">
+                    <span className="text-sm font-medium text-ink-700 dark:text-paper-200">{sj.bezeichnung}</span>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button className="btn-secondary text-xs" disabled={archivBusy} onClick={() => archivExport(sj, 'ods')}>ODS</button>
+                      <button className="btn-secondary text-xs" disabled={archivBusy} onClick={() => archivExport(sj, 'pdf')}>PDF</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Akkordeon>
 
           {/* Wetter */}

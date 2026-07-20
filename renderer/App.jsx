@@ -26,7 +26,6 @@ import {
   SchuelerVerwaltenModal,
   GewichtungModal,
   SchuljahrwechselModal,
-  ArchivModal,
   ExportierenModal,
   FerienModal,
 } from './components/Modals'
@@ -181,7 +180,6 @@ export default function App() {
       {activeModal === 'schuelerVerwalten' && <SchuelerVerwaltenModal />}
       {activeModal === 'gewichtung' && <GewichtungModal />}
       {activeModal === 'schuljahreswechsel' && <SchuljahrwechselModal />}
-      {activeModal === 'archiv' && <ArchivModal />}
       {activeModal === 'exportieren' && <ExportierenModal />}
       {activeModal === 'ferien' && <FerienModal />}
       {activeModal === 'dokumentation' && <DokumentationModal onClose={closeModal} />}
