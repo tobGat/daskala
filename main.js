@@ -34,6 +34,12 @@ function dateiTeil(s) {
     .replace(/\s+/g, '_') || 'export'
 }
 
+// Heutiges Datum als TT-MM-JJJJ für Export-Dateinamen.
+function exportDatum() {
+  const d = new Date()
+  return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`
+}
+
 // ─── Leistungsprofil-PDF-HTML ─────────────────────────────────────────────────
 function bauePdfHtml(profil, klassenname) {
   const { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus = {}, avatarSvg } = profil
@@ -2152,7 +2158,7 @@ function registerIPC() {
 
   ipcMain.handle('schueler:exportProfilPDF', async (_, { profil, klassenname }) => {
     const { filePath, canceled } = await dialog.showSaveDialog({
-      defaultPath: `Leistungsprofil_${profil.schueler.nachname}_${profil.schueler.vorname}.pdf`,
+      defaultPath: `Leistungsprofil_${dateiTeil(profil.schueler.nachname)}_${dateiTeil(profil.schueler.vorname)}_${exportDatum()}.pdf`,
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     })
     if (canceled || !filePath) return false
@@ -3189,7 +3195,7 @@ function registerIPC() {
   // Export: JSON
   ipcMain.handle('export:toJson', async () => {
     const savePath = await dialog.showSaveDialog({
-      defaultPath: 'daskala_export.json',
+      defaultPath: `daskala_export_${exportDatum()}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }],
     })
     if (savePath.canceled) return false
@@ -3217,7 +3223,7 @@ function registerIPC() {
     if (!fach) return false
 
     const savePath = await dialog.showSaveDialog({
-      defaultPath: `noten_export_${dateiTeil(fach.klasse_name)}_${dateiTeil(fach.name)}.ods`,
+      defaultPath: `export_noten_${dateiTeil(fach.klasse_name)}_${dateiTeil(fach.name)}_${exportDatum()}.ods`,
       filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
     })
     if (savePath.canceled) return false
@@ -3462,7 +3468,7 @@ function registerIPC() {
       return true
     } else {
       const savePath = await dialog.showSaveDialog({
-        defaultPath: 'planung_export.pdf',
+        defaultPath: `planung_export_${exportDatum()}.pdf`,
         filters: [{ name: 'PDF', extensions: ['pdf'] }],
       })
       if (savePath.canceled) return false
@@ -3562,7 +3568,7 @@ function registerIPC() {
       + `</manifest:manifest>`
 
     const savePath = await dialog.showSaveDialog({
-      defaultPath: `Jahresplanung_${sanitizeSegment(h.fach_name)}_${sanitizeSegment(h.klasse_name)}.odt`,
+      defaultPath: `Jahresplanung_${sanitizeSegment(h.fach_name)}_${sanitizeSegment(h.klasse_name)}_${exportDatum()}.odt`,
       filters: [{ name: 'OpenDocument-Text', extensions: ['odt'] }],
     })
     if (savePath.canceled) return false
@@ -3705,7 +3711,7 @@ function registerIPC() {
     const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
     if (!aktuellesSchuljahr) return false
     const savePath = await dialog.showSaveDialog({
-      defaultPath: `daskala_noten_${dateiTeil(aktuellesSchuljahr.bezeichnung)}.ods`,
+      defaultPath: `daskala_noten_${dateiTeil(aktuellesSchuljahr.bezeichnung)}_${exportDatum()}.ods`,
       filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
     })
     if (savePath.canceled) return false
@@ -3824,7 +3830,7 @@ function registerIPC() {
     const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
     if (!aktuellesSchuljahr) return false
     const savePath = await dialog.showSaveDialog({
-      defaultPath: `daskala_noten_${dateiTeil(aktuellesSchuljahr.bezeichnung)}.pdf`,
+      defaultPath: `daskala_noten_${dateiTeil(aktuellesSchuljahr.bezeichnung)}_${exportDatum()}.pdf`,
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     })
     if (savePath.canceled) return false
@@ -3838,7 +3844,7 @@ function registerIPC() {
     const schuljahr = db.prepare('SELECT * FROM schuljahre WHERE id = ?').get(schuljahrId)
     if (!schuljahr) return false
     const savePath = await dialog.showSaveDialog({
-      defaultPath: `Daskala_Archiv_${schuljahr.bezeichnung.replace(/\//g, '-')}.pdf`,
+      defaultPath: `Daskala_Archiv_${dateiTeil(schuljahr.bezeichnung)}_${exportDatum()}.pdf`,
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     })
     if (savePath.canceled) return false
@@ -3853,7 +3859,7 @@ function registerIPC() {
     if (!schuljahr) return false
     const XLSX = require('xlsx')
     const savePath = await dialog.showSaveDialog({
-      defaultPath: `Daskala_Archiv_${schuljahr.bezeichnung.replace(/\//g, '-')}.ods`,
+      defaultPath: `Daskala_Archiv_${dateiTeil(schuljahr.bezeichnung)}_${exportDatum()}.ods`,
       filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
     })
     if (savePath.canceled) return false
