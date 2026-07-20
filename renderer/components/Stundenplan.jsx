@@ -395,6 +395,13 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
       await window.api.stundenPlanung.setEntfall(eintrag.id, wocheDatum, vorruecken, ferienZeitraeume)
       await ladenPlanungen()
       return
+    } else if (aktion === 'entfall-supplier' && eintrag) {
+      // Stunde entfällt und wird durch eine Supplierstunde ersetzt (kein Vorrücken).
+      const ferienZeitraeume = schulferien ? [...(schulferien.ferien || []), ...(schulferien.feiertage || []).map(ft => ({ von: ft.datum, bis: ft.datum }))] : []
+      await window.api.stundenPlanung.setEntfall(eintrag.id, wocheDatum, false, ferienZeitraeume)
+      await ladenPlanungen()
+      setSupplierModal({ wochentag, stunde, tagDatum: wochenDaten[wochentag - 1] })
+      return
     } else if (aktion === 'entfall-aufheben' && eintrag) {
       await window.api.stundenPlanung.removeEntfall(eintrag.id, wocheDatum)
       await ladenPlanungen()
@@ -591,9 +598,11 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                   {WOCHENTAGE.map((_, tagIdx) => {
                     const wochentag = tagIdx + 1
                     const eintrag = eintragFuerSlot(wochentag, stunde.id)
-                    const supplier = !eintrag ? supplierFuerSlot(wochentag, stunde.id) : null
                     const istAktuell = istAktuelleStunde && aktuelleWoche === 0 && aktTag === wochentag
                     const planung = eintrag ? planungFuerEintrag(eintrag.id) : null
+                    const entfallen = !!planung?.entfall
+                    // Supplierstunde: freier Slot ODER Ersatz für eine entfallene Stunde
+                    const supplier = (!eintrag || entfallen) ? supplierFuerSlot(wochentag, stunde.id) : null
                     const hueHier = hueEintraege.filter(h => h.wochentag === wochentag && h.stunde_id === stunde.id)
                     const stripMd = (s) => s?.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/^---+$/gm, '—').replace(/^- /gm, '• ')
                     const tooltipText = planung ? [planung.titel, planung.inhalt?.substring(0, 150)].filter(Boolean).map(stripMd).join('\n') : ''
@@ -645,15 +654,15 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                           <div className="h-full flex items-center justify-center">
                             <span className="text-[10px] font-medium text-rose-400 dark:text-rose-500 text-center leading-tight px-1">{ferienInfo.name}</span>
                           </div>
+                        ) : supplier ? (
+                          <SupplierInhalt supplier={supplier} />
                         ) : eintrag ? (
                           <SlotInhalt
                             eintrag={eintrag}
                             planungTitel={planung?.titel}
                             planungNotiz={planung?.inhalt ? stripMd(planung.inhalt).split('\n').filter(Boolean)[0] : null}
-                            entfall={!!planung?.entfall}
+                            entfall={entfallen}
                           />
-                        ) : supplier ? (
-                          <SupplierInhalt supplier={supplier} />
                         ) : (
                           bearbeitungsModus && (
                             <div className="h-full rounded border border-dashed border-paper-200 dark:border-ink-700 flex items-center justify-center">
@@ -707,8 +716,18 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                     <span className="text-green-500">↩</span> Entfall aufheben
                   </div>
                 ) : (
-                  <div className="context-menu-item text-red-600 dark:text-red-400" onClick={() => handleKontextAktion('entfall')}>
-                    <span>⊘</span> Entfall
+                  <div className="context-menu-item text-red-600 dark:text-red-400 group relative justify-between">
+                    <span className="flex items-center gap-2"><span>⊘</span> Entfall</span>
+                    <span className="text-ink-400 pl-2">▸</span>
+                    {/* Untermenü beim Hover: ersatzlos vs. Supplierung */}
+                    <div className="context-menu hidden group-hover:block left-full top-0 -mt-1.5">
+                      <div className="context-menu-item" onClick={() => handleKontextAktion('entfall')}>
+                        <span className="text-ink-400">∅</span> ersatzlos
+                      </div>
+                      <div className="context-menu-item" onClick={() => handleKontextAktion('entfall-supplier')}>
+                        <span className="text-ink-400">↔</span> Durch Supplierung ersetzen
+                      </div>
+                    </div>
                   </div>
                 )
               })()}
