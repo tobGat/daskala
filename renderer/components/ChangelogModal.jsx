@@ -8,6 +8,21 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.0.67',
+    datum: 'Juli 2026',
+    punkte: [
+      'Stundenplan: Im Bearbeitungsmodus lassen sich Stunden per Drag & Drop in einen anderen Slot ziehen. Ziehst du eine Stunde auf einen bereits belegten Slot, werden die beiden getauscht – hinterlegte Wochenplanung wandert mit.',
+      'Termine und ToDos werden jetzt in einem übersichtlichen Dialog erstellt und bearbeitet – statt in den gedrängten Feldern der Seitenleiste.',
+      'Neu: Archiv in den Einstellungen. Abgeschlossene (archivierte) Schuljahre lassen sich dort vollständig als ODS-Tabelle oder PDF exportieren. Der bisherige Archiv-Button in der Kopfzeile entfällt.',
+      'Alle Tabellen-Exporte erfolgen jetzt als OpenDocument-Tabelle (ODS) inklusive Zeugnisnote (ZN). Die Standard-Dateinamen enthalten Klasse/Fach bzw. Schuljahr und das Exportdatum (z. B. „export_noten_1a_Deutsch_27-04-2026.ods").',
+      'Notentabelle: „Schüler:innen" und „Export" sind in die Fach-Toolbar gewandert (an die Stelle des früheren „+ Spalte"-Buttons); neue Spalten legst du weiterhin über das „+"-Feld in der Tabelle an. Der Klassenschnitt steht jetzt ganz rechts.',
+      'Differenzierte Fächer (AHS/ST): Der Klassenschnitt wird getrennt nach AHS und ST angezeigt, da die Noten auf unterschiedlichen Skalen liegen.',
+      'Der „Vorlagen"-Bereich wird nur noch angezeigt, wenn das Planungsmodul aktiv ist.',
+      'Klassenvorstand (KV) ist als „Beta" gekennzeichnet. Ein Klick auf eine Klasse verlässt den KV-Bereich nun zuverlässig.',
+      'Aufgeräumt: die Schuljahr-Auswahl in der oberen Leiste wurde entfernt.',
+    ],
+  },
+  {
     version: '1.0.66',
     datum: 'Juli 2026',
     punkte: [
