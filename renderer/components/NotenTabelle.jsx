@@ -6,6 +6,7 @@ import useStore from '../store/useStore'
 import Zelle from './Zelle'
 import ZeugnisnoteZelle from './ZeugnisnoteZelle'
 import SchuelerAvatar from './SchuelerAvatar'
+import { niveauOffset } from '../utils/niveau'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 const KAT_FARBE = {
@@ -235,23 +236,36 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
   const aktiveKlasse = useStore(s => s.aktiveKlasse)
   const setSchuelerSortierung = useStore(s => s.setSchuelerSortierung)
   const openModal = useStore(s => s.openModal)
+  const niveaus = useStore(s => s.niveaus)
   const sortierung = aktiveKlasse?.sortierung || 'nachname'
 
   const handleExport = async () => {
     if (aktivesFach) await window.api.export.fachOds(aktivesFach.id)
   }
 
-  // Klassen-ZN-Durchschnitt für das aktive Semester
-  const klassenDurchschnitt = useMemo(() => {
-    const noten = schueler
-      .map(s => {
-        const zn = zeugnisnoten[`${s.id}_${aktiveSemester}`]
-        return zn?.note_manuell ?? zn?.note_berechnet ?? null
-      })
-      .filter(n => n != null)
-    if (noten.length === 0) return null
-    return (noten.reduce((a, b) => a + b, 0) / noten.length)
-  }, [schueler, zeugnisnoten, aktiveSemester])
+  // Klassen-ZN-Durchschnitt für das aktive Semester.
+  // Bei differenzierten Fächern getrennt nach AHS/ST, da die angezeigten Noten
+  // auf unterschiedlichen Skalen liegen (intern − Offset je Niveau).
+  const schnitt = useMemo(() => {
+    const istDiff = aktivesFach?.benotungssystem === 'differenziert'
+    const mittel = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null)
+    const gruppen = { AHS: [], ST: [] }
+    const alle = []
+    for (const s of schueler) {
+      const zn = zeugnisnoten[`${s.id}_${aktiveSemester}`]
+      const intern = zn?.note_manuell ?? zn?.note_berechnet
+      if (intern == null) continue
+      if (istDiff) {
+        const niv = niveaus[s.id] === 'ST' ? 'ST' : 'AHS'
+        gruppen[niv].push(intern - niveauOffset(niv))
+      } else {
+        alle.push(intern)
+      }
+    }
+    return istDiff
+      ? { diff: true, ahs: mittel(gruppen.AHS), st: mittel(gruppen.ST) }
+      : { diff: false, gesamt: mittel(alle) }
+  }, [schueler, zeugnisnoten, aktiveSemester, aktivesFach, niveaus])
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-paper-200 dark:border-ink-800/60 flex-shrink-0 flex-wrap">
@@ -359,14 +373,35 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
           </button>
         )}
 
-        {/* Klassenschnitt ganz rechts, neben Export */}
-        {klassenDurchschnitt != null && (
-          <StatChip
-            label="Ø Klasse"
-            value={klassenDurchschnitt.toFixed(2)}
-            emoji="⭐"
-            accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300"
-          />
+        {/* Klassenschnitt ganz rechts, neben Export – differenziert getrennt nach AHS/ST */}
+        {schnitt.diff ? (
+          <>
+            {schnitt.ahs != null && (
+              <StatChip
+                label="Ø AHS"
+                value={schnitt.ahs.toFixed(2)}
+                emoji="⭐"
+                accent="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+              />
+            )}
+            {schnitt.st != null && (
+              <StatChip
+                label="Ø ST"
+                value={schnitt.st.toFixed(2)}
+                emoji="⭐"
+                accent="bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
+              />
+            )}
+          </>
+        ) : (
+          schnitt.gesamt != null && (
+            <StatChip
+              label="Ø Klasse"
+              value={schnitt.gesamt.toFixed(2)}
+              emoji="⭐"
+              accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300"
+            />
+          )
         )}
       </div>
     </div>
