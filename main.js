@@ -25,6 +25,15 @@ async function htmlZuPdf(htmlContent) {
   return pdfBuffer
 }
 
+// Dateinamen-Baustein: Schrägstriche → Bindestrich (z.B. Schuljahr „2026/27"),
+// sonstige für Dateinamen ungültige Zeichen entfernen, Leerzeichen → _.
+function dateiTeil(s) {
+  return String(s ?? '').trim()
+    .replace(/[/\\]+/g, '-')
+    .replace(/[:*?"<>|]+/g, '')
+    .replace(/\s+/g, '_') || 'export'
+}
+
 // ─── Leistungsprofil-PDF-HTML ─────────────────────────────────────────────────
 function bauePdfHtml(profil, klassenname) {
   const { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus = {}, avatarSvg } = profil
@@ -3204,14 +3213,15 @@ function registerIPC() {
   // Export: Noten eines Fachs als ODS-Tabelle
   ipcMain.handle('export:fachOds', async (_, fachId) => {
     const XLSX = require('xlsx')
+    const fach = db.prepare('SELECT f.*, k.name AS klasse_name FROM faecher f JOIN klassen k ON f.klasse_id = k.id WHERE f.id = ?').get(fachId)
+    if (!fach) return false
 
     const savePath = await dialog.showSaveDialog({
-      defaultPath: 'noten_export.ods',
+      defaultPath: `noten_export_${dateiTeil(fach.klasse_name)}_${dateiTeil(fach.name)}.ods`,
       filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
     })
     if (savePath.canceled) return false
 
-    const fach = db.prepare('SELECT f.*, k.name AS klasse_name FROM faecher f JOIN klassen k ON f.klasse_id = k.id WHERE f.id = ?').get(fachId)
     const schueler = rosterFuerFach(fachId)
     const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge').all(fachId)
     const eintraege = db.prepare('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)').all(fachId)
@@ -3692,14 +3702,13 @@ function registerIPC() {
   // ─── Export: Alle Schüler:innen als ODS ───────────────────────────────────
   ipcMain.handle('export:allSchuelerOds', async () => {
     const XLSX = require('xlsx')
+    const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
+    if (!aktuellesSchuljahr) return false
     const savePath = await dialog.showSaveDialog({
-      defaultPath: 'daskala_noten.ods',
+      defaultPath: `daskala_noten_${dateiTeil(aktuellesSchuljahr.bezeichnung)}.ods`,
       filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
     })
     if (savePath.canceled) return false
-
-    const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
-    if (!aktuellesSchuljahr) return false
 
     const wb = XLSX.utils.book_new()
     const klassen = db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name').all(aktuellesSchuljahr.id)
@@ -3812,13 +3821,13 @@ function registerIPC() {
   }
 
   ipcMain.handle('export:allSchuelerPdf', async () => {
+    const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
+    if (!aktuellesSchuljahr) return false
     const savePath = await dialog.showSaveDialog({
-      defaultPath: 'daskala_noten.pdf',
+      defaultPath: `daskala_noten_${dateiTeil(aktuellesSchuljahr.bezeichnung)}.pdf`,
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     })
     if (savePath.canceled) return false
-    const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
-    if (!aktuellesSchuljahr) return false
     const buf = await htmlZuPdf(baueNotenUebersichtHtml(aktuellesSchuljahr))
     fs.writeFileSync(savePath.filePath, buf)
     return true
