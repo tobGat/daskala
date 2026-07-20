@@ -283,6 +283,8 @@ const api = {
     allSchuelerPdf: () => invoke('export:allSchuelerPdf'),
     fachPlanungDocx: (fachId, fachName, klasseName, wochenDaten) => invoke('export:fachPlanungDocx', fachId, fachName, klasseName, wochenDaten),
     jahresplanungOdt: (fachId) => invoke('export:jahresplanungOdt', fachId),
+    archivPdf: (schuljahrId) => invoke('export:archivPdf', schuljahrId),
+    archivOds: (schuljahrId) => invoke('export:archivOds', schuljahrId),
   },
 
   import: {

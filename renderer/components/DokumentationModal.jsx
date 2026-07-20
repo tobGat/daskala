@@ -142,6 +142,7 @@ const DOKU = [
         'Pro Schüler:in: „bleibt" oder „scheidet aus"',
         'Das alte Schuljahr wird archiviert und schreibgeschützt',
       ] },
+      'Archivierte Schuljahre findest du unter Einstellungen → „Archiv". Von dort exportierst du ein abgeschlossenes Jahr vollständig als Tabelle (ODS) oder als PDF (Notenübersicht aller Klassen und Fächer).',
       { tipp: 'Kalender und Ferienberechnung stellen sich automatisch auf das aktive Schuljahr um.' },
     ],
   },

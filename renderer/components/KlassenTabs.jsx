@@ -272,14 +272,6 @@ export default function KlassenTabs() {
         </select>
 
         <button
-          className="text-xs font-medium text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-200 px-3 py-1.5 rounded-xl hover:bg-paper-200 dark:hover:bg-ink-800 transition-all"
-          onClick={() => openModal('archiv')}
-          title="Archiv"
-        >
-          Archiv
-        </button>
-
-        <button
           className="text-ink-500 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-paper-200 dark:hover:bg-ink-800 transition-all"
           onClick={() => openModal('einstellungen')}
           title="Einstellungen"
