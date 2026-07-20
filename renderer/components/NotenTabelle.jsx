@@ -340,19 +340,10 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
 
       {/* Stats */}
       <div className="flex items-center gap-1.5 ml-auto flex-wrap">
-        {klassenDurchschnitt != null && (
-          <StatChip
-            label="Ø Klasse"
-            value={klassenDurchschnitt.toFixed(2)}
-            emoji="⭐"
-            accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300"
-          />
-        )}
-
         {/* Klassenspezifische Aktionen (früher in der Fach-Reiterleiste) */}
         {aktiveKlasse && (
           <button
-            className="ml-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 hover:border-paper-300 dark:hover:border-ink-600 transition-colors"
+            className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 hover:border-paper-300 dark:hover:border-ink-600 transition-colors"
             onClick={() => openModal('schuelerVerwalten')}
           >
             Schüler:innen
@@ -366,6 +357,16 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
           >
             Export
           </button>
+        )}
+
+        {/* Klassenschnitt ganz rechts, neben Export */}
+        {klassenDurchschnitt != null && (
+          <StatChip
+            label="Ø Klasse"
+            value={klassenDurchschnitt.toFixed(2)}
+            emoji="⭐"
+            accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300"
+          />
         )}
       </div>
     </div>
