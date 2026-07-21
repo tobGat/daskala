@@ -93,6 +93,23 @@ Daskala ist freie Software (Open Source, GPL-3.0).
 
 ---
 
+## Urheberrecht / Markeninformation (optional)
+
+> © 2026 Tobias Gatterbauer. Daskala ist freie Software, lizenziert unter der GNU General Public License v3.0 (GPL-3.0-or-later). Der Quellcode ist unter https://github.com/tobGat/daskala verfügbar.
+
+Hinweis: „Daskala" ist im Microsoft Store als App-Name reserviert, aber keine
+eingetragene Marke – eine Markenangabe (™/®) ist daher nicht erforderlich.
+
+## Zusätzliche Lizenzbedingungen (optional, für GPL empfohlen)
+
+> Diese Anwendung ist freie Software und wird unter der GNU General Public License, Version 3 oder später (GPL-3.0-or-later), bereitgestellt. Diese Lizenzbedingungen gehen den Standard-Lizenzbedingungen für Anwendungen vor. Der vollständige Lizenztext liegt der App bei und ist unter https://www.gnu.org/licenses/gpl-3.0.html sowie unter https://github.com/tobGat/daskala/blob/master/LICENSE abrufbar. Der vollständige Quellcode ist unter https://github.com/tobGat/daskala verfügbar.
+
+Warum ausfüllen: Microsofts Standard-Lizenzbedingungen für Anwendungen gelten nur,
+sofern keine eigenen Lizenzbedingungen mit der App bereitgestellt werden. Durch die
+Angabe der GPL stellst du klar, dass die GPL maßgeblich ist – so ist die
+Veröffentlichung einer GPL-App im Store rechtlich sauber. Die von der GPL geforderte
+Quelltext-Verfügbarkeit ist über das öffentliche GitHub-Repository erfüllt.
+
 ## Hinweise
 
 - Sprache des Listings: Deutsch (de-AT). Bei Bedarf kann eine englische Fassung
