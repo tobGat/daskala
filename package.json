@@ -84,9 +84,9 @@
       ]
     },
     "appx": {
-      "identityName": "PUBLISHERID.Daskala",
-      "publisher": "CN=00000000-0000-0000-0000-000000000000",
-      "publisherDisplayName": "Tobias Gatterbauer",
+      "identityName": "tobGat.Daskala",
+      "publisher": "CN=0C5A2E0E-4361-400B-B114-BF0C3369C879",
+      "publisherDisplayName": "tobGat",
       "applicationId": "Daskala",
       "displayName": "Daskala",
       "backgroundColor": "#ffffff",
