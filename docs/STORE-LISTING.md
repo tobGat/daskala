@@ -112,7 +112,9 @@ Quelltext-Verfügbarkeit ist über das öffentliche GitHub-Repository erfüllt.
 
 ## Hinweise
 
-- Sprache des Listings: Deutsch (de-AT). Bei Bedarf kann eine englische Fassung
-  ergänzt werden (das Paket unterstützt de-AT, de, en-US).
+- Sprache des Listings: Deutsch. Das Paket deklariert nur „de" (neutrales Deutsch),
+  daher genügt eine einzige deutsche Store-Fassung – sie bedient alle
+  deutschsprachigen Nutzer:innen (auch de-AT, de-DE, de-CH). Eine englische Fassung
+  wäre erst sinnvoll, wenn die App-Oberfläche englisch verfügbar ist.
 - „Klassenvorstand"-Funktionen sind derzeit als Beta gekennzeichnet und daher hier
   bewusst nicht beworben.

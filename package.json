@@ -91,9 +91,7 @@
       "displayName": "Daskala",
       "backgroundColor": "#ffffff",
       "languages": [
-        "de-AT",
-        "de",
-        "en-US"
+        "de"
       ],
       "showNameOnTiles": true,
       "setBuildNumber": false
