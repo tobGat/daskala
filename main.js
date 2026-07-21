@@ -4969,6 +4969,9 @@ function createWindow() {
 // Nur im gepackten Build aktiv; im Dev fehlt die Update-Konfiguration.
 function setupAutoUpdate() {
   if (!app.isPackaged) return
+  // Im Microsoft-Store-Paket (MSIX) übernimmt der Store die Updates; die App ist
+  // dort schreibgeschützt installiert – electron-updater darf nicht laufen.
+  if (app.windowsStore) return
   const send = (data) => BrowserWindow.getAllWindows()[0]?.webContents.send('update:status', data)
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
@@ -4995,6 +4998,7 @@ ipcMain.handle('update:installieren', () => {
 // keine Update-Konfiguration → ehrliche Rückmeldung statt Fehler.
 ipcMain.handle('update:pruefen', async () => {
   if (!app.isPackaged) return { ok: false, grund: 'dev' }
+  if (app.windowsStore) return { ok: false, grund: 'store' }
   try {
     const r = await autoUpdater.checkForUpdates()
     return { ok: true, version: r?.updateInfo?.version ?? null, aktuell: app.getVersion() }
