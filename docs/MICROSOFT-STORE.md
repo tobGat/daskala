@@ -90,18 +90,29 @@ veröffentlichte. Da jeder Release einen neuen Tag bekommt, ist das automatisch 
 3. **Eigenschaften / Kategorie:** *Bildung* (Education).
 4. **Altersfreigabe:** Fragebogen ausfüllen (Daskala verarbeitet nur lokale Daten →
    in der Regel Freigabe ab niedriger Altersstufe).
-5. **Store-Eintrag** (pro Sprache, mind. **de-AT**):
-   - Beschreibung, Screenshots (mind. 1), Store-Logo.
-   - Text-Bausteine findest du in der In-App-Doku / im README.
-6. **Einreichungsoptionen → Eingeschränkte Funktionen:** Das Paket deklariert
-   `runFullTrust` (eine „restricted capability"). Das ist für klassische
-   Desktop-Apps normal. Begründung im Freitextfeld, z. B.:
-   > „Daskala ist eine klassische Windows-Desktop-Anwendung (Electron). Sie benötigt
-   > vollen Desktop-Zugriff, um Notendaten lokal in einer Datei zu speichern und
-   > Exporte (PDF/ODS) über den Windows-Datei-Dialog abzulegen. Es werden keine
-   > Daten an Server übertragen."
-7. **Preis & Verfügbarkeit:** kostenlos, Märkte wählen (z. B. Österreich/weltweit).
-8. **Absenden.** Die Zertifizierung dauert i. d. R. wenige Stunden bis 1–2 Tage.
+5. **Store-Eintrag** (Sprache **Deutsch** – eine Fassung genügt für alle
+   deutschsprachigen Regionen; siehe [STORE-LISTING.md](STORE-LISTING.md)):
+   - Kurzbeschreibung, Beschreibung, Produktfeatures, Screenshots (mind. 1), Store-Logo.
+   - Optional: Urheberrecht/Markeninformation und zusätzliche Lizenzbedingungen (GPL) –
+     Text-Bausteine ebenfalls in [STORE-LISTING.md](STORE-LISTING.md).
+6. **Datenschutzrichtlinie (URL):** `https://github.com/tobGat/daskala/blob/master/PRIVACY.md`
+7. **`runFullTrust` (eingeschränkte Funktion):** Beim Hochladen erscheint die Warnung
+   *„The following restricted capabilities require approval before you can use them in
+   your app: runFullTrust."* Das ist **normal** – für eine als MSIX paketierte
+   Desktop-App (Electron) ist `runFullTrust` (`Windows.FullTrustApplication`) technisch
+   zwingend und lässt sich nicht entfernen. Es ist **kein** Ablehnungsgrund und **kein**
+   separates Vorab-Formular nötig. Begründung im Feld **„Anmerkungen für die
+   Zertifizierung"** eintragen:
+   > „Daskala ist eine klassische Windows-Desktop-Anwendung (Electron), als MSIX
+   > paketiert. Die Funktion ‚runFullTrust' (Windows.FullTrustApplication) ist für
+   > solche Desktop-Apps technisch erforderlich, damit die Anwendung ausgeführt werden
+   > kann. Sie wird benötigt, um Noten- und Planungsdaten lokal in einer Datei (SQLite)
+   > zu speichern, lokale Sicherungen anzulegen und Exporte (PDF/ODS/ODT) über den
+   > Windows-Datei-Dialog abzulegen. Es werden keine Daten an Server oder Dritte
+   > übertragen."
+8. **Preis & Verfügbarkeit:** kostenlos, Märkte wählen (z. B. Österreich/weltweit).
+9. **Absenden.** Die Zertifizierung dauert i. d. R. wenige Stunden bis 1–2 Tage;
+   `runFullTrust` wird für Desktop-Apps im Zuge der regulären Prüfung genehmigt.
 
 ---
 
