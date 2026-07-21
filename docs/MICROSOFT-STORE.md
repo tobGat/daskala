@@ -118,7 +118,32 @@ veröffentlichte. Da jeder Release einen neuen Tag bekommt, ist das automatisch 
 
 ---
 
-## 6. Lokales Testen (optional)
+## 6. Updates veröffentlichen
+
+Ein „Update" im Store ist einfach **eine neue Einreichung mit höherer Version**.
+Der Store verteilt sie automatisch an alle installierten Geräte – Nutzer:innen
+müssen nichts tun (Windows aktualisiert Store-Apps im Hintergrund).
+
+Bei jedem Update:
+
+1. Änderungen wie gewohnt: mergen → Tag `vX.Y.Z` pushen → GitHub-Release (erzeugt die `.exe`).
+2. Store-Paket bauen: `npm run build:store` → `dist-electron/Daskala X.Y.Z.appx`
+   (Version zieht automatisch aus dem Tag hoch).
+3. Partner Center → **neue Einreichung** → neues `.appx` hochladen → absenden.
+
+Zu beachten:
+
+- **Version immer höher** als die zuletzt *im Store* veröffentlichte (per Git-Tag automatisch erfüllt).
+- **Identität nie ändern** – `identityName` / `publisher` / `publisherDisplayName` bleiben konstant,
+  sonst erkennt der Store das Paket nicht als dieselbe App.
+- **Signieren entfällt** – der Store signiert jede Einreichung selbst.
+- `runFullTrust` muss meist nur bei der **ersten** Einreichung begründet werden.
+- Die GitHub-`.exe` (electron-updater) und die Store-`.appx` sind zwei getrennte
+  Update-Kanäle aus derselben Codebasis; der Tag-Versionssprung deckt beide ab.
+
+---
+
+## 7. Lokales Testen (optional)
 
 Ein **unsigniertes** `.appx` lässt sich nicht per Doppelklick installieren. Zum
 lokalen Test entweder:
@@ -133,8 +158,8 @@ lokalen Test entweder:
 ## Kurzreferenz
 
 ```powershell
-# 1. package.json → build.appx: identityName / publisher / publisherDisplayName eintragen
-# 2. ggf. version erhöhen
+# Identität (identityName / publisher / publisherDisplayName) ist bereits eingetragen.
+# Für Erst-Release und jedes Update gleich:
 npm run build:store
-# 3. dist-electron/Daskala <version>.appx im Partner Center hochladen
+# dann dist-electron/Daskala <version>.appx im Partner Center als (neue) Einreichung hochladen
 ```
