@@ -9,7 +9,6 @@ import SchuelerAvatar from './SchuelerAvatar'
 const EINZEL_W = 80
 const EINZEL_H = 80
 const DOPPEL_W = 170
-const DOPPEL_H = 80
 const SITZ_W = 75
 
 function tischBreite(typ) { return typ === 'doppel' ? DOPPEL_W : EINZEL_W }

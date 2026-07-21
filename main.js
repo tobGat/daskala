@@ -11,7 +11,7 @@ const os = require('os')
 const isDev = process.env.NODE_ENV === 'development'
 
 // ─── PDF-Helper ───────────────────────────────────────────────────────────────
-async function htmlZuPdf(htmlContent) {
+async function htmlZuPdf(htmlContent, opts = {}) {
   const tmpFile = path.join(os.tmpdir(), `daskala_${Date.now()}.html`)
   fs.writeFileSync(tmpFile, htmlContent, 'utf8')
   const win = new BrowserWindow({
@@ -19,7 +19,7 @@ async function htmlZuPdf(htmlContent) {
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   })
   await win.loadFile(tmpFile)
-  const pdfBuffer = await win.webContents.printToPDF({ printBackground: true, pageSize: 'A4' })
+  const pdfBuffer = await win.webContents.printToPDF({ printBackground: true, pageSize: 'A4', landscape: !!opts.landscape })
   win.destroy()
   try { fs.unlinkSync(tmpFile) } catch {}
   return pdfBuffer
@@ -232,7 +232,7 @@ function doBackupCreate() {
     fs.copyFileSync(dbPath, backupPath)
     markiereBackupGemacht()
     return backupPath
-  } catch (e) {
+  } catch {
     return null
   }
 }
@@ -247,7 +247,7 @@ async function doSaveAs(win) {
     fs.copyFileSync(dbPath, result.filePath)
     markiereBackupGemacht()
     return result.filePath
-  } catch (e) {
+  } catch {
     return null
   }
 }
@@ -536,6 +536,10 @@ function initDB() {
   spalteErgaenzen('stunden_planung', 'hue_frist_datum', 'TEXT')
   spalteErgaenzen('stunden_planung', 'link', 'TEXT')
   spalteErgaenzen('stunden_planung', 'entfall', 'INTEGER DEFAULT 0')
+  // Wochen-Rhythmus: Stunde findet nur alle N Wochen statt (1 = jede Woche).
+  // anker_datum = Montag einer Woche, in der die Stunde stattfindet (Parität).
+  spalteErgaenzen('stundenplan', 'wochen_intervall', 'INTEGER DEFAULT 1')
+  spalteErgaenzen('stundenplan', 'anker_datum', 'TEXT')
   spalteErgaenzen('supplierstunden', 'titel', 'TEXT')
   spalteErgaenzen('supplierstunden', 'inhalt', 'TEXT')
   spalteErgaenzen('supplierstunden', 'hue_text', 'TEXT')
@@ -2529,7 +2533,10 @@ function registerIPC() {
   })
 
   ipcMain.handle('stundenplan:create', (_, data) => {
-    const info = db.prepare('INSERT INTO stundenplan (wochentag, stunde_id, fach_id) VALUES (?, ?, ?)').run(data.wochentag, data.stundeId, data.fachId)
+    const iv = Math.max(1, parseInt(data.wochenIntervall) || 1)
+    const anker = iv > 1 ? (data.ankerDatum ?? null) : null
+    const info = db.prepare('INSERT INTO stundenplan (wochentag, stunde_id, fach_id, wochen_intervall, anker_datum) VALUES (?, ?, ?, ?, ?)')
+      .run(data.wochentag, data.stundeId, data.fachId, iv, anker)
     return info.lastInsertRowid
   })
 
@@ -2539,7 +2546,14 @@ function registerIPC() {
   })
 
   ipcMain.handle('stundenplan:update', (_, id, data) => {
-    db.prepare('UPDATE stundenplan SET fach_id = ? WHERE id = ?').run(data.fachId, id)
+    if (data.wochenIntervall !== undefined) {
+      const iv = Math.max(1, parseInt(data.wochenIntervall) || 1)
+      const anker = iv > 1 ? (data.ankerDatum ?? null) : null
+      db.prepare('UPDATE stundenplan SET fach_id = ?, wochen_intervall = ?, anker_datum = ? WHERE id = ?')
+        .run(data.fachId, iv, anker, id)
+    } else {
+      db.prepare('UPDATE stundenplan SET fach_id = ? WHERE id = ?').run(data.fachId, id)
+    }
     return true
   })
 
@@ -2899,7 +2913,7 @@ function registerIPC() {
         .filter(f => f.endsWith('.sqlite'))
         .sort()
         .reverse()
-    } catch (e) {
+    } catch {
       return []
     }
   })
@@ -3478,6 +3492,124 @@ function registerIPC() {
     }
   })
 
+  // ─── Export: Stundenplan als ansprechendes PDF (Querformat, zum Aufhängen) ──
+  ipcMain.handle('export:stundenplanPdf', async (_, titelZusatz) => {
+    const WOCHENTAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
+
+    // Farbpalette analog zur App (getKlasseFarbe: klasse_id % 7).
+    const FARBEN = [
+      { bg: '#ffe6e2', bar: '#f97362', text: '#7f2418' }, // coral
+      { bg: '#d1fae5', bar: '#34d399', text: '#065f46' }, // emerald
+      { bg: '#ede9fe', bar: '#a78bfa', text: '#5b21b6' }, // violet
+      { bg: '#fef3c7', bar: '#fbbf24', text: '#92400e' }, // amber
+      { bg: '#ffe4e6', bar: '#fb7185', text: '#9f1239' }, // rose
+      { bg: '#cffafe', bar: '#22d3ee', text: '#155e75' }, // cyan
+      { bg: '#ffedd5', bar: '#fb923c', text: '#9a3412' }, // orange
+    ]
+    const farbeFuer = (klasseId) => FARBEN[((klasseId % FARBEN.length) + FARBEN.length) % FARBEN.length]
+    const escHtml = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const ivLabel = (iv) => iv === 2 ? '14-tg.' : `alle ${iv} Wo.`
+
+    const stundenzeiten = db.prepare('SELECT * FROM stundenzeiten ORDER BY stunde').all()
+    const eintraege = db.prepare(`
+      SELECT sp.*, sz.stunde, sz.beginn, sz.ende,
+             f.name AS fach_name, k.name AS klasse_name, k.id AS klasse_id
+      FROM stundenplan sp
+      JOIN stundenzeiten sz ON sz.id = sp.stunde_id
+      JOIN faecher f ON f.id = sp.fach_id
+      JOIN klassen k ON k.id = f.klasse_id
+      ORDER BY sp.wochentag, sz.stunde
+    `).all()
+
+    // Einträge nach Slot gruppieren (mehrere möglich, z. B. bei 14-tägigem Wechsel).
+    const slotMap = {}
+    for (const e of eintraege) {
+      const key = `${e.wochentag}_${e.stunde_id}`
+      ;(slotMap[key] ??= []).push(e)
+    }
+
+    // Legende: vorhandene Klassen mit ihrer Farbe.
+    const klassenGesehen = new Map()
+    for (const e of eintraege) if (!klassenGesehen.has(e.klasse_id)) klassenGesehen.set(e.klasse_id, e.klasse_name)
+
+    const zelleHtml = (wochentag, stunde) => {
+      const list = slotMap[`${wochentag}_${stunde.id}`] || []
+      if (!list.length) return '<td class="leer"></td>'
+      const inner = list.map(e => {
+        const f = farbeFuer(e.klasse_id)
+        const iv = e.wochen_intervall || 1
+        return `<div class="fach" style="background:${f.bg};border-left:5px solid ${f.bar};color:${f.text}">
+          <div class="fach-name">${escHtml(e.fach_name)}</div>
+          <div class="fach-klasse">${escHtml(e.klasse_name)}${iv > 1 ? ` · <span class="iv">${ivLabel(iv)}</span>` : ''}</div>
+        </div>`
+      }).join('')
+      return `<td>${inner}</td>`
+    }
+
+    const kopf = `<tr>
+      <th class="zeit-kopf">Zeit</th>
+      ${WOCHENTAGE.map(t => `<th>${t}</th>`).join('')}
+    </tr>`
+
+    const zeilen = stundenzeiten.map(stunde => `
+      <tr>
+        <td class="zeit">
+          <div class="zeit-nr">${stunde.stunde}.</div>
+          <div class="zeit-span">${stunde.beginn}<br>${stunde.ende}</div>
+        </td>
+        ${WOCHENTAGE.map((_, i) => zelleHtml(i + 1, stunde)).join('')}
+      </tr>`).join('')
+
+    const legende = klassenGesehen.size ? `<div class="legende">
+      ${[...klassenGesehen.entries()].map(([id, name]) => {
+        const f = farbeFuer(id)
+        return `<span class="leg-item"><span class="leg-dot" style="background:${f.bar}"></span>${escHtml(name)}</span>`
+      }).join('')}
+    </div>` : ''
+
+    const css = `
+      *{box-sizing:border-box;margin:0;padding:0}
+      @page{size:A4 landscape;margin:1cm}
+      body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937}
+      h1{font-size:26px;font-weight:300;letter-spacing:.5px}
+      .meta{font-size:12px;color:#6b7280;margin-bottom:14px}
+      table{width:100%;border-collapse:separate;border-spacing:4px;table-layout:fixed}
+      th{font-size:14px;font-weight:600;color:#374151;padding:6px 0;text-align:center}
+      th.zeit-kopf{width:70px}
+      td{vertical-align:top;height:80px;border-radius:8px;background:#f9fafb;padding:4px}
+      td.leer{background:#fcfcfd;border:1px dashed #e5e7eb}
+      td.zeit{background:transparent;text-align:center;padding-top:8px}
+      .zeit-nr{font-size:18px;font-weight:700;color:#111827}
+      .zeit-span{font-size:10px;color:#9ca3af;margin-top:2px;line-height:1.3}
+      .fach{border-radius:6px;padding:6px 8px;margin-bottom:4px;min-height:66px;display:flex;flex-direction:column;justify-content:center}
+      .fach:last-child{margin-bottom:0}
+      .fach-name{font-size:15px;font-weight:700;line-height:1.15}
+      .fach-klasse{font-size:11px;opacity:.8;margin-top:2px}
+      .iv{font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:.3px}
+      .legende{margin-top:16px;display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:#4b5563}
+      .leg-item{display:flex;align-items:center;gap:5px}
+      .leg-dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+    `
+
+    const titel = titelZusatz ? `Stundenplan · ${escHtml(titelZusatz)}` : 'Stundenplan'
+    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>${css}</style></head>
+      <body>
+        <h1>${titel}</h1>
+        <div class="meta">Erstellt am ${new Date().toLocaleDateString('de-AT')} · Daskala</div>
+        <table><thead>${kopf}</thead><tbody>${zeilen}</tbody></table>
+        ${legende}
+      </body></html>`
+
+    const savePath = await dialog.showSaveDialog({
+      defaultPath: `stundenplan_${titelZusatz ? dateiTeil(titelZusatz) + '_' : ''}${exportDatum()}.pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    })
+    if (savePath.canceled) return false
+    const buf = await htmlZuPdf(html, { landscape: true })
+    fs.writeFileSync(savePath.filePath, buf)
+    return true
+  })
+
   // ─── Export: Jahresplanung als ODT (tabellarisch, Querformat) ─────────────
   ipcMain.handle('export:jahresplanungOdt', async (_, fachId) => {
     const JSZip = require('jszip')
@@ -3584,7 +3716,7 @@ function registerIPC() {
 
   // ─── Export: Fach-Planung als DOCX ────────────────────────────────────────
   ipcMain.handle('export:fachPlanungDocx', async (_, fachId, fachName, klasseName, wochenDaten) => {
-    const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, BorderStyle, HeadingLevel } = require('docx')
+    const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, BorderStyle, HeadingLevel } = require('docx')
 
     const WOCHENTAGE = ['', 'Mo', 'Di', 'Mi', 'Do', 'Fr']
 
@@ -3609,8 +3741,6 @@ function registerIPC() {
         AND sp.woche_datum = ?
     `)
 
-    const noBorder = { style: BorderStyle.NONE, size: 0 }
-    const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder }
     const thinBorder = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
     const cellBorders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
 
@@ -4727,7 +4857,7 @@ function registerIPC() {
   })
 
   // Fehlstunden
-  ipcMain.handle('kv:fehlstunden:getAlleFuerSchueler', (_, schuelerId, schuljahrId) => {
+  ipcMain.handle('kv:fehlstunden:getAlleFuerSchueler', (_, schuelerId, _schuljahrId) => {
     // Schuljahr-Filterung: Wir kennen kein start/end pro Datensatz; nutze Bezeichnung
     // → Pragmatic: alle Fehlstunden zurückgeben (das Frontend kann filtern wenn nötig)
     return db.prepare('SELECT * FROM kv_fehlstunden WHERE schueler_id = ? ORDER BY datum DESC, id DESC').all(schuelerId)

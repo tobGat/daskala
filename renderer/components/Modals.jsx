@@ -1227,11 +1227,6 @@ export function FerienModal() {
     closeModal()
   }
 
-  const formatDatum = (dateStr) => {
-    if (!dateStr) return ''
-    const d = new Date(dateStr + 'T00:00:00')
-    return d.toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  }
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && closeModal()}>

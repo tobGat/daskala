@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import useStore from '../store/useStore'
-import PlanungModal, { toLocalDateStr, berechneFristDatum, naechsteLektionDatum, formatFristDatum } from './PlanungModal'
+import PlanungModal, { toLocalDateStr, berechneFristDatum } from './PlanungModal'
 import { berechneSchulferien, ferienFuerTag, mergeFerien } from '../utils/schulferien'
 
 function getMontag(wochenOffset) {
@@ -130,8 +130,22 @@ function SupplierInhalt({ supplier }) {
   )
 }
 
-function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall }) {
+// Rhythmus-Kürzel: 2 → „14-tg.", sonst „/N Wo."
+function intervallLabel(iv) {
+  return iv === 2 ? '14-tg.' : `/${iv} Wo.`
+}
+
+function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert }) {
   const f = getKlasseFarbe(eintrag.klasse_id)
+  const iv = eintrag.wochen_intervall || 1
+  const ivBadge = iv > 1 ? (
+    <span
+      className="text-[8px] font-bold px-1 rounded bg-black/10 dark:bg-white/15 whitespace-nowrap leading-tight"
+      title={`Findet alle ${iv} Wochen statt`}
+    >
+      {intervallLabel(iv)}
+    </span>
+  ) : null
   if (entfall) {
     return (
       <div className="h-full rounded overflow-hidden border border-paper-300 dark:border-ink-600 bg-paper-100 dark:bg-ink-800/60 flex relative">
@@ -145,11 +159,15 @@ function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall }) {
     )
   }
   return (
-    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex`}>
+    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex ${pausiert ? 'opacity-40 border-dashed' : ''}`}>
       <div className={`w-1 flex-shrink-0 ${f.accent}`} />
       <div className={`flex-1 px-1.5 py-1 min-w-0 ${f.text}`}>
         <div className="font-semibold text-xs truncate leading-tight">{eintrag.fach_name}</div>
-        <div className="text-xs truncate leading-tight opacity-60">{eintrag.klasse_name}</div>
+        <div className="text-xs leading-tight opacity-60 flex items-center gap-1 min-w-0">
+          <span className="truncate">{eintrag.klasse_name}</span>
+          {ivBadge}
+          {pausiert && <span className="text-[8px] font-semibold uppercase tracking-wide whitespace-nowrap">· diese Wo. frei</span>}
+        </div>
         {planungTitel && (
           <div className="text-xs truncate opacity-70 mt-0.5 italic">{planungTitel}</div>
         )}
@@ -190,7 +208,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const [slotModal, setSlotModal] = useState(null)
   const [planungModal, setPlanungModal] = useState(null) // { eintrag, wocheDatum } or { supplier, wocheDatum, stunde }
   const [notizModal, setNotizModal] = useState(null) // { eintrag, wocheDatum, planung }
-  const [exportModal, setExportModal] = useState(false)
+  const [exportModal, setExportModal] = useState(null) // null | 'wahl' | 'planung'
   const [alleFaecher, setAlleFaecher] = useState([])
   const [aktuelleWoche, setAktuelleWoche] = useState(0)
   const [kontextMenu, setKontextMenu] = useState(null)
@@ -299,11 +317,22 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const eintragFuerSlot = (wochentag, stundeId) =>
     stundenplanEintraege.find(e => e.wochentag === wochentag && e.stunde_id === stundeId)
 
+  // Findet die Stunde in der angezeigten Woche statt? Bei Intervall > 1 nur in
+  // Wochen, deren Abstand zum Anker-Montag ein Vielfaches des Intervalls ist.
+  const aktivInWoche = (eintrag, montag = wocheDatum) => {
+    const iv = eintrag?.wochen_intervall || 1
+    if (iv <= 1 || !eintrag?.anker_datum) return true
+    const diff = Math.round((new Date(montag + 'T00:00:00') - new Date(eintrag.anker_datum + 'T00:00:00')) / (7 * 86400000))
+    return (((diff % iv) + iv) % iv) === 0
+  }
+
   const supplierFuerSlot = (wochentag, stundeId) =>
     supplierstunden.find(s => s.wochentag === wochentag && s.stunde_id === stundeId)
 
   const handleSlotClick = (wochentag, stunde) => {
-    const eintrag = eintragFuerSlot(wochentag, stunde.id)
+    const eintragRaw = eintragFuerSlot(wochentag, stunde.id)
+    // In der normalen Ansicht zählt ein Eintrag nur in seiner aktiven Woche.
+    const eintrag = eintragRaw && (bearbeitungsModus || aktivInWoche(eintragRaw)) ? eintragRaw : null
     const supplier = !eintrag ? supplierFuerSlot(wochentag, stunde.id) : null
     if (bearbeitungsModus) {
       setSlotModal({ wochentag, stundeId: stunde.id, eintrag })
@@ -350,7 +379,8 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const handleSlotContextMenu = (e, wochentag, stunde) => {
     e.preventDefault()
     e.stopPropagation()
-    const eintrag = eintragFuerSlot(wochentag, stunde.id)
+    const eintragRaw = eintragFuerSlot(wochentag, stunde.id)
+    const eintrag = eintragRaw && (bearbeitungsModus || aktivInWoche(eintragRaw)) ? eintragRaw : null
     const supplier = supplierFuerSlot(wochentag, stunde.id)
     setKontextMenu({ x: e.clientX, y: e.clientY, wochentag, stunde, eintrag, supplier })
   }
@@ -366,11 +396,12 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
     store.setCurrentView('notentabelle')
   }
 
-  const handleSlotSpeichern = async (fachId) => {
+  const handleSlotSpeichern = async (fachId, opts = {}) => {
     if (!slotModal) return
+    const { wochenIntervall = 1, ankerDatum = null } = opts
     if (slotModal.eintrag) {
       if (fachId) {
-        await window.api.stundenplan.update(slotModal.eintrag.id, { fachId })
+        await window.api.stundenplan.update(slotModal.eintrag.id, { fachId, wochenIntervall, ankerDatum })
       } else {
         await window.api.stundenplan.delete(slotModal.eintrag.id)
       }
@@ -379,6 +410,8 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
         wochentag: slotModal.wochentag,
         stundeId: slotModal.stundeId,
         fachId,
+        wochenIntervall,
+        ankerDatum,
       })
     }
     await laden()
@@ -394,6 +427,13 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
       const ferienZeitraeume = schulferien ? [...(schulferien.ferien || []), ...(schulferien.feiertage || []).map(ft => ({ von: ft.datum, bis: ft.datum }))] : []
       await window.api.stundenPlanung.setEntfall(eintrag.id, wocheDatum, vorruecken, ferienZeitraeume)
       await ladenPlanungen()
+      return
+    } else if (aktion === 'entfall-supplier' && eintrag) {
+      // Stunde entfällt und wird durch eine Supplierstunde ersetzt (kein Vorrücken).
+      const ferienZeitraeume = schulferien ? [...(schulferien.ferien || []), ...(schulferien.feiertage || []).map(ft => ({ von: ft.datum, bis: ft.datum }))] : []
+      await window.api.stundenPlanung.setEntfall(eintrag.id, wocheDatum, false, ferienZeitraeume)
+      await ladenPlanungen()
+      setSupplierModal({ wochentag, stunde, tagDatum: wochenDaten[wochentag - 1] })
       return
     } else if (aktion === 'entfall-aufheben' && eintrag) {
       await window.api.stundenPlanung.removeEntfall(eintrag.id, wocheDatum)
@@ -456,7 +496,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
         <div className="ml-auto flex items-center gap-2">
           <button
             className="px-3 py-1.5 text-xs rounded-lg font-medium border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 transition-colors"
-            onClick={() => setExportModal(true)}
+            onClick={() => setExportModal('wahl')}
           >
             PDF exportieren
           </button>
@@ -590,10 +630,17 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                   {/* Wochentage */}
                   {WOCHENTAGE.map((_, tagIdx) => {
                     const wochentag = tagIdx + 1
-                    const eintrag = eintragFuerSlot(wochentag, stunde.id)
-                    const supplier = !eintrag ? supplierFuerSlot(wochentag, stunde.id) : null
+                    const eintragRaw = eintragFuerSlot(wochentag, stunde.id)
+                    const eintragAktiv = eintragRaw ? aktivInWoche(eintragRaw) : false
+                    // Nicht-aktive (z. B. 14-tägige) Stunden: im Bearbeitungsmodus gedimmt zeigen,
+                    // in der normalen Ansicht wie ein freier Slot behandeln.
+                    const eintrag = eintragRaw && (bearbeitungsModus || eintragAktiv) ? eintragRaw : null
+                    const pausiert = !!eintrag && !eintragAktiv
                     const istAktuell = istAktuelleStunde && aktuelleWoche === 0 && aktTag === wochentag
                     const planung = eintrag ? planungFuerEintrag(eintrag.id) : null
+                    const entfallen = !!planung?.entfall
+                    // Supplierstunde: freier Slot ODER Ersatz für eine entfallene Stunde
+                    const supplier = (!eintrag || entfallen) ? supplierFuerSlot(wochentag, stunde.id) : null
                     const hueHier = hueEintraege.filter(h => h.wochentag === wochentag && h.stunde_id === stunde.id)
                     const stripMd = (s) => s?.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/^---+$/gm, '—').replace(/^- /gm, '• ')
                     const tooltipText = planung ? [planung.titel, planung.inhalt?.substring(0, 150)].filter(Boolean).map(stripMd).join('\n') : ''
@@ -645,15 +692,16 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                           <div className="h-full flex items-center justify-center">
                             <span className="text-[10px] font-medium text-rose-400 dark:text-rose-500 text-center leading-tight px-1">{ferienInfo.name}</span>
                           </div>
+                        ) : supplier ? (
+                          <SupplierInhalt supplier={supplier} />
                         ) : eintrag ? (
                           <SlotInhalt
                             eintrag={eintrag}
                             planungTitel={planung?.titel}
                             planungNotiz={planung?.inhalt ? stripMd(planung.inhalt).split('\n').filter(Boolean)[0] : null}
-                            entfall={!!planung?.entfall}
+                            entfall={entfallen}
+                            pausiert={pausiert}
                           />
-                        ) : supplier ? (
-                          <SupplierInhalt supplier={supplier} />
                         ) : (
                           bearbeitungsModus && (
                             <div className="h-full rounded border border-dashed border-paper-200 dark:border-ink-700 flex items-center justify-center">
@@ -707,8 +755,18 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                     <span className="text-green-500">↩</span> Entfall aufheben
                   </div>
                 ) : (
-                  <div className="context-menu-item text-red-600 dark:text-red-400" onClick={() => handleKontextAktion('entfall')}>
-                    <span>⊘</span> Entfall
+                  <div className="context-menu-item text-red-600 dark:text-red-400 group relative justify-between">
+                    <span className="flex items-center gap-2"><span>⊘</span> Entfall</span>
+                    <span className="text-ink-400 pl-2">▸</span>
+                    {/* Untermenü beim Hover: ersatzlos vs. Supplierung */}
+                    <div className="context-menu hidden group-hover:block left-full top-0 -mt-1.5">
+                      <div className="context-menu-item" onClick={() => handleKontextAktion('entfall')}>
+                        <span className="text-ink-400">∅</span> ersatzlos
+                      </div>
+                      <div className="context-menu-item" onClick={() => handleKontextAktion('entfall-supplier')}>
+                        <span className="text-ink-400">↔</span> Durch Supplierung ersetzen
+                      </div>
+                    </div>
                   </div>
                 )
               })()}
@@ -761,6 +819,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
       {slotModal && (
         <SlotModal
           slotModal={slotModal}
+          wocheDatum={wocheDatum}
           alleFaecher={alleFaecher}
           klassen={klassen}
           onSpeichern={handleSlotSpeichern}
@@ -812,9 +871,22 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
         />
       )}
 
-      {/* Export-Modal */}
-      {exportModal && (
-        <PlanungsExportModal onClose={() => setExportModal(false)} />
+      {/* Export: Auswahl Planung vs. Stundenplan */}
+      {exportModal === 'wahl' && (
+        <ExportWahlModal
+          planungAktiv={planungAktiv}
+          onPlanung={() => setExportModal('planung')}
+          onStundenplan={async () => {
+            setExportModal(null)
+            await window.api.export.stundenplanPdf(aktuellesSchuljahr?.bezeichnung ?? '')
+          }}
+          onClose={() => setExportModal(null)}
+        />
+      )}
+
+      {/* Export-Modal: Planung */}
+      {exportModal === 'planung' && (
+        <PlanungsExportModal onClose={() => setExportModal(null)} />
       )}
 
       {/* Supplier-Modal */}
@@ -927,7 +999,7 @@ function NotizModal({ eintrag, wochentag, wocheDatum, wochenDaten, stundenzeiten
   )
 }
 
-function SupplierPlanungModal({ supplier, stunde, wocheDatum, onClose, onGespeichert }) {
+function SupplierPlanungModal({ supplier, wocheDatum, onClose, onGespeichert }) {
   const [titel, setTitel] = useState(supplier.titel ?? '')
   const [inhalt, setInhalt] = useState(supplier.inhalt ?? '')
   const [hueText, setHueText] = useState(supplier.hue_text ?? '')
@@ -1050,14 +1122,41 @@ function SupplierPlanungModal({ supplier, stunde, wocheDatum, onClose, onGespeic
   )
 }
 
-function SlotModal({ slotModal, alleFaecher, klassen, onSpeichern, onClose }) {
+function SlotModal({ slotModal, wocheDatum, alleFaecher, klassen, onSpeichern, onClose }) {
   const [gewaehltFachId, setGewaehltFachId] = useState(slotModal.eintrag?.fach_id ?? '')
+
+  // Wochen-Rhythmus. intervall === 0 ist der Sentinel für „Individuell".
+  const initIv = slotModal.eintrag?.wochen_intervall || 1
+  const PRESETS = [1, 2, 3, 4]
+  const [intervall, setIntervall] = useState(PRESETS.includes(initIv) ? initIv : 0)
+  const [customStr, setCustomStr] = useState(PRESETS.includes(initIv) ? '' : String(initIv))
+  const istCustom = intervall === 0
+  const effIv = istCustom ? Math.min(52, Math.max(2, parseInt(customStr) || 2)) : intervall
 
   const fachNachKlasse = {}
   for (const f of alleFaecher) {
     if (!fachNachKlasse[f.klasse_id]) fachNachKlasse[f.klasse_id] = []
     fachNachKlasse[f.klasse_id].push(f)
   }
+
+  // Anker-Montag: bei unverändertem Intervall den bestehenden behalten (Parität
+  // bleibt stabil), sonst die aktuell angezeigte Woche als „findet-statt"-Woche.
+  const ankerBerechnen = (iv) => {
+    if (iv <= 1) return null
+    if (slotModal.eintrag && (slotModal.eintrag.wochen_intervall || 1) === iv && slotModal.eintrag.anker_datum) {
+      return slotModal.eintrag.anker_datum
+    }
+    return wocheDatum
+  }
+
+  const speichern = () => {
+    onSpeichern(
+      gewaehltFachId ? parseInt(gewaehltFachId) : null,
+      { wochenIntervall: effIv, ankerDatum: ankerBerechnen(effIv) },
+    )
+  }
+
+  const kw = wocheDatum ? getKalenderwoche(wocheDatum) : null
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
@@ -1084,6 +1183,48 @@ function SlotModal({ slotModal, alleFaecher, klassen, onSpeichern, onClose }) {
           </select>
         </div>
 
+        {gewaehltFachId && (
+          <div className="mb-5">
+            <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 uppercase tracking-wide mb-2">Wiederholung</label>
+            <select
+              className="input"
+              value={istCustom ? 'custom' : String(intervall)}
+              onChange={e => {
+                const v = e.target.value
+                if (v === 'custom') setIntervall(0)
+                else setIntervall(parseInt(v))
+              }}
+            >
+              <option value="1">Jede Woche</option>
+              <option value="2">Alle 2 Wochen (14-tägig)</option>
+              <option value="3">Alle 3 Wochen</option>
+              <option value="4">Alle 4 Wochen</option>
+              <option value="custom">Individuell…</option>
+            </select>
+            {istCustom && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-sm text-ink-600 dark:text-ink-400">Alle</span>
+                <input
+                  type="number"
+                  min="2"
+                  max="52"
+                  className="input w-20"
+                  value={customStr}
+                  onChange={e => setCustomStr(e.target.value)}
+                  placeholder="5"
+                  autoFocus
+                />
+                <span className="text-sm text-ink-600 dark:text-ink-400">Wochen</span>
+              </div>
+            )}
+            {effIv > 1 && (
+              <p className="text-[11px] text-ink-400 mt-2">
+                Findet in {kw ? `KW ${kw}` : 'dieser Woche'} statt und dann alle {effIv} Wochen.
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button className="btn-secondary flex-1" onClick={onClose}>Abbrechen</button>
           {slotModal.eintrag && (
@@ -1091,7 +1232,7 @@ function SlotModal({ slotModal, alleFaecher, klassen, onSpeichern, onClose }) {
           )}
           <button
             className="btn-primary flex-1"
-            onClick={() => onSpeichern(gewaehltFachId ? parseInt(gewaehltFachId) : null)}
+            onClick={speichern}
           >
             Speichern
           </button>
@@ -1307,6 +1448,61 @@ function SupplierModal({ wochentag, stunde, tagDatum, wocheDatum, onSpeichern, o
             Eintragen
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Auswahl-Dialog: Was soll als PDF exportiert werden?
+function ExportWahlModal({ planungAktiv, onPlanung, onStundenplan, onClose }) {
+  const [busy, setBusy] = useState(false)
+
+  const stundenplanExport = async () => {
+    setBusy(true)
+    try { await onStundenplan() } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-md">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-ink-900 dark:text-white">PDF exportieren</h2>
+          <button className="text-ink-400 hover:text-ink-600 text-xl" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="space-y-3">
+          {/* Stundenplan */}
+          <button
+            className="w-full text-left rounded-xl border border-paper-200 dark:border-ink-700 hover:border-coral-400 dark:hover:border-coral-500 hover:bg-coral-50/50 dark:hover:bg-coral-900/20 transition-colors p-4 flex items-start gap-3 disabled:opacity-50"
+            onClick={stundenplanExport}
+            disabled={busy}
+          >
+            <span className="text-2xl leading-none mt-0.5">🗓️</span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-ink-900 dark:text-white">Stundenplan exportieren</span>
+              <span className="block text-xs text-ink-500 dark:text-ink-400 mt-0.5">
+                Der Wochenplan als optisch aufbereitete PDF im Querformat – zum Ausdrucken und Aufhängen.
+              </span>
+            </span>
+          </button>
+
+          {/* Planung */}
+          <button
+            className="w-full text-left rounded-xl border border-paper-200 dark:border-ink-700 hover:border-coral-400 dark:hover:border-coral-500 hover:bg-coral-50/50 dark:hover:bg-coral-900/20 transition-colors p-4 flex items-start gap-3 disabled:opacity-50"
+            onClick={onPlanung}
+            disabled={busy}
+          >
+            <span className="text-2xl leading-none mt-0.5">📋</span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-ink-900 dark:text-white">Planung exportieren</span>
+              <span className="block text-xs text-ink-500 dark:text-ink-400 mt-0.5">
+                Die {planungAktiv ? 'geplanten' : 'notierten'} Unterrichtsinhalte ausgewählter Wochen als PDF.
+              </span>
+            </span>
+          </button>
+        </div>
+
+        {busy && <p className="text-xs text-ink-400 text-center mt-4">Stundenplan wird erstellt…</p>}
       </div>
     </div>
   )

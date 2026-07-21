@@ -259,7 +259,7 @@ function StatBar({ label, positiv, negativ, gesamt, posColor, negColor, posLabel
 }
 
 // ─── Fach-Detail im Modal ─────────────────────────────────────────────────────
-function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, niveaus, klassenname, schueler }) {
+function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, niveaus, schueler }) {
   const fachEintraege = eintraege.filter(e => e.fach_id === fach.id)
   const fachNotizen   = notizen.filter(n => n.fach_id === fach.id)
   const istDifferenziert = fach.benotungssystem === 'differenziert'
