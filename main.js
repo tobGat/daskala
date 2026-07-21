@@ -536,6 +536,10 @@ function initDB() {
   spalteErgaenzen('stunden_planung', 'hue_frist_datum', 'TEXT')
   spalteErgaenzen('stunden_planung', 'link', 'TEXT')
   spalteErgaenzen('stunden_planung', 'entfall', 'INTEGER DEFAULT 0')
+  // Wochen-Rhythmus: Stunde findet nur alle N Wochen statt (1 = jede Woche).
+  // anker_datum = Montag einer Woche, in der die Stunde stattfindet (Parität).
+  spalteErgaenzen('stundenplan', 'wochen_intervall', 'INTEGER DEFAULT 1')
+  spalteErgaenzen('stundenplan', 'anker_datum', 'TEXT')
   spalteErgaenzen('supplierstunden', 'titel', 'TEXT')
   spalteErgaenzen('supplierstunden', 'inhalt', 'TEXT')
   spalteErgaenzen('supplierstunden', 'hue_text', 'TEXT')
@@ -2529,7 +2533,10 @@ function registerIPC() {
   })
 
   ipcMain.handle('stundenplan:create', (_, data) => {
-    const info = db.prepare('INSERT INTO stundenplan (wochentag, stunde_id, fach_id) VALUES (?, ?, ?)').run(data.wochentag, data.stundeId, data.fachId)
+    const iv = Math.max(1, parseInt(data.wochenIntervall) || 1)
+    const anker = iv > 1 ? (data.ankerDatum ?? null) : null
+    const info = db.prepare('INSERT INTO stundenplan (wochentag, stunde_id, fach_id, wochen_intervall, anker_datum) VALUES (?, ?, ?, ?, ?)')
+      .run(data.wochentag, data.stundeId, data.fachId, iv, anker)
     return info.lastInsertRowid
   })
 
@@ -2539,7 +2546,14 @@ function registerIPC() {
   })
 
   ipcMain.handle('stundenplan:update', (_, id, data) => {
-    db.prepare('UPDATE stundenplan SET fach_id = ? WHERE id = ?').run(data.fachId, id)
+    if (data.wochenIntervall !== undefined) {
+      const iv = Math.max(1, parseInt(data.wochenIntervall) || 1)
+      const anker = iv > 1 ? (data.ankerDatum ?? null) : null
+      db.prepare('UPDATE stundenplan SET fach_id = ?, wochen_intervall = ?, anker_datum = ? WHERE id = ?')
+        .run(data.fachId, iv, anker, id)
+    } else {
+      db.prepare('UPDATE stundenplan SET fach_id = ? WHERE id = ?').run(data.fachId, id)
+    }
     return true
   })
 

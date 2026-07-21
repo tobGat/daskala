@@ -130,8 +130,22 @@ function SupplierInhalt({ supplier }) {
   )
 }
 
-function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall }) {
+// Rhythmus-Kürzel: 2 → „14-tg.", sonst „/N Wo."
+function intervallLabel(iv) {
+  return iv === 2 ? '14-tg.' : `/${iv} Wo.`
+}
+
+function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert }) {
   const f = getKlasseFarbe(eintrag.klasse_id)
+  const iv = eintrag.wochen_intervall || 1
+  const ivBadge = iv > 1 ? (
+    <span
+      className="text-[8px] font-bold px-1 rounded bg-black/10 dark:bg-white/15 whitespace-nowrap leading-tight"
+      title={`Findet alle ${iv} Wochen statt`}
+    >
+      {intervallLabel(iv)}
+    </span>
+  ) : null
   if (entfall) {
     return (
       <div className="h-full rounded overflow-hidden border border-paper-300 dark:border-ink-600 bg-paper-100 dark:bg-ink-800/60 flex relative">
@@ -145,11 +159,15 @@ function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall }) {
     )
   }
   return (
-    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex`}>
+    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex ${pausiert ? 'opacity-40 border-dashed' : ''}`}>
       <div className={`w-1 flex-shrink-0 ${f.accent}`} />
       <div className={`flex-1 px-1.5 py-1 min-w-0 ${f.text}`}>
         <div className="font-semibold text-xs truncate leading-tight">{eintrag.fach_name}</div>
-        <div className="text-xs truncate leading-tight opacity-60">{eintrag.klasse_name}</div>
+        <div className="text-xs leading-tight opacity-60 flex items-center gap-1 min-w-0">
+          <span className="truncate">{eintrag.klasse_name}</span>
+          {ivBadge}
+          {pausiert && <span className="text-[8px] font-semibold uppercase tracking-wide whitespace-nowrap">· diese Wo. frei</span>}
+        </div>
         {planungTitel && (
           <div className="text-xs truncate opacity-70 mt-0.5 italic">{planungTitel}</div>
         )}
@@ -299,11 +317,22 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const eintragFuerSlot = (wochentag, stundeId) =>
     stundenplanEintraege.find(e => e.wochentag === wochentag && e.stunde_id === stundeId)
 
+  // Findet die Stunde in der angezeigten Woche statt? Bei Intervall > 1 nur in
+  // Wochen, deren Abstand zum Anker-Montag ein Vielfaches des Intervalls ist.
+  const aktivInWoche = (eintrag, montag = wocheDatum) => {
+    const iv = eintrag?.wochen_intervall || 1
+    if (iv <= 1 || !eintrag?.anker_datum) return true
+    const diff = Math.round((new Date(montag + 'T00:00:00') - new Date(eintrag.anker_datum + 'T00:00:00')) / (7 * 86400000))
+    return (((diff % iv) + iv) % iv) === 0
+  }
+
   const supplierFuerSlot = (wochentag, stundeId) =>
     supplierstunden.find(s => s.wochentag === wochentag && s.stunde_id === stundeId)
 
   const handleSlotClick = (wochentag, stunde) => {
-    const eintrag = eintragFuerSlot(wochentag, stunde.id)
+    const eintragRaw = eintragFuerSlot(wochentag, stunde.id)
+    // In der normalen Ansicht zählt ein Eintrag nur in seiner aktiven Woche.
+    const eintrag = eintragRaw && (bearbeitungsModus || aktivInWoche(eintragRaw)) ? eintragRaw : null
     const supplier = !eintrag ? supplierFuerSlot(wochentag, stunde.id) : null
     if (bearbeitungsModus) {
       setSlotModal({ wochentag, stundeId: stunde.id, eintrag })
@@ -350,7 +379,8 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const handleSlotContextMenu = (e, wochentag, stunde) => {
     e.preventDefault()
     e.stopPropagation()
-    const eintrag = eintragFuerSlot(wochentag, stunde.id)
+    const eintragRaw = eintragFuerSlot(wochentag, stunde.id)
+    const eintrag = eintragRaw && (bearbeitungsModus || aktivInWoche(eintragRaw)) ? eintragRaw : null
     const supplier = supplierFuerSlot(wochentag, stunde.id)
     setKontextMenu({ x: e.clientX, y: e.clientY, wochentag, stunde, eintrag, supplier })
   }
@@ -366,11 +396,12 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
     store.setCurrentView('notentabelle')
   }
 
-  const handleSlotSpeichern = async (fachId) => {
+  const handleSlotSpeichern = async (fachId, opts = {}) => {
     if (!slotModal) return
+    const { wochenIntervall = 1, ankerDatum = null } = opts
     if (slotModal.eintrag) {
       if (fachId) {
-        await window.api.stundenplan.update(slotModal.eintrag.id, { fachId })
+        await window.api.stundenplan.update(slotModal.eintrag.id, { fachId, wochenIntervall, ankerDatum })
       } else {
         await window.api.stundenplan.delete(slotModal.eintrag.id)
       }
@@ -379,6 +410,8 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
         wochentag: slotModal.wochentag,
         stundeId: slotModal.stundeId,
         fachId,
+        wochenIntervall,
+        ankerDatum,
       })
     }
     await laden()
@@ -597,7 +630,12 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                   {/* Wochentage */}
                   {WOCHENTAGE.map((_, tagIdx) => {
                     const wochentag = tagIdx + 1
-                    const eintrag = eintragFuerSlot(wochentag, stunde.id)
+                    const eintragRaw = eintragFuerSlot(wochentag, stunde.id)
+                    const eintragAktiv = eintragRaw ? aktivInWoche(eintragRaw) : false
+                    // Nicht-aktive (z. B. 14-tägige) Stunden: im Bearbeitungsmodus gedimmt zeigen,
+                    // in der normalen Ansicht wie ein freier Slot behandeln.
+                    const eintrag = eintragRaw && (bearbeitungsModus || eintragAktiv) ? eintragRaw : null
+                    const pausiert = !!eintrag && !eintragAktiv
                     const istAktuell = istAktuelleStunde && aktuelleWoche === 0 && aktTag === wochentag
                     const planung = eintrag ? planungFuerEintrag(eintrag.id) : null
                     const entfallen = !!planung?.entfall
@@ -662,6 +700,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                             planungTitel={planung?.titel}
                             planungNotiz={planung?.inhalt ? stripMd(planung.inhalt).split('\n').filter(Boolean)[0] : null}
                             entfall={entfallen}
+                            pausiert={pausiert}
                           />
                         ) : (
                           bearbeitungsModus && (
@@ -780,6 +819,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
       {slotModal && (
         <SlotModal
           slotModal={slotModal}
+          wocheDatum={wocheDatum}
           alleFaecher={alleFaecher}
           klassen={klassen}
           onSpeichern={handleSlotSpeichern}
@@ -1069,14 +1109,41 @@ function SupplierPlanungModal({ supplier, wocheDatum, onClose, onGespeichert }) 
   )
 }
 
-function SlotModal({ slotModal, alleFaecher, klassen, onSpeichern, onClose }) {
+function SlotModal({ slotModal, wocheDatum, alleFaecher, klassen, onSpeichern, onClose }) {
   const [gewaehltFachId, setGewaehltFachId] = useState(slotModal.eintrag?.fach_id ?? '')
+
+  // Wochen-Rhythmus. intervall === 0 ist der Sentinel für „Individuell".
+  const initIv = slotModal.eintrag?.wochen_intervall || 1
+  const PRESETS = [1, 2, 3, 4]
+  const [intervall, setIntervall] = useState(PRESETS.includes(initIv) ? initIv : 0)
+  const [customStr, setCustomStr] = useState(PRESETS.includes(initIv) ? '' : String(initIv))
+  const istCustom = intervall === 0
+  const effIv = istCustom ? Math.min(52, Math.max(2, parseInt(customStr) || 2)) : intervall
 
   const fachNachKlasse = {}
   for (const f of alleFaecher) {
     if (!fachNachKlasse[f.klasse_id]) fachNachKlasse[f.klasse_id] = []
     fachNachKlasse[f.klasse_id].push(f)
   }
+
+  // Anker-Montag: bei unverändertem Intervall den bestehenden behalten (Parität
+  // bleibt stabil), sonst die aktuell angezeigte Woche als „findet-statt"-Woche.
+  const ankerBerechnen = (iv) => {
+    if (iv <= 1) return null
+    if (slotModal.eintrag && (slotModal.eintrag.wochen_intervall || 1) === iv && slotModal.eintrag.anker_datum) {
+      return slotModal.eintrag.anker_datum
+    }
+    return wocheDatum
+  }
+
+  const speichern = () => {
+    onSpeichern(
+      gewaehltFachId ? parseInt(gewaehltFachId) : null,
+      { wochenIntervall: effIv, ankerDatum: ankerBerechnen(effIv) },
+    )
+  }
+
+  const kw = wocheDatum ? getKalenderwoche(wocheDatum) : null
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
@@ -1103,6 +1170,48 @@ function SlotModal({ slotModal, alleFaecher, klassen, onSpeichern, onClose }) {
           </select>
         </div>
 
+        {gewaehltFachId && (
+          <div className="mb-5">
+            <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 uppercase tracking-wide mb-2">Wiederholung</label>
+            <select
+              className="input"
+              value={istCustom ? 'custom' : String(intervall)}
+              onChange={e => {
+                const v = e.target.value
+                if (v === 'custom') setIntervall(0)
+                else setIntervall(parseInt(v))
+              }}
+            >
+              <option value="1">Jede Woche</option>
+              <option value="2">Alle 2 Wochen (14-tägig)</option>
+              <option value="3">Alle 3 Wochen</option>
+              <option value="4">Alle 4 Wochen</option>
+              <option value="custom">Individuell…</option>
+            </select>
+            {istCustom && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-sm text-ink-600 dark:text-ink-400">Alle</span>
+                <input
+                  type="number"
+                  min="2"
+                  max="52"
+                  className="input w-20"
+                  value={customStr}
+                  onChange={e => setCustomStr(e.target.value)}
+                  placeholder="5"
+                  autoFocus
+                />
+                <span className="text-sm text-ink-600 dark:text-ink-400">Wochen</span>
+              </div>
+            )}
+            {effIv > 1 && (
+              <p className="text-[11px] text-ink-400 mt-2">
+                Findet in {kw ? `KW ${kw}` : 'dieser Woche'} statt und dann alle {effIv} Wochen.
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button className="btn-secondary flex-1" onClick={onClose}>Abbrechen</button>
           {slotModal.eintrag && (
@@ -1110,7 +1219,7 @@ function SlotModal({ slotModal, alleFaecher, klassen, onSpeichern, onClose }) {
           )}
           <button
             className="btn-primary flex-1"
-            onClick={() => onSpeichern(gewaehltFachId ? parseInt(gewaehltFachId) : null)}
+            onClick={speichern}
           >
             Speichern
           </button>
