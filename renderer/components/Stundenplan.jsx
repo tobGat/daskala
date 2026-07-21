@@ -208,7 +208,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const [slotModal, setSlotModal] = useState(null)
   const [planungModal, setPlanungModal] = useState(null) // { eintrag, wocheDatum } or { supplier, wocheDatum, stunde }
   const [notizModal, setNotizModal] = useState(null) // { eintrag, wocheDatum, planung }
-  const [exportModal, setExportModal] = useState(false)
+  const [exportModal, setExportModal] = useState(null) // null | 'wahl' | 'planung'
   const [alleFaecher, setAlleFaecher] = useState([])
   const [aktuelleWoche, setAktuelleWoche] = useState(0)
   const [kontextMenu, setKontextMenu] = useState(null)
@@ -496,7 +496,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
         <div className="ml-auto flex items-center gap-2">
           <button
             className="px-3 py-1.5 text-xs rounded-lg font-medium border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 transition-colors"
-            onClick={() => setExportModal(true)}
+            onClick={() => setExportModal('wahl')}
           >
             PDF exportieren
           </button>
@@ -871,9 +871,22 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
         />
       )}
 
-      {/* Export-Modal */}
-      {exportModal && (
-        <PlanungsExportModal onClose={() => setExportModal(false)} />
+      {/* Export: Auswahl Planung vs. Stundenplan */}
+      {exportModal === 'wahl' && (
+        <ExportWahlModal
+          planungAktiv={planungAktiv}
+          onPlanung={() => setExportModal('planung')}
+          onStundenplan={async () => {
+            setExportModal(null)
+            await window.api.export.stundenplanPdf(aktuellesSchuljahr?.bezeichnung ?? '')
+          }}
+          onClose={() => setExportModal(null)}
+        />
+      )}
+
+      {/* Export-Modal: Planung */}
+      {exportModal === 'planung' && (
+        <PlanungsExportModal onClose={() => setExportModal(null)} />
       )}
 
       {/* Supplier-Modal */}
@@ -1435,6 +1448,61 @@ function SupplierModal({ wochentag, stunde, tagDatum, wocheDatum, onSpeichern, o
             Eintragen
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Auswahl-Dialog: Was soll als PDF exportiert werden?
+function ExportWahlModal({ planungAktiv, onPlanung, onStundenplan, onClose }) {
+  const [busy, setBusy] = useState(false)
+
+  const stundenplanExport = async () => {
+    setBusy(true)
+    try { await onStundenplan() } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-md">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-ink-900 dark:text-white">PDF exportieren</h2>
+          <button className="text-ink-400 hover:text-ink-600 text-xl" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="space-y-3">
+          {/* Stundenplan */}
+          <button
+            className="w-full text-left rounded-xl border border-paper-200 dark:border-ink-700 hover:border-coral-400 dark:hover:border-coral-500 hover:bg-coral-50/50 dark:hover:bg-coral-900/20 transition-colors p-4 flex items-start gap-3 disabled:opacity-50"
+            onClick={stundenplanExport}
+            disabled={busy}
+          >
+            <span className="text-2xl leading-none mt-0.5">🗓️</span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-ink-900 dark:text-white">Stundenplan exportieren</span>
+              <span className="block text-xs text-ink-500 dark:text-ink-400 mt-0.5">
+                Der Wochenplan als optisch aufbereitete PDF im Querformat – zum Ausdrucken und Aufhängen.
+              </span>
+            </span>
+          </button>
+
+          {/* Planung */}
+          <button
+            className="w-full text-left rounded-xl border border-paper-200 dark:border-ink-700 hover:border-coral-400 dark:hover:border-coral-500 hover:bg-coral-50/50 dark:hover:bg-coral-900/20 transition-colors p-4 flex items-start gap-3 disabled:opacity-50"
+            onClick={onPlanung}
+            disabled={busy}
+          >
+            <span className="text-2xl leading-none mt-0.5">📋</span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-ink-900 dark:text-white">Planung exportieren</span>
+              <span className="block text-xs text-ink-500 dark:text-ink-400 mt-0.5">
+                Die {planungAktiv ? 'geplanten' : 'notierten'} Unterrichtsinhalte ausgewählter Wochen als PDF.
+              </span>
+            </span>
+          </button>
+        </div>
+
+        {busy && <p className="text-xs text-ink-400 text-center mt-4">Stundenplan wird erstellt…</p>}
       </div>
     </div>
   )

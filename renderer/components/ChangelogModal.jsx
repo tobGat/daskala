@@ -12,6 +12,7 @@ export const CHANGELOG = [
     datum: 'Juli 2026',
     punkte: [
       'Stundenplan: Beim Belegen einer Stunde lässt sich jetzt ein Wochen-Rhythmus wählen – jede Woche, alle 2 Wochen (14-tägig), alle 3 oder 4 Wochen oder ein individueller Abstand. Die Stunde erscheint nur in den betreffenden Wochen; im Bearbeitungsmodus werden aussetzende Wochen ausgegraut angezeigt.',
+      '„PDF exportieren" bietet nun zwei Möglichkeiten: „Stundenplan exportieren" erzeugt den Wochenplan als optisch aufbereitete PDF im Querformat (zum Ausdrucken und Aufhängen), „Planung exportieren" wie bisher die Unterrichtsinhalte ausgewählter Wochen.',
       'Stundenplan: Rechtsklick auf „Entfall" öffnet ein Untermenü – „ersatzlos" oder „Durch Supplierung ersetzen" (öffnet direkt den Dialog für eine Supplierstunde).',
       'Dashboard: Das Infofeld heißt jetzt „ToDos" (statt „offen"); ToDo/Termin-Zahlen erscheinen im korrekten Singular/Plural (1 ToDo, 2 ToDos / 1 Termin, 2 Termine).',
     ],
