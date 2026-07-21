@@ -41,7 +41,7 @@ module.exports = [
 
   // Main-Prozess / Node-Skripte (CommonJS, Node-Globals)
   {
-    files: ['main.js', 'preload.js', 'launch-electron.js', 'bump-version.js'],
+    files: ['main.js', 'preload.js', 'launch-electron.js', 'bump-version.js', 'scripts/**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'commonjs',

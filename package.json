@@ -11,6 +11,8 @@
     "electron:dev": "wait-on http://localhost:5173 && cross-env NODE_ENV=development node launch-electron.js",
     "build": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "release": "node bump-version.js && npm run build -- --publish always",
+    "appx:assets": "node scripts/gen-appx-assets.js",
+    "build:store": "node scripts/build-store.js",
     "preview": "vite preview",
     "test": "node --test test/*.test.mjs",
     "lint": "eslint .",
@@ -31,6 +33,7 @@
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
     "globals": "^15.12.0",
+    "jimp": "^0.22.12",
     "postcss": "^8.4.47",
     "prettier": "^3.4.1",
     "tailwindcss": "^3.4.17",
@@ -79,6 +82,21 @@
         "nsis",
         "dir"
       ]
+    },
+    "appx": {
+      "identityName": "tobGat.Daskala",
+      "publisher": "CN=0C5A2E0E-4361-400B-B114-BF0C3369C879",
+      "publisherDisplayName": "tobGat",
+      "applicationId": "Daskala",
+      "displayName": "Daskala",
+      "backgroundColor": "#ffffff",
+      "languages": [
+        "de-AT",
+        "de",
+        "en-US"
+      ],
+      "showNameOnTiles": true,
+      "setBuildNumber": false
     },
     "linux": {
       "icon": "daskalalogo.png",

@@ -193,6 +193,8 @@ export default function Einstellungen({ onClose }) {
       if (!r || !r.ok) {
         setUpdateMeldung(r?.grund === 'dev'
           ? 'Update-Prüfung ist nur in der installierten App möglich.'
+          : r?.grund === 'store'
+          ? 'Updates werden automatisch über den Microsoft Store installiert.'
           : 'Prüfung fehlgeschlagen. Bitte später erneut versuchen.')
       } else if (r.version && r.aktuell && cmpVersion(r.version, r.aktuell) > 0) {
         setUpdateMeldung(`Update ${r.version} gefunden – wird im Hintergrund geladen. Du wirst benachrichtigt, sobald es bereit ist.`)
