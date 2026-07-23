@@ -615,7 +615,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                             : (() => {
                                 const stHinweis = t.stunde_id
                                   ? (stundenzeiten.find(s => s.id === t.stunde_id)?.stunde + '. Std ')
-                                  : (t.uhrzeit ? t.uhrzeit + ' ' : '')
+                                  : (t.uhrzeit ? t.uhrzeit + (t.bis_uhrzeit ? '–' + t.bis_uhrzeit : '') + ' ' : '')
                                 return `◆ ${stHinweis ?? ''}${t.titel}`
                               })()}
                         </div>
