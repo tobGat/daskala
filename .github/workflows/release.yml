@@ -1,7 +1,13 @@
 # Release-Pipeline für Daskala.
-# Wird ausgelöst, sobald ein Versions-Tag (z. B. v1.0.53) gepusht wird.
-# GitHub baut dann Windows- UND Linux-Pakete und legt sie im selben (Entwurfs-)Release ab –
-# ohne lokalen Build und ohne persönlichen Token (nutzt den eingebauten GITHUB_TOKEN).
+# Wird ausgelöst, sobald ein Versions-Tag (z. B. v1.0.70) gepusht wird.
+#
+# Ablauf pro Tag:
+#   1) build           – baut Windows- & Linux-Pakete, legt einen Release-ENTWURF an
+#   2) publish-github  – schaltet den Entwurf automatisch auf „Latest" (GitHub-Release live,
+#                        electron-updater der .exe-Version zieht dann automatisch nach)
+#   3) store           – baut das MSIX/AppX-Paket und übermittelt es automatisch an den
+#                        Microsoft Store (nur aktiv, wenn Variable STORE_AUTOMATION=true)
+#
 # Der native better-sqlite3 muss je Zielsystem gebaut werden, deshalb ein eigener Runner pro OS.
 name: Release
 
@@ -50,3 +56,68 @@ jobs:
         run: npm run build -- --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── GitHub-Release automatisch veröffentlichen ──────────────────────────────
+  # Schaltet den von „build" erzeugten Entwurf auf „Latest". Damit ist der
+  # Release öffentlich und die automatische Update-Prüfung der installierten
+  # .exe-Version (electron-updater) findet die neue Version.
+  publish-github:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Release veröffentlichen (Entwurf → Latest)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${GITHUB_REF_NAME}" --draft=false --latest
+
+  # ── Microsoft Store: MSIX bauen & automatisch einreichen ────────────────────
+  # Läuft nur, wenn die Repo-Variable STORE_AUTOMATION auf "true" steht (erst
+  # setzen, wenn die Store-Secrets hinterlegt sind – siehe docs/MICROSOFT-STORE.md).
+  store:
+    needs: build
+    if: ${{ vars.STORE_AUTOMATION == 'true' }}
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Volle Historie inkl. Tags: build:store ermittelt die Version aus dem Tag.
+          fetch-depth: 0
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Version aus dem Tag übernehmen
+        shell: bash
+        run: npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
+
+      - name: Store-Paket (MSIX/AppX) bauen
+        run: npm run build:store
+
+      - name: Microsoft Store CLI einrichten
+        uses: microsoft/microsoft-store-apppublisher@v1.1
+
+      - name: Store-Zugang konfigurieren
+        run: >
+          msstore reconfigure
+          --tenantId ${{ secrets.AZURE_AD_TENANT_ID }}
+          --sellerId ${{ secrets.SELLER_ID }}
+          --clientId ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
+          --clientSecret ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
+
+      - name: Paket an den Microsoft Store übermitteln
+        shell: pwsh
+        run: |
+          $appx = Get-ChildItem "dist-electron/*.appx" | Select-Object -First 1
+          if (-not $appx) { throw "Kein .appx-Paket in dist-electron/ gefunden." }
+          Write-Host "Übermittle $($appx.Name) an den Microsoft Store…"
+          msstore publish "$($appx.FullName)" -id ${{ secrets.STORE_PRODUCT_ID }}

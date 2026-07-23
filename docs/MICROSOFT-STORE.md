@@ -90,18 +90,29 @@ veröffentlichte. Da jeder Release einen neuen Tag bekommt, ist das automatisch 
 3. **Eigenschaften / Kategorie:** *Bildung* (Education).
 4. **Altersfreigabe:** Fragebogen ausfüllen (Daskala verarbeitet nur lokale Daten →
    in der Regel Freigabe ab niedriger Altersstufe).
-5. **Store-Eintrag** (pro Sprache, mind. **de-AT**):
-   - Beschreibung, Screenshots (mind. 1), Store-Logo.
-   - Text-Bausteine findest du in der In-App-Doku / im README.
-6. **Einreichungsoptionen → Eingeschränkte Funktionen:** Das Paket deklariert
-   `runFullTrust` (eine „restricted capability"). Das ist für klassische
-   Desktop-Apps normal. Begründung im Freitextfeld, z. B.:
-   > „Daskala ist eine klassische Windows-Desktop-Anwendung (Electron). Sie benötigt
-   > vollen Desktop-Zugriff, um Notendaten lokal in einer Datei zu speichern und
-   > Exporte (PDF/ODS) über den Windows-Datei-Dialog abzulegen. Es werden keine
-   > Daten an Server übertragen."
-7. **Preis & Verfügbarkeit:** kostenlos, Märkte wählen (z. B. Österreich/weltweit).
-8. **Absenden.** Die Zertifizierung dauert i. d. R. wenige Stunden bis 1–2 Tage.
+5. **Store-Eintrag** (Sprache **Deutsch** – eine Fassung genügt für alle
+   deutschsprachigen Regionen; siehe [STORE-LISTING.md](STORE-LISTING.md)):
+   - Kurzbeschreibung, Beschreibung, Produktfeatures, Screenshots (mind. 1), Store-Logo.
+   - Optional: Urheberrecht/Markeninformation und zusätzliche Lizenzbedingungen (GPL) –
+     Text-Bausteine ebenfalls in [STORE-LISTING.md](STORE-LISTING.md).
+6. **Datenschutzrichtlinie (URL):** `https://github.com/tobGat/daskala/blob/master/PRIVACY.md`
+7. **`runFullTrust` (eingeschränkte Funktion):** Beim Hochladen erscheint die Warnung
+   *„The following restricted capabilities require approval before you can use them in
+   your app: runFullTrust."* Das ist **normal** – für eine als MSIX paketierte
+   Desktop-App (Electron) ist `runFullTrust` (`Windows.FullTrustApplication`) technisch
+   zwingend und lässt sich nicht entfernen. Es ist **kein** Ablehnungsgrund und **kein**
+   separates Vorab-Formular nötig. Begründung im Feld **„Anmerkungen für die
+   Zertifizierung"** eintragen:
+   > „Daskala ist eine klassische Windows-Desktop-Anwendung (Electron), als MSIX
+   > paketiert. Die Funktion ‚runFullTrust' (Windows.FullTrustApplication) ist für
+   > solche Desktop-Apps technisch erforderlich, damit die Anwendung ausgeführt werden
+   > kann. Sie wird benötigt, um Noten- und Planungsdaten lokal in einer Datei (SQLite)
+   > zu speichern, lokale Sicherungen anzulegen und Exporte (PDF/ODS/ODT) über den
+   > Windows-Datei-Dialog abzulegen. Es werden keine Daten an Server oder Dritte
+   > übertragen."
+8. **Preis & Verfügbarkeit:** kostenlos, Märkte wählen (z. B. Österreich/weltweit).
+9. **Absenden.** Die Zertifizierung dauert i. d. R. wenige Stunden bis 1–2 Tage;
+   `runFullTrust` wird für Desktop-Apps im Zuge der regulären Prüfung genehmigt.
 
 ---
 
@@ -118,28 +129,79 @@ veröffentlichte. Da jeder Release einen neuen Tag bekommt, ist das automatisch 
 
 ---
 
-## 6. Updates veröffentlichen
+## 6. Automatische Veröffentlichung (GitHub + Store)
 
-Ein „Update" im Store ist einfach **eine neue Einreichung mit höherer Version**.
-Der Store verteilt sie automatisch an alle installierten Geräte – Nutzer:innen
-müssen nichts tun (Windows aktualisiert Store-Apps im Hintergrund).
+Nach der einmaligen Einrichtung (unten) veröffentlicht **ein einziger Git-Tag**
+sowohl den GitHub-Release als auch das Store-Update. Die Pipeline steckt in
+[.github/workflows/release.yml](../.github/workflows/release.yml).
 
-Bei jedem Update:
+**Dein Ablauf pro Release:**
 
-1. Änderungen wie gewohnt: mergen → Tag `vX.Y.Z` pushen → GitHub-Release (erzeugt die `.exe`).
-2. Store-Paket bauen: `npm run build:store` → `dist-electron/Daskala X.Y.Z.appx`
-   (Version zieht automatisch aus dem Tag hoch).
-3. Partner Center → **neue Einreichung** → neues `.appx` hochladen → absenden.
+```powershell
+# Änderungen mergen, dann:
+git tag v1.0.70
+git push origin v1.0.70
+```
 
-Zu beachten:
+Der Tag-Push löst automatisch aus:
 
-- **Version immer höher** als die zuletzt *im Store* veröffentlichte (per Git-Tag automatisch erfüllt).
-- **Identität nie ändern** – `identityName` / `publisher` / `publisherDisplayName` bleiben konstant,
-  sonst erkennt der Store das Paket nicht als dieselbe App.
+1. **build** – baut Windows- (.exe) und Linux-Pakete, legt einen Release-Entwurf an.
+2. **publish-github** – schaltet den Entwurf auf „Latest". Der GitHub-Release ist
+   damit live; die installierte `.exe`-Version aktualisiert sich per electron-updater.
+3. **store** – baut das MSIX-Paket und übermittelt es per Microsoft Store Developer CLI
+   automatisch an den Store. Die Version stammt aus dem Tag; danach läuft die normale
+   Store-Zertifizierung (Stunden bis 1–2 Tage), dann wird das Update ausgerollt.
+
+> Store-Updates via GitHub Actions sind derzeit **nur für kostenlose Produkte**
+> möglich – für Daskala (kostenlos) passt das.
+
+### Einmalige Einrichtung der Store-Automatisierung
+
+1. **Microsoft Entra ID (Azure AD) mit Partner Center verbinden:**
+   Partner Center → *Kontoeinstellungen → Benutzerverwaltung*. Falls noch kein
+   Verzeichnis verknüpft ist, ein bestehendes Microsoft-Entra-ID zuordnen oder ein
+   neues anlegen.
+2. **App in Microsoft Entra ID registrieren:** https://entra.microsoft.com/ →
+   *Identität → Anwendungen → App-Registrierungen → Neue Registrierung*.
+3. **Diese App in Partner Center hinterlegen:** *Kontoeinstellungen →
+   Benutzerverwaltung → Microsoft-Entra-Anwendungen* → die App hinzufügen und ihr die
+   Rolle **Manager** geben.
+4. **Werte sammeln:**
+   - **Tenant ID** – Entra → Identität → Übersicht
+   - **Client ID** – die „Anwendungs-(Client-)ID" der App-Registrierung
+   - **Client Secret** – App-Registrierung → *Zertifikate & Geheimnisse* → neues
+     Geheimnis (Wert **sofort** kopieren, wird nur einmal angezeigt)
+   - **Seller ID** – Partner Center → *Kontoeinstellungen → Rechtliche Infos / IDs*
+   - **Store Product ID** – die Partner-Center-Produkt-ID von der Übersichtsseite der App
+5. **GitHub-Secrets anlegen:** Repo → *Settings → Secrets and variables → Actions →
+   New repository secret*:
+   - `AZURE_AD_TENANT_ID`
+   - `AZURE_AD_APPLICATION_CLIENT_ID`
+   - `AZURE_AD_APPLICATION_SECRET`
+   - `SELLER_ID`
+   - `STORE_PRODUCT_ID`
+6. **Automatisierung scharfschalten:** im selben Menü unter *Variables* eine
+   Repository-Variable **`STORE_AUTOMATION`** mit Wert **`true`** anlegen. Erst dann
+   läuft der `store`-Job. (Vorher wird bei jedem Tag nur der GitHub-Release erzeugt.)
+
+Voraussetzung: Die App muss (wie bereits geschehen) **einmal manuell** im Store
+veröffentlicht worden sein.
+
+### Manuelle Store-Einreichung (Fallback)
+
+Unabhängig von der Automatisierung geht es weiterhin von Hand:
+
+```powershell
+npm run build:store   # → dist-electron/Daskala <version>.appx
+# im Partner Center als neue Einreichung hochladen
+```
+
+### Unverändert gültig
+
+- **Version immer höher** als die zuletzt veröffentlichte (per Git-Tag automatisch erfüllt).
+- **Identität nie ändern** (`identityName` / `publisher` / `publisherDisplayName`).
 - **Signieren entfällt** – der Store signiert jede Einreichung selbst.
-- `runFullTrust` muss meist nur bei der **ersten** Einreichung begründet werden.
-- Die GitHub-`.exe` (electron-updater) und die Store-`.appx` sind zwei getrennte
-  Update-Kanäle aus derselben Codebasis; der Tag-Versionssprung deckt beide ab.
+- `runFullTrust` muss i. d. R. nur bei der **ersten** Einreichung begründet werden.
 
 ---
 
@@ -158,8 +220,10 @@ lokalen Test entweder:
 ## Kurzreferenz
 
 ```powershell
-# Identität (identityName / publisher / publisherDisplayName) ist bereits eingetragen.
-# Für Erst-Release und jedes Update gleich:
-npm run build:store
-# dann dist-electron/Daskala <version>.appx im Partner Center als (neue) Einreichung hochladen
+# Nach einmaliger Einrichtung (Abschnitt 6): ein Tag veröffentlicht GitHub + Store.
+git tag v1.0.70
+git push origin v1.0.70
+
+# Manuell/Fallback: Store-Paket lokal bauen und im Partner Center hochladen
+npm run build:store   # → dist-electron/Daskala <version>.appx
 ```
