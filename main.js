@@ -546,6 +546,7 @@ function initDB() {
   spalteErgaenzen('supplierstunden', 'hue_frist_datum', 'TEXT')
   spalteErgaenzen('supplierstunden', 'link', 'TEXT')
   spalteErgaenzen('termine', 'stunde_id', 'INTEGER')
+  spalteErgaenzen('termine', 'bis_uhrzeit', 'TEXT')
   spalteErgaenzen('klassen', 'teams_link', 'TEXT')
   spalteErgaenzen('faecher', 'benotungssystem', "TEXT DEFAULT 'standard'")
   spalteErgaenzen('faecher', 'alle_schueler', 'INTEGER DEFAULT 1')
@@ -4151,18 +4152,16 @@ function registerIPC() {
     `).all(schuljahrId)
   )
 
-  ipcMain.handle('termine:create', (_, { titel, datum, uhrzeit, notiz, klasseId, schuljahrId, stundeId }) => {
-    console.log('[main] termine:create', { titel, datum, uhrzeit, notiz, klasseId, schuljahrId, stundeId })
+  ipcMain.handle('termine:create', (_, { titel, datum, uhrzeit, bisUhrzeit, notiz, klasseId, schuljahrId, stundeId }) => {
     const info = db.prepare(
-      'INSERT INTO termine (titel, datum, uhrzeit, notiz, klasse_id, schuljahr_id, stunde_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).run(titel, datum, uhrzeit ?? null, notiz ?? null, klasseId ?? null, schuljahrId, stundeId ?? null)
-    console.log('[main] termine:create → id', info.lastInsertRowid)
+      'INSERT INTO termine (titel, datum, uhrzeit, bis_uhrzeit, notiz, klasse_id, schuljahr_id, stunde_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(titel, datum, uhrzeit ?? null, bisUhrzeit ?? null, notiz ?? null, klasseId ?? null, schuljahrId, stundeId ?? null)
     return info.lastInsertRowid
   })
 
-  ipcMain.handle('termine:update', (_, id, { titel, datum, uhrzeit, notiz, klasseId, stundeId }) => {
-    db.prepare('UPDATE termine SET titel = ?, datum = ?, uhrzeit = ?, notiz = ?, klasse_id = ?, stunde_id = ? WHERE id = ?')
-      .run(titel, datum, uhrzeit ?? null, notiz ?? null, klasseId ?? null, stundeId ?? null, id)
+  ipcMain.handle('termine:update', (_, id, { titel, datum, uhrzeit, bisUhrzeit, notiz, klasseId, stundeId }) => {
+    db.prepare('UPDATE termine SET titel = ?, datum = ?, uhrzeit = ?, bis_uhrzeit = ?, notiz = ?, klasse_id = ?, stunde_id = ? WHERE id = ?')
+      .run(titel, datum, uhrzeit ?? null, bisUhrzeit ?? null, notiz ?? null, klasseId ?? null, stundeId ?? null, id)
     return true
   })
 

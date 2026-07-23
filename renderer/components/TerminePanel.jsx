@@ -14,6 +14,7 @@ function TerminForm({ initial, klassen, stundenzeiten, onSpeichern, onAbbrechen 
   const [datum, setDatum]         = useState(initial?.datum ?? localDateStr(new Date()))
   const [zeitModus, setZeitModus] = useState(hatStundeInitial ? 'stunde' : 'uhrzeit')
   const [uhrzeit, setUhrzeit]     = useState(initial?.uhrzeit ?? '')
+  const [bisUhrzeit, setBisUhrzeit] = useState(initial?.bis_uhrzeit ?? '')
   const [stundeId, setStundeId]   = useState(initial?.stunde_id ? String(initial.stunde_id) : '')
   const [notiz, setNotiz]         = useState(initial?.notiz ?? '')
   const [klasseId, setKlasseId]   = useState(initial?.klasse_id ? String(initial.klasse_id) : '')
@@ -32,6 +33,8 @@ function TerminForm({ initial, klassen, stundenzeiten, onSpeichern, onAbbrechen 
     await onSpeichern({
       titel: t, datum,
       uhrzeit: zeitModus === 'uhrzeit' ? (uhrzeit || null) : null,
+      // Bis-Uhrzeit nur, wenn eine Von-Uhrzeit gesetzt ist.
+      bisUhrzeit: zeitModus === 'uhrzeit' && uhrzeit ? (bisUhrzeit || null) : null,
       stundeId: zeitModus === 'stunde' ? (stundeId ? parseInt(stundeId) : null) : null,
       notiz: notiz.trim() || null,
       klasseId: klasseId ? parseInt(klasseId) : null,
@@ -80,7 +83,17 @@ function TerminForm({ initial, klassen, stundenzeiten, onSpeichern, onAbbrechen 
             <button type="button" className={`flex-1 py-1.5 font-medium transition-colors ${zeitModus === 'stunde' ? 'bg-coral-500 text-white' : 'text-ink-600 dark:text-ink-400 hover:bg-paper-100 dark:hover:bg-ink-700'}`} onClick={() => setZeitModus('stunde')}>Unterrichtsstunde</button>
           </div>
           {zeitModus === 'uhrzeit' ? (
-            <input type="time" className="input" value={uhrzeit} onChange={e => setUhrzeit(e.target.value)} />
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <span className="block text-[10px] text-ink-400 mb-0.5">Von</span>
+                <input type="time" className="input" value={uhrzeit} onChange={e => setUhrzeit(e.target.value)} />
+              </div>
+              <span className="text-ink-400 pb-2.5">–</span>
+              <div className="flex-1">
+                <span className="block text-[10px] text-ink-400 mb-0.5">Bis <span className="font-normal">(optional)</span></span>
+                <input type="time" className="input" value={bisUhrzeit} onChange={e => setBisUhrzeit(e.target.value)} disabled={!uhrzeit} />
+              </div>
+            </div>
           ) : (
             <select className="input" value={stundeId} onChange={e => setStundeId(e.target.value)}>
               <option value="">Stunde wählen…</option>
@@ -139,7 +152,10 @@ function TerminKarte({ termin, klassen, stundenzeiten, onDelete, onEdit, flashRe
           <div className="text-[9px] text-ink-500 leading-tight">{stundeLabel}</div>
         )}
         {!stundeLabel && termin.uhrzeit && (
-          <div className="text-[9px] text-ink-500 leading-tight">{termin.uhrzeit}</div>
+          <div className="text-[9px] text-ink-500 leading-tight">
+            <div>{termin.uhrzeit}</div>
+            {termin.bis_uhrzeit && <div className="opacity-70">–{termin.bis_uhrzeit}</div>}
+          </div>
         )}
       </div>
       <div className="flex-1 min-w-0">

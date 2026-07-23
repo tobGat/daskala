@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react'
 import useStore from '../store/useStore'
 import PlanungModal, { toLocalDateStr, berechneFristDatum } from './PlanungModal'
 import { berechneSchulferien, ferienFuerTag, mergeFerien } from '../utils/schulferien'
@@ -271,6 +271,20 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
       window.removeEventListener('click', close)
       window.removeEventListener('contextmenu', close)
     }
+  }, [kontextMenu])
+
+  // Kontextmenü-Position an den Viewport klemmen, damit es weiter unten/rechts
+  // nicht abgeschnitten wird. Messung vor dem Paint (useLayoutEffect) → kein Flackern.
+  const kontextRef = useRef(null)
+  const [kontextPos, setKontextPos] = useState(null)
+  useLayoutEffect(() => {
+    if (!kontextMenu || !kontextRef.current) { setKontextPos(null); return }
+    const margin = 8
+    const { width, height } = kontextRef.current.getBoundingClientRect()
+    setKontextPos({
+      top: Math.max(margin, Math.min(kontextMenu.y, window.innerHeight - height - margin)),
+      left: Math.max(margin, Math.min(kontextMenu.x, window.innerWidth - width - margin)),
+    })
   }, [kontextMenu])
 
   const laden = async () => {
@@ -601,7 +615,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                             : (() => {
                                 const stHinweis = t.stunde_id
                                   ? (stundenzeiten.find(s => s.id === t.stunde_id)?.stunde + '. Std ')
-                                  : (t.uhrzeit ? t.uhrzeit + ' ' : '')
+                                  : (t.uhrzeit ? t.uhrzeit + (t.bis_uhrzeit ? '–' + t.bis_uhrzeit : '') + ' ' : '')
                                 return `◆ ${stHinweis ?? ''}${t.titel}`
                               })()}
                         </div>
@@ -735,8 +749,12 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
       {/* Kontextmenü */}
       {kontextMenu && (
         <div
+          ref={kontextRef}
           className="context-menu fixed"
-          style={{ top: kontextMenu.y, left: kontextMenu.x }}
+          style={{
+            top: kontextPos?.top ?? kontextMenu.y,
+            left: kontextPos?.left ?? kontextMenu.x,
+          }}
           onClick={e => e.stopPropagation()}
         >
           {kontextMenu.eintrag ? (
