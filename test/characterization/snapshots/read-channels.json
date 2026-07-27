@@ -1,0 +1,160 @@
+{
+  "einstellungen:getAll": {
+    "theme": "light",
+    "planung_aktiv": "1",
+    "bundesland": "W",
+    "wetter_aktiv": "0",
+    "zn_gewichtung_sn1": "50"
+  },
+  "schuljahre:getAll": [
+    {
+      "id": 2,
+      "bezeichnung": "2024/25",
+      "archiviert": 1,
+      "start_datum": "2024-09-09",
+      "end_datum": "2025-07-04"
+    },
+    {
+      "id": 1,
+      "bezeichnung": "2025/26",
+      "archiviert": 0,
+      "start_datum": "2025-09-08",
+      "end_datum": "2026-07-03"
+    }
+  ],
+  "klassen:getAll": [
+    {
+      "id": 1,
+      "schuljahr_id": 1,
+      "name": "1A",
+      "reihenfolge": 1,
+      "farbe": "#fb6936",
+      "teams_link": null,
+      "sortierung": "nachname",
+      "ist_kv": 1,
+      "ist_vorlage": 0
+    },
+    {
+      "id": 2,
+      "schuljahr_id": 1,
+      "name": "2B",
+      "reihenfolge": 2,
+      "farbe": "#34d399",
+      "teams_link": null,
+      "sortierung": "vorname",
+      "ist_kv": 0,
+      "ist_vorlage": 0
+    },
+    {
+      "id": 3,
+      "schuljahr_id": 1,
+      "name": "3C",
+      "reihenfolge": 3,
+      "farbe": null,
+      "teams_link": null,
+      "sortierung": "nachname",
+      "ist_kv": 0,
+      "ist_vorlage": 0
+    }
+  ],
+  "schueler:getAll": [
+    {
+      "id": 2,
+      "klasse_id": 1,
+      "vorname": "Ben",
+      "nachname": "Auer",
+      "reihenfolge": 2,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null
+    },
+    {
+      "id": 5,
+      "klasse_id": 1,
+      "vorname": "Emma",
+      "nachname": "Auer",
+      "reihenfolge": 5,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null
+    },
+    {
+      "id": 1,
+      "klasse_id": 1,
+      "vorname": "Anna",
+      "nachname": "Bauer",
+      "reihenfolge": 1,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null
+    },
+    {
+      "id": 4,
+      "klasse_id": 1,
+      "vorname": "David",
+      "nachname": "Müller",
+      "reihenfolge": 4,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null
+    },
+    {
+      "id": 3,
+      "klasse_id": 1,
+      "vorname": "Clara",
+      "nachname": "Zimmermann",
+      "reihenfolge": 3,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null
+    }
+  ],
+  "zeugnisnoten:getAll": [
+    {
+      "id": 1,
+      "fach_id": 1,
+      "schueler_id": 1,
+      "semester": 1,
+      "note_berechnet": 2,
+      "note_manuell": null,
+      "s1_eingerechnet": 0
+    },
+    {
+      "id": 2,
+      "fach_id": 1,
+      "schueler_id": 1,
+      "semester": 2,
+      "note_berechnet": 2.5,
+      "note_manuell": null,
+      "s1_eingerechnet": 1
+    },
+    {
+      "id": 3,
+      "fach_id": 1,
+      "schueler_id": 2,
+      "semester": 1,
+      "note_berechnet": 3,
+      "note_manuell": null,
+      "s1_eingerechnet": 0
+    },
+    {
+      "id": 4,
+      "fach_id": 1,
+      "schueler_id": 2,
+      "semester": 2,
+      "note_berechnet": null,
+      "note_manuell": 3,
+      "s1_eingerechnet": 1
+    }
+  ]
+}
