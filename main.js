@@ -18,6 +18,7 @@ const klassenDomain = require('./core/domain/klassen')
 const niveauDomain = require('./core/domain/niveau')
 const faecherDomain = require('./core/domain/faecher')
 const schuelerDomain = require('./core/domain/schueler')
+const kompetenzenDomain = require('./core/domain/kompetenzen')
 
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -1650,55 +1651,16 @@ function registerIPC() {
   ipcMain.handle('niveau:deleteHistorie', (_, fachId, schuelerId, gueltigAb) => niveauDomain.deleteHistorie(db, kernDeps, fachId, schuelerId, gueltigAb))
 
   // ─── Kompetenzbereiche ──────────────────────────────────────────────────────
-  ipcMain.handle('kompetenzbereiche:getAll', (_, fachId) =>
-    db.prepare('SELECT * FROM kompetenzbereiche WHERE fach_id = ? ORDER BY reihenfolge, id').all(fachId)
-  )
-
-  ipcMain.handle('kompetenzbereiche:create', (_, fachId, titel, beschreibung) => {
-    const maxR = db.prepare('SELECT MAX(reihenfolge) as m FROM kompetenzbereiche WHERE fach_id = ?').get(fachId)?.m ?? 0
-    const info = db.prepare('INSERT INTO kompetenzbereiche (fach_id, titel, beschreibung, reihenfolge) VALUES (?, ?, ?, ?)').run(fachId, titel, beschreibung ?? null, maxR + 1)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kompetenzbereiche:update', (_, id, { titel, beschreibung }) => {
-    db.prepare('UPDATE kompetenzbereiche SET titel = ?, beschreibung = ? WHERE id = ?').run(titel, beschreibung ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('kompetenzbereiche:delete', (_, id) => {
-    db.prepare('DELETE FROM kompetenzbereiche WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('kompetenzbereiche:reorder', (_, ids) => {
-    const stmt = db.prepare('UPDATE kompetenzbereiche SET reihenfolge = ? WHERE id = ?')
-    ids.forEach((id, idx) => stmt.run(idx, id))
-    return true
-  })
-
-  ipcMain.handle('kompetenzbereiche:initVorlagen', (_, fachId, fachName) => {
-    initKompetenzVorlagen(fachId, fachName)
-    return true
-  })
+  ipcMain.handle('kompetenzbereiche:getAll', (_, fachId) => kompetenzenDomain.bereicheGetAll(db, fachId))
+  ipcMain.handle('kompetenzbereiche:create', (_, fachId, titel, beschreibung) => kompetenzenDomain.bereichCreate(db, fachId, titel, beschreibung))
+  ipcMain.handle('kompetenzbereiche:update', (_, id, data) => kompetenzenDomain.bereichUpdate(db, id, data))
+  ipcMain.handle('kompetenzbereiche:delete', (_, id) => kompetenzenDomain.bereichDelete(db, id))
+  ipcMain.handle('kompetenzbereiche:reorder', (_, ids) => kompetenzenDomain.bereichReorder(db, ids))
+  ipcMain.handle('kompetenzbereiche:initVorlagen', (_, fachId, fachName) => kompetenzenDomain.initVorlagen(db, kernDeps, fachId, fachName))
 
   // ─── Schüler:innen-Kompetenzen ─────────────────────────────────────────────
-  ipcMain.handle('schuelerKompetenzen:getAll', (_, fachId) => {
-    return db.prepare(`
-      SELECT sk.* FROM schueler_kompetenzen sk
-      JOIN kompetenzbereiche kb ON kb.id = sk.kompetenzbereich_id
-      WHERE kb.fach_id = ?
-    `).all(fachId)
-  })
-
-  ipcMain.handle('schuelerKompetenzen:set', (_, kompetenzbereichId, schuelerId, niveau, notiz) => {
-    db.prepare(`
-      INSERT INTO schueler_kompetenzen (kompetenzbereich_id, schueler_id, niveau, notiz, aktualisiert)
-      VALUES (?, ?, ?, ?, datetime('now'))
-      ON CONFLICT(kompetenzbereich_id, schueler_id) DO UPDATE SET
-        niveau = excluded.niveau, notiz = excluded.notiz, aktualisiert = excluded.aktualisiert
-    `).run(kompetenzbereichId, schuelerId, niveau, notiz ?? null)
-    return true
-  })
+  ipcMain.handle('schuelerKompetenzen:getAll', (_, fachId) => kompetenzenDomain.schuelerGetAll(db, fachId))
+  ipcMain.handle('schuelerKompetenzen:set', (_, kompetenzbereichId, schuelerId, niveau, notiz) => kompetenzenDomain.schuelerSet(db, kompetenzbereichId, schuelerId, niveau, notiz))
 
   // Schüler:innen. Reihenfolge richtet sich nach der pro Klasse gewählten Sortierung.
   ipcMain.handle('schueler:getAll', (_, klasseId) => schuelerDomain.getAll(db, klasseId))
