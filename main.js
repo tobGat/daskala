@@ -14,10 +14,7 @@ const notizenDomain = require('./core/domain/notizen')
 const termineDomain = require('./core/domain/termine')
 const todosDomain = require('./core/domain/todos')
 const gewichtungDomain = require('./core/domain/gewichtung')
-// main.js-Helfer, die extrahierte Domänen injiziert bekommen. pushUndo und
-// berechneAlleFuerSchuljahr sind hoisted function-Deklarationen weiter unten,
-// stehen hier also bereits zur Verfügung. Wächst mit der Extraktion.
-const kernDeps = { pushUndo, berechneAlleFuerSchuljahr }
+const klassenDomain = require('./core/domain/klassen')
 
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -1587,6 +1584,12 @@ function oeffneExternSicher(url) {
 
 // ─── IPC Handler registrieren ─────────────────────────────────────────────────
 function registerIPC() {
+  // main.js-Helfer, die extrahierte Kern-Domänen injiziert bekommen. Enthält
+  // modulweite (pushUndo/…) UND in registerIPC verschachtelte Funktionen
+  // (materialRoot/verschiebeDir/sanitizeSegment) – hier sind alle im Scope
+  // (Funktionsdeklarationen sind an den Anfang von registerIPC gehoisted).
+  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment }
+
   // Zentraler Fehler-Wrapper: fängt Ausnahmen aus ALLEN nachfolgend registrierten
   // Handlern ab, protokolliert sie mit Kanalnamen und reicht sie als abgelehntes
   // Promise an den Renderer weiter – ohne alle Handler einzeln anzufassen.
@@ -1612,120 +1615,17 @@ function registerIPC() {
   ipcMain.handle('schuljahre:create', (_, bezeichnung) => schuljahreDomain.create(db, bezeichnung))
 
   // Klassen
-  ipcMain.handle('klassen:getAll', (_, schuljahrId) => {
-    return db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY reihenfolge, name').all(schuljahrId)
-  })
-
-  // Vorlagenklassen: bewusst OHNE Schuljahr-Filter, damit sie Jahreswechsel überdauern.
-  ipcMain.handle('klassen:getVorlagen', () => {
-    return db.prepare('SELECT * FROM klassen WHERE ist_vorlage = 1 ORDER BY reihenfolge, name').all()
-  })
-
-  ipcMain.handle('klassen:create', (_, { schuljahrId, name, farbe, teamsLink, istVorlage }) => {
-    const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM klassen WHERE schuljahr_id = ?').get(schuljahrId)?.m ?? 0
-    const info = db.prepare('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link, ist_vorlage) VALUES (?, ?, ?, ?, ?, ?)').run(schuljahrId, name, farbe ?? null, maxReihenfolge + 1, teamsLink ?? null, istVorlage ? 1 : 0)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('klassen:setTeamsLink', (_, id, link) => {
-    db.prepare('UPDATE klassen SET teams_link = ? WHERE id = ?').run(link || null, id)
-    return true
-  })
-
-  ipcMain.handle('klassen:setIstKv', (_, id, istKv) => {
-    db.prepare('UPDATE klassen SET ist_kv = ? WHERE id = ?').run(istKv ? 1 : 0, id)
-    return true
-  })
-
-  // Vorschau auf eine Klassen-Löschung: zählt alle abhängigen Datensätze.
-  // Wird vom UI vor dem eigentlichen Löschen aufgerufen, damit der User sieht,
-  // was alles verschwindet (Schüler:innen, Fächer, eingetragene Noten etc.).
-  ipcMain.handle('klassen:getDeleteStats', (_, id) => {
-    const klasse = db.prepare('SELECT * FROM klassen WHERE id = ?').get(id)
-    if (!klasse) return null
-    const fachCount    = db.prepare('SELECT COUNT(*) AS c FROM faecher WHERE klasse_id = ?').get(id).c
-    const schuelerCount = db.prepare('SELECT COUNT(*) AS c FROM schueler WHERE klasse_id = ?').get(id).c
-    const noteCount    = db.prepare(`
-      SELECT COUNT(*) AS c FROM eintraege e
-      JOIN spalten s ON e.spalte_id = s.id
-      JOIN faecher f ON s.fach_id = f.id
-      WHERE f.klasse_id = ? AND e.wert IS NOT NULL AND e.wert != ''
-    `).get(id).c
-    const todoCount    = db.prepare('SELECT COUNT(*) AS c FROM todos WHERE klasse_id = ?').get(id).c
-    const terminCount  = db.prepare('SELECT COUNT(*) AS c FROM termine WHERE klasse_id = ?').get(id).c
-    // KV-Daten (alle haben ON DELETE CASCADE — verschwinden automatisch)
-    let kvAktenvermerkeCount = 0, kvElternkontakteCount = 0, kvFehlstundenCount = 0, kvTriggerCount = 0
-    try {
-      kvAktenvermerkeCount  = db.prepare('SELECT COUNT(*) AS c FROM kv_aktenvermerke WHERE klasse_id = ?').get(id).c
-      kvElternkontakteCount = db.prepare(`SELECT COUNT(*) AS c FROM kv_elternkontakte WHERE schueler_id IN (SELECT id FROM schueler WHERE klasse_id = ?)`).get(id).c
-      kvFehlstundenCount    = db.prepare(`SELECT COUNT(*) AS c FROM kv_fehlstunden WHERE schueler_id IN (SELECT id FROM schueler WHERE klasse_id = ?)`).get(id).c
-      kvTriggerCount        = db.prepare('SELECT COUNT(*) AS c FROM kv_trigger WHERE klasse_id = ?').get(id).c
-    } catch (e) { logError('klassen:loeschInfo kv-zaehler', e) }
-    return { klasse, fachCount, schuelerCount, noteCount, todoCount, terminCount, kvAktenvermerkeCount, kvElternkontakteCount, kvFehlstundenCount, kvTriggerCount }
-  })
-
-  // Klasse vollständig löschen (kaskadierend in Transaktion).
-  // Räumt Tabellen ohne ON DELETE CASCADE manuell auf.
-  ipcMain.handle('klassen:delete', (_, id) => {
-    const tx = db.transaction(() => {
-      // Alle abhängigen Fach-IDs und Schüler-IDs für diese Klasse einsammeln
-      const fachIds    = db.prepare('SELECT id FROM faecher WHERE klasse_id = ?').all(id).map(r => r.id)
-      const schuelerIds = db.prepare('SELECT id FROM schueler WHERE klasse_id = ?').all(id).map(r => r.id)
-
-      // Fach-bezogene Nicht-CASCADE-Daten (Noten, Verlauf, Spalten, Zeugnis, Notizen, Stundenplan)
-      raeumeFachDatenAuf(fachIds)
-
-      if (schuelerIds.length > 0) {
-        const schuelerPh = schuelerIds.map(() => '?').join(',')
-        // Restliche schüler-bezogene Daten, die nicht über die Fach-IDs erfasst wurden
-        db.prepare(`DELETE FROM eintraege WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
-        db.prepare(`DELETE FROM zeugnisnoten WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
-        db.prepare(`DELETE FROM notizen WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
-        try { db.prepare(`DELETE FROM eintraege_verlauf WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds) } catch (e) { logError('klassen:delete eintraege_verlauf(schueler)', e) }
-      }
-
-      // Faecher + Schüler (kein CASCADE auf klassen)
-      db.prepare('DELETE FROM faecher WHERE klasse_id = ?').run(id)
-      db.prepare('DELETE FROM schueler WHERE klasse_id = ?').run(id)
-      // Die Klasse selbst (CASCADE räumt todos / sitzplan_tische auf; termine.klasse_id → NULL)
-      db.prepare('DELETE FROM klassen WHERE id = ?').run(id)
-    })
-    tx()
-    return true
-  })
-
-  ipcMain.handle('klassen:rename', (_, id, name) => {
-    const root = materialRoot()
-    const alt = root ? db.prepare('SELECT k.name AS kn, s.bezeichnung AS sb FROM klassen k JOIN schuljahre s ON k.schuljahr_id=s.id WHERE k.id=?').get(id) : null
-    db.prepare('UPDATE klassen SET name = ? WHERE id = ?').run(name, id)
-    let ordnerWarnung = null
-    if (alt) ordnerWarnung = verschiebeDir(
-      path.join(root, sanitizeSegment(alt.sb), sanitizeSegment(alt.kn)),
-      path.join(root, sanitizeSegment(alt.sb), sanitizeSegment(name)))
-    return { ok: true, ordnerWarnung }
-  })
-
-  ipcMain.handle('klassen:setFarbe', (_, id, farbe) => {
-    db.prepare('UPDATE klassen SET farbe = ? WHERE id = ?').run(farbe ?? null, id)
-    return true
-  })
-
-  // Sortier-Modus der Schüler:innen-Liste dieser Klasse setzen (Whitelist-validiert).
-  ipcMain.handle('klassen:setSortierung', (_, id, modus) => {
-    const wert = ['vorname', 'nachname', 'manuell'].includes(modus) ? modus : 'nachname'
-    db.prepare('UPDATE klassen SET sortierung = ? WHERE id = ?').run(wert, id)
-    return true
-  })
-
-  // Manuelle Reihenfolge der Klassen-Tabs speichern (Drag-and-Drop im Header).
-  ipcMain.handle('klassen:reorder', (_, updates) => {
-    const stmt = db.prepare('UPDATE klassen SET reihenfolge = ? WHERE id = ?')
-    const tx = db.transaction(() => {
-      for (const { id, reihenfolge } of updates) stmt.run(reihenfolge, id)
-    })
-    tx()
-    return true
-  })
+  ipcMain.handle('klassen:getAll', (_, schuljahrId) => klassenDomain.getAll(db, schuljahrId))
+  ipcMain.handle('klassen:getVorlagen', () => klassenDomain.getVorlagen(db))
+  ipcMain.handle('klassen:create', (_, data) => klassenDomain.create(db, data))
+  ipcMain.handle('klassen:setTeamsLink', (_, id, link) => klassenDomain.setTeamsLink(db, id, link))
+  ipcMain.handle('klassen:setIstKv', (_, id, istKv) => klassenDomain.setIstKv(db, id, istKv))
+  ipcMain.handle('klassen:getDeleteStats', (_, id) => klassenDomain.getDeleteStats(db, kernDeps, id))
+  ipcMain.handle('klassen:delete', (_, id) => klassenDomain.remove(db, kernDeps, id))
+  ipcMain.handle('klassen:rename', (_, id, name) => klassenDomain.rename(db, kernDeps, id, name))
+  ipcMain.handle('klassen:setFarbe', (_, id, farbe) => klassenDomain.setFarbe(db, id, farbe))
+  ipcMain.handle('klassen:setSortierung', (_, id, modus) => klassenDomain.setSortierung(db, id, modus))
+  ipcMain.handle('klassen:reorder', (_, updates) => klassenDomain.reorder(db, updates))
 
   // Fächer
   ipcMain.handle('faecher:getAll', (_, klasseId) => {
