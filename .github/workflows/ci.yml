@@ -1,14 +1,18 @@
-# Prüf-Pipeline: läuft bei jedem Push auf master und bei Pull Requests.
+# Prüf-Pipeline: läuft bei jedem Push auf master/refactor-Branches und bei Pull Requests.
 # Fängt Lint-, Test- und Build-Fehler ab, bevor ein Release-Tag gesetzt wird.
 name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [master, "refactor/**"]
   pull_request:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
@@ -38,3 +42,21 @@ jobs:
 
       - name: Renderer-Build
         run: npx vite build
+
+  # Charakterisierungstests brauchen das echte Electron (better-sqlite3-ABI) und
+  # laufen unter Electron-as-Node (ELECTRON_RUN_AS_NODE, keine GUI → kein xvfb).
+  characterization:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Abhängigkeiten installieren (inkl. Electron + nativer Rebuild)
+        run: npm ci
+
+      - name: Charakterisierungstests
+        run: npm run test:core
