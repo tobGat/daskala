@@ -21,11 +21,27 @@ const { createHarness, ladeSeed } = require('../helpers/harness.cjs')
 
 // Kanal + Argumente. Die IDs entsprechen der Fixture (test/fixtures/seed.sql).
 const CASES = [
-  { channel: 'einstellungen:getAll', args: [] },
-  { channel: 'schuljahre:getAll',    args: [] },
-  { channel: 'klassen:getAll',       args: [1] },   // Schuljahr 1, ohne Vorlagenklasse
-  { channel: 'schueler:getAll',      args: [1] },   // Klasse 1, sortiert nach Nachname, ohne inaktive
-  { channel: 'zeugnisnoten:getAll',  args: [1] },   // Fach 1 (Deutsch)
+  // Kern-Entitäten
+  { channel: 'einstellungen:getAll',    args: [] },
+  { channel: 'schuljahre:getAll',       args: [] },
+  { channel: 'klassen:getAll',          args: [1] },     // Schuljahr 1, ohne Vorlagenklasse
+  { channel: 'klassen:getVorlagen',     args: [] },      // nur Vorlagenklassen
+  { channel: 'schueler:getAll',         args: [1] },     // Klasse 1, sortiert nach Nachname, ohne inaktive
+  { channel: 'zeugnisnoten:getAll',     args: [1] },     // Fach 1 (Deutsch)
+  { channel: 'notizen:get',             args: [1, 1] },  // Schüler 1 × Fach 1
+  { channel: 'gewichtungGlobal:getAll', args: [] },
+  // Niveau / Kompetenzen
+  { channel: 'niveau:get',              args: [1] },      // Fach 1 (differenziert)
+  { channel: 'niveau:getHistorie',      args: [1] },
+  { channel: 'kompetenzbereiche:getAll', args: [1] },
+  { channel: 'schuelerKompetenzen:getAll', args: [1] },
+  // Stundenplan / Termine / Todos / Ferien / Jahresplanung
+  { channel: 'stundenzeiten:getAll',    args: [] },
+  { channel: 'stundenplan:getAll',      args: [] },
+  { channel: 'todos:getAll',            args: [1] },      // Schuljahr 1
+  { channel: 'termine:getAll',          args: [1] },      // Schuljahr 1
+  { channel: 'customFerien:getAll',     args: [1] },      // Schuljahr 1
+  { channel: 'jahresplanung:getAll',    args: [1] },      // Fach 1
 ]
 
 const SNAP_PATH = path.join(__dirname, 'snapshots', 'read-channels.json')

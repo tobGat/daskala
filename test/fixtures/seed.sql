@@ -68,3 +68,75 @@ INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, note_m
   (1, 1, 2, 2.5,  NULL, 1),
   (1, 2, 1, 3.0,  NULL, 0),
   (1, 2, 2, NULL, 3,    1);
+
+-- ── Notizen (Schüler:in × Fach) ─────────────────────────────────────────────
+INSERT INTO notizen (schueler_id, fach_id, text) VALUES
+  (1, 1, 'Sehr engagiert, liest gern vor.'),
+  (2, 1, 'Braucht Unterstützung bei Rechtschreibung.');
+
+-- ── Globale Gewichtung ──────────────────────────────────────────────────────
+-- main.js/initDB legt Default-Gewichtungen an → für einen festen Snapshot leeren.
+DELETE FROM gewichtung_global;
+INSERT INTO gewichtung_global (kategorie, gewichtung) VALUES
+  ('SA', 3.0),
+  ('T',  1.0),
+  ('custom', 1.0);
+
+-- ── Schüler-Niveau (Fach 1 differenziert AHS/ST) ────────────────────────────
+INSERT INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES
+  (1, 1, 'AHS'),
+  (1, 2, 'ST'),
+  (1, 3, 'AHS');
+
+INSERT INTO schueler_niveau_historie (id, fach_id, schueler_id, niveau, gueltig_ab) VALUES
+  (1, 1, 2, 'AHS', '2025-09-08'),
+  (2, 1, 2, 'ST',  '2026-02-01');
+
+-- ── Kompetenzen (Fach 1) ────────────────────────────────────────────────────
+INSERT INTO kompetenzbereiche (id, fach_id, titel, beschreibung, reihenfolge) VALUES
+  (1, 1, 'Lesen',     'Sinnerfassend lesen', 1),
+  (2, 1, 'Schreiben', 'Texte verfassen',     2);
+
+INSERT INTO schueler_kompetenzen (id, kompetenzbereich_id, schueler_id, niveau, notiz, aktualisiert) VALUES
+  (1, 1, 1, 3, NULL,           '2025-10-01'),
+  (2, 1, 2, 2, 'übt fleißig',  '2025-10-01');
+
+-- ── Stunden-/Pausenzeiten ───────────────────────────────────────────────────
+-- main.js/initDB legt Default-Stundenzeiten an → für einen festen Snapshot leeren.
+DELETE FROM stundenzeiten;
+INSERT INTO stundenzeiten (id, stunde, beginn, ende) VALUES
+  (1, 1, '07:55', '08:45'),
+  (2, 2, '08:50', '09:40'),
+  (3, 3, '09:55', '10:45');
+
+-- ── Stundenplan (inkl. 14-tägiger Stunde) ───────────────────────────────────
+INSERT INTO stundenplan (id, wochentag, stunde_id, fach_id, wochen_intervall, anker_datum) VALUES
+  (1, 1, 1, 1, 1, NULL),          -- Mo, 1. Std, Deutsch
+  (2, 1, 2, 2, 1, NULL),          -- Mo, 2. Std, Mathematik
+  (3, 2, 1, 1, 1, NULL),          -- Di, 1. Std, Deutsch
+  (4, 3, 3, 2, 2, '2025-09-08');  -- Mi, 3. Std, Mathematik, 14-tägig
+
+INSERT INTO stunden_planung (id, stundenplan_id, woche_datum, titel, inhalt, musizieren, hue_text, hue_frist_datum, link, entfall) VALUES
+  (1, 1, '2025-10-13', 'Balladen', 'Einführung Balladen', 0, 'Gedicht auswählen', '2025-10-14', NULL, 0);
+
+-- ── Supplierstunde ──────────────────────────────────────────────────────────
+INSERT INTO supplierstunden (id, woche_datum, wochentag, stunde_id, klasse_text, fach_text, notiz, titel, inhalt, hue_text, hue_frist_datum, link) VALUES
+  (1, '2025-10-13', 2, 3, '1A', 'Deutsch', 'Vertretung Kollegin', 'Lesestunde', NULL, NULL, NULL, NULL);
+
+-- ── Termine ─────────────────────────────────────────────────────────────────
+INSERT INTO termine (id, titel, datum, uhrzeit, bis_uhrzeit, notiz, klasse_id, schuljahr_id, stunde_id) VALUES
+  (1, 'Elternabend', '2025-10-20', '18:00', '19:30', 'Aula',       1, 1, NULL),
+  (2, 'Wandertag',   '2025-10-05', NULL,    NULL,    NULL,         1, 1, 2);
+
+-- ── Todos ───────────────────────────────────────────────────────────────────
+INSERT INTO todos (id, titel, erledigt, klasse_id, fach_id, faelligkeit, erinnerung, reihenfolge) VALUES
+  (1, 'Schularbeiten korrigieren', 0, 1, 1, '2025-10-16', '2025-10-15', 1),
+  (2, 'Materialien kopieren',      0, 1, 1, '2025-10-10', NULL,         2);
+
+-- ── Benutzerdefinierte Ferien ───────────────────────────────────────────────
+INSERT INTO custom_ferien (id, schuljahr_id, name, von, bis) VALUES
+  (1, 1, 'Schulautonom frei', '2025-11-03', '2025-11-03');
+
+-- ── Jahresplanung (Fach 1) ──────────────────────────────────────────────────
+INSERT INTO jahresplanung_abschnitte (id, fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge, material_ordner, lernziele, kompetenzen) VALUES
+  (1, 1, 'Balladen', 'Balladen lesen und schreiben', '2025-10-01', '2025-10-31', '#fb6936', 1, NULL, 'Balladen erkennen', 'Lesen, Schreiben');

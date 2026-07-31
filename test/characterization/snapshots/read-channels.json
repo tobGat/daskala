@@ -57,6 +57,19 @@
       "ist_vorlage": 0
     }
   ],
+  "klassen:getVorlagen": [
+    {
+      "id": 4,
+      "schuljahr_id": 1,
+      "name": "Vorlage Musik",
+      "reihenfolge": 9,
+      "farbe": null,
+      "teams_link": null,
+      "sortierung": "nachname",
+      "ist_kv": 0,
+      "ist_vorlage": 1
+    }
+  ],
   "schueler:getAll": [
     {
       "id": 2,
@@ -155,6 +168,230 @@
       "note_berechnet": null,
       "note_manuell": 3,
       "s1_eingerechnet": 1
+    }
+  ],
+  "notizen:get": "Sehr engagiert, liest gern vor.",
+  "gewichtungGlobal:getAll": [
+    {
+      "kategorie": "SA",
+      "gewichtung": 3
+    },
+    {
+      "kategorie": "T",
+      "gewichtung": 1
+    },
+    {
+      "kategorie": "custom",
+      "gewichtung": 1
+    }
+  ],
+  "niveau:get": {
+    "1": "AHS",
+    "2": "ST",
+    "3": "AHS"
+  },
+  "niveau:getHistorie": {
+    "2": [
+      {
+        "niveau": "ST",
+        "gueltig_ab": "2026-02-01"
+      },
+      {
+        "niveau": "AHS",
+        "gueltig_ab": "2025-09-08"
+      }
+    ]
+  },
+  "kompetenzbereiche:getAll": [
+    {
+      "id": 1,
+      "fach_id": 1,
+      "titel": "Lesen",
+      "beschreibung": "Sinnerfassend lesen",
+      "reihenfolge": 1
+    },
+    {
+      "id": 2,
+      "fach_id": 1,
+      "titel": "Schreiben",
+      "beschreibung": "Texte verfassen",
+      "reihenfolge": 2
+    }
+  ],
+  "schuelerKompetenzen:getAll": [
+    {
+      "id": 1,
+      "kompetenzbereich_id": 1,
+      "schueler_id": 1,
+      "niveau": 3,
+      "notiz": null,
+      "aktualisiert": "2025-10-01"
+    },
+    {
+      "id": 2,
+      "kompetenzbereich_id": 1,
+      "schueler_id": 2,
+      "niveau": 2,
+      "notiz": "übt fleißig",
+      "aktualisiert": "2025-10-01"
+    }
+  ],
+  "stundenzeiten:getAll": [
+    {
+      "id": 1,
+      "stunde": 1,
+      "beginn": "07:55",
+      "ende": "08:45"
+    },
+    {
+      "id": 2,
+      "stunde": 2,
+      "beginn": "08:50",
+      "ende": "09:40"
+    },
+    {
+      "id": 3,
+      "stunde": 3,
+      "beginn": "09:55",
+      "ende": "10:45"
+    }
+  ],
+  "stundenplan:getAll": [
+    {
+      "id": 1,
+      "wochentag": 1,
+      "stunde_id": 1,
+      "fach_id": 1,
+      "wochen_intervall": 1,
+      "anker_datum": null,
+      "stunde": 1,
+      "beginn": "07:55",
+      "ende": "08:45",
+      "fach_name": "Deutsch",
+      "klasse_name": "1A",
+      "klasse_id": 1,
+      "klasse_teams_link": null
+    },
+    {
+      "id": 2,
+      "wochentag": 1,
+      "stunde_id": 2,
+      "fach_id": 2,
+      "wochen_intervall": 1,
+      "anker_datum": null,
+      "stunde": 2,
+      "beginn": "08:50",
+      "ende": "09:40",
+      "fach_name": "Mathematik",
+      "klasse_name": "1A",
+      "klasse_id": 1,
+      "klasse_teams_link": null
+    },
+    {
+      "id": 3,
+      "wochentag": 2,
+      "stunde_id": 1,
+      "fach_id": 1,
+      "wochen_intervall": 1,
+      "anker_datum": null,
+      "stunde": 1,
+      "beginn": "07:55",
+      "ende": "08:45",
+      "fach_name": "Deutsch",
+      "klasse_name": "1A",
+      "klasse_id": 1,
+      "klasse_teams_link": null
+    },
+    {
+      "id": 4,
+      "wochentag": 3,
+      "stunde_id": 3,
+      "fach_id": 2,
+      "wochen_intervall": 2,
+      "anker_datum": "2025-09-08",
+      "stunde": 3,
+      "beginn": "09:55",
+      "ende": "10:45",
+      "fach_name": "Mathematik",
+      "klasse_name": "1A",
+      "klasse_id": 1,
+      "klasse_teams_link": null
+    }
+  ],
+  "todos:getAll": [
+    {
+      "id": 1,
+      "titel": "Schularbeiten korrigieren",
+      "erledigt": 0,
+      "klasse_id": 1,
+      "fach_id": 1,
+      "faelligkeit": "2025-10-16",
+      "erinnerung": "2025-10-15",
+      "reihenfolge": 1,
+      "klasse_name": "1A",
+      "fach_name": "Deutsch"
+    },
+    {
+      "id": 2,
+      "titel": "Materialien kopieren",
+      "erledigt": 0,
+      "klasse_id": 1,
+      "fach_id": 1,
+      "faelligkeit": "2025-10-10",
+      "erinnerung": null,
+      "reihenfolge": 2,
+      "klasse_name": "1A",
+      "fach_name": "Deutsch"
+    }
+  ],
+  "termine:getAll": [
+    {
+      "id": 2,
+      "titel": "Wandertag",
+      "datum": "2025-10-05",
+      "uhrzeit": null,
+      "notiz": null,
+      "klasse_id": 1,
+      "schuljahr_id": 1,
+      "stunde_id": 2,
+      "bis_uhrzeit": null,
+      "klasse_name": "1A"
+    },
+    {
+      "id": 1,
+      "titel": "Elternabend",
+      "datum": "2025-10-20",
+      "uhrzeit": "18:00",
+      "notiz": "Aula",
+      "klasse_id": 1,
+      "schuljahr_id": 1,
+      "stunde_id": null,
+      "bis_uhrzeit": "19:30",
+      "klasse_name": "1A"
+    }
+  ],
+  "customFerien:getAll": [
+    {
+      "id": 1,
+      "schuljahr_id": 1,
+      "name": "Schulautonom frei",
+      "von": "2025-11-03",
+      "bis": "2025-11-03"
+    }
+  ],
+  "jahresplanung:getAll": [
+    {
+      "id": 1,
+      "fach_id": 1,
+      "titel": "Balladen",
+      "inhalt": "Balladen lesen und schreiben",
+      "datum_von": "2025-10-01",
+      "datum_bis": "2025-10-31",
+      "farbe": "#fb6936",
+      "reihenfolge": 1,
+      "material_ordner": null,
+      "lernziele": "Balladen erkennen",
+      "kompetenzen": "Lesen, Schreiben"
     }
   ]
 }
