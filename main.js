@@ -29,6 +29,11 @@ const stundenPlanungDomain = require('./core/domain/stundenplanung')
 const sitzplanDomain = require('./core/domain/sitzplan')
 const customFerienDomain = require('./core/domain/customFerien')
 const { createUndo } = require('./core/services/undo')
+const kvJahresaufgaben = require('./core/domain/kv/jahresaufgaben')
+const kvWochenaufgaben = require('./core/domain/kv/wochenaufgaben')
+const kvTrigger = require('./core/domain/kv/trigger')
+const kvDoku = require('./core/domain/kv/dokumentation')
+const kvRoutine = require('./core/domain/kv/routine')
 
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -1584,7 +1589,7 @@ function registerIPC() {
   // modulweite (pushUndo/…) UND in registerIPC verschachtelte Funktionen
   // (materialRoot/verschiebeDir/sanitizeSegment) – hier sind alle im Scope
   // (Funktionsdeklarationen sind an den Anfang von registerIPC gehoisted).
-  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, berechneAlleFuerFach, berechneZeugnisnote, berechneEndnote, pruefeNotenTrigger, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment, rosterIdsFuerFach, initKompetenzVorlagen }
+  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, berechneAlleFuerFach, berechneZeugnisnote, berechneEndnote, pruefeNotenTrigger, pruefeFehlstundenSchwellen, erzeugeTrigger, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment, rosterIdsFuerFach, initKompetenzVorlagen }
 
   // Zentraler Fehler-Wrapper: fängt Ausnahmen aus ALLEN nachfolgend registrierten
   // Handlern ab, protokolliert sie mit Kanalnamen und reicht sie als abgelehntes
@@ -3337,310 +3342,50 @@ function registerIPC() {
 
   // Jahresaufgaben: Template + Status per Klasse + Schuljahr (LEFT JOIN)
   // Liefert auch parent_id (NULL = Top-Level, sonst Sub-Aufgabe)
-  ipcMain.handle('kv:jahresaufgaben:getAlle', (_, klasseId, schuljahrId) => {
-    return db.prepare(`
-      SELECT
-        a.id, a.monat, a.titel, a.beschreibung, a.rechtsbezug, a.kategorie, a.sortierung, a.parent_id,
-        s.id AS status_id, s.erledigt_am, s.notiz
-      FROM kv_jahresaufgaben a
-      LEFT JOIN kv_jahresaufgaben_status s
-        ON s.aufgabe_id = a.id AND s.klasse_id = ? AND s.schuljahr_id = ?
-      ORDER BY a.monat, a.sortierung, a.id
-    `).all(klasseId, schuljahrId)
-  })
-
-  // Jahresaufgaben — Template-CRUD
-  // Bei parent_id wird die Sub-Aufgabe an die Parent-Aufgabe gehängt; sie erbt den Monat des Parents
-  // (und kann optional eigene Sortierung am Ende der Geschwister-Subs).
-  ipcMain.handle('kv:jahresaufgaben:createTemplate', (_, data) => {
-    let monat = data.monat
-    if (data.parentId) {
-      const parent = db.prepare('SELECT monat FROM kv_jahresaufgaben WHERE id = ?').get(data.parentId)
-      if (parent) monat = parent.monat
-    }
-    const maxSort = data.parentId
-      ? db.prepare('SELECT COALESCE(MAX(sortierung), 0) AS m FROM kv_jahresaufgaben WHERE parent_id = ?').get(data.parentId).m
-      : db.prepare('SELECT COALESCE(MAX(sortierung), 0) AS m FROM kv_jahresaufgaben WHERE monat = ? AND parent_id IS NULL').get(monat).m
-    const info = db.prepare(`
-      INSERT INTO kv_jahresaufgaben (monat, titel, beschreibung, rechtsbezug, kategorie, sortierung, parent_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(monat, data.titel, data.beschreibung ?? null, data.rechtsbezug ?? null, data.kategorie ?? null, maxSort + 1, data.parentId ?? null)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kv:jahresaufgaben:updateTemplate', (_, id, data) => {
-    // Wenn Sub-Aufgabe: Monat & Kategorie kommen vom Parent — wir lassen sie aber updatebar
-    db.prepare(`
-      UPDATE kv_jahresaufgaben
-      SET monat = ?, titel = ?, beschreibung = ?, rechtsbezug = ?, kategorie = ?
-      WHERE id = ?
-    `).run(data.monat, data.titel, data.beschreibung ?? null, data.rechtsbezug ?? null, data.kategorie ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('kv:jahresaufgaben:deleteTemplate', (_, id) => {
-    // Status-Einträge kaskadieren via ON DELETE CASCADE weg
-    db.prepare('DELETE FROM kv_jahresaufgaben WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('kv:jahresaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, erledigtAm, notiz) => {
-    // Defensive Prüfung: fehlende IDs würden sonst als kryptischer NOT-NULL-Fehler auflaufen.
-    if (aufgabeId == null || klasseId == null || schuljahrId == null) {
-      throw new Error(`kv:jahresaufgaben:setStatus – fehlende ID (aufgabeId=${aufgabeId}, klasseId=${klasseId}, schuljahrId=${schuljahrId})`)
-    }
-    db.prepare(`
-      INSERT INTO kv_jahresaufgaben_status (aufgabe_id, schuljahr_id, klasse_id, erledigt_am, notiz)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(aufgabe_id, schuljahr_id, klasse_id) DO UPDATE SET
-        erledigt_am = excluded.erledigt_am,
-        notiz       = excluded.notiz
-    `).run(aufgabeId, schuljahrId, klasseId, erledigtAm ?? null, notiz ?? null)
-    return true
-  })
+  ipcMain.handle('kv:jahresaufgaben:getAlle', (_, klasseId, schuljahrId) => kvJahresaufgaben.getAlle(db, klasseId, schuljahrId))
+  ipcMain.handle('kv:jahresaufgaben:createTemplate', (_, data) => kvJahresaufgaben.createTemplate(db, data))
+  ipcMain.handle('kv:jahresaufgaben:updateTemplate', (_, id, data) => kvJahresaufgaben.updateTemplate(db, id, data))
+  ipcMain.handle('kv:jahresaufgaben:deleteTemplate', (_, id) => kvJahresaufgaben.deleteTemplate(db, id))
+  ipcMain.handle('kv:jahresaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, erledigtAm, notiz) => kvJahresaufgaben.setStatus(db, aufgabeId, klasseId, schuljahrId, erledigtAm, notiz))
 
   // Wochenaufgaben
-  ipcMain.handle('kv:wochenaufgaben:getAlle', () => {
-    return db.prepare('SELECT * FROM kv_wochenaufgaben WHERE aktiv = 1 ORDER BY sortierung, id').all()
-  })
-
-  // Wochenaufgaben — Template-CRUD
-  ipcMain.handle('kv:wochenaufgaben:createTemplate', (_, data) => {
-    const maxSort = db.prepare('SELECT COALESCE(MAX(sortierung), 0) AS m FROM kv_wochenaufgaben').get().m
-    const info = db.prepare(`
-      INSERT INTO kv_wochenaufgaben (titel, rechtsbezug, sortierung, aktiv)
-      VALUES (?, ?, ?, 1)
-    `).run(data.titel, data.rechtsbezug ?? null, maxSort + 1)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kv:wochenaufgaben:updateTemplate', (_, id, data) => {
-    db.prepare(`
-      UPDATE kv_wochenaufgaben SET titel = ?, rechtsbezug = ? WHERE id = ?
-    `).run(data.titel, data.rechtsbezug ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('kv:wochenaufgaben:deleteTemplate', (_, id) => {
-    // Status-Einträge kaskadieren weg
-    db.prepare('DELETE FROM kv_wochenaufgaben WHERE id = ?').run(id)
-    return true
-  })
-
-  // Status für mehrere Wochen (für die Tabellen-Ansicht)
-  // wochen: Array von { kw, jahr }
-  ipcMain.handle('kv:wochenaufgaben:getStatusFuerWochen', (_, klasseId, schuljahrId, wochen) => {
-    if (!Array.isArray(wochen) || wochen.length === 0) return []
-    // Bauen ein OR-Konstrukt — bei 10 Wochen × 1 Klasse völlig OK
-    const conditions = wochen.map(() => '(kalenderwoche = ? AND jahr = ?)').join(' OR ')
-    const params = [klasseId, schuljahrId, ...wochen.flatMap(w => [w.kw, w.jahr])]
-    return db.prepare(`
-      SELECT * FROM kv_wochenaufgaben_status
-      WHERE klasse_id = ? AND schuljahr_id = ? AND (${conditions})
-    `).all(...params)
-  })
-
-  ipcMain.handle('kv:wochenaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz) => {
-    db.prepare(`
-      INSERT INTO kv_wochenaufgaben_status (aufgabe_id, schuljahr_id, klasse_id, kalenderwoche, jahr, erledigt_am, notiz)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(aufgabe_id, klasse_id, kalenderwoche, jahr) DO UPDATE SET
-        erledigt_am = excluded.erledigt_am,
-        notiz       = excluded.notiz
-    `).run(aufgabeId, schuljahrId, klasseId, kw, jahr, erledigtAm ?? null, notiz ?? null)
-    return true
-  })
+  ipcMain.handle('kv:wochenaufgaben:getAlle', () => kvWochenaufgaben.getAlle(db))
+  ipcMain.handle('kv:wochenaufgaben:createTemplate', (_, data) => kvWochenaufgaben.createTemplate(db, data))
+  ipcMain.handle('kv:wochenaufgaben:updateTemplate', (_, id, data) => kvWochenaufgaben.updateTemplate(db, id, data))
+  ipcMain.handle('kv:wochenaufgaben:deleteTemplate', (_, id) => kvWochenaufgaben.deleteTemplate(db, id))
+  ipcMain.handle('kv:wochenaufgaben:getStatusFuerWochen', (_, klasseId, schuljahrId, wochen) => kvWochenaufgaben.getStatusFuerWochen(db, klasseId, schuljahrId, wochen))
+  ipcMain.handle('kv:wochenaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz) => kvWochenaufgaben.setStatus(db, aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz))
 
   // Trigger — gefiltert (offene / archivierte / nach Schweregrad)
-  ipcMain.handle('kv:trigger:getAlle', (_, klasseId, opts = {}) => {
-    const { archiviert = 0, schweregrad } = opts
-    // Spalten mit t. qualifizieren – kv_trigger UND schueler haben je eine Spalte klasse_id,
-    // sonst: "ambiguous column name: klasse_id".
-    const wheres = ['t.klasse_id = ?', 't.archiviert = ?']
-    const params = [klasseId, archiviert ? 1 : 0]
-    if (schweregrad) { wheres.push('t.schweregrad = ?'); params.push(schweregrad) }
-    return db.prepare(`
-      SELECT t.*, s.vorname AS schueler_vorname, s.nachname AS schueler_nachname
-      FROM kv_trigger t
-      LEFT JOIN schueler s ON s.id = t.schueler_id
-      WHERE ${wheres.join(' AND ')}
-      ORDER BY
-        CASE t.schweregrad WHEN 'critical' THEN 0 WHEN 'warn' THEN 1 ELSE 2 END,
-        t.erstellt_am DESC
-    `).all(...params)
-  })
-
-  ipcMain.handle('kv:trigger:getAlleFuerSchueler', (_, schuelerId) => {
-    return db.prepare(`
-      SELECT * FROM kv_trigger WHERE schueler_id = ? ORDER BY erstellt_am DESC
-    `).all(schuelerId)
-  })
-
-  ipcMain.handle('kv:trigger:reagieren', (_, id, reaktion) => {
-    db.prepare(`
-      UPDATE kv_trigger
-      SET reagiert_am = datetime('now','localtime'), reaktion = ?, archiviert = 1
-      WHERE id = ?
-    `).run(reaktion ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('kv:trigger:create', (_, { klasseId, schuelerId, typ, schweregrad, ausloeser, beschreibung }) => {
-    return erzeugeTrigger(klasseId, schuelerId ?? null, typ, schweregrad ?? 'info', ausloeser ?? null, beschreibung ?? null)
-  })
-
-  ipcMain.handle('kv:trigger:delete', (_, id) => {
-    db.prepare('DELETE FROM kv_trigger WHERE id = ?').run(id)
-    return true
-  })
+  ipcMain.handle('kv:trigger:getAlle', (_, klasseId, opts = {}) => kvTrigger.getAlle(db, klasseId, opts))
+  ipcMain.handle('kv:trigger:getAlleFuerSchueler', (_, schuelerId) => kvTrigger.getAlleFuerSchueler(db, schuelerId))
+  ipcMain.handle('kv:trigger:reagieren', (_, id, reaktion) => kvTrigger.reagieren(db, id, reaktion))
+  ipcMain.handle('kv:trigger:create', (_, data) => kvTrigger.create(db, kernDeps, data))
+  ipcMain.handle('kv:trigger:delete', (_, id) => kvTrigger.remove(db, id))
 
   // Aktenvermerke
-  ipcMain.handle('kv:aktenvermerke:getAlleFuerKlasse', (_, klasseId) => {
-    return db.prepare(`
-      SELECT a.*, s.vorname AS schueler_vorname, s.nachname AS schueler_nachname
-      FROM kv_aktenvermerke a
-      LEFT JOIN schueler s ON s.id = a.schueler_id
-      WHERE a.klasse_id = ?
-      ORDER BY a.datum DESC, a.id DESC
-    `).all(klasseId)
-  })
-
-  ipcMain.handle('kv:aktenvermerke:getAlleFuerSchueler', (_, schuelerId) => {
-    return db.prepare('SELECT * FROM kv_aktenvermerke WHERE schueler_id = ? ORDER BY datum DESC, id DESC').all(schuelerId)
-  })
-
-  ipcMain.handle('kv:aktenvermerke:create', (_, data) => {
-    const info = db.prepare(`
-      INSERT INTO kv_aktenvermerke (schueler_id, klasse_id, datum, typ, titel, beschreibung, zeugen, folgemassnahme)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      data.schuelerId ?? null, data.klasseId, data.datum, data.typ,
-      data.titel, data.beschreibung, data.zeugen ?? null, data.folgemassnahme ?? null
-    )
-    // Trigger auto: Bei Typ "vorfall" → info-Trigger
-    if (data.typ === 'vorfall') {
-      erzeugeTrigger(
-        data.klasseId, data.schuelerId ?? null, 'vorfall', 'info',
-        `Aktenvermerk: ${data.titel}`,
-        data.beschreibung
-      )
-    }
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kv:aktenvermerke:update', (_, id, data) => {
-    db.prepare(`
-      UPDATE kv_aktenvermerke
-      SET datum = ?, typ = ?, titel = ?, beschreibung = ?, zeugen = ?, folgemassnahme = ?
-      WHERE id = ?
-    `).run(data.datum, data.typ, data.titel, data.beschreibung, data.zeugen ?? null, data.folgemassnahme ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('kv:aktenvermerke:delete', (_, id) => {
-    db.prepare('DELETE FROM kv_aktenvermerke WHERE id = ?').run(id)
-    return true
-  })
+  ipcMain.handle('kv:aktenvermerke:getAlleFuerKlasse', (_, klasseId) => kvDoku.aktenGetAlleFuerKlasse(db, klasseId))
+  ipcMain.handle('kv:aktenvermerke:getAlleFuerSchueler', (_, schuelerId) => kvDoku.aktenGetAlleFuerSchueler(db, schuelerId))
+  ipcMain.handle('kv:aktenvermerke:create', (_, data) => kvDoku.aktenCreate(db, kernDeps, data))
+  ipcMain.handle('kv:aktenvermerke:update', (_, id, data) => kvDoku.aktenUpdate(db, id, data))
+  ipcMain.handle('kv:aktenvermerke:delete', (_, id) => kvDoku.aktenDelete(db, id))
 
   // Elternkontakte
-  ipcMain.handle('kv:elternkontakte:getAlleFuerSchueler', (_, schuelerId) => {
-    return db.prepare(`
-      SELECT * FROM kv_elternkontakte WHERE schueler_id = ?
-      ORDER BY erledigt ASC, datum DESC, id DESC
-    `).all(schuelerId)
-  })
-
-  ipcMain.handle('kv:elternkontakte:getOffeneFuerKlasse', (_, klasseId) => {
-    return db.prepare(`
-      SELECT e.*, s.vorname AS schueler_vorname, s.nachname AS schueler_nachname
-      FROM kv_elternkontakte e
-      JOIN schueler s ON s.id = e.schueler_id
-      WHERE s.klasse_id = ? AND e.erledigt = 0
-      ORDER BY e.datum ASC
-    `).all(klasseId)
-  })
-
-  ipcMain.handle('kv:elternkontakte:create', (_, data) => {
-    const info = db.prepare(`
-      INSERT INTO kv_elternkontakte (schueler_id, datum, art, initiator, thema, inhalt, erledigt)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(data.schuelerId, data.datum, data.art, data.initiator, data.thema, data.inhalt ?? null, data.erledigt ? 1 : 0)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kv:elternkontakte:update', (_, id, data) => {
-    db.prepare(`
-      UPDATE kv_elternkontakte
-      SET datum = ?, art = ?, initiator = ?, thema = ?, inhalt = ?, erledigt = ?
-      WHERE id = ?
-    `).run(data.datum, data.art, data.initiator, data.thema, data.inhalt ?? null, data.erledigt ? 1 : 0, id)
-    return true
-  })
-
-  ipcMain.handle('kv:elternkontakte:setErledigt', (_, id, erledigt) => {
-    db.prepare('UPDATE kv_elternkontakte SET erledigt = ? WHERE id = ?').run(erledigt ? 1 : 0, id)
-    return true
-  })
-
-  ipcMain.handle('kv:elternkontakte:delete', (_, id) => {
-    db.prepare('DELETE FROM kv_elternkontakte WHERE id = ?').run(id)
-    return true
-  })
+  ipcMain.handle('kv:elternkontakte:getAlleFuerSchueler', (_, schuelerId) => kvDoku.elternGetAlleFuerSchueler(db, schuelerId))
+  ipcMain.handle('kv:elternkontakte:getOffeneFuerKlasse', (_, klasseId) => kvDoku.elternGetOffeneFuerKlasse(db, klasseId))
+  ipcMain.handle('kv:elternkontakte:create', (_, data) => kvDoku.elternCreate(db, data))
+  ipcMain.handle('kv:elternkontakte:update', (_, id, data) => kvDoku.elternUpdate(db, id, data))
+  ipcMain.handle('kv:elternkontakte:setErledigt', (_, id, erledigt) => kvDoku.elternSetErledigt(db, id, erledigt))
+  ipcMain.handle('kv:elternkontakte:delete', (_, id) => kvDoku.elternDelete(db, id))
 
   // Fehlstunden
-  ipcMain.handle('kv:fehlstunden:getAlleFuerSchueler', (_, schuelerId, _schuljahrId) => {
-    // Schuljahr-Filterung: Wir kennen kein start/end pro Datensatz; nutze Bezeichnung
-    // → Pragmatic: alle Fehlstunden zurückgeben (das Frontend kann filtern wenn nötig)
-    return db.prepare('SELECT * FROM kv_fehlstunden WHERE schueler_id = ? ORDER BY datum DESC, id DESC').all(schuelerId)
-  })
-
-  ipcMain.handle('kv:fehlstunden:create', (_, data) => {
-    const info = db.prepare(`
-      INSERT INTO kv_fehlstunden (schueler_id, datum, stunden, entschuldigt, grund)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(data.schuelerId, data.datum, data.stunden, data.entschuldigt ? 1 : 0, data.grund ?? null)
-    // Trigger-Schwellen prüfen
-    pruefeFehlstundenSchwellen(data.schuelerId)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kv:fehlstunden:update', (_, id, data) => {
-    db.prepare(`
-      UPDATE kv_fehlstunden SET datum = ?, stunden = ?, entschuldigt = ?, grund = ? WHERE id = ?
-    `).run(data.datum, data.stunden, data.entschuldigt ? 1 : 0, data.grund ?? null, id)
-    const row = db.prepare('SELECT schueler_id FROM kv_fehlstunden WHERE id = ?').get(id)
-    if (row) pruefeFehlstundenSchwellen(row.schueler_id)
-    return true
-  })
-
-  ipcMain.handle('kv:fehlstunden:delete', (_, id) => {
-    const row = db.prepare('SELECT schueler_id FROM kv_fehlstunden WHERE id = ?').get(id)
-    db.prepare('DELETE FROM kv_fehlstunden WHERE id = ?').run(id)
-    if (row) pruefeFehlstundenSchwellen(row.schueler_id)
-    return true
-  })
+  ipcMain.handle('kv:fehlstunden:getAlleFuerSchueler', (_, schuelerId) => kvDoku.fehlGetAlleFuerSchueler(db, schuelerId))
+  ipcMain.handle('kv:fehlstunden:create', (_, data) => kvDoku.fehlCreate(db, kernDeps, data))
+  ipcMain.handle('kv:fehlstunden:update', (_, id, data) => kvDoku.fehlUpdate(db, kernDeps, id, data))
+  ipcMain.handle('kv:fehlstunden:delete', (_, id) => kvDoku.fehlDelete(db, kernDeps, id))
 
   // Periodische Prüfung: offene Eltern-Rückrufe älter als 3 Tage → Trigger
-  ipcMain.handle('kv:pruefeOffeneRueckrufe', () => {
-    const heute = new Date()
-    const dreiTageZurueck = new Date(heute.getTime() - 3 * 86400000)
-    const cutoff = `${dreiTageZurueck.getFullYear()}-${String(dreiTageZurueck.getMonth() + 1).padStart(2, '0')}-${String(dreiTageZurueck.getDate()).padStart(2, '0')}`
-    const offene = db.prepare(`
-      SELECT e.id, e.thema, e.datum, s.id AS schueler_id, s.klasse_id, s.vorname, s.nachname
-      FROM kv_elternkontakte e
-      JOIN schueler s ON s.id = e.schueler_id
-      JOIN klassen k ON k.id = s.klasse_id
-      WHERE e.erledigt = 0 AND e.datum <= ? AND k.ist_kv = 1
-    `).all(cutoff)
-    for (const o of offene) {
-      erzeugeTrigger(
-        o.klasse_id, o.schueler_id, 'elternkontakt', 'warn',
-        `Offener Rückruf seit ${o.datum}`,
-        `Thema: ${o.thema}`
-      )
-    }
-    return offene.length
-  })
+  ipcMain.handle('kv:pruefeOffeneRueckrufe', () => kvRoutine.pruefeOffeneRueckrufe(db, kernDeps))
 }
 
 // ─── Fenster erstellen ────────────────────────────────────────────────────────
