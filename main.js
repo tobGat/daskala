@@ -776,8 +776,6 @@ function initDB() {
   spalteErgaenzen('klassen', 'ist_vorlage', 'INTEGER DEFAULT 0')
   spalteErgaenzen('schuljahre', 'start_datum', 'TEXT')
   spalteErgaenzen('schuljahre', 'end_datum', 'TEXT')
-  // Sub-Aufgaben: parent_id auf eigene Tabelle, NULL = Top-Level
-  spalteErgaenzen('kv_jahresaufgaben', 'parent_id', 'INTEGER REFERENCES kv_jahresaufgaben(id) ON DELETE CASCADE')
 
   db.exec(`
     -- Jahresaufgaben-Templates
@@ -875,6 +873,9 @@ function initDB() {
       grund        TEXT
     );
   `)
+
+  // Sub-Aufgaben: parent_id NACH dem CREATE TABLE (sonst schlägt es auf frischer DB fehl).
+  spalteErgaenzen('kv_jahresaufgaben', 'parent_id', 'INTEGER REFERENCES kv_jahresaufgaben(id) ON DELETE CASCADE')
 
   try {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_kv_trigger_klasse_archiv ON kv_trigger (klasse_id, archiviert)`).run()
