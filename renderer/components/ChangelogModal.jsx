@@ -8,6 +8,14 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.0.70',
+    datum: 'Juli 2026',
+    punkte: [
+      'Behoben: Bei einer Neuinstallation konnten im ersten Programmlauf einzelne Angaben fehlschlagen – Termine mit Unterrichtsstunde bzw. Bis-Uhrzeit, Details von Supplierstunden sowie KV-Unteraufgaben. Diese Felder stehen nun ab dem ersten Start korrekt zur Verfügung.',
+      'Unter der Haube: umfangreiches automatisiertes Testnetz für die Datenbank-Schnittstelle – mehr Sicherheit bei künftigen Änderungen.',
+    ],
+  },
+  {
     version: '1.0.68',
     datum: 'Juli 2026',
     punkte: [
