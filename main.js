@@ -23,6 +23,8 @@ const spaltenDomain = require('./core/domain/spalten')
 const eintraegeDomain = require('./core/domain/eintraege')
 const zeugnisnotenDomain = require('./core/domain/zeugnisnoten')
 const stundenzeitenDomain = require('./core/domain/stundenzeiten')
+const stundenplanDomain = require('./core/domain/stundenplan')
+const supplierstundenDomain = require('./core/domain/supplierstunden')
 
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -1735,108 +1737,13 @@ function registerIPC() {
   ipcMain.handle('stundenzeiten:saveAll', (_, rows) => stundenzeitenDomain.saveAll(db, kernDeps, rows))
 
   // Stundenplan
-  ipcMain.handle('stundenplan:getAll', () => {
-    return db.prepare(`
-      SELECT sp.*, sz.stunde, sz.beginn, sz.ende,
-             f.name AS fach_name, k.name AS klasse_name,
-             k.id AS klasse_id, k.teams_link AS klasse_teams_link
-      FROM stundenplan sp
-      JOIN stundenzeiten sz ON sp.stunde_id = sz.id
-      JOIN faecher f ON sp.fach_id = f.id
-      JOIN klassen k ON f.klasse_id = k.id
-      ORDER BY sp.wochentag, sz.stunde
-    `).all()
-  })
-
-  ipcMain.handle('stundenplan:create', (_, data) => {
-    const iv = Math.max(1, parseInt(data.wochenIntervall) || 1)
-    const anker = iv > 1 ? (data.ankerDatum ?? null) : null
-    const info = db.prepare('INSERT INTO stundenplan (wochentag, stunde_id, fach_id, wochen_intervall, anker_datum) VALUES (?, ?, ?, ?, ?)')
-      .run(data.wochentag, data.stundeId, data.fachId, iv, anker)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('stundenplan:delete', (_, id) => {
-    db.prepare('DELETE FROM stundenplan WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('stundenplan:update', (_, id, data) => {
-    if (data.wochenIntervall !== undefined) {
-      const iv = Math.max(1, parseInt(data.wochenIntervall) || 1)
-      const anker = iv > 1 ? (data.ankerDatum ?? null) : null
-      db.prepare('UPDATE stundenplan SET fach_id = ?, wochen_intervall = ?, anker_datum = ? WHERE id = ?')
-        .run(data.fachId, iv, anker, id)
-    } else {
-      db.prepare('UPDATE stundenplan SET fach_id = ? WHERE id = ?').run(data.fachId, id)
-    }
-    return true
-  })
-
-  // Stunde per Drag & Drop in einen anderen Slot verschieben. Die id bleibt erhalten,
-  // damit die Wochen-Planung (stunden_planung, per stundenplan_id) mitwandert.
-  // Ist der Ziel-Slot belegt, werden die beiden Stunden getauscht (transaktional).
-  ipcMain.handle('stundenplan:verschieben', (_, id, wochentag, stundeId) => {
-    const eintrag = db.prepare('SELECT wochentag, stunde_id FROM stundenplan WHERE id = ?').get(id)
-    if (!eintrag) return false
-    if (eintrag.wochentag === wochentag && eintrag.stunde_id === stundeId) return true
-    const belegt = db.prepare('SELECT id FROM stundenplan WHERE wochentag = ? AND stunde_id = ? AND id != ?')
-      .get(wochentag, stundeId, id)
-    const setSlot = db.prepare('UPDATE stundenplan SET wochentag = ?, stunde_id = ? WHERE id = ?')
-    db.transaction(() => {
-      if (belegt) setSlot.run(eintrag.wochentag, eintrag.stunde_id, belegt.id) // Tausch: Ziel-Eintrag auf Quell-Slot
-      setSlot.run(wochentag, stundeId, id)
-    })()
-    return true
-  })
-
-  ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => {
-    return db.prepare(`
-      SELECT sp.id, sp.wochentag, sp.stunde_id, sp.fach_id,
-             sz.stunde, sz.beginn, sz.ende,
-             f.name AS fach_name,
-             k.name AS klasse_name, k.id AS klasse_id, k.teams_link AS klasse_teams_link
-      FROM stundenplan sp
-      JOIN stundenzeiten sz ON sz.id = sp.stunde_id
-      JOIN faecher f ON f.id = sp.fach_id
-      JOIN klassen k ON k.id = f.klasse_id
-      WHERE k.id = ?
-      ORDER BY sp.wochentag, sz.stunde
-    `).all(klasseId)
-  })
-
-  ipcMain.handle('stundenplan:getParallelFach', (_, aktuelleKlasseId, fachName) => {
-    // Parallelklassen-Fächer finden (gleicher Name, anderes Klasse, selbes Schuljahr)
-    const parallelFaecher = db.prepare(`
-      SELECT f.id AS fach_id, f.name AS fach_name,
-             k.id AS klasse_id, k.name AS klasse_name, k.teams_link AS klasse_teams_link
-      FROM faecher f
-      JOIN klassen k ON f.klasse_id = k.id
-      WHERE f.name = ?
-        AND k.schuljahr_id = (SELECT schuljahr_id FROM klassen WHERE id = ?)
-        AND k.id != ?
-      ORDER BY k.name
-    `).all(fachName, aktuelleKlasseId, aktuelleKlasseId)
-
-    // Für jedes parallele Fach die Stundenplan-Slots laden
-    const slotsStmt = db.prepare(`
-      SELECT sp.id, sp.wochentag, sp.stunde_id, sp.fach_id,
-             sz.stunde, sz.beginn, sz.ende,
-             f.name AS fach_name,
-             k.name AS klasse_name, k.id AS klasse_id, k.teams_link AS klasse_teams_link
-      FROM stundenplan sp
-      JOIN stundenzeiten sz ON sz.id = sp.stunde_id
-      JOIN faecher f ON f.id = sp.fach_id
-      JOIN klassen k ON k.id = f.klasse_id
-      WHERE f.id = ?
-      ORDER BY sp.wochentag, sz.stunde
-    `)
-
-    return parallelFaecher.map(pf => ({
-      ...pf,
-      slots: slotsStmt.all(pf.fach_id),
-    }))
-  })
+  ipcMain.handle('stundenplan:getAll', () => stundenplanDomain.getAll(db))
+  ipcMain.handle('stundenplan:create', (_, data) => stundenplanDomain.create(db, data))
+  ipcMain.handle('stundenplan:delete', (_, id) => stundenplanDomain.remove(db, id))
+  ipcMain.handle('stundenplan:update', (_, id, data) => stundenplanDomain.update(db, id, data))
+  ipcMain.handle('stundenplan:verschieben', (_, id, wochentag, stundeId) => stundenplanDomain.verschieben(db, id, wochentag, stundeId))
+  ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => stundenplanDomain.getByKlasse(db, klasseId))
+  ipcMain.handle('stundenplan:getParallelFach', (_, aktuelleKlasseId, fachName) => stundenplanDomain.getParallelFach(db, aktuelleKlasseId, fachName))
 
   // Stunden-Planung
   ipcMain.handle('stundenPlanung:get', (_, stundenplanId, wocheDatum) => {
@@ -1846,30 +1753,10 @@ function registerIPC() {
   })
 
   // ─── Supplierstunden ─────────────────────────────────────────────────────────
-  ipcMain.handle('supplierstunden:getWoche', (_, wocheDatum) =>
-    db.prepare('SELECT * FROM supplierstunden WHERE woche_datum = ?').all(wocheDatum)
-  )
-
-  ipcMain.handle('supplierstunden:create', (_, { wocheDatum, wochentag, stundeId, klasseText, fachText, notiz }) => {
-    const info = db.prepare(
-      'INSERT INTO supplierstunden (woche_datum, wochentag, stunde_id, klasse_text, fach_text, notiz) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(wocheDatum, wochentag, stundeId, klasseText, fachText, notiz ?? null)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('supplierstunden:delete', (_, id) => {
-    db.prepare('DELETE FROM supplierstunden WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('supplierstunden:update', (_, id, { fachText, klasseText, notiz, titel, inhalt, hueText, hueFristDatum, link }) => {
-    db.prepare(`
-      UPDATE supplierstunden
-      SET fach_text = ?, klasse_text = ?, notiz = ?, titel = ?, inhalt = ?, hue_text = ?, hue_frist_datum = ?, link = ?
-      WHERE id = ?
-    `).run(fachText ?? '', klasseText ?? '', notiz ?? null, titel ?? null, inhalt ?? null, hueText ?? null, hueFristDatum ?? null, link ?? null, id)
-    return true
-  })
+  ipcMain.handle('supplierstunden:getWoche', (_, wocheDatum) => supplierstundenDomain.getWoche(db, wocheDatum))
+  ipcMain.handle('supplierstunden:create', (_, data) => supplierstundenDomain.create(db, data))
+  ipcMain.handle('supplierstunden:delete', (_, id) => supplierstundenDomain.remove(db, id))
+  ipcMain.handle('supplierstunden:update', (_, id, data) => supplierstundenDomain.update(db, id, data))
 
   ipcMain.handle('shell:open', (_, url) => {
     return oeffneExternSicher(url)
