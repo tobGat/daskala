@@ -23,6 +23,7 @@ const ERWARTET = {
   todos: ['faelligkeit', 'erinnerung'],
   faecher: ['benotungssystem', 'alle_schueler'],
   klassen: ['teams_link', 'sortierung', 'ist_kv', 'ist_vorlage'],
+  kv_jahresaufgaben: ['parent_id'],
 }
 
 let h, db
