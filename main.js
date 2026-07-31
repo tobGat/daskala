@@ -7,6 +7,9 @@ const path = require('path')
 const fs = require('fs')
 const os = require('os')
 
+// ── Kern-Domänen (Phase-1-Extraktion; plattformunabhängig, ohne Electron) ──
+const einstellungenDomain = require('./core/domain/einstellungen')
+
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -1590,21 +1593,10 @@ function registerIPC() {
     })
 
   // Einstellungen
-  ipcMain.handle('einstellungen:get', (_, schluessel) => {
-    return db.prepare('SELECT wert FROM einstellungen WHERE schluessel = ?').get(schluessel)?.wert ?? null
-  })
-
-  ipcMain.handle('einstellungen:set', (_, schluessel, wert) => {
-    db.prepare('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)').run(schluessel, wert)
-    return true
-  })
-
-  ipcMain.handle('einstellungen:getAll', () => {
-    const rows = db.prepare('SELECT * FROM einstellungen').all()
-    const result = {}
-    rows.forEach(r => { result[r.schluessel] = r.wert })
-    return result
-  })
+  // Handler delegieren an die Kern-Domäne (siehe core/domain/einstellungen.js).
+  ipcMain.handle('einstellungen:get', (_, schluessel) => einstellungenDomain.get(db, schluessel))
+  ipcMain.handle('einstellungen:set', (_, schluessel, wert) => einstellungenDomain.set(db, schluessel, wert))
+  ipcMain.handle('einstellungen:getAll', () => einstellungenDomain.getAll(db))
 
   // Schuljahre
   ipcMain.handle('schuljahre:getAll', () => {
