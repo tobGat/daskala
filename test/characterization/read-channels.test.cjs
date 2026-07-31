@@ -42,6 +42,41 @@ const CASES = [
   { channel: 'termine:getAll',          args: [1] },      // Schuljahr 1
   { channel: 'customFerien:getAll',     args: [1] },      // Schuljahr 1
   { channel: 'jahresplanung:getAll',    args: [1] },      // Fach 1
+  // Weitere Kern-Reads
+  { channel: 'einstellungen:get',       args: ['theme'] },
+  { channel: 'klassen:getDeleteStats',  args: [1] },
+  { channel: 'faecher:getAll',          args: [1] },
+  { channel: 'faecher:getAllImSchuljahr', args: [1] },
+  { channel: 'faecher:getSchuelerIds',  args: [1] },
+  { channel: 'schueler:getLeistungsProfil', args: [1] },
+  { channel: 'spalten:getAll',          args: [1] },
+  { channel: 'eintraege:getAll',        args: [1] },
+  { channel: 'verlauf:get',             args: [1, 1] },
+  { channel: 'jahresplanung:getFaecherMitPlan', args: [] },
+  { channel: 'materialien:getRoot',     args: [] },
+  { channel: 'planung:getVorhandeneWochen', args: [] },
+  { channel: 'update:pruefen',          args: [] },       // app.isPackaged=false → {ok:false,grund:'dev'}
+  // Stundenplan-/Wochen-Planung
+  { channel: 'stundenplan:getByKlasse', args: [1] },
+  { channel: 'stundenplan:getParallelFach', args: [1, 'Deutsch'] },
+  { channel: 'stundenPlanung:get',      args: [1, '2025-10-13'] },
+  { channel: 'stundenPlanung:getWoche', args: ['2025-10-13'] },
+  { channel: 'stundenPlanung:getHueWoche', args: ['2025-10-13'] },
+  { channel: 'stundenPlanung:checkMusizieren', args: ['2025-10-13', 1, 0] },
+  { channel: 'supplierstunden:getWoche', args: ['2025-10-13'] },
+  { channel: 'sitzplan:getTische',      args: [1] },
+  // Klassenvorstand (KV)
+  { channel: 'kv:jahresaufgaben:getAlle', args: [1, 1] },
+  { channel: 'kv:wochenaufgaben:getAlle', args: [] },
+  { channel: 'kv:wochenaufgaben:getStatusFuerWochen', args: [1, 1, [{ kw: 38, jahr: 2025 }]] },
+  { channel: 'kv:trigger:getAlle',      args: [1] },
+  { channel: 'kv:trigger:getAlleFuerSchueler', args: [1] },
+  { channel: 'kv:aktenvermerke:getAlleFuerKlasse', args: [1] },
+  { channel: 'kv:aktenvermerke:getAlleFuerSchueler', args: [1] },
+  { channel: 'kv:elternkontakte:getAlleFuerSchueler', args: [1] },
+  { channel: 'kv:elternkontakte:getOffeneFuerKlasse', args: [1] },
+  { channel: 'kv:fehlstunden:getAlleFuerSchueler', args: [1, 1] },
+  { channel: 'kv:pruefeOffeneRueckrufe', args: [] },
 ]
 
 const SNAP_PATH = path.join(__dirname, 'snapshots', 'read-channels.json')

@@ -393,5 +393,590 @@
       "lernziele": "Balladen erkennen",
       "kompetenzen": "Lesen, Schreiben"
     }
-  ]
+  ],
+  "einstellungen:get": "light",
+  "klassen:getDeleteStats": {
+    "klasse": {
+      "id": 1,
+      "schuljahr_id": 1,
+      "name": "1A",
+      "reihenfolge": 1,
+      "farbe": "#fb6936",
+      "teams_link": null,
+      "sortierung": "nachname",
+      "ist_kv": 1,
+      "ist_vorlage": 0
+    },
+    "fachCount": 2,
+    "schuelerCount": 6,
+    "noteCount": 3,
+    "todoCount": 2,
+    "terminCount": 2,
+    "kvAktenvermerkeCount": 1,
+    "kvElternkontakteCount": 2,
+    "kvFehlstundenCount": 1,
+    "kvTriggerCount": 1
+  },
+  "faecher:getAll": [
+    {
+      "id": 1,
+      "klasse_id": 1,
+      "name": "Deutsch",
+      "reihenfolge": 1,
+      "gewichtung_sa": null,
+      "gewichtung_t": null,
+      "gewichtung_ma": null,
+      "gewichtung_hue": null,
+      "gewichtung_custom": null,
+      "ma_max_einfluss": null,
+      "hue_max_einfluss": null,
+      "farbe": null,
+      "ma_hue_max_einfluss": null,
+      "benotungssystem": "standard",
+      "alle_schueler": 1
+    },
+    {
+      "id": 2,
+      "klasse_id": 1,
+      "name": "Mathematik",
+      "reihenfolge": 2,
+      "gewichtung_sa": null,
+      "gewichtung_t": null,
+      "gewichtung_ma": null,
+      "gewichtung_hue": null,
+      "gewichtung_custom": null,
+      "ma_max_einfluss": null,
+      "hue_max_einfluss": null,
+      "farbe": null,
+      "ma_hue_max_einfluss": null,
+      "benotungssystem": "standard",
+      "alle_schueler": 1
+    }
+  ],
+  "faecher:getAllImSchuljahr": [
+    {
+      "id": 1,
+      "name": "Deutsch",
+      "farbe": null,
+      "klasse_id": 1,
+      "klasse_name": "1A",
+      "klasse_farbe": "#fb6936",
+      "klasse_reihenfolge": 1
+    },
+    {
+      "id": 2,
+      "name": "Mathematik",
+      "farbe": null,
+      "klasse_id": 1,
+      "klasse_name": "1A",
+      "klasse_farbe": "#fb6936",
+      "klasse_reihenfolge": 1
+    },
+    {
+      "id": 3,
+      "name": "Musik",
+      "farbe": null,
+      "klasse_id": 2,
+      "klasse_name": "2B",
+      "klasse_farbe": "#34d399",
+      "klasse_reihenfolge": 2
+    }
+  ],
+  "faecher:getSchuelerIds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "schueler:getLeistungsProfil": {
+    "schueler": {
+      "id": 1,
+      "klasse_id": 1,
+      "vorname": "Anna",
+      "nachname": "Bauer",
+      "reihenfolge": 1,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null
+    },
+    "faecher": [
+      {
+        "id": 1,
+        "klasse_id": 1,
+        "name": "Deutsch",
+        "reihenfolge": 1,
+        "gewichtung_sa": null,
+        "gewichtung_t": null,
+        "gewichtung_ma": null,
+        "gewichtung_hue": null,
+        "gewichtung_custom": null,
+        "ma_max_einfluss": null,
+        "hue_max_einfluss": null,
+        "farbe": null,
+        "ma_hue_max_einfluss": null,
+        "benotungssystem": "standard",
+        "alle_schueler": 1
+      },
+      {
+        "id": 2,
+        "klasse_id": 1,
+        "name": "Mathematik",
+        "reihenfolge": 2,
+        "gewichtung_sa": null,
+        "gewichtung_t": null,
+        "gewichtung_ma": null,
+        "gewichtung_hue": null,
+        "gewichtung_custom": null,
+        "ma_max_einfluss": null,
+        "hue_max_einfluss": null,
+        "farbe": null,
+        "ma_hue_max_einfluss": null,
+        "benotungssystem": "standard",
+        "alle_schueler": 1
+      }
+    ],
+    "zeugnisnoten": [
+      {
+        "id": 1,
+        "fach_id": 1,
+        "schueler_id": 1,
+        "semester": 1,
+        "note_berechnet": 1.8,
+        "note_manuell": null,
+        "s1_eingerechnet": 0
+      },
+      {
+        "id": 2,
+        "fach_id": 1,
+        "schueler_id": 1,
+        "semester": 2,
+        "note_berechnet": null,
+        "note_manuell": null,
+        "s1_eingerechnet": 0
+      },
+      {
+        "id": 7,
+        "fach_id": 1,
+        "schueler_id": 1,
+        "semester": 3,
+        "note_berechnet": 1.8,
+        "note_manuell": null,
+        "s1_eingerechnet": 1
+      }
+    ],
+    "eintraege": [
+      {
+        "wert": "2",
+        "kommentar": null,
+        "kategorie": "SA",
+        "datum": "2025-10-15",
+        "kuerzel": "SA1",
+        "notiz": null,
+        "semester": 1,
+        "fach_id": 1,
+        "reihenfolge": 1
+      },
+      {
+        "wert": "1",
+        "kommentar": null,
+        "kategorie": "T",
+        "datum": "2025-11-20",
+        "kuerzel": "T1",
+        "notiz": null,
+        "semester": 1,
+        "fach_id": 1,
+        "reihenfolge": 2
+      }
+    ],
+    "notizen": [
+      {
+        "schueler_id": 1,
+        "fach_id": 1,
+        "text": "Sehr engagiert, liest gern vor.",
+        "fach_name": "Deutsch"
+      }
+    ],
+    "niveaus": {
+      "1": "AHS"
+    },
+    "niveauHistorie": {}
+  },
+  "spalten:getAll": [
+    {
+      "id": 1,
+      "fach_id": 1,
+      "semester": 1,
+      "kategorie": "SA",
+      "kuerzel": "SA1",
+      "datum": "2025-10-15",
+      "reihenfolge": 1,
+      "eingeklappt": 0,
+      "notiz": null
+    },
+    {
+      "id": 2,
+      "fach_id": 1,
+      "semester": 1,
+      "kategorie": "T",
+      "kuerzel": "T1",
+      "datum": "2025-11-20",
+      "reihenfolge": 2,
+      "eingeklappt": 0,
+      "notiz": null
+    }
+  ],
+  "eintraege:getAll": [
+    {
+      "id": 1,
+      "spalte_id": 1,
+      "schueler_id": 1,
+      "wert": "2",
+      "kommentar": null
+    },
+    {
+      "id": 2,
+      "spalte_id": 1,
+      "schueler_id": 2,
+      "wert": "3",
+      "kommentar": null
+    },
+    {
+      "id": 3,
+      "spalte_id": 2,
+      "schueler_id": 1,
+      "wert": "1",
+      "kommentar": null
+    }
+  ],
+  "verlauf:get": [],
+  "jahresplanung:getFaecherMitPlan": [
+    {
+      "id": 1,
+      "name": "Deutsch",
+      "farbe": null,
+      "klasse_name": "1A",
+      "klasse_id": 1,
+      "ist_vorlage": 0,
+      "abschnitt_anzahl": 1
+    }
+  ],
+  "materialien:getRoot": null,
+  "planung:getVorhandeneWochen": [
+    "2025-10-13"
+  ],
+  "update:pruefen": {
+    "ok": false,
+    "grund": "dev"
+  },
+  "stundenplan:getByKlasse": [
+    {
+      "id": 1,
+      "wochentag": 1,
+      "stunde_id": 1,
+      "fach_id": 1,
+      "stunde": 1,
+      "beginn": "07:55",
+      "ende": "08:45",
+      "fach_name": "Deutsch",
+      "klasse_name": "1A",
+      "klasse_id": 1,
+      "klasse_teams_link": null
+    },
+    {
+      "id": 2,
+      "wochentag": 1,
+      "stunde_id": 2,
+      "fach_id": 2,
+      "stunde": 2,
+      "beginn": "08:50",
+      "ende": "09:40",
+      "fach_name": "Mathematik",
+      "klasse_name": "1A",
+      "klasse_id": 1,
+      "klasse_teams_link": null
+    },
+    {
+      "id": 3,
+      "wochentag": 2,
+      "stunde_id": 1,
+      "fach_id": 1,
+      "stunde": 1,
+      "beginn": "07:55",
+      "ende": "08:45",
+      "fach_name": "Deutsch",
+      "klasse_name": "1A",
+      "klasse_id": 1,
+      "klasse_teams_link": null
+    },
+    {
+      "id": 4,
+      "wochentag": 3,
+      "stunde_id": 3,
+      "fach_id": 2,
+      "stunde": 3,
+      "beginn": "09:55",
+      "ende": "10:45",
+      "fach_name": "Mathematik",
+      "klasse_name": "1A",
+      "klasse_id": 1,
+      "klasse_teams_link": null
+    }
+  ],
+  "stundenplan:getParallelFach": [],
+  "stundenPlanung:get": {
+    "id": 1,
+    "stundenplan_id": 1,
+    "woche_datum": "2025-10-13",
+    "titel": "Balladen",
+    "inhalt": "Einführung Balladen",
+    "musizieren": 0,
+    "hue_text": "Gedicht auswählen",
+    "hue_frist_datum": "2025-10-14",
+    "link": null,
+    "entfall": 0
+  },
+  "stundenPlanung:getWoche": [
+    {
+      "id": 1,
+      "stundenplan_id": 1,
+      "woche_datum": "2025-10-13",
+      "titel": "Balladen",
+      "inhalt": "Einführung Balladen",
+      "musizieren": 0,
+      "hue_text": "Gedicht auswählen",
+      "hue_frist_datum": "2025-10-14",
+      "link": null,
+      "entfall": 0
+    }
+  ],
+  "stundenPlanung:getHueWoche": [
+    {
+      "id": 1,
+      "stundenplan_id": 1,
+      "woche_datum": "2025-10-13",
+      "titel": "Balladen",
+      "inhalt": "Einführung Balladen",
+      "musizieren": 0,
+      "hue_text": "Gedicht auswählen",
+      "hue_frist_datum": "2025-10-14",
+      "link": null,
+      "entfall": 0,
+      "quell_wochentag": 1,
+      "stunde_id": 1,
+      "fach_id": 1,
+      "wochentag": 2
+    }
+  ],
+  "stundenPlanung:checkMusizieren": false,
+  "supplierstunden:getWoche": [
+    {
+      "id": 1,
+      "woche_datum": "2025-10-13",
+      "wochentag": 2,
+      "stunde_id": 3,
+      "klasse_text": "1A",
+      "fach_text": "Deutsch",
+      "notiz": "Vertretung Kollegin",
+      "titel": "Lesestunde",
+      "inhalt": null,
+      "hue_text": null,
+      "hue_frist_datum": null,
+      "link": null
+    }
+  ],
+  "sitzplan:getTische": [
+    {
+      "id": 1,
+      "typ": "einzel",
+      "x": 100,
+      "y": 100,
+      "rotation": 0,
+      "sitze": [
+        {
+          "id": 1,
+          "position": 0,
+          "schueler_id": 1,
+          "vorname": "Anna",
+          "nachname": "Bauer",
+          "avatar": null
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "typ": "doppel",
+      "x": 220,
+      "y": 100,
+      "rotation": 0,
+      "sitze": [
+        {
+          "id": 2,
+          "position": 0,
+          "schueler_id": 2,
+          "vorname": "Ben",
+          "nachname": "Auer",
+          "avatar": null
+        },
+        {
+          "id": 3,
+          "position": 1,
+          "schueler_id": null,
+          "vorname": null,
+          "nachname": null,
+          "avatar": null
+        }
+      ]
+    }
+  ],
+  "kv:jahresaufgaben:getAlle": [
+    {
+      "id": 1,
+      "monat": 9,
+      "titel": "Klassenliste prüfen",
+      "beschreibung": "Schüler:innendaten kontrollieren",
+      "rechtsbezug": "§ 20 SchUG",
+      "kategorie": "organisation",
+      "sortierung": 1,
+      "parent_id": null,
+      "status_id": 1,
+      "erledigt_am": "2025-09-15",
+      "notiz": "erledigt"
+    },
+    {
+      "id": 2,
+      "monat": 10,
+      "titel": "Elternabend abhalten",
+      "beschreibung": "Erster Elternabend",
+      "rechtsbezug": null,
+      "kategorie": "kommunikation",
+      "sortierung": 2,
+      "parent_id": null,
+      "status_id": null,
+      "erledigt_am": null,
+      "notiz": null
+    }
+  ],
+  "kv:wochenaufgaben:getAlle": [
+    {
+      "id": 1,
+      "titel": "Absenzen kontrollieren",
+      "rechtsbezug": null,
+      "sortierung": 1,
+      "aktiv": 1
+    }
+  ],
+  "kv:wochenaufgaben:getStatusFuerWochen": [
+    {
+      "id": 1,
+      "aufgabe_id": 1,
+      "schuljahr_id": 1,
+      "klasse_id": 1,
+      "kalenderwoche": 38,
+      "jahr": 2025,
+      "erledigt_am": "2025-09-19",
+      "notiz": null
+    }
+  ],
+  "kv:trigger:getAlle": [
+    {
+      "id": 1,
+      "klasse_id": 1,
+      "schueler_id": 1,
+      "typ": "note",
+      "schweregrad": "warnung",
+      "ausloeser": "SA1",
+      "beschreibung": "Note deutlich verschlechtert",
+      "erstellt_am": "2025-10-01 08:00:00",
+      "reagiert_am": null,
+      "reaktion": null,
+      "archiviert": 0,
+      "schueler_vorname": "Anna",
+      "schueler_nachname": "Bauer"
+    }
+  ],
+  "kv:trigger:getAlleFuerSchueler": [
+    {
+      "id": 1,
+      "klasse_id": 1,
+      "schueler_id": 1,
+      "typ": "note",
+      "schweregrad": "warnung",
+      "ausloeser": "SA1",
+      "beschreibung": "Note deutlich verschlechtert",
+      "erstellt_am": "2025-10-01 08:00:00",
+      "reagiert_am": null,
+      "reaktion": null,
+      "archiviert": 0
+    }
+  ],
+  "kv:aktenvermerke:getAlleFuerKlasse": [
+    {
+      "id": 1,
+      "schueler_id": 1,
+      "klasse_id": 1,
+      "datum": "2025-10-02",
+      "typ": "Vorfall",
+      "titel": "Unterrichtsstörung",
+      "beschreibung": "Wiederholtes Stören im Unterricht.",
+      "zeugen": null,
+      "folgemassnahme": null,
+      "erstellt_am": "2025-10-02 09:00:00",
+      "schueler_vorname": "Anna",
+      "schueler_nachname": "Bauer"
+    }
+  ],
+  "kv:aktenvermerke:getAlleFuerSchueler": [
+    {
+      "id": 1,
+      "schueler_id": 1,
+      "klasse_id": 1,
+      "datum": "2025-10-02",
+      "typ": "Vorfall",
+      "titel": "Unterrichtsstörung",
+      "beschreibung": "Wiederholtes Stören im Unterricht.",
+      "zeugen": null,
+      "folgemassnahme": null,
+      "erstellt_am": "2025-10-02 09:00:00"
+    }
+  ],
+  "kv:elternkontakte:getAlleFuerSchueler": [
+    {
+      "id": 1,
+      "schueler_id": 1,
+      "datum": "2025-10-03",
+      "art": "Telefonat",
+      "initiator": "Lehrperson",
+      "thema": "Verhalten",
+      "inhalt": "Gespräch über Mitarbeit.",
+      "erledigt": 1
+    }
+  ],
+  "kv:elternkontakte:getOffeneFuerKlasse": [
+    {
+      "id": 2,
+      "schueler_id": 2,
+      "datum": "2025-10-06",
+      "art": "E-Mail",
+      "initiator": "Eltern",
+      "thema": "Rückruf erbeten",
+      "inhalt": null,
+      "erledigt": 0,
+      "schueler_vorname": "Ben",
+      "schueler_nachname": "Auer"
+    }
+  ],
+  "kv:fehlstunden:getAlleFuerSchueler": [
+    {
+      "id": 1,
+      "schueler_id": 1,
+      "datum": "2025-10-04",
+      "stunden": 2,
+      "entschuldigt": 1,
+      "grund": "Krankheit"
+    }
+  ],
+  "kv:pruefeOffeneRueckrufe": 1
 }

@@ -140,3 +140,46 @@ INSERT INTO custom_ferien (id, schuljahr_id, name, von, bis) VALUES
 -- ── Jahresplanung (Fach 1) ──────────────────────────────────────────────────
 INSERT INTO jahresplanung_abschnitte (id, fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge, material_ordner, lernziele, kompetenzen) VALUES
   (1, 1, 'Balladen', 'Balladen lesen und schreiben', '2025-10-01', '2025-10-31', '#fb6936', 1, NULL, 'Balladen erkennen', 'Lesen, Schreiben');
+
+-- ── Klassenvorstand (KV) ────────────────────────────────────────────────────
+-- Templates werden von initDB vorbefüllt → für feste Snapshots leeren.
+DELETE FROM kv_jahresaufgaben;
+INSERT INTO kv_jahresaufgaben (id, monat, titel, beschreibung, rechtsbezug, kategorie, sortierung) VALUES
+  (1, 9,  'Klassenliste prüfen', 'Schüler:innendaten kontrollieren', '§ 20 SchUG', 'organisation', 1),
+  (2, 10, 'Elternabend abhalten', 'Erster Elternabend',              NULL,         'kommunikation', 2);
+
+INSERT INTO kv_jahresaufgaben_status (id, aufgabe_id, schuljahr_id, klasse_id, erledigt_am, notiz) VALUES
+  (1, 1, 1, 1, '2025-09-15', 'erledigt');
+
+DELETE FROM kv_wochenaufgaben;
+INSERT INTO kv_wochenaufgaben (id, titel, rechtsbezug, sortierung, aktiv) VALUES
+  (1, 'Absenzen kontrollieren', NULL, 1, 1);
+
+INSERT INTO kv_wochenaufgaben_status (id, aufgabe_id, schuljahr_id, klasse_id, kalenderwoche, jahr, erledigt_am, notiz) VALUES
+  (1, 1, 1, 1, 38, 2025, '2025-09-19', NULL);
+
+INSERT INTO kv_trigger (id, klasse_id, schueler_id, typ, schweregrad, ausloeser, beschreibung, erstellt_am, reagiert_am, reaktion, archiviert) VALUES
+  (1, 1, 1, 'note', 'warnung', 'SA1', 'Note deutlich verschlechtert', '2025-10-01 08:00:00', NULL, NULL, 0);
+
+INSERT INTO kv_aktenvermerke (id, schueler_id, klasse_id, datum, typ, titel, beschreibung, zeugen, folgemassnahme, erstellt_am) VALUES
+  (1, 1, 1, '2025-10-02', 'Vorfall', 'Unterrichtsstörung', 'Wiederholtes Stören im Unterricht.', NULL, NULL, '2025-10-02 09:00:00');
+
+INSERT INTO kv_elternkontakte (id, schueler_id, datum, art, initiator, thema, inhalt, erledigt) VALUES
+  (1, 1, '2025-10-03', 'Telefonat', 'Lehrperson', 'Verhalten', 'Gespräch über Mitarbeit.', 1),
+  (2, 2, '2025-10-06', 'E-Mail',    'Eltern',     'Rückruf erbeten', NULL, 0);
+
+INSERT INTO kv_fehlstunden (id, schueler_id, datum, stunden, entschuldigt, grund) VALUES
+  (1, 1, '2025-10-04', 2, 1, 'Krankheit');
+
+-- ── Sitzplan (Klasse 1, Fach 1) ─────────────────────────────────────────────
+INSERT INTO sitzplan_tische (id, klasse_id, typ, x, y, fach_id, rotation) VALUES
+  (1, 1, 'einzel', 100, 100, 1, 0),
+  (2, 1, 'doppel', 220, 100, 1, 0);
+
+INSERT INTO sitzplan_sitzplaetze (id, tisch_id, position, schueler_id) VALUES
+  (1, 1, 0, 1),
+  (2, 2, 0, 2),
+  (3, 2, 1, NULL);
+
+INSERT INTO sitzplan_fach_zuweisungen (id, sitzplatz_id, fach_id, schueler_id) VALUES
+  (1, 1, 1, 1);
