@@ -16,6 +16,7 @@ const todosDomain = require('./core/domain/todos')
 const gewichtungDomain = require('./core/domain/gewichtung')
 const klassenDomain = require('./core/domain/klassen')
 const niveauDomain = require('./core/domain/niveau')
+const faecherDomain = require('./core/domain/faecher')
 
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -1589,7 +1590,7 @@ function registerIPC() {
   // modulweite (pushUndo/…) UND in registerIPC verschachtelte Funktionen
   // (materialRoot/verschiebeDir/sanitizeSegment) – hier sind alle im Scope
   // (Funktionsdeklarationen sind an den Anfang von registerIPC gehoisted).
-  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, berechneAlleFuerFach, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment }
+  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, berechneAlleFuerFach, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment, rosterIdsFuerFach, initKompetenzVorlagen }
 
   // Zentraler Fehler-Wrapper: fängt Ausnahmen aus ALLEN nachfolgend registrierten
   // Handlern ab, protokolliert sie mit Kanalnamen und reicht sie als abgelehntes
@@ -1629,147 +1630,17 @@ function registerIPC() {
   ipcMain.handle('klassen:reorder', (_, updates) => klassenDomain.reorder(db, updates))
 
   // Fächer
-  ipcMain.handle('faecher:getAll', (_, klasseId) => {
-    return db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasseId)
-  })
-
-  // Alle Fächer echter Klassen eines Schuljahrs (für den Ziel-Picker beim Anwenden von Vorlagen).
-  ipcMain.handle('faecher:getAllImSchuljahr', (_, schuljahrId) => {
-    return db.prepare(`
-      SELECT f.id, f.name, f.farbe, f.klasse_id,
-             k.name AS klasse_name, k.farbe AS klasse_farbe, k.reihenfolge AS klasse_reihenfolge
-      FROM faecher f JOIN klassen k ON k.id = f.klasse_id
-      WHERE k.schuljahr_id = ? AND k.ist_vorlage = 0
-      ORDER BY k.reihenfolge, k.name, f.reihenfolge, f.name
-    `).all(schuljahrId)
-  })
-
-  ipcMain.handle('faecher:create', (_, { klasseId, name, farbe, benotungssystem, alleSchueler = 1, schuelerIds = [] }) => {
-    const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM faecher WHERE klasse_id = ?').get(klasseId)?.m ?? 0
-    const info = db.prepare('INSERT INTO faecher (klasse_id, name, farbe, reihenfolge, benotungssystem, alle_schueler) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(klasseId, name, farbe ?? null, maxReihenfolge + 1, benotungssystem ?? 'standard', alleSchueler ? 1 : 0)
-    const fachId = info.lastInsertRowid
-    // Manuelle Teilmenge: gewählte Schüler:innen als Fach-Mitglieder eintragen
-    if (!alleSchueler && schuelerIds.length) {
-      const insFS = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
-      for (const sid of schuelerIds) insFS.run(fachId, sid)
-    }
-    // Bei differenziert: Default-Niveau für die Roster-Schüler:innen (NACH fach_schueler-Insert)
-    if (benotungssystem === 'differenziert') {
-      const insert = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
-      for (const sid of rosterIdsFuerFach(fachId)) insert.run(fachId, sid, 'AHS')
-    }
-    // Kompetenz-Vorlagen automatisch anlegen
-    initKompetenzVorlagen(fachId, name)
-    return fachId
-  })
-
-  ipcMain.handle('faecher:delete', (_, id) => {
-    // Zuerst alle Nicht-CASCADE-Kinddaten abräumen: sonst schlägt das Löschen bei
-    // vorhandenen Spalten/Noten/Zeugnisnoten/Stundenplan an foreign_keys=ON fehl
-    // (und hinterließe sonst verwaiste Zeilen). Alles atomar in einer Transaktion.
-    db.transaction(() => {
-      raeumeFachDatenAuf([id])
-      db.prepare('DELETE FROM faecher WHERE id = ?').run(id)
-    })()
-    return true
-  })
-
-  ipcMain.handle('faecher:rename', (_, id, name) => {
-    const root = materialRoot()
-    const alt = root ? db.prepare('SELECT f.name AS fn, k.name AS kn, s.bezeichnung AS sb FROM faecher f JOIN klassen k ON f.klasse_id=k.id JOIN schuljahre s ON k.schuljahr_id=s.id WHERE f.id=?').get(id) : null
-    db.prepare('UPDATE faecher SET name = ? WHERE id = ?').run(name, id)
-    let ordnerWarnung = null
-    if (alt) ordnerWarnung = verschiebeDir(
-      path.join(root, sanitizeSegment(alt.sb), sanitizeSegment(alt.kn), sanitizeSegment(alt.fn)),
-      path.join(root, sanitizeSegment(alt.sb), sanitizeSegment(alt.kn), sanitizeSegment(name)))
-    return { ok: true, ordnerWarnung }
-  })
-
-  ipcMain.handle('faecher:setFarbe', (_, id, farbe) => {
-    db.prepare('UPDATE faecher SET farbe = ? WHERE id = ?').run(farbe ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('faecher:updateGewichtung', (_, id, data) => {
-    // Nur SA/Test/Individuell gewichten die Note; MA & HÜ wirken als Einfluss (eigene Deckelung).
-    db.prepare(`
-      UPDATE faecher SET
-        gewichtung_sa = ?,
-        gewichtung_t = ?,
-        gewichtung_ma = NULL,
-        gewichtung_hue = NULL,
-        gewichtung_custom = ?,
-        ma_hue_max_einfluss = NULL,
-        ma_max_einfluss = ?,
-        hue_max_einfluss = ?
-      WHERE id = ?
-    `).run(data.sa ?? null, data.t ?? null, data.custom ?? null, data.maEinfluss ?? null, data.hueEinfluss ?? null, id)
-    berechneAlleFuerFach(id)
-    return true
-  })
-
-  ipcMain.handle('faecher:resetGewichtung', (_, id) => {
-    db.prepare('UPDATE faecher SET gewichtung_sa = NULL, gewichtung_t = NULL, gewichtung_ma = NULL, gewichtung_hue = NULL, gewichtung_custom = NULL, ma_hue_max_einfluss = NULL, ma_max_einfluss = NULL, hue_max_einfluss = NULL WHERE id = ?').run(id)
-    berechneAlleFuerFach(id)
-    return true
-  })
-
-  ipcMain.handle('faecher:setBenotungssystem', (_, id, system) => {
-    db.prepare('UPDATE faecher SET benotungssystem = ? WHERE id = ?').run(system, id)
-    if (system === 'differenziert') {
-      // Default-Niveau 'AHS' für alle Schüler:innen + Initial-Historien-Eintrag
-      const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(id)
-      if (fach) {
-        const schuelerIds = rosterIdsFuerFach(id).map(x => ({ id: x }))
-        const insertNiveau = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
-        const insertHist = db.prepare(`
-          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
-          SELECT ?, ?, ?, ?
-          WHERE NOT EXISTS (
-            SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?
-          )
-        `)
-        for (const s of schuelerIds) {
-          insertNiveau.run(id, s.id, 'AHS')
-          insertHist.run(id, s.id, 'AHS', '1900-01-01', id, s.id)
-        }
-      }
-    }
-    berechneAlleFuerFach(id)
-    return true
-  })
-
-  // Aktuelle Fach-Zuordnung (ids). Bei alle_schueler=1 automatisch alle aktiven Klassen-Schüler:innen.
-  ipcMain.handle('faecher:getSchuelerIds', (_, fachId) => {
-    return rosterIdsFuerFach(fachId)
-  })
-
-  // Fach-Zuordnung setzen: alle = true → alle Klassen-Schüler:innen; sonst manuelle Teilmenge.
-  ipcMain.handle('faecher:setSchueler', (_, fachId, { alle, schuelerIds = [] }) => {
-    const fach = db.prepare('SELECT benotungssystem FROM faecher WHERE id = ?').get(fachId)
-    if (!fach) return false
-    db.transaction(() => {
-      db.prepare('UPDATE faecher SET alle_schueler = ? WHERE id = ?').run(alle ? 1 : 0, fachId)
-      db.prepare('DELETE FROM fach_schueler WHERE fach_id = ?').run(fachId)   // immer neu aufbauen
-      if (!alle) {
-        const ins = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
-        for (const sid of schuelerIds) ins.run(fachId, sid)
-      }
-      // Differenziert: neu ins Roster gekommene Schüler:innen brauchen Niveau-Default + Historie
-      if (fach.benotungssystem === 'differenziert') {
-        const insN = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
-        const insH = db.prepare(`
-          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
-          SELECT ?, ?, ?, '1900-01-01'
-          WHERE NOT EXISTS (SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?)
-        `)
-        for (const sid of rosterIdsFuerFach(fachId)) { insN.run(fachId, sid, 'AHS'); insH.run(fachId, sid, 'AHS', fachId, sid) }
-      }
-    })()
-    berechneAlleFuerFach(fachId)   // Roster geändert → Zeugnisnoten neu berechnen
-    return true
-  })
+  ipcMain.handle('faecher:getAll', (_, klasseId) => faecherDomain.getAll(db, klasseId))
+  ipcMain.handle('faecher:getAllImSchuljahr', (_, schuljahrId) => faecherDomain.getAllImSchuljahr(db, schuljahrId))
+  ipcMain.handle('faecher:create', (_, data) => faecherDomain.create(db, kernDeps, data))
+  ipcMain.handle('faecher:delete', (_, id) => faecherDomain.remove(db, kernDeps, id))
+  ipcMain.handle('faecher:rename', (_, id, name) => faecherDomain.rename(db, kernDeps, id, name))
+  ipcMain.handle('faecher:setFarbe', (_, id, farbe) => faecherDomain.setFarbe(db, id, farbe))
+  ipcMain.handle('faecher:updateGewichtung', (_, id, data) => faecherDomain.updateGewichtung(db, kernDeps, id, data))
+  ipcMain.handle('faecher:resetGewichtung', (_, id) => faecherDomain.resetGewichtung(db, kernDeps, id))
+  ipcMain.handle('faecher:setBenotungssystem', (_, id, system) => faecherDomain.setBenotungssystem(db, kernDeps, id, system))
+  ipcMain.handle('faecher:getSchuelerIds', (_, fachId) => faecherDomain.getSchuelerIds(db, kernDeps, fachId))
+  ipcMain.handle('faecher:setSchueler', (_, fachId, data) => faecherDomain.setSchueler(db, kernDeps, fachId, data))
 
   // Niveau (AHS/ST-Differenzierung)
   ipcMain.handle('niveau:get', (_, fachId) => niveauDomain.get(db, fachId))
