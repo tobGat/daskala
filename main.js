@@ -9,6 +9,12 @@ const os = require('os')
 
 // ── Kern-Domänen (Phase-1-Extraktion; plattformunabhängig, ohne Electron) ──
 const einstellungenDomain = require('./core/domain/einstellungen')
+const schuljahreDomain = require('./core/domain/schuljahre')
+const notizenDomain = require('./core/domain/notizen')
+// main.js-Helfer, die extrahierte Domänen injiziert bekommen. pushUndo und
+// berechneAlleFuerSchuljahr sind hoisted function-Deklarationen weiter unten,
+// stehen hier also bereits zur Verfügung. Wächst mit der Extraktion.
+const kernDeps = { pushUndo, berechneAlleFuerSchuljahr }
 
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -1599,14 +1605,8 @@ function registerIPC() {
   ipcMain.handle('einstellungen:getAll', () => einstellungenDomain.getAll(db))
 
   // Schuljahre
-  ipcMain.handle('schuljahre:getAll', () => {
-    return db.prepare('SELECT * FROM schuljahre ORDER BY id DESC').all()
-  })
-
-  ipcMain.handle('schuljahre:create', (_, bezeichnung) => {
-    const info = db.prepare('INSERT INTO schuljahre (bezeichnung) VALUES (?)').run(bezeichnung)
-    return info.lastInsertRowid
-  })
+  ipcMain.handle('schuljahre:getAll', () => schuljahreDomain.getAll(db))
+  ipcMain.handle('schuljahre:create', (_, bezeichnung) => schuljahreDomain.create(db, bezeichnung))
 
   // Klassen
   ipcMain.handle('klassen:getAll', (_, schuljahrId) => {
@@ -2415,24 +2415,8 @@ function registerIPC() {
   })
 
   // Notizen
-  ipcMain.handle('notizen:get', (_, schuelerId, fachId) => {
-    return db.prepare('SELECT text FROM notizen WHERE schueler_id = ? AND fach_id = ?').get(schuelerId, fachId)?.text ?? ''
-  })
-
-  ipcMain.handle('notizen:set', (_, schuelerId, fachId, text) => {
-    const existing = db.prepare('SELECT text FROM notizen WHERE schueler_id = ? AND fach_id = ?').get(schuelerId, fachId)
-    const oldText = existing ? existing.text : null
-    const apply = (t) => {
-      if (t === null) {
-        db.prepare('DELETE FROM notizen WHERE schueler_id = ? AND fach_id = ?').run(schuelerId, fachId)
-      } else {
-        db.prepare('INSERT OR REPLACE INTO notizen (schueler_id, fach_id, text) VALUES (?, ?, ?)').run(schuelerId, fachId, t)
-      }
-    }
-    apply(text)
-    pushUndo({ description: 'Notiz', undo: () => apply(oldText), redo: () => apply(text) })
-    return true
-  })
+  ipcMain.handle('notizen:get', (_, schuelerId, fachId) => notizenDomain.get(db, schuelerId, fachId))
+  ipcMain.handle('notizen:set', (_, schuelerId, fachId, text) => notizenDomain.set(db, kernDeps, schuelerId, fachId, text))
 
   // Gewichtung global
   ipcMain.handle('gewichtungGlobal:getAll', () => {
