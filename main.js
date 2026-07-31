@@ -26,6 +26,9 @@ const stundenzeitenDomain = require('./core/domain/stundenzeiten')
 const stundenplanDomain = require('./core/domain/stundenplan')
 const supplierstundenDomain = require('./core/domain/supplierstunden')
 const stundenPlanungDomain = require('./core/domain/stundenplanung')
+const sitzplanDomain = require('./core/domain/sitzplan')
+const customFerienDomain = require('./core/domain/customFerien')
+const { createUndo } = require('./core/services/undo')
 
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -221,28 +224,11 @@ try {
 let db
 
 // ─── Undo/Redo ────────────────────────────────────────────────────────────────
-const undoStack = []
-const redoStack = []
-
-function pushUndo(action) {
-  undoStack.push(action)
-  if (undoStack.length > 50) undoStack.shift()
-  redoStack.length = 0
-}
-
-function executeUndo() {
-  if (undoStack.length === 0) return
-  const action = undoStack.pop()
-  try { action.undo(); redoStack.push(action) } catch (e) { console.error('Undo fehlgeschlagen:', e) }
-  BrowserWindow.getAllWindows()[0]?.webContents.send('undo:applied')
-}
-
-function executeRedo() {
-  if (redoStack.length === 0) return
-  const action = redoStack.pop()
-  try { action.redo(); undoStack.push(action) } catch (e) { console.error('Redo fehlgeschlagen:', e) }
-  BrowserWindow.getAllWindows()[0]?.webContents.send('undo:applied')
-}
+// Undo/Redo als Kern-Service; Renderer-Notify (BrowserWindow) als Callback injiziert.
+const undo = createUndo({
+  onApplied: () => BrowserWindow.getAllWindows()[0]?.webContents.send('undo:applied'),
+})
+const pushUndo = undo.push
 
 function doBackupCreate() {
   const now = new Date()
@@ -279,8 +265,7 @@ async function doSaveAs(win) {
 function neustartNachDatenwechsel() {
   if (isDev) {
     try { initDB() } catch (e) { logError('initDB(reload)', e) }
-    undoStack.length = 0
-    redoStack.length = 0
+    undo.reset()
     BrowserWindow.getAllWindows()[0]?.webContents.reload()
   } else {
     app.relaunch()
@@ -2037,24 +2022,9 @@ function registerIPC() {
   })
 
   // ─── Undo/Redo ─────────────────────────────────────────────────────────────
-  ipcMain.handle('undo:execute', () => {
-    if (undoStack.length === 0) return { ok: false }
-    executeUndo()
-    return { ok: true }
-  })
-
-  ipcMain.handle('undo:redo', () => {
-    if (redoStack.length === 0) return { ok: false }
-    executeRedo()
-    return { ok: true }
-  })
-
-  ipcMain.handle('undo:state', () => ({
-    canUndo: undoStack.length > 0,
-    canRedo: redoStack.length > 0,
-    undoDescription: undoStack[undoStack.length - 1]?.description,
-    redoDescription: redoStack[redoStack.length - 1]?.description,
-  }))
+  ipcMain.handle('undo:execute', () => undo.execute())
+  ipcMain.handle('undo:redo', () => undo.redo())
+  ipcMain.handle('undo:state', () => undo.state())
 
 
   // Dialog
@@ -2914,104 +2884,17 @@ function registerIPC() {
   })
 
   // ─── Sitzplan ───────────────────────────────────────────────────────────────
-  ipcMain.handle('sitzplan:getTische', (_, fachId) => {
-    const rows = db.prepare(`
-      SELECT t.id as tisch_id, t.typ, t.x, t.y, t.rotation,
-             s.id as sitz_id, s.position,
-             s.schueler_id,
-             sch.vorname, sch.nachname, sch.avatar
-      FROM sitzplan_tische t
-      LEFT JOIN sitzplan_sitzplaetze s ON s.tisch_id = t.id
-      LEFT JOIN schueler sch ON sch.id = s.schueler_id
-      WHERE t.fach_id = ?
-      ORDER BY t.id, s.position
-    `).all(fachId)
-    // Gruppiere Rows zu Tisch-Objekten
-    const map = {}
-    for (const row of rows) {
-      if (!map[row.tisch_id]) {
-        map[row.tisch_id] = { id: row.tisch_id, typ: row.typ, x: row.x, y: row.y, rotation: row.rotation ?? 0, sitze: [] }
-      }
-      if (row.sitz_id != null) {
-        map[row.tisch_id].sitze.push({
-          id: row.sitz_id, position: row.position,
-          schueler_id: row.schueler_id, vorname: row.vorname, nachname: row.nachname, avatar: row.avatar,
-        })
-      }
-    }
-    return Object.values(map)
-  })
-
-  ipcMain.handle('sitzplan:createTisch', (_, fachId, typ, x, y) => {
-    const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(fachId)
-    const tisch = db.prepare(
-      'INSERT INTO sitzplan_tische (klasse_id, fach_id, typ, x, y) VALUES (?, ?, ?, ?, ?)'
-    ).run(fach.klasse_id, fachId, typ, x, y)
-    const tischId = tisch.lastInsertRowid
-    db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position) VALUES (?, 0)').run(tischId)
-    if (typ === 'doppel') {
-      db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position) VALUES (?, 1)').run(tischId)
-    }
-    return tischId
-  })
-
-  ipcMain.handle('sitzplan:deleteTisch', (_, tischId) => {
-    db.prepare('DELETE FROM sitzplan_tische WHERE id = ?').run(tischId)
-    return true
-  })
-
-  ipcMain.handle('sitzplan:moveTisch', (_, tischId, x, y) => {
-    db.prepare('UPDATE sitzplan_tische SET x = ?, y = ? WHERE id = ?').run(x, y, tischId)
-    return true
-  })
-
-  ipcMain.handle('sitzplan:setRotation', (_, tischId, rotation) => {
-    const r = ((Number(rotation) % 360) + 360) % 360 // auf 0/90/180/270 normalisieren
-    db.prepare('UPDATE sitzplan_tische SET rotation = ? WHERE id = ?').run(r, tischId)
-    return true
-  })
-
-  ipcMain.handle('sitzplan:assignSchueler', (_, sitzplatzId, schuelerId) => {
-    db.prepare('UPDATE sitzplan_sitzplaetze SET schueler_id = ? WHERE id = ?')
-      .run(schuelerId ?? null, sitzplatzId)
-    return true
-  })
-
-  ipcMain.handle('sitzplan:duplicateTisch', (_, fachId, sourceTischId, x, y) => {
-    const source = db.prepare('SELECT * FROM sitzplan_tische WHERE id = ?').get(sourceTischId)
-    const sourceSitze = db.prepare('SELECT * FROM sitzplan_sitzplaetze WHERE tisch_id = ? ORDER BY position').all(sourceTischId)
-    const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(fachId)
-    const tisch = db.prepare(
-      'INSERT INTO sitzplan_tische (klasse_id, fach_id, typ, x, y, rotation) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(fach.klasse_id, fachId, source.typ, x, y, source.rotation ?? 0)
-    const newTischId = tisch.lastInsertRowid
-    for (const sitz of sourceSitze) {
-      db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position) VALUES (?, ?)')
-        .run(newTischId, sitz.position)
-    }
-    return newTischId
-  })
+  ipcMain.handle('sitzplan:getTische', (_, fachId) => sitzplanDomain.getTische(db, fachId))
+  ipcMain.handle('sitzplan:createTisch', (_, fachId, typ, x, y) => sitzplanDomain.createTisch(db, fachId, typ, x, y))
+  ipcMain.handle('sitzplan:deleteTisch', (_, tischId) => sitzplanDomain.deleteTisch(db, tischId))
+  ipcMain.handle('sitzplan:moveTisch', (_, tischId, x, y) => sitzplanDomain.moveTisch(db, tischId, x, y))
+  ipcMain.handle('sitzplan:setRotation', (_, tischId, rotation) => sitzplanDomain.setRotation(db, tischId, rotation))
+  ipcMain.handle('sitzplan:assignSchueler', (_, sitzplatzId, schuelerId) => sitzplanDomain.assignSchueler(db, sitzplatzId, schuelerId))
+  ipcMain.handle('sitzplan:duplicateTisch', (_, fachId, sourceTischId, x, y) => sitzplanDomain.duplicateTisch(db, fachId, sourceTischId, x, y))
 
   // ─── Custom Ferien ───────────────────────────────────────────────────────────
-  ipcMain.handle('customFerien:getAll', (_, schuljahrId) =>
-    db.prepare('SELECT * FROM custom_ferien WHERE schuljahr_id = ? ORDER BY von').all(schuljahrId)
-  )
-
-  ipcMain.handle('customFerien:save', (_, schuljahrId, ferien) => {
-    // ferien = [{ id?, name, von, bis }, ...]
-    // Komplett ersetzen: alle löschen und neu einfügen
-    const transaction = db.transaction(() => {
-      db.prepare('DELETE FROM custom_ferien WHERE schuljahr_id = ?').run(schuljahrId)
-      const insert = db.prepare('INSERT INTO custom_ferien (schuljahr_id, name, von, bis) VALUES (?, ?, ?, ?)')
-      for (const f of ferien) {
-        if (f.name && f.von && f.bis) {
-          insert.run(schuljahrId, f.name, f.von, f.bis)
-        }
-      }
-    })
-    transaction()
-    return true
-  })
+  ipcMain.handle('customFerien:getAll', (_, schuljahrId) => customFerienDomain.getAll(db, schuljahrId))
+  ipcMain.handle('customFerien:save', (_, schuljahrId, ferien) => customFerienDomain.save(db, schuljahrId, ferien))
 
   // ─── Termine ─────────────────────────────────────────────────────────────────
   ipcMain.handle('termine:getAll', (_, schuljahrId) => termineDomain.getAll(db, schuljahrId))
@@ -3798,8 +3681,8 @@ function createWindow() {
     if (appGesperrt) return   // gesperrt: keine App-Kürzel (PIN-Eingabe bleibt möglich)
     if (!(input.control || input.meta)) return
     const key = (input.key || '').toLowerCase()
-    if (key === 'z' && !input.shift) { event.preventDefault(); executeUndo() }
-    else if (key === 'y' || (key === 'z' && input.shift)) { event.preventDefault(); executeRedo() }
+    if (key === 'z' && !input.shift) { event.preventDefault(); undo.execute() }
+    else if (key === 'y' || (key === 'z' && input.shift)) { event.preventDefault(); undo.redo() }
     else if (key === 'o' && !input.shift) { event.preventDefault(); doOpen(win) }
     else if (key === 's' && input.shift) { event.preventDefault(); doSaveAs(win) }
   })
