@@ -11,6 +11,7 @@ const os = require('os')
 const einstellungenDomain = require('./core/domain/einstellungen')
 const schuljahreDomain = require('./core/domain/schuljahre')
 const notizenDomain = require('./core/domain/notizen')
+const termineDomain = require('./core/domain/termine')
 // main.js-Helfer, die extrahierte Domänen injiziert bekommen. pushUndo und
 // berechneAlleFuerSchuljahr sind hoisted function-Deklarationen weiter unten,
 // stehen hier also bereits zur Verfügung. Wächst mit der Extraktion.
@@ -4122,33 +4123,10 @@ function registerIPC() {
   })
 
   // ─── Termine ─────────────────────────────────────────────────────────────────
-  ipcMain.handle('termine:getAll', (_, schuljahrId) =>
-    db.prepare(`
-      SELECT t.*, k.name as klasse_name
-      FROM termine t
-      LEFT JOIN klassen k ON k.id = t.klasse_id
-      WHERE t.schuljahr_id = ?
-      ORDER BY t.datum, t.uhrzeit
-    `).all(schuljahrId)
-  )
-
-  ipcMain.handle('termine:create', (_, { titel, datum, uhrzeit, bisUhrzeit, notiz, klasseId, schuljahrId, stundeId }) => {
-    const info = db.prepare(
-      'INSERT INTO termine (titel, datum, uhrzeit, bis_uhrzeit, notiz, klasse_id, schuljahr_id, stunde_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(titel, datum, uhrzeit ?? null, bisUhrzeit ?? null, notiz ?? null, klasseId ?? null, schuljahrId, stundeId ?? null)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('termine:update', (_, id, { titel, datum, uhrzeit, bisUhrzeit, notiz, klasseId, stundeId }) => {
-    db.prepare('UPDATE termine SET titel = ?, datum = ?, uhrzeit = ?, bis_uhrzeit = ?, notiz = ?, klasse_id = ?, stunde_id = ? WHERE id = ?')
-      .run(titel, datum, uhrzeit ?? null, bisUhrzeit ?? null, notiz ?? null, klasseId ?? null, stundeId ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('termine:delete', (_, id) => {
-    db.prepare('DELETE FROM termine WHERE id = ?').run(id)
-    return true
-  })
+  ipcMain.handle('termine:getAll', (_, schuljahrId) => termineDomain.getAll(db, schuljahrId))
+  ipcMain.handle('termine:create', (_, data) => termineDomain.create(db, data))
+  ipcMain.handle('termine:update', (_, id, data) => termineDomain.update(db, id, data))
+  ipcMain.handle('termine:delete', (_, id) => termineDomain.remove(db, id))
 
   // ─── Jahresplanung ────────────────────────────────────────────────────────────
   ipcMain.handle('jahresplanung:getAll', (_, fachId) =>
