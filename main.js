@@ -540,13 +540,9 @@ function initDB() {
   // anker_datum = Montag einer Woche, in der die Stunde stattfindet (Parität).
   spalteErgaenzen('stundenplan', 'wochen_intervall', 'INTEGER DEFAULT 1')
   spalteErgaenzen('stundenplan', 'anker_datum', 'TEXT')
-  spalteErgaenzen('supplierstunden', 'titel', 'TEXT')
-  spalteErgaenzen('supplierstunden', 'inhalt', 'TEXT')
-  spalteErgaenzen('supplierstunden', 'hue_text', 'TEXT')
-  spalteErgaenzen('supplierstunden', 'hue_frist_datum', 'TEXT')
-  spalteErgaenzen('supplierstunden', 'link', 'TEXT')
-  spalteErgaenzen('termine', 'stunde_id', 'INTEGER')
-  spalteErgaenzen('termine', 'bis_uhrzeit', 'TEXT')
+  // Hinweis: Migrationen für `supplierstunden` und `termine` stehen bewusst
+  // NACH deren CREATE TABLE weiter unten – sonst schlagen sie auf einer frischen
+  // DB fehl (Tabelle existiert an dieser Stelle noch nicht).
   spalteErgaenzen('klassen', 'teams_link', 'TEXT')
   spalteErgaenzen('faecher', 'benotungssystem', "TEXT DEFAULT 'standard'")
   spalteErgaenzen('faecher', 'alle_schueler', 'INTEGER DEFAULT 1')
@@ -607,6 +603,8 @@ function initDB() {
       FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
     )
   `)
+  spalteErgaenzen('termine', 'stunde_id', 'INTEGER')
+  spalteErgaenzen('termine', 'bis_uhrzeit', 'TEXT')
 
   // Benutzerdefinierte Ferien (Ergänzung/Überschreibung der berechneten Ferien)
   db.exec(`
@@ -660,6 +658,11 @@ function initDB() {
       FOREIGN KEY (stunde_id) REFERENCES stundenzeiten(id) ON DELETE CASCADE
     )
   `)
+  spalteErgaenzen('supplierstunden', 'titel', 'TEXT')
+  spalteErgaenzen('supplierstunden', 'inhalt', 'TEXT')
+  spalteErgaenzen('supplierstunden', 'hue_text', 'TEXT')
+  spalteErgaenzen('supplierstunden', 'hue_frist_datum', 'TEXT')
+  spalteErgaenzen('supplierstunden', 'link', 'TEXT')
 
   // Jahresplanung
   db.exec(`
