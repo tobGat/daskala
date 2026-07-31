@@ -13,6 +13,7 @@ const schuljahreDomain = require('./core/domain/schuljahre')
 const notizenDomain = require('./core/domain/notizen')
 const termineDomain = require('./core/domain/termine')
 const todosDomain = require('./core/domain/todos')
+const gewichtungDomain = require('./core/domain/gewichtung')
 // main.js-Helfer, die extrahierte Domänen injiziert bekommen. pushUndo und
 // berechneAlleFuerSchuljahr sind hoisted function-Deklarationen weiter unten,
 // stehen hier also bereits zur Verfügung. Wächst mit der Extraktion.
@@ -2421,17 +2422,8 @@ function registerIPC() {
   ipcMain.handle('notizen:set', (_, schuelerId, fachId, text) => notizenDomain.set(db, kernDeps, schuelerId, fachId, text))
 
   // Gewichtung global
-  ipcMain.handle('gewichtungGlobal:getAll', () => {
-    return db.prepare('SELECT * FROM gewichtung_global').all()
-  })
-
-  ipcMain.handle('gewichtungGlobal:update', (_, kategorie, gewichtung) => {
-    db.prepare('INSERT OR REPLACE INTO gewichtung_global (kategorie, gewichtung) VALUES (?, ?)').run(kategorie, gewichtung)
-    // Alle Fächer im aktiven Schuljahr neu berechnen (auch teilweise globale Gewichtungen sind betroffen)
-    const aktuellesSchuljahr = db.prepare('SELECT id FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
-    berechneAlleFuerSchuljahr(aktuellesSchuljahr?.id)
-    return true
-  })
+  ipcMain.handle('gewichtungGlobal:getAll', () => gewichtungDomain.getAll(db))
+  ipcMain.handle('gewichtungGlobal:update', (_, kategorie, gewichtung) => gewichtungDomain.update(db, kernDeps, kategorie, gewichtung))
 
   // Alle Zeugnisnoten im aktuellen Schuljahr neu berechnen
   // (z.B. nach Änderung von s1_gewichtung, ma_plus_wert, ma_minus_wert)
