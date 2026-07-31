@@ -22,6 +22,7 @@ const kompetenzenDomain = require('./core/domain/kompetenzen')
 const spaltenDomain = require('./core/domain/spalten')
 const eintraegeDomain = require('./core/domain/eintraege')
 const zeugnisnotenDomain = require('./core/domain/zeugnisnoten')
+const stundenzeitenDomain = require('./core/domain/stundenzeiten')
 
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -1727,64 +1728,11 @@ function registerIPC() {
   })
 
   // Stundenzeiten
-  ipcMain.handle('stundenzeiten:getAll', () => {
-    return db.prepare('SELECT * FROM stundenzeiten ORDER BY stunde').all()
-  })
-
-  ipcMain.handle('stundenzeiten:update', (_, id, data) => {
-    db.prepare('UPDATE stundenzeiten SET beginn = ?, ende = ? WHERE id = ?').run(data.beginn, data.ende, id)
-    return true
-  })
-
-  ipcMain.handle('stundenzeiten:create', () => {
-    const max = db.prepare('SELECT MAX(stunde) as m FROM stundenzeiten').get()
-    const naechste = (max?.m ?? 0) + 1
-    const info = db.prepare('INSERT INTO stundenzeiten (stunde, beginn, ende) VALUES (?, ?, ?)').run(naechste, '00:00', '00:00')
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('stundenzeiten:delete', (_, id) => {
-    db.prepare('DELETE FROM stundenzeiten WHERE id = ?').run(id)
-    return true
-  })
-
-  // Komplette Stundenzeiten-Liste in einem Rutsch speichern.
-  // rows = [{ id?, beginn:'HH:MM', ende:'HH:MM' }] in Anzeigereihenfolge.
-  // Bestehende IDs werden per UPDATE beibehalten (damit stundenplan.stunde_id gültig bleibt);
-  // entfernte Stunden werden inkl. abhängiger stundenplan-/planungs-Zeilen kaskadiert gelöscht.
-  ipcMain.handle('stundenzeiten:saveAll', (_, rows) => {
-    const liste = Array.isArray(rows) ? rows : []
-    const tx = db.transaction(() => {
-      const existing = db.prepare('SELECT id FROM stundenzeiten').all().map(r => r.id)
-      const keepIds = new Set(liste.filter(r => r.id != null).map(r => r.id))
-
-      // Entfernte Stunden inkl. Referenzen löschen (foreign_keys = ON, stundenplan kein CASCADE)
-      const entfernt = existing.filter(id => !keepIds.has(id))
-      const delPlanung = db.prepare('DELETE FROM stunden_planung WHERE stundenplan_id IN (SELECT id FROM stundenplan WHERE stunde_id = ?)')
-      const delPlan    = db.prepare('DELETE FROM stundenplan WHERE stunde_id = ?')
-      const delZeit    = db.prepare('DELETE FROM stundenzeiten WHERE id = ?')
-      for (const id of entfernt) {
-        try { delPlanung.run(id) } catch (e) { logError('stundenzeiten:speichern stunden_planung', e) }
-        delPlan.run(id)          // supplierstunden.stunde_id kaskadiert über stundenzeiten
-        delZeit.run(id)          // supplierstunden ON DELETE CASCADE
-      }
-
-      // Upsert in Reihenfolge; stunde durchgehend 1..N neu vergeben
-      const upd = db.prepare('UPDATE stundenzeiten SET stunde = ?, beginn = ?, ende = ? WHERE id = ?')
-      const ins = db.prepare('INSERT INTO stundenzeiten (stunde, beginn, ende) VALUES (?, ?, ?)')
-      const existingSet = new Set(existing)
-      liste.forEach((r, i) => {
-        const nr = i + 1
-        if (r.id != null && existingSet.has(r.id)) {
-          upd.run(nr, r.beginn, r.ende, r.id)
-        } else {
-          ins.run(nr, r.beginn, r.ende)
-        }
-      })
-    })
-    tx()
-    return db.prepare('SELECT * FROM stundenzeiten ORDER BY stunde').all()
-  })
+  ipcMain.handle('stundenzeiten:getAll', () => stundenzeitenDomain.getAll(db))
+  ipcMain.handle('stundenzeiten:update', (_, id, data) => stundenzeitenDomain.update(db, id, data))
+  ipcMain.handle('stundenzeiten:create', () => stundenzeitenDomain.create(db))
+  ipcMain.handle('stundenzeiten:delete', (_, id) => stundenzeitenDomain.remove(db, id))
+  ipcMain.handle('stundenzeiten:saveAll', (_, rows) => stundenzeitenDomain.saveAll(db, kernDeps, rows))
 
   // Stundenplan
   ipcMain.handle('stundenplan:getAll', () => {
