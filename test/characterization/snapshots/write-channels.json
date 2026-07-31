@@ -1,0 +1,748 @@
+{
+  "einstellungen:set": {
+    "ret": true,
+    "state": {
+      "einstellungen": [
+        {
+          "schluessel": "planung_aktiv",
+          "wert": "1"
+        },
+        {
+          "schluessel": "bundesland",
+          "wert": "W"
+        },
+        {
+          "schluessel": "wetter_aktiv",
+          "wert": "0"
+        },
+        {
+          "schluessel": "zn_gewichtung_sn1",
+          "wert": "50"
+        },
+        {
+          "schluessel": "theme",
+          "wert": "dark"
+        }
+      ]
+    }
+  },
+  "klassen:create": {
+    "ret": 5,
+    "state": {
+      "klassen": [
+        {
+          "id": 1,
+          "schuljahr_id": 1,
+          "name": "1A",
+          "reihenfolge": 1,
+          "farbe": "#fb6936",
+          "teams_link": null,
+          "sortierung": "nachname",
+          "ist_kv": 1,
+          "ist_vorlage": 0
+        },
+        {
+          "id": 2,
+          "schuljahr_id": 1,
+          "name": "2B",
+          "reihenfolge": 2,
+          "farbe": "#34d399",
+          "teams_link": null,
+          "sortierung": "vorname",
+          "ist_kv": 0,
+          "ist_vorlage": 0
+        },
+        {
+          "id": 3,
+          "schuljahr_id": 1,
+          "name": "3C",
+          "reihenfolge": 3,
+          "farbe": null,
+          "teams_link": null,
+          "sortierung": "nachname",
+          "ist_kv": 0,
+          "ist_vorlage": 0
+        },
+        {
+          "id": 4,
+          "schuljahr_id": 1,
+          "name": "Vorlage Musik",
+          "reihenfolge": 9,
+          "farbe": null,
+          "teams_link": null,
+          "sortierung": "nachname",
+          "ist_kv": 0,
+          "ist_vorlage": 1
+        },
+        {
+          "id": 5,
+          "schuljahr_id": 1,
+          "name": "4D",
+          "reihenfolge": 10,
+          "farbe": "#22d3ee",
+          "teams_link": null,
+          "sortierung": "nachname",
+          "ist_kv": 0,
+          "ist_vorlage": 0
+        }
+      ]
+    }
+  },
+  "klassen:delete (Kaskade)": {
+    "ret": true,
+    "state": {
+      "klassen": [
+        {
+          "id": 2,
+          "schuljahr_id": 1,
+          "name": "2B",
+          "reihenfolge": 2,
+          "farbe": "#34d399",
+          "teams_link": null,
+          "sortierung": "vorname",
+          "ist_kv": 0,
+          "ist_vorlage": 0
+        },
+        {
+          "id": 3,
+          "schuljahr_id": 1,
+          "name": "3C",
+          "reihenfolge": 3,
+          "farbe": null,
+          "teams_link": null,
+          "sortierung": "nachname",
+          "ist_kv": 0,
+          "ist_vorlage": 0
+        },
+        {
+          "id": 4,
+          "schuljahr_id": 1,
+          "name": "Vorlage Musik",
+          "reihenfolge": 9,
+          "farbe": null,
+          "teams_link": null,
+          "sortierung": "nachname",
+          "ist_kv": 0,
+          "ist_vorlage": 1
+        }
+      ],
+      "faecher": [
+        {
+          "id": 3,
+          "klasse_id": 2,
+          "name": "Musik",
+          "reihenfolge": 1,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 1
+        }
+      ],
+      "schueler": [],
+      "eintraege": [],
+      "zeugnisnoten": [],
+      "notizen": []
+    }
+  },
+  "faecher:create": {
+    "ret": 4,
+    "state": {
+      "faecher": [
+        {
+          "id": 1,
+          "klasse_id": 1,
+          "name": "Deutsch",
+          "reihenfolge": 1,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 1
+        },
+        {
+          "id": 2,
+          "klasse_id": 1,
+          "name": "Mathematik",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 1
+        },
+        {
+          "id": 3,
+          "klasse_id": 2,
+          "name": "Musik",
+          "reihenfolge": 1,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 1
+        },
+        {
+          "id": 4,
+          "klasse_id": 1,
+          "name": "Englisch",
+          "reihenfolge": 3,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 1
+        }
+      ]
+    }
+  },
+  "schueler:create": {
+    "ret": 7,
+    "state": {
+      "schueler": [
+        {
+          "id": 1,
+          "klasse_id": 1,
+          "vorname": "Anna",
+          "nachname": "Bauer",
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null
+        },
+        {
+          "id": 2,
+          "klasse_id": 1,
+          "vorname": "Ben",
+          "nachname": "Auer",
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null
+        },
+        {
+          "id": 3,
+          "klasse_id": 1,
+          "vorname": "Clara",
+          "nachname": "Zimmermann",
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 1,
+          "vorname": "David",
+          "nachname": "Müller",
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null
+        },
+        {
+          "id": 5,
+          "klasse_id": 1,
+          "vorname": "Emma",
+          "nachname": "Auer",
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null
+        },
+        {
+          "id": 6,
+          "klasse_id": 1,
+          "vorname": "Felix",
+          "nachname": "Xaver",
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null
+        },
+        {
+          "id": 7,
+          "klasse_id": 1,
+          "vorname": "Greta",
+          "nachname": "Novak",
+          "reihenfolge": 7,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null
+        }
+      ],
+      "fach_schueler": []
+    }
+  },
+  "spalten:create": {
+    "ret": 3,
+    "state": {
+      "spalten": [
+        {
+          "id": 1,
+          "fach_id": 1,
+          "semester": 1,
+          "kategorie": "SA",
+          "kuerzel": "SA1",
+          "datum": "2025-10-15",
+          "reihenfolge": 1,
+          "eingeklappt": 0,
+          "notiz": null
+        },
+        {
+          "id": 2,
+          "fach_id": 1,
+          "semester": 1,
+          "kategorie": "T",
+          "kuerzel": "T1",
+          "datum": "2025-11-20",
+          "reihenfolge": 2,
+          "eingeklappt": 0,
+          "notiz": null
+        },
+        {
+          "id": 3,
+          "fach_id": 1,
+          "semester": 2,
+          "kategorie": "SA",
+          "kuerzel": "SA2",
+          "datum": "2026-03-10",
+          "reihenfolge": 1,
+          "eingeklappt": 0,
+          "notiz": null
+        }
+      ]
+    }
+  },
+  "eintraege:set (neu)": {
+    "ret": true,
+    "state": {
+      "eintraege": [
+        {
+          "id": 1,
+          "spalte_id": 1,
+          "schueler_id": 1,
+          "wert": "2",
+          "kommentar": null
+        },
+        {
+          "id": 2,
+          "spalte_id": 1,
+          "schueler_id": 2,
+          "wert": "3",
+          "kommentar": null
+        },
+        {
+          "id": 3,
+          "spalte_id": 2,
+          "schueler_id": 1,
+          "wert": "1",
+          "kommentar": null
+        },
+        {
+          "id": 4,
+          "spalte_id": 1,
+          "schueler_id": 3,
+          "wert": "4",
+          "kommentar": null
+        }
+      ],
+      "eintraege_verlauf": [
+        {
+          "id": 1,
+          "fach_id": 1,
+          "spalte_id": 1,
+          "schueler_id": 3,
+          "wert_alt": null,
+          "wert_neu": "4",
+          "kommentar_alt": null,
+          "kommentar_neu": null,
+          "zeitstempel": "<TS>",
+          "aktion": "aenderung"
+        }
+      ]
+    }
+  },
+  "eintraege:set (update)": {
+    "ret": true,
+    "state": {
+      "eintraege": [
+        {
+          "id": 1,
+          "spalte_id": 1,
+          "schueler_id": 1,
+          "wert": "1",
+          "kommentar": null
+        },
+        {
+          "id": 2,
+          "spalte_id": 1,
+          "schueler_id": 2,
+          "wert": "3",
+          "kommentar": null
+        },
+        {
+          "id": 3,
+          "spalte_id": 2,
+          "schueler_id": 1,
+          "wert": "1",
+          "kommentar": null
+        }
+      ],
+      "eintraege_verlauf": [
+        {
+          "id": 1,
+          "fach_id": 1,
+          "spalte_id": 1,
+          "schueler_id": 1,
+          "wert_alt": "2",
+          "wert_neu": "1",
+          "kommentar_alt": null,
+          "kommentar_neu": null,
+          "zeitstempel": "<TS>",
+          "aktion": "aenderung"
+        }
+      ]
+    }
+  },
+  "notizen:set": {
+    "ret": true,
+    "state": {
+      "notizen": [
+        {
+          "id": 1,
+          "schueler_id": 1,
+          "fach_id": 1,
+          "text": "Sehr engagiert, liest gern vor."
+        },
+        {
+          "id": 2,
+          "schueler_id": 2,
+          "fach_id": 1,
+          "text": "Braucht Unterstützung bei Rechtschreibung."
+        },
+        {
+          "id": 3,
+          "schueler_id": 3,
+          "fach_id": 1,
+          "text": "Fleißig im Unterricht."
+        }
+      ]
+    }
+  },
+  "niveau:set": {
+    "ret": true,
+    "state": {
+      "schueler_niveau": [
+        {
+          "fach_id": 1,
+          "schueler_id": 1,
+          "niveau": "AHS"
+        },
+        {
+          "fach_id": 1,
+          "schueler_id": 2,
+          "niveau": "ST"
+        },
+        {
+          "fach_id": 1,
+          "schueler_id": 3,
+          "niveau": "ST"
+        }
+      ],
+      "schueler_niveau_historie": [
+        {
+          "id": 1,
+          "fach_id": 1,
+          "schueler_id": 2,
+          "niveau": "AHS",
+          "gueltig_ab": "2025-09-08"
+        },
+        {
+          "id": 2,
+          "fach_id": 1,
+          "schueler_id": 2,
+          "niveau": "ST",
+          "gueltig_ab": "2026-02-01"
+        },
+        {
+          "id": 3,
+          "fach_id": 1,
+          "schueler_id": 3,
+          "niveau": "AHS",
+          "gueltig_ab": "1900-01-01"
+        },
+        {
+          "id": 4,
+          "fach_id": 1,
+          "schueler_id": 3,
+          "niveau": "ST",
+          "gueltig_ab": "2026-02-01"
+        }
+      ]
+    }
+  },
+  "termine:create": {
+    "ret": 3,
+    "state": {
+      "termine": [
+        {
+          "id": 1,
+          "titel": "Elternabend",
+          "datum": "2025-10-20",
+          "uhrzeit": "18:00",
+          "notiz": "Aula",
+          "klasse_id": 1,
+          "schuljahr_id": 1,
+          "stunde_id": null,
+          "bis_uhrzeit": "19:30"
+        },
+        {
+          "id": 2,
+          "titel": "Wandertag",
+          "datum": "2025-10-05",
+          "uhrzeit": null,
+          "notiz": null,
+          "klasse_id": 1,
+          "schuljahr_id": 1,
+          "stunde_id": 2,
+          "bis_uhrzeit": null
+        },
+        {
+          "id": 3,
+          "titel": "Sprechtag",
+          "datum": "2025-12-01",
+          "uhrzeit": "10:00",
+          "notiz": null,
+          "klasse_id": 1,
+          "schuljahr_id": 1,
+          "stunde_id": null,
+          "bis_uhrzeit": "11:00"
+        }
+      ]
+    }
+  },
+  "termine:update": {
+    "ret": true,
+    "state": {
+      "termine": [
+        {
+          "id": 1,
+          "titel": "Elternabend (verschoben)",
+          "datum": "2025-10-21",
+          "uhrzeit": "18:30",
+          "notiz": "Aula",
+          "klasse_id": 1,
+          "schuljahr_id": 1,
+          "stunde_id": null,
+          "bis_uhrzeit": "20:00"
+        },
+        {
+          "id": 2,
+          "titel": "Wandertag",
+          "datum": "2025-10-05",
+          "uhrzeit": null,
+          "notiz": null,
+          "klasse_id": 1,
+          "schuljahr_id": 1,
+          "stunde_id": 2,
+          "bis_uhrzeit": null
+        }
+      ]
+    }
+  },
+  "todos:create": {
+    "ret": 3,
+    "state": {
+      "todos": [
+        {
+          "id": 1,
+          "titel": "Schularbeiten korrigieren",
+          "erledigt": 0,
+          "klasse_id": 1,
+          "fach_id": 1,
+          "faelligkeit": "2025-10-16",
+          "erinnerung": "2025-10-15",
+          "reihenfolge": 1
+        },
+        {
+          "id": 2,
+          "titel": "Materialien kopieren",
+          "erledigt": 0,
+          "klasse_id": 1,
+          "fach_id": 1,
+          "faelligkeit": "2025-10-10",
+          "erinnerung": null,
+          "reihenfolge": 2
+        },
+        {
+          "id": 3,
+          "titel": "Kopien vorbereiten",
+          "erledigt": 0,
+          "klasse_id": 1,
+          "fach_id": 1,
+          "faelligkeit": "2025-11-01",
+          "erinnerung": null,
+          "reihenfolge": 3
+        }
+      ]
+    }
+  },
+  "todos:toggleErledigt": {
+    "ret": true,
+    "state": {
+      "todos": [
+        {
+          "id": 1,
+          "titel": "Schularbeiten korrigieren",
+          "erledigt": 1,
+          "klasse_id": 1,
+          "fach_id": 1,
+          "faelligkeit": "2025-10-16",
+          "erinnerung": "2025-10-15",
+          "reihenfolge": 1
+        },
+        {
+          "id": 2,
+          "titel": "Materialien kopieren",
+          "erledigt": 0,
+          "klasse_id": 1,
+          "fach_id": 1,
+          "faelligkeit": "2025-10-10",
+          "erinnerung": null,
+          "reihenfolge": 2
+        }
+      ]
+    }
+  },
+  "stundenplan:create": {
+    "ret": 5,
+    "state": {
+      "stundenplan": [
+        {
+          "id": 1,
+          "wochentag": 1,
+          "stunde_id": 1,
+          "fach_id": 1,
+          "wochen_intervall": 1,
+          "anker_datum": null
+        },
+        {
+          "id": 2,
+          "wochentag": 1,
+          "stunde_id": 2,
+          "fach_id": 2,
+          "wochen_intervall": 1,
+          "anker_datum": null
+        },
+        {
+          "id": 3,
+          "wochentag": 2,
+          "stunde_id": 1,
+          "fach_id": 1,
+          "wochen_intervall": 1,
+          "anker_datum": null
+        },
+        {
+          "id": 4,
+          "wochentag": 3,
+          "stunde_id": 3,
+          "fach_id": 2,
+          "wochen_intervall": 2,
+          "anker_datum": "2025-09-08"
+        },
+        {
+          "id": 5,
+          "wochentag": 4,
+          "stunde_id": 2,
+          "fach_id": 1,
+          "wochen_intervall": 1,
+          "anker_datum": null
+        }
+      ]
+    }
+  },
+  "stundenplan:verschieben (Tausch)": {
+    "ret": true,
+    "state": {
+      "stundenplan": [
+        {
+          "id": 1,
+          "wochentag": 1,
+          "stunde_id": 2,
+          "fach_id": 1,
+          "wochen_intervall": 1,
+          "anker_datum": null
+        },
+        {
+          "id": 2,
+          "wochentag": 1,
+          "stunde_id": 1,
+          "fach_id": 2,
+          "wochen_intervall": 1,
+          "anker_datum": null
+        },
+        {
+          "id": 3,
+          "wochentag": 2,
+          "stunde_id": 1,
+          "fach_id": 1,
+          "wochen_intervall": 1,
+          "anker_datum": null
+        },
+        {
+          "id": 4,
+          "wochentag": 3,
+          "stunde_id": 3,
+          "fach_id": 2,
+          "wochen_intervall": 2,
+          "anker_datum": "2025-09-08"
+        }
+      ]
+    }
+  }
+}

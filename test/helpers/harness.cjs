@@ -29,11 +29,20 @@ const { createElectronStub, makeNoop } = require('./electron-stub.cjs')
 
 const MAIN_PATH = require.resolve('../../main.js')
 
+// Reale better-sqlite3-Klasse einmalig holen und um Instanz-Tracking erweitern,
+// damit der Harness die von main.js geöffnete Verbindung sauber schließen kann
+// (nötig, um bei wiederholter Nutzung Temp-DBs unter Windows wieder zu löschen).
+const RealDatabase = require('better-sqlite3')
+
 async function createHarness({ seedSql = null } = {}) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'daskala-char-'))
   const handlers = new Map()
   const electronStub = createElectronStub({ userDataPath: tmpDir, handlers })
   const updaterStub = { autoUpdater: makeNoop() }
+  const openedDbs = []
+  class TrackedDatabase extends RealDatabase {
+    constructor(...args) { super(...args); openedDbs.push(this) }
+  }
 
   // Post-registerIPC-Lifecycle (createWindow/Menu/AutoUpdate) darf mit den Stubs
   // scheitern, ohne den Test zu killen – die Handler sind da bereits eingefangen.
@@ -44,6 +53,7 @@ async function createHarness({ seedSql = null } = {}) {
   Module._load = function (request) {
     if (request === 'electron') return electronStub
     if (request === 'electron-updater') return updaterStub
+    if (request === 'better-sqlite3') return TrackedDatabase
     return origLoad.apply(this, arguments)
   }
 
@@ -65,8 +75,7 @@ async function createHarness({ seedSql = null } = {}) {
 
   // Seed über eine eigene Verbindung (WAL → für main.js-Verbindung sichtbar).
   if (seedSql) {
-    const Database = require('better-sqlite3')
-    const seedDb = new Database(dbPath)
+    const seedDb = new RealDatabase(dbPath)
     seedDb.pragma('foreign_keys = ON')
     seedDb.exec(seedSql)
     seedDb.close()
@@ -78,13 +87,40 @@ async function createHarness({ seedSql = null } = {}) {
     return await fn({}, ...args)
   }
 
+  // Liest den Zustand der angegebenen Tabellen deterministisch (für Schreib-Kanal-
+  // Snapshots). Zeitstempel-Spalten werden auf '<TS>' normalisiert, damit
+  // datetime('now')-Defaults die Snapshots nicht unbestimmt machen.
+  const TS_SPALTEN = /^(zeitstempel|aktualisiert|erstellt_am|reagiert_am|erledigt_am)$/
+  function snapshotTables(namen) {
+    const rdb = new RealDatabase(dbPath, { readonly: true })
+    try {
+      const out = {}
+      for (const name of namen) {
+        const rows = rdb.prepare(`SELECT * FROM ${name}`).all()
+        // Nach rowid/erster Spalte stabil sortieren (SELECT * ist bereits rowid-Reihenfolge,
+        // aber wir sichern es über die id-Spalte, falls vorhanden).
+        rows.sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+        for (const row of rows) {
+          for (const k of Object.keys(row)) {
+            if (TS_SPALTEN.test(k) && row[k] != null) row[k] = '<TS>'
+          }
+        }
+        out[name] = rows
+      }
+      return out
+    } finally {
+      rdb.close()
+    }
+  }
+
   function cleanup() {
     process.off('unhandledRejection', onUnhandled)
+    for (const db of openedDbs) { try { db.close() } catch { /* egal */ } }
     delete require.cache[MAIN_PATH]
     try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch { /* egal */ }
   }
 
-  return { callHandler, handlers, dbPath, tmpDir, cleanup }
+  return { callHandler, handlers, dbPath, tmpDir, cleanup, snapshotTables }
 }
 
 // Liest das Seed-SQL aus test/fixtures/seed.sql (oder null, wenn nicht vorhanden).
