@@ -19,6 +19,8 @@ const niveauDomain = require('./core/domain/niveau')
 const faecherDomain = require('./core/domain/faecher')
 const schuelerDomain = require('./core/domain/schueler')
 const kompetenzenDomain = require('./core/domain/kompetenzen')
+const spaltenDomain = require('./core/domain/spalten')
+const eintraegeDomain = require('./core/domain/eintraege')
 
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -1592,7 +1594,7 @@ function registerIPC() {
   // modulweite (pushUndo/…) UND in registerIPC verschachtelte Funktionen
   // (materialRoot/verschiebeDir/sanitizeSegment) – hier sind alle im Scope
   // (Funktionsdeklarationen sind an den Anfang von registerIPC gehoisted).
-  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, berechneAlleFuerFach, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment, rosterIdsFuerFach, initKompetenzVorlagen }
+  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, berechneAlleFuerFach, berechneZeugnisnote, berechneEndnote, pruefeNotenTrigger, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment, rosterIdsFuerFach, initKompetenzVorlagen }
 
   // Zentraler Fehler-Wrapper: fängt Ausnahmen aus ALLEN nachfolgend registrierten
   // Handlern ab, protokolliert sie mit Kanalnamen und reicht sie als abgelehntes
@@ -1685,152 +1687,20 @@ function registerIPC() {
   })
 
   // Spalten
-  ipcMain.handle('spalten:getAll', (_, fachId) => {
-    return db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge, datum').all(fachId)
-  })
-
-  ipcMain.handle('spalten:create', (_, data) => {
-    const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM spalten WHERE fach_id = ? AND semester = ?').get(data.fachId, data.semester)?.m ?? 0
-    const info = db.prepare(`
-      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('spalten:delete', (_, id) => {
-    const betroffene = db.prepare('SELECT spalte_id, schueler_id, wert, kommentar FROM eintraege WHERE spalte_id = ?').all(id)
-    if (betroffene.length > 0) {
-      const spalte = db.prepare('SELECT fach_id FROM spalten WHERE id = ?').get(id)
-      const verlaufStmt = db.prepare(`
-        INSERT INTO eintraege_verlauf (fach_id, spalte_id, schueler_id, wert_alt, wert_neu, kommentar_alt, kommentar_neu, aktion)
-        VALUES (?, ?, ?, ?, NULL, ?, NULL, 'spalte_geloescht')
-      `)
-      db.transaction(() => {
-        for (const e of betroffene) {
-          verlaufStmt.run(spalte?.fach_id ?? null, e.spalte_id, e.schueler_id, e.wert, e.kommentar)
-        }
-      })()
-    }
-    db.prepare('DELETE FROM eintraege WHERE spalte_id = ?').run(id)
-    db.prepare('DELETE FROM spalten WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('spalten:update', (_, id, data) => {
-    const old = db.prepare('SELECT kuerzel, datum, notiz FROM spalten WHERE id = ?').get(id)
-    db.prepare('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?').run(data.kuerzel, data.datum, data.notiz ?? null, id)
-    if (old) pushUndo({
-      description: 'Spalte umbenennen',
-      undo: () => db.prepare('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?').run(old.kuerzel, old.datum, old.notiz, id),
-      redo: () => db.prepare('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?').run(data.kuerzel, data.datum, data.notiz ?? null, id),
-    })
-    return true
-  })
-
-  ipcMain.handle('spalten:toggleEingeklappt', (_, id) => {
-    db.prepare('UPDATE spalten SET eingeklappt = CASE WHEN eingeklappt = 0 THEN 1 ELSE 0 END WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('spalten:setEingeklappt', (_, ids, wert) => {
-    const stmt = db.prepare('UPDATE spalten SET eingeklappt = ? WHERE id = ?')
-    const tx = db.transaction(() => {
-      for (const id of ids) stmt.run(wert ? 1 : 0, id)
-    })
-    tx()
-    return true
-  })
-
-  ipcMain.handle('spalten:sortByKategorie', (_, fachId, semester) => {
-    const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? AND semester = ? ORDER BY kategorie, datum').all(fachId, semester)
-    const stmt = db.prepare('UPDATE spalten SET reihenfolge = ? WHERE id = ?')
-    const tx = db.transaction(() => {
-      spalten.forEach((s, i) => stmt.run(i + 1, s.id))
-    })
-    tx()
-    return true
-  })
-
-  // Spalten wieder chronologisch (nach Datum) sortieren; Spalten ohne Datum ans Ende.
-  ipcMain.handle('spalten:sortChronologisch', (_, fachId, semester) => {
-    const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? AND semester = ? ORDER BY datum IS NULL, datum, id').all(fachId, semester)
-    const stmt = db.prepare('UPDATE spalten SET reihenfolge = ? WHERE id = ?')
-    const tx = db.transaction(() => {
-      spalten.forEach((s, i) => stmt.run(i + 1, s.id))
-    })
-    tx()
-    return true
-  })
+  ipcMain.handle('spalten:getAll', (_, fachId) => spaltenDomain.getAll(db, fachId))
+  ipcMain.handle('spalten:create', (_, data) => spaltenDomain.create(db, data))
+  ipcMain.handle('spalten:delete', (_, id) => spaltenDomain.remove(db, id))
+  ipcMain.handle('spalten:update', (_, id, data) => spaltenDomain.update(db, kernDeps, id, data))
+  ipcMain.handle('spalten:toggleEingeklappt', (_, id) => spaltenDomain.toggleEingeklappt(db, id))
+  ipcMain.handle('spalten:setEingeklappt', (_, ids, wert) => spaltenDomain.setEingeklappt(db, ids, wert))
+  ipcMain.handle('spalten:sortByKategorie', (_, fachId, semester) => spaltenDomain.sortByKategorie(db, fachId, semester))
+  ipcMain.handle('spalten:sortChronologisch', (_, fachId, semester) => spaltenDomain.sortChronologisch(db, fachId, semester))
 
   // Einträge
-  ipcMain.handle('eintraege:getAll', (_, fachId) => {
-    return db.prepare(`
-      SELECT e.* FROM eintraege e
-      JOIN spalten s ON e.spalte_id = s.id
-      WHERE s.fach_id = ?
-    `).all(fachId)
-  })
-
-  ipcMain.handle('eintraege:set', (_, spalteId, schuelerId, wert) => {
-    const existing = db.prepare('SELECT wert, kommentar FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').get(spalteId, schuelerId)
-    const oldWert = existing ? existing.wert : null
-    const wertAlt = existing?.wert ?? null
-    const wertNeu = wert || null
-    if (wertAlt !== wertNeu) {
-      const spalte = db.prepare('SELECT fach_id FROM spalten WHERE id = ?').get(spalteId)
-      const kommentarAlt = existing?.kommentar ?? null
-      db.prepare(`
-        INSERT INTO eintraege_verlauf (fach_id, spalte_id, schueler_id, wert_alt, wert_neu, kommentar_alt, kommentar_neu, aktion)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'aenderung')
-      `).run(spalte?.fach_id ?? null, spalteId, schuelerId, wertAlt, wertNeu, kommentarAlt, kommentarAlt)
-    }
-    const apply = (w) => {
-      const hasKommentar = !!db.prepare("SELECT 1 FROM eintraege WHERE spalte_id = ? AND schueler_id = ? AND kommentar IS NOT NULL AND kommentar != ''").get(spalteId, schuelerId)
-      if (w === '' || w === null) {
-        if (hasKommentar) {
-          db.prepare('UPDATE eintraege SET wert = NULL WHERE spalte_id = ? AND schueler_id = ?').run(spalteId, schuelerId)
-        } else {
-          db.prepare('DELETE FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').run(spalteId, schuelerId)
-        }
-      } else {
-        db.prepare('INSERT INTO eintraege (spalte_id, schueler_id, wert) VALUES (?, ?, ?) ON CONFLICT(spalte_id, schueler_id) DO UPDATE SET wert = excluded.wert').run(spalteId, schuelerId, w)
-      }
-    }
-    apply(wert)
-    pushUndo({ description: 'Eintrag', undo: () => apply(oldWert), redo: () => apply(wert) })
-    // KV-Trigger-Hook: nur wenn sich der Wert geändert hat
-    if (wertAlt !== wertNeu) {
-      try { pruefeNotenTrigger(spalteId, schuelerId, wertNeu, wertAlt) } catch (e) { console.error('[KV] pruefeNotenTrigger:', e) }
-    }
-    return true
-  })
-
-  ipcMain.handle('eintraege:setKommentar', (_, spalteId, schuelerId, kommentar) => {
-    const existing = db.prepare('SELECT wert FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').get(spalteId, schuelerId)
-    const k = kommentar?.trim() || null
-    if (existing) {
-      db.prepare('UPDATE eintraege SET kommentar = ? WHERE spalte_id = ? AND schueler_id = ?').run(k, spalteId, schuelerId)
-    } else if (k) {
-      db.prepare('INSERT INTO eintraege (spalte_id, schueler_id, wert, kommentar) VALUES (?, ?, NULL, ?)').run(spalteId, schuelerId, k)
-    }
-    return true
-  })
-
-  ipcMain.handle('verlauf:get', (_, schuelerId, fachId) => {
-    return db.prepare(`
-      SELECT
-        v.id, v.spalte_id, v.schueler_id,
-        v.wert_alt, v.wert_neu, v.kommentar_alt, v.kommentar_neu,
-        v.zeitstempel, v.aktion,
-        s.kategorie, s.kuerzel, s.datum
-      FROM eintraege_verlauf v
-      LEFT JOIN spalten s ON s.id = v.spalte_id
-      WHERE v.schueler_id = ? AND v.fach_id = ?
-      ORDER BY v.zeitstempel DESC
-      LIMIT 100
-    `).all(schuelerId, fachId)
-  })
+  ipcMain.handle('eintraege:getAll', (_, fachId) => eintraegeDomain.getAll(db, fachId))
+  ipcMain.handle('eintraege:set', (_, spalteId, schuelerId, wert) => eintraegeDomain.set(db, kernDeps, spalteId, schuelerId, wert))
+  ipcMain.handle('eintraege:setKommentar', (_, spalteId, schuelerId, kommentar) => eintraegeDomain.setKommentar(db, spalteId, schuelerId, kommentar))
+  ipcMain.handle('verlauf:get', (_, schuelerId, fachId) => eintraegeDomain.verlaufGet(db, schuelerId, fachId))
 
   // Zeugnisnoten
   ipcMain.handle('zeugnisnoten:getAll', (_, fachId) => {
