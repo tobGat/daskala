@@ -107,7 +107,8 @@ DELETE FROM stundenzeiten;
 INSERT INTO stundenzeiten (id, stunde, beginn, ende) VALUES
   (1, 1, '07:55', '08:45'),
   (2, 2, '08:50', '09:40'),
-  (3, 3, '09:55', '10:45');
+  (3, 3, '09:55', '10:45'),
+  (4, 4, '10:50', '11:40');  -- ungenutzt (für stundenzeiten:delete-Charakterisierung)
 
 -- ── Stundenplan (inkl. 14-tägiger Stunde) ───────────────────────────────────
 INSERT INTO stundenplan (id, wochentag, stunde_id, fach_id, wochen_intervall, anker_datum) VALUES
@@ -139,7 +140,8 @@ INSERT INTO custom_ferien (id, schuljahr_id, name, von, bis) VALUES
 
 -- ── Jahresplanung (Fach 1) ──────────────────────────────────────────────────
 INSERT INTO jahresplanung_abschnitte (id, fach_id, titel, inhalt, datum_von, datum_bis, farbe, reihenfolge, material_ordner, lernziele, kompetenzen) VALUES
-  (1, 1, 'Balladen', 'Balladen lesen und schreiben', '2025-10-01', '2025-10-31', '#fb6936', 1, NULL, 'Balladen erkennen', 'Lesen, Schreiben');
+  (1, 1, 'Balladen', 'Balladen lesen und schreiben', '2025-10-01', '2025-10-31', '#fb6936', 1, NULL, 'Balladen erkennen', 'Lesen, Schreiben'),
+  (2, 1, 'Sachtexte', 'Sachtexte verstehen',          '2025-11-01', '2025-11-30', '#34d399', 2, NULL, 'Informationen entnehmen', 'Lesen');
 
 -- ── Klassenvorstand (KV) ────────────────────────────────────────────────────
 -- Templates werden von initDB vorbefüllt → für feste Snapshots leeren.

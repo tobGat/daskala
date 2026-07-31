@@ -254,6 +254,12 @@
       "stunde": 3,
       "beginn": "09:55",
       "ende": "10:45"
+    },
+    {
+      "id": 4,
+      "stunde": 4,
+      "beginn": "10:50",
+      "ende": "11:40"
     }
   ],
   "stundenplan:getAll": [
@@ -392,6 +398,19 @@
       "material_ordner": null,
       "lernziele": "Balladen erkennen",
       "kompetenzen": "Lesen, Schreiben"
+    },
+    {
+      "id": 2,
+      "fach_id": 1,
+      "titel": "Sachtexte",
+      "inhalt": "Sachtexte verstehen",
+      "datum_von": "2025-11-01",
+      "datum_bis": "2025-11-30",
+      "farbe": "#34d399",
+      "reihenfolge": 2,
+      "material_ordner": null,
+      "lernziele": "Informationen entnehmen",
+      "kompetenzen": "Lesen"
     }
   ],
   "einstellungen:get": "light",
@@ -660,7 +679,7 @@
       "klasse_name": "1A",
       "klasse_id": 1,
       "ist_vorlage": 0,
-      "abschnitt_anzahl": 1
+      "abschnitt_anzahl": 2
     }
   ],
   "materialien:getRoot": null,

@@ -1,70 +1,49 @@
 # Charakterisierungs-Abdeckung (Phase 0)
 
-Stand-Übersicht, welche der **207 IPC-Kanäle** durch Charakterisierungstests
-abgesichert sind. Ziel für Checkpoint 0: jeder Kanal ist entweder **abgedeckt**
-oder **bewusst ausgeschlossen** (mit Grund). Kein stiller blinder Fleck.
+Übersicht, welche der **207 IPC-Kanäle** abgesichert sind. Der Abdeckungs-Wächter
+`coverage.test.cjs` erzwingt: **jeder Kanal ist entweder charakterisiert oder mit
+Grund ausgeschlossen** – ein neuer, nicht abgesicherter Kanal lässt den Test
+fehlschlagen. Kein stiller blinder Fleck.
 
 Ausführen: `npm run test:core` · Neu einfrieren: `npm run test:core:update`
 
 ## Zusammenfassung
 
-| Kategorie | Kanäle | abgedeckt | offen | ausgeschlossen |
-|---|---:|---:|---:|---:|
-| READ    | 54  | **50** | 0 | 4 |
-| WRITE   | 143 | **16** | ~113 | 14 |
-| EXPORT  | 10  | 0 | 0 | 10 |
-| **Summe** | **207** | **66** | ~113 | 28 |
+| | abgedeckt | ausgeschlossen | Summe |
+|---|---:|---:|---:|
+| READ  | 50  | 4  | 54 |
+| WRITE | 108 | 35 | 143 |
+| EXPORT| 0   | 10 | 10 |
+| **Summe** | **158** | **49** | **207** |
 
-## READ – 50 abgedeckt
+- **READ (50):** `read-channels.test.cjs` – Rückgabewert-Snapshots über alle Domänen
+  (Kern, Fächer, Schüler:innen inkl. Leistungsprofil, Noten/Zeugnis, Niveau,
+  Kompetenzen, Stundenplan + Wochen-Planung, Supplierstunden, Todos, Termine,
+  Ferien, Jahresplanung, Sitzplan, **alle KV-Reads**).
+- **WRITE (108):** `write-channels.test.cjs` – DB-Zustand-Snapshots nach dem Aufruf
+  (Zeitstempel normalisiert), inkl. Sonderfälle `klassen:delete` (Kaskade),
+  `stundenplan:verschieben` (Tausch), `niveau:set` (Historie), `klassen:duplizieren`,
+  `jahresplanung:importVonFach`/`anwendenAufFaecher`, `schueler:importBatch`,
+  `stundenzeiten:saveAll`, `noten:rechneAllesNeu`, `undo:*`.
 
-Siehe `read-channels.test.cjs`. Abgedeckt sind u. a. alle `getAll`/`get`-Kanäle der
-Domänen Einstellungen, Schuljahre, Klassen, Fächer, Schüler:innen (inkl.
-Leistungsprofil), Spalten, Einträge, Verlauf, Zeugnisnoten, Notizen, Gewichtung,
-Niveau (+Historie), Kompetenzen, Stundenzeiten/-plan, Wochen-Planung (get/getWoche/
-getHueWoche/checkMusizieren), Supplierstunden, Todos, Termine, Ferien, Jahresplanung,
-Sitzplan sowie **alle KV-Reads** und `update:pruefen`.
+## Ausgeschlossen (49, mit Grund)
 
-### READ ausgeschlossen (4)
+Kanäle, die nicht mit dem Datenmodell interagieren, sondern mit Dialog,
+Dateisystem, System oder Netzwerk – für die Datenintegrität des Umbaus nicht
+relevant (Liste + Gründe in `coverage.test.cjs`):
 
-| Kanal | Grund |
-|---|---|
-| `wetter:getWoche` | Netzwerkabruf (open-meteo) – nicht deterministisch |
-| `backup:getList` | liest Dateisystem-Backupverzeichnis |
-| `backup:liste` | liest Dateisystem-Backupverzeichnis |
-| `sperre:pruefe` | PIN-Prüfung; separat abzusichern |
+- **Export (11):** alle `export:*` + `schueler:exportProfilPDF` – erzeugen Dateien.
+- **Materialien (8):** `materialien:*` – Dateisystem/Explorer.
+- **Backup (10):** `backup:*` – Dateisystem/Dialog.
+- **Sperre (5):** `sperre:*` – Authentifizierung (separat abzusichern).
+- **Dialog/Datei (7):** `db:saveAs/open`, `dialog:*`, `datei:speichereText`,
+  `import:schuelerFromFile`, `jahresplanung:importVonDatei`.
+- **System/Netzwerk (7):** `shell:open`, `app:clipboard/reset/version`,
+  `update:installieren`, `wetter:getWoche/sucheOrt`.
+- **Spezialfall (1):** `jahresabschluss:neuesSchuljahr` – umfangreicher
+  Schuljahreswechsel; verdient einen eigenen, gezielten Test (Phase 1).
 
-## WRITE – 16 abgedeckt, ~113 offen
+## Laufzeit
 
-Abgedeckt (`write-channels.test.cjs`, DB-Zustand-Snapshots inkl. Sonderfälle):
-`einstellungen:set`, `klassen:create`, `klassen:delete` (Kaskade), `faecher:create`,
-`schueler:create`, `spalten:create`, `eintraege:set` (neu/update), `notizen:set`,
-`niveau:set` (Historie), `termine:create`/`update`, `todos:create`/`toggleErledigt`,
-`stundenplan:create`, `stundenplan:verschieben` (Tausch).
-
-**Offen (~113):** die übrigen CRUD-/Status-Kanäle der Domänen faecher, schueler,
-spalten, zeugnisnoten, kompetenzen, niveau, stundenzeiten/-plan, stundenPlanung,
-supplierstunden, todos, termine, customFerien, jahresplanung, sitzplan, gewichtung,
-schuljahre/klassen (rename/setFarbe/reorder/…) und der gesamte **KV-Schreibblock**;
-dazu die Sonderfälle `jahresabschluss:neuesSchuljahr`, `noten:rechneAllesNeu`,
-`undo:execute/redo/state`. → nächster Arbeitsschritt.
-
-### WRITE ausgeschlossen (14 – Dialog/Dateisystem/System/Netzwerk)
-
-`shell:open`, `app:clipboard`, `app:reset`, `db:saveAs`, `db:open`,
-`dialog:openFile`, `dialog:saveFile`, `datei:speichereText`,
-`import:schuelerFromFile`, `schueler:exportProfilPDF`, `backup:waehleOrdner`,
-`materialien:*` (Dateisystem/Explorer), `wetter:sucheOrt` (Netzwerk),
-`sperre:setPin/deaktivieren/setGesperrt` – interagieren mit Electron-Dialogen,
-Dateisystem oder Netzwerk, nicht mit dem Datenmodell.
-
-## EXPORT – 10 offen/ausgeschlossen
-
-`export:*` erzeugen Dateien (PDF/ODS/ODT/DOCX/JSON) über Datei-Dialog + printToPDF.
-Für die Datenintegrität des Umbaus zweitrangig; ggf. später ein „läuft ohne Fehler"-
-Smoke. `export:toJson` (reine Serialisierung der DB) ist ein Kandidat für echte
-Charakterisierung.
-
----
-
-Diese Übersicht wird bei Checkpoint 0 in einen **fehlschlagenden** Test überführt
-(jeder nicht gelistete neue Kanal bricht die Abdeckung), sobald WRITE vollständig ist.
+Alle Charakterisierungstests laufen unter **Electron-as-Node**
+(`ELECTRON_RUN_AS_NODE=1`, better-sqlite3-ABI). In CI: Job `characterization`.

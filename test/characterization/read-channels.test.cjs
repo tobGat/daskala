@@ -98,7 +98,8 @@ after(() => {
 
 for (const c of CASES) {
   test(c.channel, async () => {
-    const actual = await h.callHandler(c.channel, ...c.args)
+    // JSON-Roundtrip: verwirft undefined-Properties konsistent mit dem Snapshot.
+    const actual = JSON.parse(JSON.stringify(await h.callHandler(c.channel, ...c.args) ?? null))
     if (UPDATE) { erzeugt[c.channel] = actual; return }
     const expected = JSON.parse(fs.readFileSync(SNAP_PATH, 'utf8'))
     assert.deepStrictEqual(actual, expected[c.channel])
