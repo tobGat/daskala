@@ -15,6 +15,7 @@ const termineDomain = require('./core/domain/termine')
 const todosDomain = require('./core/domain/todos')
 const gewichtungDomain = require('./core/domain/gewichtung')
 const klassenDomain = require('./core/domain/klassen')
+const niveauDomain = require('./core/domain/niveau')
 
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -1588,7 +1589,7 @@ function registerIPC() {
   // modulweite (pushUndo/…) UND in registerIPC verschachtelte Funktionen
   // (materialRoot/verschiebeDir/sanitizeSegment) – hier sind alle im Scope
   // (Funktionsdeklarationen sind an den Anfang von registerIPC gehoisted).
-  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment }
+  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, berechneAlleFuerFach, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment }
 
   // Zentraler Fehler-Wrapper: fängt Ausnahmen aus ALLEN nachfolgend registrierten
   // Handlern ab, protokolliert sie mit Kanalnamen und reicht sie als abgelehntes
@@ -1771,97 +1772,10 @@ function registerIPC() {
   })
 
   // Niveau (AHS/ST-Differenzierung)
-  ipcMain.handle('niveau:get', (_, fachId) => {
-    const rows = db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fachId)
-    const map = {}
-    for (const r of rows) map[r.schueler_id] = r.niveau
-    return map
-  })
-
-  // Niveau setzen — mit optionalem Datum für rückwirkenden oder zukünftigen Wechsel.
-  // Ohne datum: gilt ab heute. Schreibt in beide Tabellen (aktueller Stand + Historie).
-  ipcMain.handle('niveau:set', (_, fachId, schuelerId, niveau, datum) => {
-    const gueltigAb = datum || new Date().toISOString().slice(0, 10)
-    db.transaction(() => {
-      // Aktuellen Stand aktualisieren (nur wenn der Wechsel "jetzt oder früher" gilt)
-      const heute = new Date().toISOString().slice(0, 10)
-      if (gueltigAb <= heute) {
-        db.prepare(`
-          INSERT INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)
-          ON CONFLICT(fach_id, schueler_id) DO UPDATE SET niveau = excluded.niveau
-        `).run(fachId, schuelerId, niveau)
-      }
-      // Sicherstellen, dass es einen Initial-Historien-Eintrag gibt (1900-01-01) — sonst
-      // wären Einträge vor dem Wechseldatum ohne Niveau-Zuordnung.
-      const hatInitial = db.prepare(`
-        SELECT 1 FROM schueler_niveau_historie
-        WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = '1900-01-01'
-      `).get(fachId, schuelerId)
-      if (!hatInitial) {
-        // Erst-Wechsel: vorheriges Niveau (Default AHS) als Initial setzen
-        const altNiveau = niveau === 'AHS' ? 'ST' : 'AHS'
-        db.prepare(`
-          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
-          VALUES (?, ?, ?, '1900-01-01')
-        `).run(fachId, schuelerId, altNiveau)
-      }
-      // Existierenden Eintrag mit dem gleichen gueltig_ab überschreiben (idempotent)
-      const existiert = db.prepare(`
-        SELECT id FROM schueler_niveau_historie
-        WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = ?
-      `).get(fachId, schuelerId, gueltigAb)
-      if (existiert) {
-        db.prepare('UPDATE schueler_niveau_historie SET niveau = ? WHERE id = ?').run(niveau, existiert.id)
-      } else {
-        db.prepare(`
-          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
-          VALUES (?, ?, ?, ?)
-        `).run(fachId, schuelerId, niveau, gueltigAb)
-      }
-    })()
-    berechneAlleFuerFach(fachId)
-    return true
-  })
-
-  // Historie aller Niveau-Wechsel für ein Fach (für Renderer: Zellen-Hintergrundfarbe)
-  // Rückgabe: { schuelerId: [{ niveau, gueltig_ab }, ...] } absteigend nach Datum
-  ipcMain.handle('niveau:getHistorie', (_, fachId) => {
-    const rows = db.prepare(`
-      SELECT schueler_id, niveau, gueltig_ab FROM schueler_niveau_historie
-      WHERE fach_id = ?
-      ORDER BY schueler_id, gueltig_ab DESC, id DESC
-    `).all(fachId)
-    const map = {}
-    for (const r of rows) {
-      if (!map[r.schueler_id]) map[r.schueler_id] = []
-      map[r.schueler_id].push({ niveau: r.niveau, gueltig_ab: r.gueltig_ab })
-    }
-    return map
-  })
-
-  // Einen einzelnen Historien-Eintrag löschen (z.B. versehentlich erstellter Wechsel)
-  ipcMain.handle('niveau:deleteHistorie', (_, fachId, schuelerId, gueltigAb) => {
-    // Initial-Eintrag '1900-01-01' nicht löschbar — er ist der Anker
-    if (gueltigAb === '1900-01-01') return false
-    db.prepare(`
-      DELETE FROM schueler_niveau_historie
-      WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = ?
-    `).run(fachId, schuelerId, gueltigAb)
-    // Aktuellen Stand neu setzen aus dem jüngsten verbleibenden Eintrag
-    const aktuell = db.prepare(`
-      SELECT niveau FROM schueler_niveau_historie
-      WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab <= ?
-      ORDER BY gueltig_ab DESC, id DESC LIMIT 1
-    `).get(fachId, schuelerId, new Date().toISOString().slice(0, 10))
-    if (aktuell) {
-      db.prepare(`
-        INSERT INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)
-        ON CONFLICT(fach_id, schueler_id) DO UPDATE SET niveau = excluded.niveau
-      `).run(fachId, schuelerId, aktuell.niveau)
-    }
-    berechneAlleFuerFach(fachId)
-    return true
-  })
+  ipcMain.handle('niveau:get', (_, fachId) => niveauDomain.get(db, fachId))
+  ipcMain.handle('niveau:getHistorie', (_, fachId) => niveauDomain.getHistorie(db, fachId))
+  ipcMain.handle('niveau:set', (_, fachId, schuelerId, niveau, datum) => niveauDomain.set(db, kernDeps, fachId, schuelerId, niveau, datum))
+  ipcMain.handle('niveau:deleteHistorie', (_, fachId, schuelerId, gueltigAb) => niveauDomain.deleteHistorie(db, kernDeps, fachId, schuelerId, gueltigAb))
 
   // ─── Kompetenzbereiche ──────────────────────────────────────────────────────
   ipcMain.handle('kompetenzbereiche:getAll', (_, fachId) =>
