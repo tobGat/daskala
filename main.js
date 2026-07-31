@@ -21,6 +21,7 @@ const schuelerDomain = require('./core/domain/schueler')
 const kompetenzenDomain = require('./core/domain/kompetenzen')
 const spaltenDomain = require('./core/domain/spalten')
 const eintraegeDomain = require('./core/domain/eintraege')
+const zeugnisnotenDomain = require('./core/domain/zeugnisnoten')
 
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -1703,101 +1704,11 @@ function registerIPC() {
   ipcMain.handle('verlauf:get', (_, schuelerId, fachId) => eintraegeDomain.verlaufGet(db, schuelerId, fachId))
 
   // Zeugnisnoten
-  ipcMain.handle('zeugnisnoten:getAll', (_, fachId) => {
-    return db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fachId)
-  })
-
-  ipcMain.handle('zeugnisnoten:berechne', (_, fachId, schuelerId, semester) => {
-    const note = semester === 3
-      ? berechneEndnote(fachId, schuelerId)
-      : berechneZeugnisnote(fachId, schuelerId, semester).note
-    if (note !== null) {
-      db.prepare(`
-        INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(fach_id, schueler_id, semester)
-        DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
-      `).run(fachId, schuelerId, semester, note, semester === 3 ? 1 : 0)
-    }
-    return note
-  })
-
-  ipcMain.handle('zeugnisnoten:setManuell', (_, fachId, schuelerId, semester, note) => {
-    const existing = db.prepare('SELECT note_manuell FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = ?').get(fachId, schuelerId, semester)
-    const rowExisted = !!existing
-    const oldManuell = existing ? existing.note_manuell : undefined
-    const berechnet = semester === 3
-      ? berechneEndnote(fachId, schuelerId)
-      : berechneZeugnisnote(fachId, schuelerId, semester).note
-    const upsert = (n) => db.prepare(`
-      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, note_manuell, s1_eingerechnet)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(fach_id, schueler_id, semester)
-      DO UPDATE SET note_berechnet = excluded.note_berechnet, note_manuell = excluded.note_manuell, s1_eingerechnet = excluded.s1_eingerechnet
-    `).run(fachId, schuelerId, semester, berechnet, n, semester === 3 ? 1 : 0)
-    upsert(note)
-    pushUndo({
-      description: 'Zeugnisnote',
-      undo: () => {
-        if (!rowExisted) {
-          db.prepare('DELETE FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(fachId, schuelerId, semester)
-        } else {
-          db.prepare('UPDATE zeugnisnoten SET note_manuell = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(oldManuell ?? null, fachId, schuelerId, semester)
-        }
-      },
-      redo: () => upsert(note),
-    })
-    return true
-  })
-
-  ipcMain.handle('zeugnisnoten:clearManuell', (_, fachId, schuelerId, semester) => {
-    const existing = db.prepare('SELECT note_manuell FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = ?').get(fachId, schuelerId, semester)
-    const oldManuell = existing?.note_manuell ?? null
-    db.prepare('UPDATE zeugnisnoten SET note_manuell = NULL WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(fachId, schuelerId, semester)
-    pushUndo({
-      description: 'Zeugnisnote zurücksetzen',
-      undo: () => db.prepare('UPDATE zeugnisnoten SET note_manuell = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(oldManuell, fachId, schuelerId, semester),
-      redo: () => db.prepare('UPDATE zeugnisnoten SET note_manuell = NULL WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(fachId, schuelerId, semester),
-    })
-    return true
-  })
-
-  ipcMain.handle('zeugnisnoten:berechneFach', (_, fachId) => {
-    // Alle Schüler:innen: S1, S2 und Endnote neu berechnen
-    const fach = db.prepare('SELECT * FROM faecher WHERE id = ?').get(fachId)
-    if (!fach) return false
-    const schueler = rosterIdsFuerFach(fachId).map(id => ({ id }))
-    const upsert = db.prepare(`
-      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(fach_id, schueler_id, semester)
-      DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
-    `)
-    const updateOnly = db.prepare(`
-      UPDATE zeugnisnoten SET note_berechnet = ?, s1_eingerechnet = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?
-    `)
-    db.transaction(() => {
-      for (const s of schueler) {
-        for (const sem of [1, 2]) {
-          const { note } = berechneZeugnisnote(fachId, s.id, sem)
-          if (note !== null) {
-            upsert.run(fachId, s.id, sem, note, 0)
-          } else {
-            updateOnly.run(null, 0, fachId, s.id, sem)
-          }
-        }
-      }
-      for (const s of schueler) {
-        const endnote = berechneEndnote(fachId, s.id)
-        if (endnote !== null) {
-          upsert.run(fachId, s.id, 3, endnote, 1)
-        } else {
-          updateOnly.run(null, 1, fachId, s.id, 3)
-        }
-      }
-    })()
-    return true
-  })
+  ipcMain.handle('zeugnisnoten:getAll', (_, fachId) => zeugnisnotenDomain.getAll(db, fachId))
+  ipcMain.handle('zeugnisnoten:berechne', (_, fachId, schuelerId, semester) => zeugnisnotenDomain.berechne(db, kernDeps, fachId, schuelerId, semester))
+  ipcMain.handle('zeugnisnoten:setManuell', (_, fachId, schuelerId, semester, note) => zeugnisnotenDomain.setManuell(db, kernDeps, fachId, schuelerId, semester, note))
+  ipcMain.handle('zeugnisnoten:clearManuell', (_, fachId, schuelerId, semester) => zeugnisnotenDomain.clearManuell(db, kernDeps, fachId, schuelerId, semester))
+  ipcMain.handle('zeugnisnoten:berechneFach', (_, fachId) => zeugnisnotenDomain.berechneFach(db, kernDeps, fachId))
 
   // Notizen
   ipcMain.handle('notizen:get', (_, schuelerId, fachId) => notizenDomain.get(db, schuelerId, fachId))
