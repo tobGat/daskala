@@ -22,7 +22,7 @@ function createFsPort() {
     remove: (p) => { try { if (fs.existsSync(p)) fs.unlinkSync(p) } catch { /* ignore */ } },
     copy: (quelle, ziel) => fs.copyFileSync(quelle, ziel),
     move: (quelle, ziel) => fs.renameSync(quelle, ziel),
-    stat: (p) => { const s = fs.statSync(p); return { size: s.size, mtimeMs: s.mtimeMs } },
+    stat: (p) => { const s = fs.statSync(p); return { size: s.size, mtimeMs: s.mtimeMs, isFile: s.isFile() } },
   }
 }
 

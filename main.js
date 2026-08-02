@@ -38,6 +38,7 @@ const materialienDomain = require('./core/domain/materialien')
 const jahresplanungDomain = require('./core/domain/jahresplanung')
 const exportService = require('./core/services/export')
 const wetterService = require('./core/services/wetter')
+const backupService = require('./core/services/backup')
 
 // ── Ports (Phase 1.2): plattformabhaengige Adapter, in core injizierbar ──
 const { createFsPort } = require('./platform/electron/ports/fs')
@@ -239,17 +240,9 @@ const undo = createUndo({
 })
 const pushUndo = undo.push
 
+// Dünne Wrapper um core/services/backup.js (Dateilogik electron-frei, über FsPort).
 function doBackupCreate() {
-  const now = new Date()
-  const ts = now.toISOString().replace(/:/g, '-').slice(0, 19)
-  const backupPath = path.join(backupDir, `db_${ts}.sqlite`)
-  try {
-    fs.copyFileSync(dbPath, backupPath)
-    markiereBackupGemacht()
-    return backupPath
-  } catch {
-    return null
-  }
+  return backupService.doBackupCreate({ fs: fsPort, dbPath, backupDir, markiereBackupGemacht })
 }
 
 async function doSaveAs(win) {
@@ -1075,28 +1068,8 @@ function bkSet(key, wert) {
   db.prepare('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)').run(key, wert)
 }
 
-// Kopiert die aktuelle Datenbank als Zeitstempel-Datei in einen Zielordner und
-// behält (falls `max` gesetzt) nur die neuesten `max` Dateien dieses Präfixes.
 function schreibeBackupInOrdner(ordner, prefix, max) {
-  try {
-    if (!ordner) return null
-    if (!fs.existsSync(ordner)) fs.mkdirSync(ordner, { recursive: true })
-    const ts = new Date().toISOString().replace(/:/g, '-').slice(0, 19)
-    const ziel = path.join(ordner, `${prefix}_${ts}.sqlite`)
-    fs.copyFileSync(dbPath, ziel)
-    if (max) {
-      const alte = fs.readdirSync(ordner)
-        .filter(f => f.startsWith(prefix + '_') && f.endsWith('.sqlite'))
-        .sort()
-      if (alte.length > max) {
-        alte.slice(0, alte.length - max).forEach(f => { try { fs.unlinkSync(path.join(ordner, f)) } catch {} })
-      }
-    }
-    return ziel
-  } catch (e) {
-    logError('schreibeBackupInOrdner', e)
-    return null
-  }
+  return backupService.schreibeBackupInOrdner({ fs: fsPort, logError, dbPath }, ordner, prefix, max)
 }
 
 // Merkt sich, dass gerade gesichert wurde → setzt die Erinnerungsuhr zurück.
@@ -1113,42 +1086,12 @@ function backupMax() {
   return Math.max(1, parseInt(bkGet('backup_max'), 10) || BACKUP_MAX_STANDARD)
 }
 
-// Aktuelle Signatur der Datenbank (Größe + Zeitstempel) für die Änderungserkennung.
 function dbSignatur() {
-  try { const st = fs.statSync(dbPath); return `${st.size}-${Math.round(st.mtimeMs)}` } catch { return '' }
+  return backupService.dbSignatur({ fs: fsPort, dbPath })
 }
 
-// Art einer Sicherung anhand des Dateinamens (für die Anzeige).
-function backupArt(name) {
-  if (name.startsWith('db_vor-update') || name.startsWith('Daskala-vor-Update')) return 'vor Update'
-  if (name.startsWith('db_vor-reset')) return 'vor Zurücksetzen'
-  if (name.startsWith('db_vor-wiederherstellung')) return 'vor Wiederherstellung'
-  if (name.startsWith('Daskala-Sicherung')) return 'automatisch'
-  return 'manuell'
-}
-
-// Alle wiederherstellbaren Sicherungen (interner Ordner + gewählter Sicherungsordner).
 function sammleBackups() {
-  const out = []
-  const scan = (dir, quelle) => {
-    if (!dir) return
-    let files = []
-    try { files = fs.readdirSync(dir) } catch { return }
-    for (const name of files) {
-      if (!name.endsWith('.sqlite')) continue
-      try {
-        const p = path.join(dir, name)
-        const st = fs.statSync(p)
-        if (!st.isFile()) continue
-        out.push({ pfad: p, name, quelle, art: backupArt(name), datumIso: new Date(st.mtimeMs).toISOString(), groesse: st.size })
-      } catch { /* Datei überspringen */ }
-    }
-  }
-  scan(backupDir, 'intern')
-  const ordner = bkGet('backup_ordner')
-  if (ordner && path.resolve(ordner) !== path.resolve(backupDir)) scan(ordner, 'ordner')
-  out.sort((a, b) => b.datumIso.localeCompare(a.datumIso))
-  return out
+  return backupService.sammleBackups({ fs: fsPort, backupDir, bkGet })
 }
 
 // Standardanzahl aufbewahrter automatischer Sicherungen.

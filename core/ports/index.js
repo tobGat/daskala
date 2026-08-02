@@ -24,7 +24,7 @@
  * @property {(p: string) => void} remove                               eine Datei loeschen (ignoriert Fehlen)
  * @property {(quelle: string, ziel: string) => void} copy
  * @property {(quelle: string, ziel: string) => void} move
- * @property {(p: string) => {size: number, mtimeMs: number}} stat
+ * @property {(p: string) => {size: number, mtimeMs: number, isFile: boolean}} stat
  */
 
 /**
