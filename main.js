@@ -39,6 +39,8 @@ const jahresplanungDomain = require('./core/domain/jahresplanung')
 const exportService = require('./core/services/export')
 const wetterService = require('./core/services/wetter')
 const backupService = require('./core/services/backup')
+const importService = require('./core/services/import')
+const jahresabschlussDomain = require('./core/domain/jahresabschluss')
 
 // ── Ports (Phase 1.2): plattformabhaengige Adapter, in core injizierbar ──
 const { createFsPort } = require('./platform/electron/ports/fs')
@@ -1916,113 +1918,11 @@ function registerIPC() {
   ipcMain.handle('export:toJson', () => exportService.toJson(db, exDeps))
   ipcMain.handle('export:fachOds', (_, fachId) => exportService.fachOds(db, exDeps, fachId))
 
-  // Import: CSV/Excel Schüler:innen
-  ipcMain.handle('import:schuelerFromFile', async (_, filePath) => {
-    const ext = path.extname(filePath).toLowerCase()
-    let list = []
+  // Import: CSV/Excel Schüler:innen (Logik in core/services/import.js)
+  ipcMain.handle('import:schuelerFromFile', (_, filePath) => importService.schuelerFromFile({ fs: fsPort }, filePath))
 
-    if (ext === '.csv') {
-      const content = fs.readFileSync(filePath, 'utf-8')
-      const lines = content.split('\n').filter(l => l.trim())
-      const header = lines[0].split(/[,;]/).map(h => h.trim().toLowerCase())
-      const vornameIdx = header.findIndex(h => h.includes('vorname'))
-      const nachnameIdx = header.findIndex(h => h.includes('nachname') || h.includes('name'))
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(/[,;]/).map(c => c.trim().replace(/^["']|["']$/g, ''))
-        if (cols.length < 2) continue
-        list.push({
-          vorname: cols[vornameIdx !== -1 ? vornameIdx : 0],
-          nachname: cols[nachnameIdx !== -1 ? nachnameIdx : 1],
-        })
-      }
-    } else {
-      const XLSX = require('xlsx')
-      const wb = XLSX.readFile(filePath)
-      const ws = wb.Sheets[wb.SheetNames[0]]
-      const data = XLSX.utils.sheet_to_json(ws)
-      for (const row of data) {
-        const vorname = row['Vorname'] ?? row['vorname'] ?? ''
-        const nachname = row['Nachname'] ?? row['nachname'] ?? row['Name'] ?? ''
-        if (vorname || nachname) list.push({ vorname, nachname })
-      }
-    }
-
-    return list.filter(s => s.vorname || s.nachname)
-  })
-
-  // Jahresabschluss
-  ipcMain.handle('jahresabschluss:neuesSchuljahr', (_, { altesSchuljahreId, neueBezeichnung, klassen = null, schuelerZuordnungen }) => {
-    const tx = db.transaction(() => {
-      // Altes Schuljahr archivieren
-      db.prepare('UPDATE schuljahre SET archiviert = 1 WHERE id = ?').run(altesSchuljahreId)
-
-      // Neues Schuljahr anlegen
-      const neuesSchuljahr = db.prepare('INSERT INTO schuljahre (bezeichnung) VALUES (?)').run(neueBezeichnung)
-      const neuesSchuljahreId = neuesSchuljahr.lastInsertRowid
-
-      // Aktuelles Schuljahr persistieren, damit Kalender/Stundenplan/Ferien auch nach Neustart folgen
-      db.prepare('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)').run('schuljahr_aktuell', neueBezeichnung)
-
-      const klasseIdMapping = {}
-      const fachIdMapping = {}
-      const schuelerIdMapping = {}
-
-      // Auswahl der vorzurückenden Klassen/Fächer. Fehlt "klassen" (Alt-Aufrufer) → alle Klassen, alle Fächer.
-      let auswahl = klassen
-      if (!auswahl) {
-        auswahl = db.prepare('SELECT id FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0').all(altesSchuljahreId)
-          .map(k => ({ alteKlasseId: k.id, neuerName: null, fachIds: null }))   // fachIds null = alle Fächer
-      }
-
-      for (const kSel of auswahl) {
-        const alteKlasse = db.prepare('SELECT * FROM klassen WHERE id = ?').get(kSel.alteKlasseId)
-        if (!alteKlasse) continue
-        const neueKlasse = db.prepare('INSERT INTO klassen (schuljahr_id, name, reihenfolge) VALUES (?, ?, ?)')
-          .run(neuesSchuljahreId, kSel.neuerName ?? alteKlasse.name, alteKlasse.reihenfolge)
-        klasseIdMapping[alteKlasse.id] = neueKlasse.lastInsertRowid
-
-        // Nur ausgewählte Fächer übernehmen (fachIds null = alle)
-        const fachFilter = Array.isArray(kSel.fachIds) ? new Set(kSel.fachIds) : null
-        const alteFaecher = db.prepare('SELECT * FROM faecher WHERE klasse_id = ?').all(alteKlasse.id)
-        for (const altesFach of alteFaecher) {
-          if (fachFilter && !fachFilter.has(altesFach.id)) continue   // nicht angehakt → nicht vorrücken
-          const nf = db.prepare('INSERT INTO faecher (klasse_id, name, reihenfolge, alle_schueler) VALUES (?, ?, ?, ?)')
-            .run(neueKlasse.lastInsertRowid, altesFach.name, altesFach.reihenfolge, altesFach.alle_schueler ?? 1)
-          fachIdMapping[altesFach.id] = nf.lastInsertRowid
-        }
-      }
-
-      // Schüler:innen zuordnen (nur für vorgerückte Klassen; klasseIdMapping existiert nur für diese)
-      for (const z of schuelerZuordnungen) {
-        if (!klasseIdMapping[z.alteKlasseId]) continue   // Klasse nicht vorgerückt → Schüler:in bleibt im alten Jahr
-        if (z.aktion === 'ausgeschieden') {
-          db.prepare('UPDATE schueler SET aktiv = 0 WHERE id = ?').run(z.schuelerId)
-        } else if (z.aktion === 'bleibt') {
-          // Schüler:in in neuer Klasse anlegen
-          const s = db.prepare('SELECT * FROM schueler WHERE id = ?').get(z.schuelerId)
-          const ns = db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge) VALUES (?, ?, ?, ?)').run(klasseIdMapping[z.alteKlasseId], s.vorname, s.nachname, s.reihenfolge)
-          schuelerIdMapping[z.schuelerId] = ns.lastInsertRowid
-          db.prepare('UPDATE schueler SET aktiv = 0 WHERE id = ?').run(z.schuelerId)
-        }
-      }
-
-      // Fach-Zuordnung (Gruppenfächer) ins neue Jahr übernehmen, IDs remappt (nur "bleibt"-Schüler:innen).
-      for (const [altFachId, neuFachId] of Object.entries(fachIdMapping)) {
-        const f = db.prepare('SELECT alle_schueler FROM faecher WHERE id = ?').get(neuFachId)
-        if (f.alle_schueler) continue   // "alle"-Fächer brauchen keine Junction-Zeilen
-        const rows = db.prepare('SELECT schueler_id FROM fach_schueler WHERE fach_id = ?').all(altFachId)
-        const ins = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
-        for (const r of rows) {
-          const neuSid = schuelerIdMapping[r.schueler_id]
-          if (neuSid) ins.run(neuFachId, neuSid)   // ausgeschiedene fehlen im Mapping → übersprungen
-        }
-      }
-
-      return neuesSchuljahreId
-    })
-
-    return tx()
-  })
+  // Jahresabschluss (Logik in core/domain/jahresabschluss.js)
+  ipcMain.handle('jahresabschluss:neuesSchuljahr', (_, payload) => jahresabschlussDomain.neuesSchuljahr(db, payload))
 
   // ─── Planung: verfügbare Wochen ────────────────────────────────────────────
   ipcMain.handle('planung:getVorhandeneWochen', () => stundenPlanungDomain.getVorhandeneWochen(db))
