@@ -29,20 +29,34 @@ function znInternZuAnzeige(intern, niveau, istDifferenziert) {
   return Math.max(1, Math.min(5, Math.round(intern - off)))
 }
 
-// Mitarbeits-Einheit eines Eintrags in Schritt-Vielfachen (±1 = ganzer Schritt).
-// 2-stufig (ma_stufen != 4): + → +1, − → −1.
-// 4-stufig (ma_stufen === 4): 😄 +1, 🙂 +0,5, 🙁 −0,5, 😞 −1.
-// Rückgabe null = kein gültiger MA-Eintrag (zählt nicht mit).
-function maEinheit(spalte, wert) {
+// Konfigurierbarer Einfluss je Mitarbeits-Stufe (in Notenpunkten). Aus den
+// Einstellungen gelesen; Defaults = bisheriges Verhalten. Pfeile ↗/↘ speichern
+// weiterhin '+'/'−' und nutzen daher dieselben Gewichte wie + / −.
+function ladeMaGewichte(db) {
+  const num = (key, def) => {
+    const v = parseFloat(db.prepare('SELECT wert FROM einstellungen WHERE schluessel = ?').get(key)?.wert)
+    return isNaN(v) ? def : v
+  }
+  return {
+    plus: num('ma_w_plus', 0.1), minus: num('ma_w_minus', 0.1),
+    vpos: num('ma_w_smiley_vpos', 0.1), pos: num('ma_w_smiley_pos', 0.05),
+    neg: num('ma_w_smiley_neg', 0.05), vneg: num('ma_w_smiley_vneg', 0.1),
+  }
+}
+
+// Bewertung eines MA-Eintrags: { w: vorzeichenbehaftetes Gewicht in Notenpunkten,
+// dir: Richtung ±1 (für die grobe Fallback-Note) }. null = kein gültiger Eintrag.
+// 4-stufig: 😄🙂 positiv, 🙁😞 negativ. 2-stufig (+/− bzw. ↗/↘): +/− (gespeichert).
+function maBewertung(spalte, wert, g) {
   if (spalte.ma_stufen === 4) {
-    if (wert === '😄') return 1
-    if (wert === '🙂') return 0.5
-    if (wert === '🙁') return -0.5
-    if (wert === '😞') return -1
+    if (wert === '😄') return { w: g.vpos, dir: 1 }
+    if (wert === '🙂') return { w: g.pos, dir: 1 }
+    if (wert === '🙁') return { w: -g.neg, dir: -1 }
+    if (wert === '😞') return { w: -g.vneg, dir: -1 }
     return null
   }
-  if (wert === '+') return 1
-  if (wert === '-') return -1
+  if (wert === '+') return { w: g.plus, dir: 1 }
+  if (wert === '-') return { w: -g.minus, dir: -1 }
   return null
 }
 
@@ -101,8 +115,10 @@ function berechneZeugnisnote(db, fachId, schuelerId, semester) {
 
   // Basisnote aus echten Noten (SA/T/Individuell, intern inkl. Niveau-Offset).
   const basisWerte = { SA: [], T: [], CUSTOM: [] }
-  // Mitarbeit (gewichtete Summe in Schritt-Vielfachen) & Hausübung (Zähler); niveau-frei, keine Noten.
-  let maScore = 0, maCount = 0, huePos = 0, hueNeg = 0
+  // Mitarbeit: gewichtete Summe in Notenpunkten (maScore) + Richtungssumme (maDir,
+  // ±1 je Eintrag) für die Fallback-Note. Hausübung: Zähler. Niveau-frei, keine Noten.
+  const maGew = ladeMaGewichte(db)
+  let maScore = 0, maCount = 0, maDir = 0, huePos = 0, hueNeg = 0
 
   for (const spalte of spalten) {
     const wert = db.prepare(
@@ -111,8 +127,8 @@ function berechneZeugnisnote(db, fachId, schuelerId, semester) {
     if (!wert) continue
 
     if (spalte.kategorie === 'MA') {
-      const e = maEinheit(spalte, wert)
-      if (e !== null) { maScore += e; maCount++ }
+      const b = maBewertung(spalte, wert, maGew)
+      if (b !== null) { maScore += b.w; maCount++; maDir += b.dir }
     } else if (spalte.kategorie === 'HÜ') {
       if (wert === '✓') huePos++
       else if (wert === '✗') hueNeg++
@@ -145,9 +161,10 @@ function berechneZeugnisnote(db, fachId, schuelerId, semester) {
   const hueGesamt = huePos + hueNeg
   const hatMAHUE = maGesamt > 0 || hueGesamt > 0
 
-  // Rohsumme × Schritt; Deckelung greift erst hier (viele Minus bleiben "im Minus", bis
-  // genug Plus die Rohsumme wieder über die Grenze hebt).
-  let maEinfluss = maGesamt > 0 ? maScore * einflussSchritt : 0
+  // maScore ist bereits die Roh-Summe in Notenpunkten (je Stufe konfigurierbar);
+  // die Deckelung greift erst hier (viele Minus bleiben "im Minus", bis genug Plus
+  // die Rohsumme wieder über die Grenze hebt).
+  let maEinfluss = maGesamt > 0 ? maScore : 0
   maEinfluss = Math.max(-maxMaEinfluss, Math.min(maxMaEinfluss, maEinfluss))
   let hueEinfluss = hueGesamt > 0 ? (huePos - hueNeg) * einflussSchritt : 0
   hueEinfluss = Math.max(-maxHueEinfluss, Math.min(maxHueEinfluss, hueEinfluss))
@@ -155,7 +172,7 @@ function berechneZeugnisnote(db, fachId, schuelerId, semester) {
 
   // Verhältnis (−1…+1) nur für die grobe Fallback-Note, wenn es keine echten Noten gibt.
   const ratios = []
-  if (maGesamt > 0) ratios.push(maScore / maGesamt)
+  if (maGesamt > 0) ratios.push(maDir / maGesamt)
   if (hueGesamt > 0) ratios.push((huePos - hueNeg) / hueGesamt)
   const verhaeltnis = ratios.length ? ratios.reduce((a, b) => a + b, 0) / ratios.length : 0
 

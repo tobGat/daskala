@@ -634,7 +634,8 @@
       "reihenfolge": 1,
       "eingeklappt": 0,
       "notiz": null,
-      "ma_stufen": 2
+      "ma_stufen": 2,
+      "ma_symbol": "pm"
     },
     {
       "id": 2,
@@ -646,7 +647,8 @@
       "reihenfolge": 2,
       "eingeklappt": 0,
       "notiz": null,
-      "ma_stufen": 2
+      "ma_stufen": 2,
+      "ma_symbol": "pm"
     }
   ],
   "eintraege:getAll": [

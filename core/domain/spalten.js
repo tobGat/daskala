@@ -11,9 +11,9 @@ function getAll(db, fachId) {
 function create(db, data) {
   const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM spalten WHERE fach_id = ? AND semester = ?').get(data.fachId, data.semester)?.m ?? 0
   const info = db.prepare(`
-      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, data.maStufen === 4 ? 4 : 2)
+      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen, ma_symbol)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, data.maStufen === 4 ? 4 : 2, data.maSymbol === 'pfeil' ? 'pfeil' : 'pm')
   return info.lastInsertRowid
 }
 

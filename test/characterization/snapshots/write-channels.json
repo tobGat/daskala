@@ -332,7 +332,8 @@
           "reihenfolge": 1,
           "eingeklappt": 0,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         },
         {
           "id": 2,
@@ -344,7 +345,8 @@
           "reihenfolge": 2,
           "eingeklappt": 0,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         },
         {
           "id": 3,
@@ -356,7 +358,8 @@
           "reihenfolge": 1,
           "eingeklappt": 0,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         }
       ]
     }
@@ -1817,7 +1820,8 @@
           "reihenfolge": 1,
           "eingeklappt": 0,
           "notiz": "geändert",
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         },
         {
           "id": 2,
@@ -1829,7 +1833,8 @@
           "reihenfolge": 2,
           "eingeklappt": 0,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         }
       ]
     }
@@ -1848,7 +1853,8 @@
           "reihenfolge": 1,
           "eingeklappt": 0,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         }
       ],
       "eintraege": [
@@ -1883,7 +1889,8 @@
           "reihenfolge": 1,
           "eingeklappt": 1,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         },
         {
           "id": 2,
@@ -1895,7 +1902,8 @@
           "reihenfolge": 2,
           "eingeklappt": 0,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         }
       ]
     }
@@ -1914,7 +1922,8 @@
           "reihenfolge": 1,
           "eingeklappt": 1,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         },
         {
           "id": 2,
@@ -1926,7 +1935,8 @@
           "reihenfolge": 2,
           "eingeklappt": 1,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         }
       ]
     }
@@ -1945,7 +1955,8 @@
           "reihenfolge": 1,
           "eingeklappt": 0,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         },
         {
           "id": 2,
@@ -1957,7 +1968,8 @@
           "reihenfolge": 2,
           "eingeklappt": 0,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         }
       ]
     }
@@ -1976,7 +1988,8 @@
           "reihenfolge": 1,
           "eingeklappt": 0,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         },
         {
           "id": 2,
@@ -1988,7 +2001,8 @@
           "reihenfolge": 2,
           "eingeklappt": 0,
           "notiz": null,
-          "ma_stufen": 2
+          "ma_stufen": 2,
+          "ma_symbol": "pm"
         }
       ]
     }
