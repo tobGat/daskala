@@ -5,7 +5,6 @@ const { app, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } = require(
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
-const os = require('os')
 
 // ── Kern-Domänen (Phase-1-Extraktion; plattformunabhängig, ohne Electron) ──
 const einstellungenDomain = require('./core/domain/einstellungen')
@@ -35,23 +34,17 @@ const kvTrigger = require('./core/domain/kv/trigger')
 const kvDoku = require('./core/domain/kv/dokumentation')
 const kvRoutine = require('./core/domain/kv/routine')
 
+// ── Ports (Phase 1.2): plattformabhaengige Adapter, in core injizierbar ──
+const { createPdfPort } = require('./platform/electron/ports/pdf')
+const { createHttpPort } = require('./platform/electron/ports/http')
+const pdfPort = createPdfPort()
+const httpPort = createHttpPort()
 
 const isDev = process.env.NODE_ENV === 'development'
 
 // ─── PDF-Helper ───────────────────────────────────────────────────────────────
-async function htmlZuPdf(htmlContent, opts = {}) {
-  const tmpFile = path.join(os.tmpdir(), `daskala_${Date.now()}.html`)
-  fs.writeFileSync(tmpFile, htmlContent, 'utf8')
-  const win = new BrowserWindow({
-    show: false, width: 800, height: 1100,
-    webPreferences: { nodeIntegration: false, contextIsolation: true },
-  })
-  await win.loadFile(tmpFile)
-  const pdfBuffer = await win.webContents.printToPDF({ printBackground: true, pageSize: 'A4', landscape: !!opts.landscape })
-  win.destroy()
-  try { fs.unlinkSync(tmpFile) } catch {}
-  return pdfBuffer
-}
+// Delegiert an den PdfPort; Signatur bleibt fuer die Export-Handler unveraendert.
+const htmlZuPdf = (htmlContent, opts) => pdfPort.fromHtml(htmlContent, opts)
 
 // Dateinamen-Baustein: Schrägstriche → Bindestrich (z.B. Schuljahr „2026/27"),
 // sonstige für Dateinamen ungültige Zeichen entfernen, Leerzeichen → _.
@@ -1187,7 +1180,7 @@ function hashPin(pin) {
 }
 
 // ─── Wetter (Open-Meteo, kostenlos, ohne API-Key) ────────────────────────────
-const https = require('https')
+// HTTP laeuft ueber den HttpPort (siehe oben); `https` wird hier nicht mehr direkt benoetigt.
 // Näherung: Koordinaten der Landeshauptstädte je Bundesland.
 const WETTER_KOORD = {
   'Wien':             [48.2082, 16.3738],
@@ -1202,18 +1195,8 @@ const WETTER_KOORD = {
 }
 const wetterCache = new Map()   // key -> { zeit, data }
 
-function httpsGetJson(url) {
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, { headers: { 'User-Agent': 'Daskala' } }, (res) => {
-      if (res.statusCode < 200 || res.statusCode >= 300) { res.resume(); reject(new Error('HTTP ' + res.statusCode)); return }
-      let data = ''
-      res.on('data', c => { data += c })
-      res.on('end', () => { try { resolve(JSON.parse(data)) } catch (e) { reject(e) } })
-    })
-    req.on('error', reject)
-    req.setTimeout(8000, () => req.destroy(new Error('timeout')))
-  })
-}
+// Delegiert an den HttpPort; Signatur bleibt fuer die Wetter-Handler unveraendert.
+const httpsGetJson = (url) => httpPort.getJson(url)
 
 // ─── Zeugnisnoten-Berechnung ──────────────────────────────────────────────────
 // ─── Kompetenz-Vorlagen (Lehrplan NEU) ──────────────────────────────────────
