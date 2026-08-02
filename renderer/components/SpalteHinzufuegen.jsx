@@ -13,10 +13,19 @@ const KATEGORIEN = [
 ]
 
 export default function SpalteHinzufuegen({ onClose }) {
-  const { aktivesFach, aktiveSemester, ladeSpalten, refreshZeugnisnoten, gewichtungGlobal, openModal } = useStore()
+  const { aktivesFach, aktiveSemester, spalten, ladeSpalten, refreshZeugnisnoten, gewichtungGlobal, openModal } = useStore()
   const [kategorie, setKategorie] = useState('MA')
   const [kuerzel, setKuerzel] = useState('MA')
-  const [maStufen, setMaStufen] = useState(2)   // 2 = +/−, 4 = Smiley-Skala
+  // Variante der Mitarbeits-Skala: 'pm' (+ / −), 'pfeil' (↗ / ↘), 'smiley' (vierstufig).
+  // Vorauswahl = zuletzt in einer MA-Spalte gewählte Variante.
+  const letzteMaVariante = (() => {
+    const maSp = (spalten || []).filter(s => s.kategorie === 'MA')
+    if (!maSp.length) return 'pm'
+    const last = maSp.reduce((a, b) => (b.id > a.id ? b : a))
+    if (last.ma_stufen === 4) return 'smiley'
+    return last.ma_symbol === 'pfeil' ? 'pfeil' : 'pm'
+  })()
+  const [maVariante, setMaVariante] = useState(letzteMaVariante)
   const [datum, setDatum] = useState(new Date().toISOString().slice(0, 10))
   const [notiz, setNotiz] = useState('')
   const [loading, setLoading] = useState(false)
@@ -46,7 +55,8 @@ export default function SpalteHinzufuegen({ onClose }) {
         kuerzel: kuerzel.trim(),
         datum: datum || null,
         notiz: notiz.trim() || null,
-        maStufen: kategorie === 'MA' ? maStufen : 2,
+        maStufen: kategorie === 'MA' && maVariante === 'smiley' ? 4 : 2,
+        maSymbol: kategorie === 'MA' && maVariante === 'pfeil' ? 'pfeil' : 'pm',
       })
       await ladeSpalten()
       await refreshZeugnisnoten()
@@ -86,33 +96,30 @@ export default function SpalteHinzufuegen({ onClose }) {
         {kategorie === 'MA' && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Bewertungsskala</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border-2
-                  ${maStufen === 2
-                    ? 'border-coral-500 bg-coral-50 dark:bg-coral-900 text-coral-700 dark:text-coral-300'
-                    : 'border-transparent bg-paper-100 dark:bg-ink-700 text-ink-700 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-600'}`}
-                onClick={() => setMaStufen(2)}
-              >
-                Zweistufig <span className="text-ink-400">(+ / −)</span>
-              </button>
-              <button
-                type="button"
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border-2
-                  ${maStufen === 4
-                    ? 'border-coral-500 bg-coral-50 dark:bg-coral-900 text-coral-700 dark:text-coral-300'
-                    : 'border-transparent bg-paper-100 dark:bg-ink-700 text-ink-700 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-600'}`}
-                onClick={() => setMaStufen(4)}
-              >
-                Vierstufig <span className="text-base align-middle">😄🙂🙁😞</span>
-              </button>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'pm', label: '+ / −' },
+                { id: 'pfeil', label: '↗ / ↘' },
+                { id: 'smiley', label: '😄 🙂 🙁 😞' },
+              ].map(v => (
+                <button
+                  key={v.id}
+                  type="button"
+                  className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors border-2
+                    ${maVariante === v.id
+                      ? 'border-coral-500 bg-coral-50 dark:bg-coral-900 text-coral-700 dark:text-coral-300'
+                      : 'border-transparent bg-paper-100 dark:bg-ink-700 text-ink-700 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-600'}`}
+                  onClick={() => setMaVariante(v.id)}
+                >
+                  {v.label}
+                </button>
+              ))}
             </div>
-            {maStufen === 4 && (
-              <p className="mt-2 text-xs text-ink-500 dark:text-ink-400 leading-snug">
-                😄 +0,1 · 🙂 +0,05 · 🙁 −0,05 · 😞 −0,1 (Deckelung wie eingestellt)
-              </p>
-            )}
+            <p className="mt-2 text-xs text-ink-500 dark:text-ink-400 leading-snug">
+              {maVariante === 'smiley'
+                ? '😄 sehr fröhlich · 🙂 mäßig · 🙁 mäßig · 😞 sehr traurig. Einfluss je Stufe in den Einstellungen (Erweitert).'
+                : '↗ / ↘ ist nur eine andere Darstellung von + / − – die Bewertung ist identisch.'}
+            </p>
           </div>
         )}
 
