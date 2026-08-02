@@ -633,7 +633,8 @@
       "datum": "2025-10-15",
       "reihenfolge": 1,
       "eingeklappt": 0,
-      "notiz": null
+      "notiz": null,
+      "ma_stufen": 2
     },
     {
       "id": 2,
@@ -644,7 +645,8 @@
       "datum": "2025-11-20",
       "reihenfolge": 2,
       "eingeklappt": 0,
-      "notiz": null
+      "notiz": null,
+      "ma_stufen": 2
     }
   ],
   "eintraege:getAll": [

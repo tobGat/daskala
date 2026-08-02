@@ -21,6 +21,7 @@ const ERWARTET = {
   supplierstunden: ['titel', 'inhalt', 'hue_text', 'hue_frist_datum', 'link'],
   stundenplan: ['wochen_intervall', 'anker_datum'],
   todos: ['faelligkeit', 'erinnerung'],
+  spalten: ['notiz', 'ma_stufen'],
   faecher: ['benotungssystem', 'alle_schueler'],
   klassen: ['teams_link', 'sortierung', 'ist_kv', 'ist_vorlage'],
   kv_jahresaufgaben: ['parent_id'],

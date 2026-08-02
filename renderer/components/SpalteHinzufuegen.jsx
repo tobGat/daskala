@@ -16,6 +16,7 @@ export default function SpalteHinzufuegen({ onClose }) {
   const { aktivesFach, aktiveSemester, ladeSpalten, refreshZeugnisnoten, gewichtungGlobal, openModal } = useStore()
   const [kategorie, setKategorie] = useState('MA')
   const [kuerzel, setKuerzel] = useState('MA')
+  const [maStufen, setMaStufen] = useState(2)   // 2 = +/−, 4 = Smiley-Skala
   const [datum, setDatum] = useState(new Date().toISOString().slice(0, 10))
   const [notiz, setNotiz] = useState('')
   const [loading, setLoading] = useState(false)
@@ -45,6 +46,7 @@ export default function SpalteHinzufuegen({ onClose }) {
         kuerzel: kuerzel.trim(),
         datum: datum || null,
         notiz: notiz.trim() || null,
+        maStufen: kategorie === 'MA' ? maStufen : 2,
       })
       await ladeSpalten()
       await refreshZeugnisnoten()
@@ -79,6 +81,40 @@ export default function SpalteHinzufuegen({ onClose }) {
           </div>
         </div>
 
+
+        {/* Bewertungsskala – nur für Mitarbeit */}
+        {kategorie === 'MA' && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Bewertungsskala</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border-2
+                  ${maStufen === 2
+                    ? 'border-coral-500 bg-coral-50 dark:bg-coral-900 text-coral-700 dark:text-coral-300'
+                    : 'border-transparent bg-paper-100 dark:bg-ink-700 text-ink-700 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-600'}`}
+                onClick={() => setMaStufen(2)}
+              >
+                Zweistufig <span className="text-ink-400">(+ / −)</span>
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border-2
+                  ${maStufen === 4
+                    ? 'border-coral-500 bg-coral-50 dark:bg-coral-900 text-coral-700 dark:text-coral-300'
+                    : 'border-transparent bg-paper-100 dark:bg-ink-700 text-ink-700 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-600'}`}
+                onClick={() => setMaStufen(4)}
+              >
+                Vierstufig <span className="text-base align-middle">😄🙂🙁😞</span>
+              </button>
+            </div>
+            {maStufen === 4 && (
+              <p className="mt-2 text-xs text-ink-500 dark:text-ink-400 leading-snug">
+                😄 +0,1 · 🙂 +0,05 · 🙁 −0,05 · 😞 −0,1 (Deckelung wie eingestellt)
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Hinweis bei 0%-Gewicht */}
         {zeigeNullGewichtHinweis && (

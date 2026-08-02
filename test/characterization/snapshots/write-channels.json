@@ -331,7 +331,8 @@
           "datum": "2025-10-15",
           "reihenfolge": 1,
           "eingeklappt": 0,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         },
         {
           "id": 2,
@@ -342,7 +343,8 @@
           "datum": "2025-11-20",
           "reihenfolge": 2,
           "eingeklappt": 0,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         },
         {
           "id": 3,
@@ -353,7 +355,8 @@
           "datum": "2026-03-10",
           "reihenfolge": 1,
           "eingeklappt": 0,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         }
       ]
     }
@@ -1813,7 +1816,8 @@
           "datum": "2025-10-16",
           "reihenfolge": 1,
           "eingeklappt": 0,
-          "notiz": "geändert"
+          "notiz": "geändert",
+          "ma_stufen": 2
         },
         {
           "id": 2,
@@ -1824,7 +1828,8 @@
           "datum": "2025-11-20",
           "reihenfolge": 2,
           "eingeklappt": 0,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         }
       ]
     }
@@ -1842,7 +1847,8 @@
           "datum": "2025-10-15",
           "reihenfolge": 1,
           "eingeklappt": 0,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         }
       ],
       "eintraege": [
@@ -1876,7 +1882,8 @@
           "datum": "2025-10-15",
           "reihenfolge": 1,
           "eingeklappt": 1,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         },
         {
           "id": 2,
@@ -1887,7 +1894,8 @@
           "datum": "2025-11-20",
           "reihenfolge": 2,
           "eingeklappt": 0,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         }
       ]
     }
@@ -1905,7 +1913,8 @@
           "datum": "2025-10-15",
           "reihenfolge": 1,
           "eingeklappt": 1,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         },
         {
           "id": 2,
@@ -1916,7 +1925,8 @@
           "datum": "2025-11-20",
           "reihenfolge": 2,
           "eingeklappt": 1,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         }
       ]
     }
@@ -1934,7 +1944,8 @@
           "datum": "2025-10-15",
           "reihenfolge": 1,
           "eingeklappt": 0,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         },
         {
           "id": 2,
@@ -1945,7 +1956,8 @@
           "datum": "2025-11-20",
           "reihenfolge": 2,
           "eingeklappt": 0,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         }
       ]
     }
@@ -1963,7 +1975,8 @@
           "datum": "2025-10-15",
           "reihenfolge": 1,
           "eingeklappt": 0,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         },
         {
           "id": 2,
@@ -1974,7 +1987,8 @@
           "datum": "2025-11-20",
           "reihenfolge": 2,
           "eingeklappt": 0,
-          "notiz": null
+          "notiz": null,
+          "ma_stufen": 2
         }
       ]
     }

@@ -312,9 +312,10 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
   }
 
   // Stats
+  // Positiv: + / 😄 / 🙂 ; negativ: − / 🙁 / 😞 (2- und 4-stufige Mitarbeit zusammengefasst).
   const maEintr = fachEintraege.filter(e => e.kategorie === 'MA' && e.wert)
-  const maPos = maEintr.filter(e => e.wert === '+').length
-  const maNeg = maEintr.filter(e => e.wert === '-').length
+  const maPos = maEintr.filter(e => e.wert === '+' || e.wert === '😄' || e.wert === '🙂').length
+  const maNeg = maEintr.filter(e => e.wert === '-' || e.wert === '🙁' || e.wert === '😞').length
 
   // '—' = "nicht gewertet / entfällt": bewusst ohne Noteneinfluss, wird hier ausgeklammert.
   const hueEintr = fachEintraege.filter(e => e.kategorie === 'HÜ' && e.wert && e.wert !== '—')

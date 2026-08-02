@@ -8,6 +8,9 @@ import { niveauZurZeit, niveauBgKlasse } from '../utils/niveau'
 // ─── Klick-Cycle-Werte ────────────────────────────────────────────────────────
 const MA_CYCLE = ['+', '-', '']
 const HUE_CYCLE = ['✓', '✗', '—', '']
+// 4-stufige Mitarbeit: sehr fröhlich … sehr traurig (Gewichte in notenberechnung.js).
+const MA_SMILEYS = ['😄', '🙂', '🙁', '😞']
+const MA_SMILEY_TITEL = { '😄': 'sehr fröhlich (+0,1)', '🙂': 'mäßig fröhlich (+0,05)', '🙁': 'mäßig traurig (−0,05)', '😞': 'sehr traurig (−0,1)' }
 
 function naechsterWert(cycle, aktuell) {
   const idx = cycle.indexOf(aktuell)
@@ -58,6 +61,48 @@ function ZahlenPopup({ wert, onSelect, onClose, anchorRef }) {
   )
 }
 
+// ─── Smiley-Popup für 4-stufige Mitarbeit ─────────────────────────────────────
+function SmileyPopup({ wert, onSelect, onClose, anchorRef }) {
+  const popupRef = useRef(null)
+  useEffect(() => {
+    const handler = (e) => {
+      if (popupRef.current && !popupRef.current.contains(e.target) &&
+        anchorRef.current && !anchorRef.current.contains(e.target)) {
+        onClose()
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
+  return (
+    <div
+      ref={popupRef}
+      className="absolute z-50 bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg shadow-xl p-1 flex gap-1"
+      style={{ top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 2 }}
+    >
+      {MA_SMILEYS.map(sm => (
+        <button
+          key={sm}
+          className={`w-8 h-8 rounded text-lg leading-none transition-colors
+            ${wert === sm ? 'bg-coral-600' : 'hover:bg-paper-100 dark:hover:bg-ink-700'}`}
+          title={MA_SMILEY_TITEL[sm]}
+          onClick={() => onSelect(sm)}
+        >
+          {sm}
+        </button>
+      ))}
+      <button
+        className="w-8 h-8 rounded text-xs text-ink-400 hover:bg-paper-100 dark:hover:bg-ink-700 transition-colors"
+        onClick={() => onSelect('')}
+        title="Leeren"
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
 // ─── Farb-Klassen für Noten ───────────────────────────────────────────────────
 function noteKlasse(n) {
   const num = parseInt(n)
@@ -85,8 +130,11 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
     ? niveauZurZeit(niveauHistorie?.[schueler.id], spalte.datum, niveaus[schueler.id] ?? 'AHS')
     : null
 
+  const istMaVier = spalte.kategorie === 'MA' && spalte.ma_stufen === 4
+
   const handleClick = () => {
     if (spalte.kategorie === 'MA') {
+      if (istMaVier) { setPopupOffen(true); return }
       const naechster = naechsterWert(MA_CYCLE, wert)
       setEintrag(spalte.id, schueler.id, naechster)
     } else if (spalte.kategorie === 'HÜ') {
@@ -107,7 +155,9 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
   let anzeigeKlasse = ''
 
   if (spalte.kategorie === 'MA') {
-    if (wert === '+') { anzeigeText = '+'; anzeigeKlasse = 'zelle-plus' }
+    if (istMaVier) {
+      if (wert) { anzeigeText = wert; anzeigeKlasse = (wert === '😄' || wert === '🙂') ? 'zelle-plus' : 'zelle-minus' }
+    } else if (wert === '+') { anzeigeText = '+'; anzeigeKlasse = 'zelle-plus' }
     else if (wert === '-') { anzeigeText = '−'; anzeigeKlasse = 'zelle-minus' }
   } else if (spalte.kategorie === 'HÜ') {
     if (wert === '✓') anzeigeKlasse = 'zelle-haken'
@@ -137,14 +187,22 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
       >
         {anzeigeText}
       </div>
-      {popupOffen && (
-        <ZahlenPopup
-          wert={wert}
-          onSelect={handleZahlSelect}
-          onClose={() => setPopupOffen(false)}
-          anchorRef={cellRef}
-        />
-      )}
+      {popupOffen && (istMaVier
+        ? (
+          <SmileyPopup
+            wert={wert}
+            onSelect={handleZahlSelect}
+            onClose={() => setPopupOffen(false)}
+            anchorRef={cellRef}
+          />
+        ) : (
+          <ZahlenPopup
+            wert={wert}
+            onSelect={handleZahlSelect}
+            onClose={() => setPopupOffen(false)}
+            anchorRef={cellRef}
+          />
+        ))}
     </td>
   )
 })
