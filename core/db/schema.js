@@ -209,6 +209,9 @@ function applySchema(db, deps) {
   spalteErgaenzen('spalten', 'notiz', 'TEXT')
   // Mitarbeits-Bewertungsstufen: 2 = klassisch (+/−), 4 = Smiley-Skala (😄🙂🙁😞). Default 2.
   spalteErgaenzen('spalten', 'ma_stufen', 'INTEGER DEFAULT 2')
+  // Symboldarstellung der 2-stufigen Mitarbeit: 'pm' = + / −, 'pfeil' = ↗ / ↘.
+  // Rein optisch – gespeichert werden weiterhin '+' / '−', die Bewertung ist identisch.
+  spalteErgaenzen('spalten', 'ma_symbol', "TEXT DEFAULT 'pm'")
   spalteErgaenzen('eintraege', 'kommentar', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_text', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_frist_datum', 'TEXT')

@@ -8,6 +8,14 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.0.72',
+    datum: 'August 2026',
+    punkte: [
+      'Mitarbeit: Neben + / − und den Smileys gibt es jetzt eine Pfeil-Darstellung ↗ / ↘ – rein optisch, die Bewertung bleibt gleich. Die Skala wählst du weiterhin je Spalte; eine neue MA-Spalte übernimmt die zuletzt verwendete Variante.',
+      'Einstellungen: Unter „Erweitert – Einfluss je Stufe" lässt sich jetzt für jede Mitarbeits-Stufe (Aufwärts, Abwärts und die vier Smileys) einzeln festlegen, wie stark ein Eintrag die Note verschiebt. Die Standardwerte entsprechen dem bisherigen Verhalten.',
+    ],
+  },
+  {
     version: '1.0.71',
     datum: 'August 2026',
     punkte: [

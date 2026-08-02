@@ -157,8 +157,12 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
   if (spalte.kategorie === 'MA') {
     if (istMaVier) {
       if (wert) { anzeigeText = wert; anzeigeKlasse = (wert === '😄' || wert === '🙂') ? 'zelle-plus' : 'zelle-minus' }
-    } else if (wert === '+') { anzeigeText = '+'; anzeigeKlasse = 'zelle-plus' }
-    else if (wert === '-') { anzeigeText = '−'; anzeigeKlasse = 'zelle-minus' }
+    } else {
+      // Pfeil-Darstellung ist rein optisch – gespeichert bleibt +/−.
+      const pfeil = spalte.ma_symbol === 'pfeil'
+      if (wert === '+') { anzeigeText = pfeil ? '↗' : '+'; anzeigeKlasse = 'zelle-plus' }
+      else if (wert === '-') { anzeigeText = pfeil ? '↘' : '−'; anzeigeKlasse = 'zelle-minus' }
+    }
   } else if (spalte.kategorie === 'HÜ') {
     if (wert === '✓') anzeigeKlasse = 'zelle-haken'
     else if (wert === '✗') anzeigeKlasse = 'zelle-kreuz'
