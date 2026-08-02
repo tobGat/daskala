@@ -34,11 +34,19 @@ const kvTrigger = require('./core/domain/kv/trigger')
 const kvDoku = require('./core/domain/kv/dokumentation')
 const kvRoutine = require('./core/domain/kv/routine')
 
+const materialienDomain = require('./core/domain/materialien')
+
 // ── Ports (Phase 1.2): plattformabhaengige Adapter, in core injizierbar ──
+const { createFsPort } = require('./platform/electron/ports/fs')
 const { createPdfPort } = require('./platform/electron/ports/pdf')
 const { createHttpPort } = require('./platform/electron/ports/http')
+const { createDialogPort } = require('./platform/electron/ports/dialog')
+const { createShellPort } = require('./platform/electron/ports/shell')
+const fsPort = createFsPort()
 const pdfPort = createPdfPort()
 const httpPort = createHttpPort()
+const dialogPort = createDialogPort()
+const shellPort = createShellPort()
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -1568,10 +1576,24 @@ function oeffneExternSicher(url) {
 
 // ─── IPC Handler registrieren ─────────────────────────────────────────────────
 function registerIPC() {
-  // main.js-Helfer, die extrahierte Kern-Domänen injiziert bekommen. Enthält
-  // modulweite (pushUndo/…) UND in registerIPC verschachtelte Funktionen
-  // (materialRoot/verschiebeDir/sanitizeSegment) – hier sind alle im Scope
-  // (Funktionsdeklarationen sind an den Anfang von registerIPC gehoisted).
+  // Materialien-Domäne (core/domain/materialien.js): Ports + Helfer gebündelt.
+  // Lokale Bindungen reichen `db` (reopen-sicher) und `matDeps` durch, damit die
+  // bestehenden Aufrufstellen (kernDeps, jahresplanung, klassen:duplizieren)
+  // unverändert bleiben.
+  const matDeps = { fs: fsPort, shell: shellPort, dialog: dialogPort, logError, oeffneExternSicher, indexName: '_Materialübersicht.txt' }
+  const materialRoot = () => materialienDomain.materialRoot(db)
+  const abschnittHierarchie = (fachId) => materialienDomain.abschnittHierarchie(db, fachId)
+  const fachDir = (root, h) => materialienDomain.fachDir(root, h)
+  const eindeutigerLeaf = (baseDir, wunsch) => materialienDomain.eindeutigerLeaf(matDeps, baseDir, wunsch)
+  // sanitizeSegment bleibt als hoisted Funktion in main.js (auch von Export-Handlern
+  // & kernDeps genutzt); die Materialien-Domäne hat ihre eigene, identische Kopie.
+  const ensureAbschnittFolder = (id) => materialienDomain.ensureAbschnittFolder(db, matDeps, id)
+  const verschiebeDir = (oldDir, newDir) => materialienDomain.verschiebeDir(matDeps, oldDir, newDir)
+  const sammleMaterialien = (id) => materialienDomain.sammleMaterialien(db, matDeps, id)
+  const schreibeMaterialIndex = (id) => materialienDomain.schreibeMaterialIndex(db, matDeps, id)
+  const kopiereMaterialien = (von, nach) => materialienDomain.kopiereMaterialien(db, matDeps, von, nach)
+
+  // main.js-Helfer, die extrahierte Kern-Domänen injiziert bekommen.
   const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, berechneAlleFuerFach, berechneZeugnisnote, berechneEndnote, pruefeNotenTrigger, pruefeFehlstundenSchwellen, erzeugeTrigger, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment, rosterIdsFuerFach, initKompetenzVorlagen }
 
   // Zentraler Fehler-Wrapper: fängt Ausnahmen aus ALLEN nachfolgend registrierten
@@ -3045,7 +3067,9 @@ function registerIPC() {
   })
 
   // ─── Materialien (Abschnitts-Ordner) ─────────────────────────────────────────
-  const MATERIAL_INDEX_NAME = '_Materialübersicht.txt'
+  // Handler-Logik in core/domain/materialien.js; lokale Bindungen (materialRoot,
+  // ensureAbschnittFolder, schreibeMaterialIndex, verschiebeDir, kopiereMaterialien …)
+  // stehen am Anfang von registerIPC. sanitizeSegment bleibt hier (Export + kernDeps).
 
   // Freitext → dateisystem-sicheres Segment (Windows-Regeln)
   function sanitizeSegment(name, fallback = 'Unbenannt') {
@@ -3056,208 +3080,16 @@ function registerIPC() {
     if (!s || /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(s)) s = fallback
     return s
   }
-  function materialRoot() {
-    return db.prepare("SELECT wert FROM einstellungen WHERE schluessel='material_root_pfad'").get()?.wert || null
-  }
-  function abschnittHierarchie(fachId) {
-    return db.prepare(`SELECT f.name AS fach_name, k.name AS klasse_name, s.bezeichnung AS schuljahr_bez
-      FROM faecher f JOIN klassen k ON f.klasse_id=k.id JOIN schuljahre s ON k.schuljahr_id=s.id
-      WHERE f.id=?`).get(fachId)
-  }
-  function fachDir(root, h) {
-    return path.join(root, sanitizeSegment(h.schuljahr_bez), sanitizeSegment(h.klasse_name), sanitizeSegment(h.fach_name))
-  }
-  function eindeutigerLeaf(baseDir, wunsch) {
-    let leaf = wunsch, n = 2
-    while (fs.existsSync(path.join(baseDir, leaf))) leaf = `${wunsch} (${n++})`
-    return leaf
-  }
-  function eindeutigerDateiname(dir, name) {
-    const ext = path.extname(name), base = path.basename(name, ext)
-    let ziel = name, n = 2
-    while (fs.existsSync(path.join(dir, ziel))) ziel = `${base} (${n++})${ext}`
-    return ziel
-  }
-  // Legt den Ordner an, weist material_ordner bei Erstnutzung zu. Null wenn Root fehlt.
-  function ensureAbschnittFolder(abschnittId) {
-    const root = materialRoot(); if (!root) return null
-    const a = db.prepare('SELECT id, fach_id, titel, material_ordner FROM jahresplanung_abschnitte WHERE id=?').get(abschnittId)
-    if (!a) return null
-    const h = abschnittHierarchie(a.fach_id); if (!h) return null
-    const baseDir = fachDir(root, h)
-    fs.mkdirSync(baseDir, { recursive: true })
-    let leaf = a.material_ordner
-    if (!leaf) {
-      leaf = eindeutigerLeaf(baseDir, sanitizeSegment(a.titel || 'Abschnitt'))
-      db.prepare('UPDATE jahresplanung_abschnitte SET material_ordner=? WHERE id=?').run(leaf, abschnittId)
-    }
-    const dir = path.join(baseDir, leaf)
-    fs.mkdirSync(dir, { recursive: true })
-    return dir
-  }
-  // Read-only-Auflösung (kein Anlegen).
-  function abschnittFolderIfExists(abschnittId) {
-    const root = materialRoot(); if (!root) return null
-    const a = db.prepare('SELECT fach_id, material_ordner FROM jahresplanung_abschnitte WHERE id=?').get(abschnittId)
-    if (!a || !a.material_ordner) return null
-    const h = abschnittHierarchie(a.fach_id); if (!h) return null
-    const dir = path.join(fachDir(root, h), a.material_ordner)
-    return fs.existsSync(dir) ? dir : null
-  }
-  function verschiebeDir(oldDir, newDir) {
-    try {
-      if (!oldDir || !newDir || oldDir === newDir) return null
-      if (!fs.existsSync(oldDir)) return null
-      if (fs.existsSync(newDir)) return 'Zielordner existiert bereits – bitte manuell zusammenführen.'
-      fs.mkdirSync(path.dirname(newDir), { recursive: true })
-      fs.renameSync(oldDir, newDir)
-      return null
-    } catch (e) { logError('verschiebeDir', e); return 'Ordner konnte nicht verschoben werden (evtl. geöffnet).' }
-  }
-  // Gemeinsame Auflistung (Dokumente aus Ordner + Datei-Meta + Links aus DB). Index-Datei/Dotfiles übersprungen.
-  function sammleMaterialien(abschnittId) {
-    const dir = abschnittFolderIfExists(abschnittId)
-    const meta = db.prepare('SELECT * FROM abschnitt_materialien WHERE abschnitt_id=? ORDER BY reihenfolge, id').all(abschnittId)
-    const metaDatei = new Map(meta.filter(m => m.typ === 'datei').map(m => [m.ref, m]))
-    const dateien = []
-    const gesehen = new Set()
-    if (dir) {
-      for (const de of fs.readdirSync(dir, { withFileTypes: true })) {
-        if (!de.isFile() || de.name.startsWith('.') || de.name === MATERIAL_INDEX_NAME) continue
-        const m = metaDatei.get(de.name)
-        gesehen.add(de.name)
-        dateien.push({ typ: 'datei', ref: de.name, id: m?.id ?? null, anzeigename: m?.anzeigename ?? null, beschreibung: m?.beschreibung ?? null, fehlt: false })
-      }
-    }
-    for (const m of metaDatei.values()) {
-      if (!gesehen.has(m.ref)) dateien.push({ typ: 'datei', ref: m.ref, id: m.id, anzeigename: m.anzeigename, beschreibung: m.beschreibung, fehlt: true })
-    }
-    const links = meta.filter(m => m.typ === 'link').map(m => ({ typ: 'link', id: m.id, ref: m.ref, anzeigename: m.anzeigename, beschreibung: m.beschreibung }))
-    return { dir, dateien, links }
-  }
-  // Menschenlesbare Übersichts-Datei im Ordner (neu geschrieben bei jeder Änderung).
-  function schreibeMaterialIndex(abschnittId) {
-    try {
-      const dir = abschnittFolderIfExists(abschnittId)
-      if (!dir) return
-      const a = db.prepare('SELECT fach_id, titel FROM jahresplanung_abschnitte WHERE id=?').get(abschnittId)
-      const h = a ? abschnittHierarchie(a.fach_id) : null
-      const { dateien, links } = sammleMaterialien(abschnittId)
-      const z = []
-      z.push(`Materialübersicht — ${a?.titel ?? ''}`)
-      if (h) z.push(`${h.fach_name} · ${h.klasse_name} · ${h.schuljahr_bez}`)
-      z.push(`Stand: ${new Date().toLocaleString('de-AT')}`)
-      z.push('')
-      z.push('DOKUMENTE')
-      if (dateien.length === 0) z.push('  (keine)')
-      for (const d of dateien) {
-        z.push(`  - ${d.anzeigename ? d.anzeigename + '  [' + d.ref + ']' : d.ref}${d.fehlt ? '  (Datei fehlt)' : ''}`)
-        if (d.beschreibung) z.push(`      ${d.beschreibung}`)
-      }
-      z.push('')
-      z.push('LINKS')
-      if (links.length === 0) z.push('  (keine)')
-      for (const l of links) {
-        z.push(`  - ${l.anzeigename || l.ref}`)
-        z.push(`      ${l.ref}`)
-        if (l.beschreibung) z.push(`      ${l.beschreibung}`)
-      }
-      fs.writeFileSync(path.join(dir, MATERIAL_INDEX_NAME), z.join('\r\n'), 'utf8')
-    } catch (e) { logError('schreibeMaterialIndex', e) }
-  }
 
-  ipcMain.handle('materialien:waehleRoot', async () => {
-    const r = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
-    if (r.canceled || !r.filePaths[0]) return null
-    db.prepare("INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES ('material_root_pfad', ?)").run(r.filePaths[0])
-    return r.filePaths[0]
-  })
-  ipcMain.handle('materialien:getRoot', () => materialRoot())
-  ipcMain.handle('materialien:list', (_, abschnittId) => {
-    const root = materialRoot()
-    const { dir, dateien, links } = sammleMaterialien(abschnittId)
-    return { root: !!root, ordner: dir, dateien, links }
-  })
-  ipcMain.handle('materialien:dateienHinzufuegen', async (_, abschnittId) => {
-    const r = await dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] })
-    if (r.canceled) return { ok: false, grund: 'abbruch' }
-    let dir
-    try { dir = ensureAbschnittFolder(abschnittId) } catch (e) { logError('materialien:dateien mkdir', e); return { ok: false, grund: 'fs' } }
-    if (!dir) return { ok: false, grund: 'kein_root' }
-    for (const src of r.filePaths) {
-      try { fs.copyFileSync(src, path.join(dir, eindeutigerDateiname(dir, path.basename(src)))) }
-      catch (e) { logError('materialien:copy', e) }
-    }
-    schreibeMaterialIndex(abschnittId)
-    return { ok: true }
-  })
-  ipcMain.handle('materialien:linkHinzufuegen', (_, abschnittId, data) => {
-    const { url, anzeigename, beschreibung } = data || {}
-    if (!url) return { ok: false }
-    const max = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) m FROM abschnitt_materialien WHERE abschnitt_id=?').get(abschnittId).m
-    db.prepare(`INSERT INTO abschnitt_materialien (abschnitt_id,typ,ref,anzeigename,beschreibung,reihenfolge,erstellt_am)
-      VALUES (?,?,?,?,?,?,datetime('now'))`).run(abschnittId, 'link', url, anzeigename || null, beschreibung || null, max + 1)
-    schreibeMaterialIndex(abschnittId)
-    return { ok: true }
-  })
-  ipcMain.handle('materialien:metaSetzen', (_, data) => {
-    const { abschnittId, typ, ref, id, anzeigename, beschreibung } = data || {}
-    if (typ === 'link' && id) {
-      db.prepare('UPDATE abschnitt_materialien SET anzeigename=?, beschreibung=? WHERE id=?').run(anzeigename || null, beschreibung || null, id)
-    } else if (typ === 'datei') {
-      const ex = db.prepare("SELECT id FROM abschnitt_materialien WHERE abschnitt_id=? AND typ='datei' AND ref=?").get(abschnittId, ref)
-      if (ex) db.prepare('UPDATE abschnitt_materialien SET anzeigename=?, beschreibung=? WHERE id=?').run(anzeigename || null, beschreibung || null, ex.id)
-      else db.prepare("INSERT INTO abschnitt_materialien (abschnitt_id,typ,ref,anzeigename,beschreibung) VALUES (?,'datei',?,?,?)").run(abschnittId, ref, anzeigename || null, beschreibung || null)
-    }
-    schreibeMaterialIndex(abschnittId)
-    return { ok: true }
-  })
-  ipcMain.handle('materialien:entfernen', (_, data) => {
-    const { abschnittId, typ, ref, id } = data || {}
-    if (typ === 'datei') {
-      const dir = abschnittFolderIfExists(abschnittId)
-      if (dir) { try { fs.unlinkSync(path.join(dir, ref)) } catch (e) { logError('materialien:unlink', e) } }
-      db.prepare("DELETE FROM abschnitt_materialien WHERE abschnitt_id=? AND typ='datei' AND ref=?").run(abschnittId, ref)
-    } else if (id) {
-      db.prepare('DELETE FROM abschnitt_materialien WHERE id=?').run(id)
-    }
-    schreibeMaterialIndex(abschnittId)
-    return { ok: true }
-  })
-  ipcMain.handle('materialien:oeffnen', async (_, data) => {
-    const { abschnittId, typ, ref } = data || {}
-    if (typ === 'link') { return { ok: oeffneExternSicher(ref) } }
-    const dir = abschnittFolderIfExists(abschnittId)
-    if (!dir) return { ok: false, grund: 'kein_ordner' }
-    const err = await shell.openPath(path.join(dir, ref))
-    return { ok: !err, fehler: err || null }
-  })
-  ipcMain.handle('materialien:ordnerOeffnen', async (_, abschnittId) => {
-    let dir
-    try { dir = ensureAbschnittFolder(abschnittId) } catch (e) { logError('materialien:ordnerOeffnen', e); return { ok: false, grund: 'fs' } }
-    if (!dir) return { ok: false, grund: 'kein_root' }
-    schreibeMaterialIndex(abschnittId)
-    const err = await shell.openPath(dir)
-    return { ok: !err, fehler: err || null }
-  })
-
-  // Materialien eines Abschnitts (Links + Datei-Metadaten + echte Dateien) auf einen anderen kopieren.
-  function kopiereMaterialien(vonAbschnittId, nachAbschnittId) {
-    const rows = db.prepare('SELECT typ, ref, anzeigename, beschreibung, reihenfolge FROM abschnitt_materialien WHERE abschnitt_id=? ORDER BY reihenfolge, id').all(vonAbschnittId)
-    const ins = db.prepare('INSERT INTO abschnitt_materialien (abschnitt_id, typ, ref, anzeigename, beschreibung, reihenfolge) VALUES (?,?,?,?,?,?)')
-    for (const r of rows) ins.run(nachAbschnittId, r.typ, r.ref, r.anzeigename, r.beschreibung, r.reihenfolge)
-    try {
-      const vonDir = abschnittFolderIfExists(vonAbschnittId)
-      if (!vonDir) return
-      const nachDir = ensureAbschnittFolder(nachAbschnittId)
-      if (!nachDir) return
-      for (const de of fs.readdirSync(vonDir, { withFileTypes: true })) {
-        if (!de.isFile() || de.name.startsWith('.') || de.name === MATERIAL_INDEX_NAME) continue
-        fs.copyFileSync(path.join(vonDir, de.name), path.join(nachDir, de.name))
-      }
-      schreibeMaterialIndex(nachAbschnittId)
-    } catch (e) { logError('kopiereMaterialien', e) }
-  }
+  ipcMain.handle('materialien:waehleRoot', () => materialienDomain.waehleRoot(db, matDeps))
+  ipcMain.handle('materialien:getRoot', () => materialienDomain.getRoot(db))
+  ipcMain.handle('materialien:list', (_, abschnittId) => materialienDomain.list(db, matDeps, abschnittId))
+  ipcMain.handle('materialien:dateienHinzufuegen', (_, abschnittId) => materialienDomain.dateienHinzufuegen(db, matDeps, abschnittId))
+  ipcMain.handle('materialien:linkHinzufuegen', (_, abschnittId, data) => materialienDomain.linkHinzufuegen(db, matDeps, abschnittId, data))
+  ipcMain.handle('materialien:metaSetzen', (_, data) => materialienDomain.metaSetzen(db, matDeps, data))
+  ipcMain.handle('materialien:entfernen', (_, data) => materialienDomain.entfernen(db, matDeps, data))
+  ipcMain.handle('materialien:oeffnen', (_, data) => materialienDomain.oeffnen(db, matDeps, data))
+  ipcMain.handle('materialien:ordnerOeffnen', (_, abschnittId) => materialienDomain.ordnerOeffnen(db, matDeps, abschnittId))
 
   // Eine echte Klasse duplizieren: Fächer immer; optional Jahresplanung+Materialien und/oder Schüler:innen (ohne Noten).
   ipcMain.handle('klassen:duplizieren', (_, { klasseId, neuerName, mitPlanung, mitSchueler }) => {

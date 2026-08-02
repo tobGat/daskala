@@ -12,6 +12,12 @@ function createDialogPort() {
       const r = await dialog.showOpenDialog({ properties: ['openFile'], filters: opts.filters })
       return r.canceled ? null : r.filePaths[0]
     },
+    async openFiles(opts = {}) {
+      const properties = ['openFile']
+      if (opts.multiSelections) properties.push('multiSelections')
+      const r = await dialog.showOpenDialog({ properties, filters: opts.filters })
+      return r.canceled ? null : r.filePaths
+    },
     async openDirectory(opts = {}) {
       const properties = ['openDirectory']
       if (opts.createDirectory) properties.push('createDirectory')

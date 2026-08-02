@@ -39,6 +39,7 @@
  * Datei-/Ordner-Dialoge. Ersetzt `dialog.*`.
  * @typedef {Object} DialogPort
  * @property {(opts?: {filters?: Array}) => Promise<string|null>} openFile
+ * @property {(opts?: {filters?: Array, multiSelections?: boolean}) => Promise<string[]|null>} openFiles
  * @property {(opts?: {title?: string, createDirectory?: boolean}) => Promise<string|null>} openDirectory
  * @property {(opts?: {filters?: Array, defaultName?: string}) => Promise<string|null>} saveFile
  * @property {(opts: {type?: string, title?: string, message?: string, buttons?: string[]}) => Promise<number>} message
