@@ -29,6 +29,23 @@ function znInternZuAnzeige(intern, niveau, istDifferenziert) {
   return Math.max(1, Math.min(5, Math.round(intern - off)))
 }
 
+// Mitarbeits-Einheit eines Eintrags in Schritt-Vielfachen (±1 = ganzer Schritt).
+// 2-stufig (ma_stufen != 4): + → +1, − → −1.
+// 4-stufig (ma_stufen === 4): 😄 +1, 🙂 +0,5, 🙁 −0,5, 😞 −1.
+// Rückgabe null = kein gültiger MA-Eintrag (zählt nicht mit).
+function maEinheit(spalte, wert) {
+  if (spalte.ma_stufen === 4) {
+    if (wert === '😄') return 1
+    if (wert === '🙂') return 0.5
+    if (wert === '🙁') return -0.5
+    if (wert === '😞') return -1
+    return null
+  }
+  if (wert === '+') return 1
+  if (wert === '-') return -1
+  return null
+}
+
 function berechneZeugnisnote(db, fachId, schuelerId, semester) {
   const fach = db.prepare('SELECT * FROM faecher WHERE id = ?').get(fachId)
   if (!fach) return { note: null }
@@ -84,8 +101,8 @@ function berechneZeugnisnote(db, fachId, schuelerId, semester) {
 
   // Basisnote aus echten Noten (SA/T/Individuell, intern inkl. Niveau-Offset).
   const basisWerte = { SA: [], T: [], CUSTOM: [] }
-  // Mitarbeit & Hausübung werden nur gezählt (niveau-frei, keine Noten).
-  let maPlus = 0, maMinus = 0, huePos = 0, hueNeg = 0
+  // Mitarbeit (gewichtete Summe in Schritt-Vielfachen) & Hausübung (Zähler); niveau-frei, keine Noten.
+  let maScore = 0, maCount = 0, huePos = 0, hueNeg = 0
 
   for (const spalte of spalten) {
     const wert = db.prepare(
@@ -94,8 +111,8 @@ function berechneZeugnisnote(db, fachId, schuelerId, semester) {
     if (!wert) continue
 
     if (spalte.kategorie === 'MA') {
-      if (wert === '+') maPlus++
-      else if (wert === '-') maMinus++
+      const e = maEinheit(spalte, wert)
+      if (e !== null) { maScore += e; maCount++ }
     } else if (spalte.kategorie === 'HÜ') {
       if (wert === '✓') huePos++
       else if (wert === '✗') hueNeg++
@@ -124,11 +141,13 @@ function berechneZeugnisnote(db, fachId, schuelerId, semester) {
 
   // MA-/HÜ-Einfluss "pro Eintrag": jeder Eintrag ein kleiner Schritt. MA und HÜ wirken UNABHÄNGIG
   // voneinander – jeweils eigene Deckelung, danach summiert. Positiv = verbessert.
-  const maGesamt = maPlus + maMinus
+  const maGesamt = maCount
   const hueGesamt = huePos + hueNeg
   const hatMAHUE = maGesamt > 0 || hueGesamt > 0
 
-  let maEinfluss = maGesamt > 0 ? (maPlus - maMinus) * einflussSchritt : 0
+  // Rohsumme × Schritt; Deckelung greift erst hier (viele Minus bleiben "im Minus", bis
+  // genug Plus die Rohsumme wieder über die Grenze hebt).
+  let maEinfluss = maGesamt > 0 ? maScore * einflussSchritt : 0
   maEinfluss = Math.max(-maxMaEinfluss, Math.min(maxMaEinfluss, maEinfluss))
   let hueEinfluss = hueGesamt > 0 ? (huePos - hueNeg) * einflussSchritt : 0
   hueEinfluss = Math.max(-maxHueEinfluss, Math.min(maxHueEinfluss, hueEinfluss))
@@ -136,7 +155,7 @@ function berechneZeugnisnote(db, fachId, schuelerId, semester) {
 
   // Verhältnis (−1…+1) nur für die grobe Fallback-Note, wenn es keine echten Noten gibt.
   const ratios = []
-  if (maGesamt > 0) ratios.push((maPlus - maMinus) / maGesamt)
+  if (maGesamt > 0) ratios.push(maScore / maGesamt)
   if (hueGesamt > 0) ratios.push((huePos - hueNeg) / hueGesamt)
   const verhaeltnis = ratios.length ? ratios.reduce((a, b) => a + b, 0) / ratios.length : 0
 

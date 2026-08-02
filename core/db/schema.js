@@ -207,6 +207,8 @@ function applySchema(db, deps) {
   spalteErgaenzen('todos', 'faelligkeit', 'TEXT')
   spalteErgaenzen('todos', 'erinnerung', 'TEXT')
   spalteErgaenzen('spalten', 'notiz', 'TEXT')
+  // Mitarbeits-Bewertungsstufen: 2 = klassisch (+/−), 4 = Smiley-Skala (😄🙂🙁😞). Default 2.
+  spalteErgaenzen('spalten', 'ma_stufen', 'INTEGER DEFAULT 2')
   spalteErgaenzen('eintraege', 'kommentar', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_text', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_frist_datum', 'TEXT')
