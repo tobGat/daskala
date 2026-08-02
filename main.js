@@ -151,9 +151,10 @@ function bauePdfHtml(profil, klassenname) {
     const niveau = niveaus[fach.id] ?? 'AHS'
     const n1 = znInternZuAnzeige(znS1?.note_manuell ?? znS1?.note_berechnet, niveau, istDiff)
     const n2 = znInternZuAnzeige(znS2?.note_manuell ?? znS2?.note_berechnet, niveau, istDiff)
+    // Positiv: + / 😄 / 🙂 ; negativ: − / 🙁 / 😞 (2- und 4-stufige Mitarbeit zusammengefasst).
     const maEintr = fachEintr.filter(e => e.kategorie === 'MA' && e.wert)
-    const maPos = maEintr.filter(e => e.wert === '+').length
-    const maNeg = maEintr.filter(e => e.wert === '-').length
+    const maPos = maEintr.filter(e => e.wert === '+' || e.wert === '😄' || e.wert === '🙂').length
+    const maNeg = maEintr.filter(e => e.wert === '-' || e.wert === '🙁' || e.wert === '😞').length
     const maGes = maEintr.length
     const hueEintr = fachEintr.filter(e => e.kategorie === 'HÜ' && e.wert && e.wert !== '—')
     const huePos = hueEintr.filter(e => e.wert === '✓').length

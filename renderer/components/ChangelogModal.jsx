@@ -8,6 +8,14 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.0.71',
+    datum: 'August 2026',
+    punkte: [
+      'Mitarbeit: Beim Anlegen einer MA-Spalte lässt sich jetzt eine vierstufige Smiley-Skala wählen – 😄 sehr fröhlich (+0,1), 🙂 mäßig fröhlich (+0,05), 🙁 mäßig traurig (−0,05), 😞 sehr traurig (−0,1). Die klassische zweistufige Bewertung (+ / −) bleibt unverändert; bestehende Spalten sind weiterhin zweistufig.',
+      'Klarstellung zur Deckelung: Alle Mitarbeits-Einträge werden zu einer Rohsumme addiert und erst danach auf die maximale Verschiebung begrenzt – viele Minus bleiben „im Minus", bis genug Plus die Rohsumme wieder über die Grenze hebt.',
+    ],
+  },
+  {
     version: '1.0.70',
     datum: 'Juli 2026',
     punkte: [
