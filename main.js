@@ -35,6 +35,7 @@ const kvDoku = require('./core/domain/kv/dokumentation')
 const kvRoutine = require('./core/domain/kv/routine')
 
 const materialienDomain = require('./core/domain/materialien')
+const jahresplanungDomain = require('./core/domain/jahresplanung')
 
 // ── Ports (Phase 1.2): plattformabhaengige Adapter, in core injizierbar ──
 const { createFsPort } = require('./platform/electron/ports/fs')
@@ -1581,16 +1582,15 @@ function registerIPC() {
   // bestehenden Aufrufstellen (kernDeps, jahresplanung, klassen:duplizieren)
   // unverändert bleiben.
   const matDeps = { fs: fsPort, shell: shellPort, dialog: dialogPort, logError, oeffneExternSicher, indexName: '_Materialübersicht.txt' }
+  const jpDeps = { fs: fsPort, logError, mat: matDeps }
+  // Nur die Bindungen, die main.js selbst noch braucht: materialRoot/verschiebeDir
+  // (kernDeps), abschnittHierarchie/sammleMaterialien (export:jahresplanungOdt),
+  // kopiereMaterialien (klassen:duplizieren). sanitizeSegment bleibt als hoisted
+  // Funktion in main.js; die Materialien-Domäne hat ihre eigene, identische Kopie.
   const materialRoot = () => materialienDomain.materialRoot(db)
   const abschnittHierarchie = (fachId) => materialienDomain.abschnittHierarchie(db, fachId)
-  const fachDir = (root, h) => materialienDomain.fachDir(root, h)
-  const eindeutigerLeaf = (baseDir, wunsch) => materialienDomain.eindeutigerLeaf(matDeps, baseDir, wunsch)
-  // sanitizeSegment bleibt als hoisted Funktion in main.js (auch von Export-Handlern
-  // & kernDeps genutzt); die Materialien-Domäne hat ihre eigene, identische Kopie.
-  const ensureAbschnittFolder = (id) => materialienDomain.ensureAbschnittFolder(db, matDeps, id)
   const verschiebeDir = (oldDir, newDir) => materialienDomain.verschiebeDir(matDeps, oldDir, newDir)
   const sammleMaterialien = (id) => materialienDomain.sammleMaterialien(db, matDeps, id)
-  const schreibeMaterialIndex = (id) => materialienDomain.schreibeMaterialIndex(db, matDeps, id)
   const kopiereMaterialien = (von, nach) => materialienDomain.kopiereMaterialien(db, matDeps, von, nach)
 
   // main.js-Helfer, die extrahierte Kern-Domänen injiziert bekommen.
@@ -2913,158 +2913,15 @@ function registerIPC() {
   ipcMain.handle('termine:delete', (_, id) => termineDomain.remove(db, id))
 
   // ─── Jahresplanung ────────────────────────────────────────────────────────────
-  ipcMain.handle('jahresplanung:getAll', (_, fachId) =>
-    db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY reihenfolge, id').all(fachId)
-  )
-  ipcMain.handle('jahresplanung:create', (_, d) => {
-    const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(d.fachId).m
-    const id = Number(db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)').run(d.fachId, d.titel, d.inhalt ?? '', d.lernziele ?? '', d.kompetenzen ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, maxOrd + 1).lastInsertRowid)
-    try { if (materialRoot()) { ensureAbschnittFolder(id); schreibeMaterialIndex(id) } } catch (e) { logError('jahresplanung:create ordner', e) }
-    return id
-  })
-  ipcMain.handle('jahresplanung:update', (_, id, d) => {
-    const alt = db.prepare('SELECT titel, fach_id, material_ordner FROM jahresplanung_abschnitte WHERE id=?').get(id)
-    db.prepare('UPDATE jahresplanung_abschnitte SET titel=?, inhalt=?, lernziele=?, kompetenzen=?, datum_von=?, datum_bis=?, farbe=? WHERE id=?').run(d.titel, d.inhalt ?? '', d.lernziele ?? '', d.kompetenzen ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, id)
-    let ordnerWarnung = null
-    const root = materialRoot()
-    if (root && alt && alt.material_ordner && d.titel != null && d.titel !== alt.titel) {
-      const h = abschnittHierarchie(alt.fach_id)
-      if (h) {
-        const baseDir = fachDir(root, h)
-        const oldDir = path.join(baseDir, alt.material_ordner)
-        if (fs.existsSync(oldDir)) {
-          const neuLeaf = eindeutigerLeaf(baseDir, sanitizeSegment(d.titel))
-          ordnerWarnung = verschiebeDir(oldDir, path.join(baseDir, neuLeaf))
-          if (!ordnerWarnung) { db.prepare('UPDATE jahresplanung_abschnitte SET material_ordner=? WHERE id=?').run(neuLeaf, id); schreibeMaterialIndex(id) }
-        }
-      }
-    }
-    return { ok: true, ordnerWarnung }
-  })
-  ipcMain.handle('jahresplanung:delete', (_, id) => {
-    db.prepare('DELETE FROM jahresplanung_abschnitte WHERE id=?').run(id)
-    return true
-  })
-  ipcMain.handle('jahresplanung:getFaecherMitPlan', () =>
-    db.prepare(`
-      SELECT f.id, f.name, f.farbe, k.name as klasse_name, k.id as klasse_id,
-             k.ist_vorlage as ist_vorlage,
-             COUNT(a.id) as abschnitt_anzahl
-      FROM jahresplanung_abschnitte a
-      JOIN faecher f ON a.fach_id = f.id
-      JOIN klassen k ON f.klasse_id = k.id
-      GROUP BY f.id
-      ORDER BY k.ist_vorlage DESC, k.name, f.name
-    `).all()
-  )
-  ipcMain.handle('jahresplanung:importVonFach', (_, quellFachId, zielFachId, options = {}) => {
-    const ohneTermine = options && options.ohneTermine === true
-    const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY reihenfolge').all(quellFachId)
-    const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(zielFachId).m
-    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)')
-    db.transaction(() => {
-      abschnitte.forEach((a, i) => insert.run(
-        zielFachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen,
-        ohneTermine ? null : a.datum_von,
-        ohneTermine ? null : a.datum_bis,
-        a.farbe, maxOrd + 1 + i
-      ))
-    })()
-    return true
-  })
-  // Eine Fach-Planung (z. B. eine Vorlage) auf MEHRERE Ziel-Fächer anwenden.
-  // ohneTermine (Default true) = Datumsangaben strippen; ersetzen = Ziel-Planung vorher löschen;
-  // mitMaterialien (Default true) = Dokumente/Links je Abschnitt mitkopieren.
-  ipcMain.handle('jahresplanung:anwendenAufFaecher', (_, quellFachId, zielFachIds, options = {}) => {
-    const ohneTermine = options.ohneTermine !== false
-    const ersetzen = options.ersetzen === true
-    const mitMaterialien = options.mitMaterialien !== false
-    const ziele = (Array.isArray(zielFachIds) ? zielFachIds : []).filter(id => id && id !== quellFachId)
-    const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY reihenfolge, id').all(quellFachId)
-    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)')
-    const tx = db.transaction(() => {
-      for (const zielFachId of ziele) {
-        if (ersetzen) db.prepare('DELETE FROM jahresplanung_abschnitte WHERE fach_id = ?').run(zielFachId)
-        const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(zielFachId).m
-        abschnitte.forEach((a, i) => {
-          const na = insert.run(zielFachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen,
-            ohneTermine ? null : a.datum_von, ohneTermine ? null : a.datum_bis,
-            a.farbe, maxOrd + 1 + i)
-          if (mitMaterialien) kopiereMaterialien(a.id, na.lastInsertRowid)
-        })
-      }
-    })
-    tx()
-    return { ok: true, anzahlZiele: ziele.length, anzahlAbschnitte: abschnitte.length }
-  })
-  // Import einer vom Chatbot erzeugten JSON-Datei in ein Fach (robustes Parsen + Validierung).
-  ipcMain.handle('jahresplanung:importVonDatei', (_, fachId, filePath, options = {}) => {
-    const ersetzen = options.ersetzen === true
-    let roh
-    try { roh = fs.readFileSync(filePath, 'utf-8') }
-    catch (e) { logError('importVonDatei:read', e); return { ok: false, fehler: 'Datei konnte nicht gelesen werden.' } }
-
-    // Robust: Code-Fences (```json …```) entfernen; sonst den äußersten {…}/[…]-Block extrahieren.
-    const parseJson = (text) => {
-      let t = String(text).trim()
-      const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i)
-      if (fence) t = fence[1].trim()
-      try { return JSON.parse(t) } catch {}
-      const m = t.match(/[[{][\s\S]*[\]}]/)
-      if (m) { try { return JSON.parse(m[0]) } catch {} }
-      return undefined
-    }
-    const parsed = parseJson(roh)
-    if (parsed === undefined) return { ok: false, fehler: 'Die Datei enthält kein gültiges JSON.' }
-
-    const liste = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.abschnitte) ? parsed.abschnitte : null)
-    if (!liste) return { ok: false, fehler: 'Kein „abschnitte"-Array in der Datei gefunden.' }
-
-    const istDatum = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)
-    const istFarbe = (s) => typeof s === 'string' && /^#[0-9a-fA-F]{6}$/.test(s)
-    // Strings direkt; Arrays (falls der Chatbot Listen liefert) zeilenweise zusammenführen.
-    const str = (v) => Array.isArray(v)
-      ? v.map(x => (x == null ? '' : (typeof x === 'object' ? String(x.text ?? x.titel ?? x.name ?? x.kompetenz ?? '') : String(x)))).filter(s => s.trim() !== '').join('\n')
-      : (v == null ? '' : String(v))
-    const pickDatum = (...vals) => { for (const v of vals) if (istDatum(v)) return v; return null }
-    const norm = liste.map(a => (a && typeof a === 'object') ? {
-      titel: str(a.titel ?? a.title).trim(),
-      inhalt: str(a.inhalt ?? a.beschreibung),
-      lernziele: str(a.lernziele ?? a.lernziel ?? a.ziele),
-      kompetenzen: str(a.kompetenzen ?? a.kompetenz),
-      datum_von: pickDatum(a.datum_von, a.datumVon, a.von),
-      datum_bis: pickDatum(a.datum_bis, a.datumBis, a.bis),
-      farbe: istFarbe(a.farbe ?? a.color) ? (a.farbe ?? a.color) : null,
-    } : null).filter(a => a && a.titel)
-
-    if (norm.length === 0) return { ok: false, fehler: 'Keine gültigen Abschnitte (mit Titel) gefunden.' }
-
-    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)')
-    const neueIds = []
-    db.transaction(() => {
-      if (ersetzen) db.prepare('DELETE FROM jahresplanung_abschnitte WHERE fach_id = ?').run(fachId)
-      const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(fachId).m
-      norm.forEach((a, i) => {
-        const info = insert.run(fachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen, a.datum_von, a.datum_bis, a.farbe, maxOrd + 1 + i)
-        neueIds.push(Number(info.lastInsertRowid))
-      })
-    })()
-    // Material-Ordner je Abschnitt anlegen (konsistent mit jahresplanung:create)
-    try { if (materialRoot()) for (const id of neueIds) { ensureAbschnittFolder(id); schreibeMaterialIndex(id) } }
-    catch (e) { logError('importVonDatei:ordner', e) }
-    return { ok: true, anzahl: neueIds.length }
-  })
-  ipcMain.handle('jahresplanung:swap', (_, idA, idB) => {
-    const a = db.prepare('SELECT datum_von, datum_bis, reihenfolge FROM jahresplanung_abschnitte WHERE id = ?').get(idA)
-    const b = db.prepare('SELECT datum_von, datum_bis, reihenfolge FROM jahresplanung_abschnitte WHERE id = ?').get(idB)
-    if (!a || !b) return false
-    const upd = db.prepare('UPDATE jahresplanung_abschnitte SET datum_von=?, datum_bis=?, reihenfolge=? WHERE id=?')
-    db.transaction(() => {
-      upd.run(b.datum_von, b.datum_bis, b.reihenfolge, idA)
-      upd.run(a.datum_von, a.datum_bis, a.reihenfolge, idB)
-    })()
-    return true
-  })
+  ipcMain.handle('jahresplanung:getAll', (_, fachId) => jahresplanungDomain.getAll(db, fachId))
+  ipcMain.handle('jahresplanung:create', (_, d) => jahresplanungDomain.create(db, jpDeps, d))
+  ipcMain.handle('jahresplanung:update', (_, id, d) => jahresplanungDomain.update(db, jpDeps, id, d))
+  ipcMain.handle('jahresplanung:delete', (_, id) => jahresplanungDomain.remove(db, id))
+  ipcMain.handle('jahresplanung:getFaecherMitPlan', () => jahresplanungDomain.getFaecherMitPlan(db))
+  ipcMain.handle('jahresplanung:importVonFach', (_, quellFachId, zielFachId, options = {}) => jahresplanungDomain.importVonFach(db, quellFachId, zielFachId, options))
+  ipcMain.handle('jahresplanung:anwendenAufFaecher', (_, quellFachId, zielFachIds, options = {}) => jahresplanungDomain.anwendenAufFaecher(db, jpDeps, quellFachId, zielFachIds, options))
+  ipcMain.handle('jahresplanung:importVonDatei', (_, fachId, filePath, options = {}) => jahresplanungDomain.importVonDatei(db, jpDeps, fachId, filePath, options))
+  ipcMain.handle('jahresplanung:swap', (_, idA, idB) => jahresplanungDomain.swap(db, idA, idB))
 
   // ─── Materialien (Abschnitts-Ordner) ─────────────────────────────────────────
   // Handler-Logik in core/domain/materialien.js; lokale Bindungen (materialRoot,
