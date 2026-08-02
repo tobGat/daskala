@@ -5,25 +5,60 @@ const { app, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } = require(
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
-const os = require('os')
 
+// ── Kern-Domänen (Phase-1-Extraktion; plattformunabhängig, ohne Electron) ──
+const einstellungenDomain = require('./core/domain/einstellungen')
+const schuljahreDomain = require('./core/domain/schuljahre')
+const notizenDomain = require('./core/domain/notizen')
+const termineDomain = require('./core/domain/termine')
+const todosDomain = require('./core/domain/todos')
+const gewichtungDomain = require('./core/domain/gewichtung')
+const klassenDomain = require('./core/domain/klassen')
+const niveauDomain = require('./core/domain/niveau')
+const faecherDomain = require('./core/domain/faecher')
+const schuelerDomain = require('./core/domain/schueler')
+const kompetenzenDomain = require('./core/domain/kompetenzen')
+const spaltenDomain = require('./core/domain/spalten')
+const eintraegeDomain = require('./core/domain/eintraege')
+const zeugnisnotenDomain = require('./core/domain/zeugnisnoten')
+const stundenzeitenDomain = require('./core/domain/stundenzeiten')
+const stundenplanDomain = require('./core/domain/stundenplan')
+const supplierstundenDomain = require('./core/domain/supplierstunden')
+const stundenPlanungDomain = require('./core/domain/stundenplanung')
+const sitzplanDomain = require('./core/domain/sitzplan')
+const customFerienDomain = require('./core/domain/customFerien')
+const { createUndo } = require('./core/services/undo')
+const kvJahresaufgaben = require('./core/domain/kv/jahresaufgaben')
+const kvWochenaufgaben = require('./core/domain/kv/wochenaufgaben')
+const kvTrigger = require('./core/domain/kv/trigger')
+const kvDoku = require('./core/domain/kv/dokumentation')
+const kvRoutine = require('./core/domain/kv/routine')
+
+const materialienDomain = require('./core/domain/materialien')
+const jahresplanungDomain = require('./core/domain/jahresplanung')
+const exportService = require('./core/services/export')
+const wetterService = require('./core/services/wetter')
+const backupService = require('./core/services/backup')
+const importService = require('./core/services/import')
+const jahresabschlussDomain = require('./core/domain/jahresabschluss')
+
+// ── Ports (Phase 1.2): plattformabhaengige Adapter, in core injizierbar ──
+const { createFsPort } = require('./platform/electron/ports/fs')
+const { createPdfPort } = require('./platform/electron/ports/pdf')
+const { createHttpPort } = require('./platform/electron/ports/http')
+const { createDialogPort } = require('./platform/electron/ports/dialog')
+const { createShellPort } = require('./platform/electron/ports/shell')
+const fsPort = createFsPort()
+const pdfPort = createPdfPort()
+const httpPort = createHttpPort()
+const dialogPort = createDialogPort()
+const shellPort = createShellPort()
 
 const isDev = process.env.NODE_ENV === 'development'
 
 // ─── PDF-Helper ───────────────────────────────────────────────────────────────
-async function htmlZuPdf(htmlContent, opts = {}) {
-  const tmpFile = path.join(os.tmpdir(), `daskala_${Date.now()}.html`)
-  fs.writeFileSync(tmpFile, htmlContent, 'utf8')
-  const win = new BrowserWindow({
-    show: false, width: 800, height: 1100,
-    webPreferences: { nodeIntegration: false, contextIsolation: true },
-  })
-  await win.loadFile(tmpFile)
-  const pdfBuffer = await win.webContents.printToPDF({ printBackground: true, pageSize: 'A4', landscape: !!opts.landscape })
-  win.destroy()
-  try { fs.unlinkSync(tmpFile) } catch {}
-  return pdfBuffer
-}
+// Delegiert an den PdfPort; Signatur bleibt fuer die Export-Handler unveraendert.
+const htmlZuPdf = (htmlContent, opts) => pdfPort.fromHtml(htmlContent, opts)
 
 // Dateinamen-Baustein: Schrägstriche → Bindestrich (z.B. Schuljahr „2026/27"),
 // sonstige für Dateinamen ungültige Zeichen entfernen, Leerzeichen → _.
@@ -201,40 +236,15 @@ try {
 let db
 
 // ─── Undo/Redo ────────────────────────────────────────────────────────────────
-const undoStack = []
-const redoStack = []
+// Undo/Redo als Kern-Service; Renderer-Notify (BrowserWindow) als Callback injiziert.
+const undo = createUndo({
+  onApplied: () => BrowserWindow.getAllWindows()[0]?.webContents.send('undo:applied'),
+})
+const pushUndo = undo.push
 
-function pushUndo(action) {
-  undoStack.push(action)
-  if (undoStack.length > 50) undoStack.shift()
-  redoStack.length = 0
-}
-
-function executeUndo() {
-  if (undoStack.length === 0) return
-  const action = undoStack.pop()
-  try { action.undo(); redoStack.push(action) } catch (e) { console.error('Undo fehlgeschlagen:', e) }
-  BrowserWindow.getAllWindows()[0]?.webContents.send('undo:applied')
-}
-
-function executeRedo() {
-  if (redoStack.length === 0) return
-  const action = redoStack.pop()
-  try { action.redo(); undoStack.push(action) } catch (e) { console.error('Redo fehlgeschlagen:', e) }
-  BrowserWindow.getAllWindows()[0]?.webContents.send('undo:applied')
-}
-
+// Dünne Wrapper um core/services/backup.js (Dateilogik electron-frei, über FsPort).
 function doBackupCreate() {
-  const now = new Date()
-  const ts = now.toISOString().replace(/:/g, '-').slice(0, 19)
-  const backupPath = path.join(backupDir, `db_${ts}.sqlite`)
-  try {
-    fs.copyFileSync(dbPath, backupPath)
-    markiereBackupGemacht()
-    return backupPath
-  } catch {
-    return null
-  }
+  return backupService.doBackupCreate({ fs: fsPort, dbPath, backupDir, markiereBackupGemacht })
 }
 
 async function doSaveAs(win) {
@@ -259,8 +269,7 @@ async function doSaveAs(win) {
 function neustartNachDatenwechsel() {
   if (isDev) {
     try { initDB() } catch (e) { logError('initDB(reload)', e) }
-    undoStack.length = 0
-    redoStack.length = 0
+    undo.reset()
     BrowserWindow.getAllWindows()[0]?.webContents.reload()
   } else {
     app.relaunch()
@@ -1061,28 +1070,8 @@ function bkSet(key, wert) {
   db.prepare('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)').run(key, wert)
 }
 
-// Kopiert die aktuelle Datenbank als Zeitstempel-Datei in einen Zielordner und
-// behält (falls `max` gesetzt) nur die neuesten `max` Dateien dieses Präfixes.
 function schreibeBackupInOrdner(ordner, prefix, max) {
-  try {
-    if (!ordner) return null
-    if (!fs.existsSync(ordner)) fs.mkdirSync(ordner, { recursive: true })
-    const ts = new Date().toISOString().replace(/:/g, '-').slice(0, 19)
-    const ziel = path.join(ordner, `${prefix}_${ts}.sqlite`)
-    fs.copyFileSync(dbPath, ziel)
-    if (max) {
-      const alte = fs.readdirSync(ordner)
-        .filter(f => f.startsWith(prefix + '_') && f.endsWith('.sqlite'))
-        .sort()
-      if (alte.length > max) {
-        alte.slice(0, alte.length - max).forEach(f => { try { fs.unlinkSync(path.join(ordner, f)) } catch {} })
-      }
-    }
-    return ziel
-  } catch (e) {
-    logError('schreibeBackupInOrdner', e)
-    return null
-  }
+  return backupService.schreibeBackupInOrdner({ fs: fsPort, logError, dbPath }, ordner, prefix, max)
 }
 
 // Merkt sich, dass gerade gesichert wurde → setzt die Erinnerungsuhr zurück.
@@ -1099,42 +1088,12 @@ function backupMax() {
   return Math.max(1, parseInt(bkGet('backup_max'), 10) || BACKUP_MAX_STANDARD)
 }
 
-// Aktuelle Signatur der Datenbank (Größe + Zeitstempel) für die Änderungserkennung.
 function dbSignatur() {
-  try { const st = fs.statSync(dbPath); return `${st.size}-${Math.round(st.mtimeMs)}` } catch { return '' }
+  return backupService.dbSignatur({ fs: fsPort, dbPath })
 }
 
-// Art einer Sicherung anhand des Dateinamens (für die Anzeige).
-function backupArt(name) {
-  if (name.startsWith('db_vor-update') || name.startsWith('Daskala-vor-Update')) return 'vor Update'
-  if (name.startsWith('db_vor-reset')) return 'vor Zurücksetzen'
-  if (name.startsWith('db_vor-wiederherstellung')) return 'vor Wiederherstellung'
-  if (name.startsWith('Daskala-Sicherung')) return 'automatisch'
-  return 'manuell'
-}
-
-// Alle wiederherstellbaren Sicherungen (interner Ordner + gewählter Sicherungsordner).
 function sammleBackups() {
-  const out = []
-  const scan = (dir, quelle) => {
-    if (!dir) return
-    let files = []
-    try { files = fs.readdirSync(dir) } catch { return }
-    for (const name of files) {
-      if (!name.endsWith('.sqlite')) continue
-      try {
-        const p = path.join(dir, name)
-        const st = fs.statSync(p)
-        if (!st.isFile()) continue
-        out.push({ pfad: p, name, quelle, art: backupArt(name), datumIso: new Date(st.mtimeMs).toISOString(), groesse: st.size })
-      } catch { /* Datei überspringen */ }
-    }
-  }
-  scan(backupDir, 'intern')
-  const ordner = bkGet('backup_ordner')
-  if (ordner && path.resolve(ordner) !== path.resolve(backupDir)) scan(ordner, 'ordner')
-  out.sort((a, b) => b.datumIso.localeCompare(a.datumIso))
-  return out
+  return backupService.sammleBackups({ fs: fsPort, backupDir, bkGet })
 }
 
 // Standardanzahl aufbewahrter automatischer Sicherungen.
@@ -1174,35 +1133,6 @@ function backupVorUpdate() {
 let appGesperrt = false
 function hashPin(pin) {
   return require('crypto').createHash('sha256').update('daskala-pin:' + String(pin)).digest('hex')
-}
-
-// ─── Wetter (Open-Meteo, kostenlos, ohne API-Key) ────────────────────────────
-const https = require('https')
-// Näherung: Koordinaten der Landeshauptstädte je Bundesland.
-const WETTER_KOORD = {
-  'Wien':             [48.2082, 16.3738],
-  'Niederösterreich': [48.2047, 15.6256],
-  'Burgenland':       [47.8457, 16.5231],
-  'Oberösterreich':   [48.3069, 14.2858],
-  'Steiermark':       [47.0707, 15.4395],
-  'Kärnten':          [46.6247, 14.3050],
-  'Salzburg':         [47.8095, 13.0550],
-  'Tirol':            [47.2692, 11.4041],
-  'Vorarlberg':       [47.5031,  9.7471],
-}
-const wetterCache = new Map()   // key -> { zeit, data }
-
-function httpsGetJson(url) {
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, { headers: { 'User-Agent': 'Daskala' } }, (res) => {
-      if (res.statusCode < 200 || res.statusCode >= 300) { res.resume(); reject(new Error('HTTP ' + res.statusCode)); return }
-      let data = ''
-      res.on('data', c => { data += c })
-      res.on('end', () => { try { resolve(JSON.parse(data)) } catch (e) { reject(e) } })
-    })
-    req.on('error', reject)
-    req.setTimeout(8000, () => req.destroy(new Error('timeout')))
-  })
 }
 
 // ─── Zeugnisnoten-Berechnung ──────────────────────────────────────────────────
@@ -1575,6 +1505,27 @@ function oeffneExternSicher(url) {
 
 // ─── IPC Handler registrieren ─────────────────────────────────────────────────
 function registerIPC() {
+  // Materialien-Domäne (core/domain/materialien.js): Ports + Helfer gebündelt.
+  // Lokale Bindungen reichen `db` (reopen-sicher) und `matDeps` durch, damit die
+  // bestehenden Aufrufstellen (kernDeps, jahresplanung, klassen:duplizieren)
+  // unverändert bleiben.
+  const matDeps = { fs: fsPort, shell: shellPort, dialog: dialogPort, logError, oeffneExternSicher, indexName: '_Materialübersicht.txt' }
+  const jpDeps = { fs: fsPort, logError, mat: matDeps }
+  // Nur die Bindungen, die main.js selbst noch braucht: materialRoot/verschiebeDir
+  // (kernDeps), abschnittHierarchie/sammleMaterialien (export:jahresplanungOdt),
+  // kopiereMaterialien (klassen:duplizieren). sanitizeSegment bleibt als hoisted
+  // Funktion in main.js; die Materialien-Domäne hat ihre eigene, identische Kopie.
+  const materialRoot = () => materialienDomain.materialRoot(db)
+  const abschnittHierarchie = (fachId) => materialienDomain.abschnittHierarchie(db, fachId)
+  const verschiebeDir = (oldDir, newDir) => materialienDomain.verschiebeDir(matDeps, oldDir, newDir)
+  const sammleMaterialien = (id) => materialienDomain.sammleMaterialien(db, matDeps, id)
+  const kopiereMaterialien = (von, nach) => materialienDomain.kopiereMaterialien(db, matDeps, von, nach)
+  // exDeps nach den Material-Bindungen (nutzt abschnittHierarchie/sammleMaterialien).
+  const exDeps = { dialog: dialogPort, fs: fsPort, pdf: pdfPort, dateiTeil, exportDatum, rosterFuerFach, znInternZuAnzeige, abschnittHierarchie, sammleMaterialien, sanitizeSegment }
+
+  // main.js-Helfer, die extrahierte Kern-Domänen injiziert bekommen.
+  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, berechneAlleFuerFach, berechneZeugnisnote, berechneEndnote, pruefeNotenTrigger, pruefeFehlstundenSchwellen, erzeugeTrigger, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment, rosterIdsFuerFach, initKompetenzVorlagen }
+
   // Zentraler Fehler-Wrapper: fängt Ausnahmen aus ALLEN nachfolgend registrierten
   // Handlern ab, protokolliert sie mit Kanalnamen und reicht sie als abgelehntes
   // Promise an den Renderer weiter – ohne alle Handler einzeln anzufassen.
@@ -1590,580 +1541,68 @@ function registerIPC() {
     })
 
   // Einstellungen
-  ipcMain.handle('einstellungen:get', (_, schluessel) => {
-    return db.prepare('SELECT wert FROM einstellungen WHERE schluessel = ?').get(schluessel)?.wert ?? null
-  })
-
-  ipcMain.handle('einstellungen:set', (_, schluessel, wert) => {
-    db.prepare('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)').run(schluessel, wert)
-    return true
-  })
-
-  ipcMain.handle('einstellungen:getAll', () => {
-    const rows = db.prepare('SELECT * FROM einstellungen').all()
-    const result = {}
-    rows.forEach(r => { result[r.schluessel] = r.wert })
-    return result
-  })
+  // Handler delegieren an die Kern-Domäne (siehe core/domain/einstellungen.js).
+  ipcMain.handle('einstellungen:get', (_, schluessel) => einstellungenDomain.get(db, schluessel))
+  ipcMain.handle('einstellungen:set', (_, schluessel, wert) => einstellungenDomain.set(db, schluessel, wert))
+  ipcMain.handle('einstellungen:getAll', () => einstellungenDomain.getAll(db))
 
   // Schuljahre
-  ipcMain.handle('schuljahre:getAll', () => {
-    return db.prepare('SELECT * FROM schuljahre ORDER BY id DESC').all()
-  })
-
-  ipcMain.handle('schuljahre:create', (_, bezeichnung) => {
-    const info = db.prepare('INSERT INTO schuljahre (bezeichnung) VALUES (?)').run(bezeichnung)
-    return info.lastInsertRowid
-  })
+  ipcMain.handle('schuljahre:getAll', () => schuljahreDomain.getAll(db))
+  ipcMain.handle('schuljahre:create', (_, bezeichnung) => schuljahreDomain.create(db, bezeichnung))
 
   // Klassen
-  ipcMain.handle('klassen:getAll', (_, schuljahrId) => {
-    return db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY reihenfolge, name').all(schuljahrId)
-  })
-
-  // Vorlagenklassen: bewusst OHNE Schuljahr-Filter, damit sie Jahreswechsel überdauern.
-  ipcMain.handle('klassen:getVorlagen', () => {
-    return db.prepare('SELECT * FROM klassen WHERE ist_vorlage = 1 ORDER BY reihenfolge, name').all()
-  })
-
-  ipcMain.handle('klassen:create', (_, { schuljahrId, name, farbe, teamsLink, istVorlage }) => {
-    const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM klassen WHERE schuljahr_id = ?').get(schuljahrId)?.m ?? 0
-    const info = db.prepare('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link, ist_vorlage) VALUES (?, ?, ?, ?, ?, ?)').run(schuljahrId, name, farbe ?? null, maxReihenfolge + 1, teamsLink ?? null, istVorlage ? 1 : 0)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('klassen:setTeamsLink', (_, id, link) => {
-    db.prepare('UPDATE klassen SET teams_link = ? WHERE id = ?').run(link || null, id)
-    return true
-  })
-
-  ipcMain.handle('klassen:setIstKv', (_, id, istKv) => {
-    db.prepare('UPDATE klassen SET ist_kv = ? WHERE id = ?').run(istKv ? 1 : 0, id)
-    return true
-  })
-
-  // Vorschau auf eine Klassen-Löschung: zählt alle abhängigen Datensätze.
-  // Wird vom UI vor dem eigentlichen Löschen aufgerufen, damit der User sieht,
-  // was alles verschwindet (Schüler:innen, Fächer, eingetragene Noten etc.).
-  ipcMain.handle('klassen:getDeleteStats', (_, id) => {
-    const klasse = db.prepare('SELECT * FROM klassen WHERE id = ?').get(id)
-    if (!klasse) return null
-    const fachCount    = db.prepare('SELECT COUNT(*) AS c FROM faecher WHERE klasse_id = ?').get(id).c
-    const schuelerCount = db.prepare('SELECT COUNT(*) AS c FROM schueler WHERE klasse_id = ?').get(id).c
-    const noteCount    = db.prepare(`
-      SELECT COUNT(*) AS c FROM eintraege e
-      JOIN spalten s ON e.spalte_id = s.id
-      JOIN faecher f ON s.fach_id = f.id
-      WHERE f.klasse_id = ? AND e.wert IS NOT NULL AND e.wert != ''
-    `).get(id).c
-    const todoCount    = db.prepare('SELECT COUNT(*) AS c FROM todos WHERE klasse_id = ?').get(id).c
-    const terminCount  = db.prepare('SELECT COUNT(*) AS c FROM termine WHERE klasse_id = ?').get(id).c
-    // KV-Daten (alle haben ON DELETE CASCADE — verschwinden automatisch)
-    let kvAktenvermerkeCount = 0, kvElternkontakteCount = 0, kvFehlstundenCount = 0, kvTriggerCount = 0
-    try {
-      kvAktenvermerkeCount  = db.prepare('SELECT COUNT(*) AS c FROM kv_aktenvermerke WHERE klasse_id = ?').get(id).c
-      kvElternkontakteCount = db.prepare(`SELECT COUNT(*) AS c FROM kv_elternkontakte WHERE schueler_id IN (SELECT id FROM schueler WHERE klasse_id = ?)`).get(id).c
-      kvFehlstundenCount    = db.prepare(`SELECT COUNT(*) AS c FROM kv_fehlstunden WHERE schueler_id IN (SELECT id FROM schueler WHERE klasse_id = ?)`).get(id).c
-      kvTriggerCount        = db.prepare('SELECT COUNT(*) AS c FROM kv_trigger WHERE klasse_id = ?').get(id).c
-    } catch (e) { logError('klassen:loeschInfo kv-zaehler', e) }
-    return { klasse, fachCount, schuelerCount, noteCount, todoCount, terminCount, kvAktenvermerkeCount, kvElternkontakteCount, kvFehlstundenCount, kvTriggerCount }
-  })
-
-  // Klasse vollständig löschen (kaskadierend in Transaktion).
-  // Räumt Tabellen ohne ON DELETE CASCADE manuell auf.
-  ipcMain.handle('klassen:delete', (_, id) => {
-    const tx = db.transaction(() => {
-      // Alle abhängigen Fach-IDs und Schüler-IDs für diese Klasse einsammeln
-      const fachIds    = db.prepare('SELECT id FROM faecher WHERE klasse_id = ?').all(id).map(r => r.id)
-      const schuelerIds = db.prepare('SELECT id FROM schueler WHERE klasse_id = ?').all(id).map(r => r.id)
-
-      // Fach-bezogene Nicht-CASCADE-Daten (Noten, Verlauf, Spalten, Zeugnis, Notizen, Stundenplan)
-      raeumeFachDatenAuf(fachIds)
-
-      if (schuelerIds.length > 0) {
-        const schuelerPh = schuelerIds.map(() => '?').join(',')
-        // Restliche schüler-bezogene Daten, die nicht über die Fach-IDs erfasst wurden
-        db.prepare(`DELETE FROM eintraege WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
-        db.prepare(`DELETE FROM zeugnisnoten WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
-        db.prepare(`DELETE FROM notizen WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds)
-        try { db.prepare(`DELETE FROM eintraege_verlauf WHERE schueler_id IN (${schuelerPh})`).run(...schuelerIds) } catch (e) { logError('klassen:delete eintraege_verlauf(schueler)', e) }
-      }
-
-      // Faecher + Schüler (kein CASCADE auf klassen)
-      db.prepare('DELETE FROM faecher WHERE klasse_id = ?').run(id)
-      db.prepare('DELETE FROM schueler WHERE klasse_id = ?').run(id)
-      // Die Klasse selbst (CASCADE räumt todos / sitzplan_tische auf; termine.klasse_id → NULL)
-      db.prepare('DELETE FROM klassen WHERE id = ?').run(id)
-    })
-    tx()
-    return true
-  })
-
-  ipcMain.handle('klassen:rename', (_, id, name) => {
-    const root = materialRoot()
-    const alt = root ? db.prepare('SELECT k.name AS kn, s.bezeichnung AS sb FROM klassen k JOIN schuljahre s ON k.schuljahr_id=s.id WHERE k.id=?').get(id) : null
-    db.prepare('UPDATE klassen SET name = ? WHERE id = ?').run(name, id)
-    let ordnerWarnung = null
-    if (alt) ordnerWarnung = verschiebeDir(
-      path.join(root, sanitizeSegment(alt.sb), sanitizeSegment(alt.kn)),
-      path.join(root, sanitizeSegment(alt.sb), sanitizeSegment(name)))
-    return { ok: true, ordnerWarnung }
-  })
-
-  ipcMain.handle('klassen:setFarbe', (_, id, farbe) => {
-    db.prepare('UPDATE klassen SET farbe = ? WHERE id = ?').run(farbe ?? null, id)
-    return true
-  })
-
-  // Sortier-Modus der Schüler:innen-Liste dieser Klasse setzen (Whitelist-validiert).
-  ipcMain.handle('klassen:setSortierung', (_, id, modus) => {
-    const wert = ['vorname', 'nachname', 'manuell'].includes(modus) ? modus : 'nachname'
-    db.prepare('UPDATE klassen SET sortierung = ? WHERE id = ?').run(wert, id)
-    return true
-  })
-
-  // Manuelle Reihenfolge der Klassen-Tabs speichern (Drag-and-Drop im Header).
-  ipcMain.handle('klassen:reorder', (_, updates) => {
-    const stmt = db.prepare('UPDATE klassen SET reihenfolge = ? WHERE id = ?')
-    const tx = db.transaction(() => {
-      for (const { id, reihenfolge } of updates) stmt.run(reihenfolge, id)
-    })
-    tx()
-    return true
-  })
+  ipcMain.handle('klassen:getAll', (_, schuljahrId) => klassenDomain.getAll(db, schuljahrId))
+  ipcMain.handle('klassen:getVorlagen', () => klassenDomain.getVorlagen(db))
+  ipcMain.handle('klassen:create', (_, data) => klassenDomain.create(db, data))
+  ipcMain.handle('klassen:setTeamsLink', (_, id, link) => klassenDomain.setTeamsLink(db, id, link))
+  ipcMain.handle('klassen:setIstKv', (_, id, istKv) => klassenDomain.setIstKv(db, id, istKv))
+  ipcMain.handle('klassen:getDeleteStats', (_, id) => klassenDomain.getDeleteStats(db, kernDeps, id))
+  ipcMain.handle('klassen:delete', (_, id) => klassenDomain.remove(db, kernDeps, id))
+  ipcMain.handle('klassen:rename', (_, id, name) => klassenDomain.rename(db, kernDeps, id, name))
+  ipcMain.handle('klassen:setFarbe', (_, id, farbe) => klassenDomain.setFarbe(db, id, farbe))
+  ipcMain.handle('klassen:setSortierung', (_, id, modus) => klassenDomain.setSortierung(db, id, modus))
+  ipcMain.handle('klassen:reorder', (_, updates) => klassenDomain.reorder(db, updates))
 
   // Fächer
-  ipcMain.handle('faecher:getAll', (_, klasseId) => {
-    return db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasseId)
-  })
-
-  // Alle Fächer echter Klassen eines Schuljahrs (für den Ziel-Picker beim Anwenden von Vorlagen).
-  ipcMain.handle('faecher:getAllImSchuljahr', (_, schuljahrId) => {
-    return db.prepare(`
-      SELECT f.id, f.name, f.farbe, f.klasse_id,
-             k.name AS klasse_name, k.farbe AS klasse_farbe, k.reihenfolge AS klasse_reihenfolge
-      FROM faecher f JOIN klassen k ON k.id = f.klasse_id
-      WHERE k.schuljahr_id = ? AND k.ist_vorlage = 0
-      ORDER BY k.reihenfolge, k.name, f.reihenfolge, f.name
-    `).all(schuljahrId)
-  })
-
-  ipcMain.handle('faecher:create', (_, { klasseId, name, farbe, benotungssystem, alleSchueler = 1, schuelerIds = [] }) => {
-    const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM faecher WHERE klasse_id = ?').get(klasseId)?.m ?? 0
-    const info = db.prepare('INSERT INTO faecher (klasse_id, name, farbe, reihenfolge, benotungssystem, alle_schueler) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(klasseId, name, farbe ?? null, maxReihenfolge + 1, benotungssystem ?? 'standard', alleSchueler ? 1 : 0)
-    const fachId = info.lastInsertRowid
-    // Manuelle Teilmenge: gewählte Schüler:innen als Fach-Mitglieder eintragen
-    if (!alleSchueler && schuelerIds.length) {
-      const insFS = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
-      for (const sid of schuelerIds) insFS.run(fachId, sid)
-    }
-    // Bei differenziert: Default-Niveau für die Roster-Schüler:innen (NACH fach_schueler-Insert)
-    if (benotungssystem === 'differenziert') {
-      const insert = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
-      for (const sid of rosterIdsFuerFach(fachId)) insert.run(fachId, sid, 'AHS')
-    }
-    // Kompetenz-Vorlagen automatisch anlegen
-    initKompetenzVorlagen(fachId, name)
-    return fachId
-  })
-
-  ipcMain.handle('faecher:delete', (_, id) => {
-    // Zuerst alle Nicht-CASCADE-Kinddaten abräumen: sonst schlägt das Löschen bei
-    // vorhandenen Spalten/Noten/Zeugnisnoten/Stundenplan an foreign_keys=ON fehl
-    // (und hinterließe sonst verwaiste Zeilen). Alles atomar in einer Transaktion.
-    db.transaction(() => {
-      raeumeFachDatenAuf([id])
-      db.prepare('DELETE FROM faecher WHERE id = ?').run(id)
-    })()
-    return true
-  })
-
-  ipcMain.handle('faecher:rename', (_, id, name) => {
-    const root = materialRoot()
-    const alt = root ? db.prepare('SELECT f.name AS fn, k.name AS kn, s.bezeichnung AS sb FROM faecher f JOIN klassen k ON f.klasse_id=k.id JOIN schuljahre s ON k.schuljahr_id=s.id WHERE f.id=?').get(id) : null
-    db.prepare('UPDATE faecher SET name = ? WHERE id = ?').run(name, id)
-    let ordnerWarnung = null
-    if (alt) ordnerWarnung = verschiebeDir(
-      path.join(root, sanitizeSegment(alt.sb), sanitizeSegment(alt.kn), sanitizeSegment(alt.fn)),
-      path.join(root, sanitizeSegment(alt.sb), sanitizeSegment(alt.kn), sanitizeSegment(name)))
-    return { ok: true, ordnerWarnung }
-  })
-
-  ipcMain.handle('faecher:setFarbe', (_, id, farbe) => {
-    db.prepare('UPDATE faecher SET farbe = ? WHERE id = ?').run(farbe ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('faecher:updateGewichtung', (_, id, data) => {
-    // Nur SA/Test/Individuell gewichten die Note; MA & HÜ wirken als Einfluss (eigene Deckelung).
-    db.prepare(`
-      UPDATE faecher SET
-        gewichtung_sa = ?,
-        gewichtung_t = ?,
-        gewichtung_ma = NULL,
-        gewichtung_hue = NULL,
-        gewichtung_custom = ?,
-        ma_hue_max_einfluss = NULL,
-        ma_max_einfluss = ?,
-        hue_max_einfluss = ?
-      WHERE id = ?
-    `).run(data.sa ?? null, data.t ?? null, data.custom ?? null, data.maEinfluss ?? null, data.hueEinfluss ?? null, id)
-    berechneAlleFuerFach(id)
-    return true
-  })
-
-  ipcMain.handle('faecher:resetGewichtung', (_, id) => {
-    db.prepare('UPDATE faecher SET gewichtung_sa = NULL, gewichtung_t = NULL, gewichtung_ma = NULL, gewichtung_hue = NULL, gewichtung_custom = NULL, ma_hue_max_einfluss = NULL, ma_max_einfluss = NULL, hue_max_einfluss = NULL WHERE id = ?').run(id)
-    berechneAlleFuerFach(id)
-    return true
-  })
-
-  ipcMain.handle('faecher:setBenotungssystem', (_, id, system) => {
-    db.prepare('UPDATE faecher SET benotungssystem = ? WHERE id = ?').run(system, id)
-    if (system === 'differenziert') {
-      // Default-Niveau 'AHS' für alle Schüler:innen + Initial-Historien-Eintrag
-      const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(id)
-      if (fach) {
-        const schuelerIds = rosterIdsFuerFach(id).map(x => ({ id: x }))
-        const insertNiveau = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
-        const insertHist = db.prepare(`
-          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
-          SELECT ?, ?, ?, ?
-          WHERE NOT EXISTS (
-            SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?
-          )
-        `)
-        for (const s of schuelerIds) {
-          insertNiveau.run(id, s.id, 'AHS')
-          insertHist.run(id, s.id, 'AHS', '1900-01-01', id, s.id)
-        }
-      }
-    }
-    berechneAlleFuerFach(id)
-    return true
-  })
-
-  // Aktuelle Fach-Zuordnung (ids). Bei alle_schueler=1 automatisch alle aktiven Klassen-Schüler:innen.
-  ipcMain.handle('faecher:getSchuelerIds', (_, fachId) => {
-    return rosterIdsFuerFach(fachId)
-  })
-
-  // Fach-Zuordnung setzen: alle = true → alle Klassen-Schüler:innen; sonst manuelle Teilmenge.
-  ipcMain.handle('faecher:setSchueler', (_, fachId, { alle, schuelerIds = [] }) => {
-    const fach = db.prepare('SELECT benotungssystem FROM faecher WHERE id = ?').get(fachId)
-    if (!fach) return false
-    db.transaction(() => {
-      db.prepare('UPDATE faecher SET alle_schueler = ? WHERE id = ?').run(alle ? 1 : 0, fachId)
-      db.prepare('DELETE FROM fach_schueler WHERE fach_id = ?').run(fachId)   // immer neu aufbauen
-      if (!alle) {
-        const ins = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
-        for (const sid of schuelerIds) ins.run(fachId, sid)
-      }
-      // Differenziert: neu ins Roster gekommene Schüler:innen brauchen Niveau-Default + Historie
-      if (fach.benotungssystem === 'differenziert') {
-        const insN = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
-        const insH = db.prepare(`
-          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
-          SELECT ?, ?, ?, '1900-01-01'
-          WHERE NOT EXISTS (SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?)
-        `)
-        for (const sid of rosterIdsFuerFach(fachId)) { insN.run(fachId, sid, 'AHS'); insH.run(fachId, sid, 'AHS', fachId, sid) }
-      }
-    })()
-    berechneAlleFuerFach(fachId)   // Roster geändert → Zeugnisnoten neu berechnen
-    return true
-  })
+  ipcMain.handle('faecher:getAll', (_, klasseId) => faecherDomain.getAll(db, klasseId))
+  ipcMain.handle('faecher:getAllImSchuljahr', (_, schuljahrId) => faecherDomain.getAllImSchuljahr(db, schuljahrId))
+  ipcMain.handle('faecher:create', (_, data) => faecherDomain.create(db, kernDeps, data))
+  ipcMain.handle('faecher:delete', (_, id) => faecherDomain.remove(db, kernDeps, id))
+  ipcMain.handle('faecher:rename', (_, id, name) => faecherDomain.rename(db, kernDeps, id, name))
+  ipcMain.handle('faecher:setFarbe', (_, id, farbe) => faecherDomain.setFarbe(db, id, farbe))
+  ipcMain.handle('faecher:updateGewichtung', (_, id, data) => faecherDomain.updateGewichtung(db, kernDeps, id, data))
+  ipcMain.handle('faecher:resetGewichtung', (_, id) => faecherDomain.resetGewichtung(db, kernDeps, id))
+  ipcMain.handle('faecher:setBenotungssystem', (_, id, system) => faecherDomain.setBenotungssystem(db, kernDeps, id, system))
+  ipcMain.handle('faecher:getSchuelerIds', (_, fachId) => faecherDomain.getSchuelerIds(db, kernDeps, fachId))
+  ipcMain.handle('faecher:setSchueler', (_, fachId, data) => faecherDomain.setSchueler(db, kernDeps, fachId, data))
 
   // Niveau (AHS/ST-Differenzierung)
-  ipcMain.handle('niveau:get', (_, fachId) => {
-    const rows = db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fachId)
-    const map = {}
-    for (const r of rows) map[r.schueler_id] = r.niveau
-    return map
-  })
-
-  // Niveau setzen — mit optionalem Datum für rückwirkenden oder zukünftigen Wechsel.
-  // Ohne datum: gilt ab heute. Schreibt in beide Tabellen (aktueller Stand + Historie).
-  ipcMain.handle('niveau:set', (_, fachId, schuelerId, niveau, datum) => {
-    const gueltigAb = datum || new Date().toISOString().slice(0, 10)
-    db.transaction(() => {
-      // Aktuellen Stand aktualisieren (nur wenn der Wechsel "jetzt oder früher" gilt)
-      const heute = new Date().toISOString().slice(0, 10)
-      if (gueltigAb <= heute) {
-        db.prepare(`
-          INSERT INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)
-          ON CONFLICT(fach_id, schueler_id) DO UPDATE SET niveau = excluded.niveau
-        `).run(fachId, schuelerId, niveau)
-      }
-      // Sicherstellen, dass es einen Initial-Historien-Eintrag gibt (1900-01-01) — sonst
-      // wären Einträge vor dem Wechseldatum ohne Niveau-Zuordnung.
-      const hatInitial = db.prepare(`
-        SELECT 1 FROM schueler_niveau_historie
-        WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = '1900-01-01'
-      `).get(fachId, schuelerId)
-      if (!hatInitial) {
-        // Erst-Wechsel: vorheriges Niveau (Default AHS) als Initial setzen
-        const altNiveau = niveau === 'AHS' ? 'ST' : 'AHS'
-        db.prepare(`
-          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
-          VALUES (?, ?, ?, '1900-01-01')
-        `).run(fachId, schuelerId, altNiveau)
-      }
-      // Existierenden Eintrag mit dem gleichen gueltig_ab überschreiben (idempotent)
-      const existiert = db.prepare(`
-        SELECT id FROM schueler_niveau_historie
-        WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = ?
-      `).get(fachId, schuelerId, gueltigAb)
-      if (existiert) {
-        db.prepare('UPDATE schueler_niveau_historie SET niveau = ? WHERE id = ?').run(niveau, existiert.id)
-      } else {
-        db.prepare(`
-          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
-          VALUES (?, ?, ?, ?)
-        `).run(fachId, schuelerId, niveau, gueltigAb)
-      }
-    })()
-    berechneAlleFuerFach(fachId)
-    return true
-  })
-
-  // Historie aller Niveau-Wechsel für ein Fach (für Renderer: Zellen-Hintergrundfarbe)
-  // Rückgabe: { schuelerId: [{ niveau, gueltig_ab }, ...] } absteigend nach Datum
-  ipcMain.handle('niveau:getHistorie', (_, fachId) => {
-    const rows = db.prepare(`
-      SELECT schueler_id, niveau, gueltig_ab FROM schueler_niveau_historie
-      WHERE fach_id = ?
-      ORDER BY schueler_id, gueltig_ab DESC, id DESC
-    `).all(fachId)
-    const map = {}
-    for (const r of rows) {
-      if (!map[r.schueler_id]) map[r.schueler_id] = []
-      map[r.schueler_id].push({ niveau: r.niveau, gueltig_ab: r.gueltig_ab })
-    }
-    return map
-  })
-
-  // Einen einzelnen Historien-Eintrag löschen (z.B. versehentlich erstellter Wechsel)
-  ipcMain.handle('niveau:deleteHistorie', (_, fachId, schuelerId, gueltigAb) => {
-    // Initial-Eintrag '1900-01-01' nicht löschbar — er ist der Anker
-    if (gueltigAb === '1900-01-01') return false
-    db.prepare(`
-      DELETE FROM schueler_niveau_historie
-      WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = ?
-    `).run(fachId, schuelerId, gueltigAb)
-    // Aktuellen Stand neu setzen aus dem jüngsten verbleibenden Eintrag
-    const aktuell = db.prepare(`
-      SELECT niveau FROM schueler_niveau_historie
-      WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab <= ?
-      ORDER BY gueltig_ab DESC, id DESC LIMIT 1
-    `).get(fachId, schuelerId, new Date().toISOString().slice(0, 10))
-    if (aktuell) {
-      db.prepare(`
-        INSERT INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)
-        ON CONFLICT(fach_id, schueler_id) DO UPDATE SET niveau = excluded.niveau
-      `).run(fachId, schuelerId, aktuell.niveau)
-    }
-    berechneAlleFuerFach(fachId)
-    return true
-  })
+  ipcMain.handle('niveau:get', (_, fachId) => niveauDomain.get(db, fachId))
+  ipcMain.handle('niveau:getHistorie', (_, fachId) => niveauDomain.getHistorie(db, fachId))
+  ipcMain.handle('niveau:set', (_, fachId, schuelerId, niveau, datum) => niveauDomain.set(db, kernDeps, fachId, schuelerId, niveau, datum))
+  ipcMain.handle('niveau:deleteHistorie', (_, fachId, schuelerId, gueltigAb) => niveauDomain.deleteHistorie(db, kernDeps, fachId, schuelerId, gueltigAb))
 
   // ─── Kompetenzbereiche ──────────────────────────────────────────────────────
-  ipcMain.handle('kompetenzbereiche:getAll', (_, fachId) =>
-    db.prepare('SELECT * FROM kompetenzbereiche WHERE fach_id = ? ORDER BY reihenfolge, id').all(fachId)
-  )
-
-  ipcMain.handle('kompetenzbereiche:create', (_, fachId, titel, beschreibung) => {
-    const maxR = db.prepare('SELECT MAX(reihenfolge) as m FROM kompetenzbereiche WHERE fach_id = ?').get(fachId)?.m ?? 0
-    const info = db.prepare('INSERT INTO kompetenzbereiche (fach_id, titel, beschreibung, reihenfolge) VALUES (?, ?, ?, ?)').run(fachId, titel, beschreibung ?? null, maxR + 1)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kompetenzbereiche:update', (_, id, { titel, beschreibung }) => {
-    db.prepare('UPDATE kompetenzbereiche SET titel = ?, beschreibung = ? WHERE id = ?').run(titel, beschreibung ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('kompetenzbereiche:delete', (_, id) => {
-    db.prepare('DELETE FROM kompetenzbereiche WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('kompetenzbereiche:reorder', (_, ids) => {
-    const stmt = db.prepare('UPDATE kompetenzbereiche SET reihenfolge = ? WHERE id = ?')
-    ids.forEach((id, idx) => stmt.run(idx, id))
-    return true
-  })
-
-  ipcMain.handle('kompetenzbereiche:initVorlagen', (_, fachId, fachName) => {
-    initKompetenzVorlagen(fachId, fachName)
-    return true
-  })
+  ipcMain.handle('kompetenzbereiche:getAll', (_, fachId) => kompetenzenDomain.bereicheGetAll(db, fachId))
+  ipcMain.handle('kompetenzbereiche:create', (_, fachId, titel, beschreibung) => kompetenzenDomain.bereichCreate(db, fachId, titel, beschreibung))
+  ipcMain.handle('kompetenzbereiche:update', (_, id, data) => kompetenzenDomain.bereichUpdate(db, id, data))
+  ipcMain.handle('kompetenzbereiche:delete', (_, id) => kompetenzenDomain.bereichDelete(db, id))
+  ipcMain.handle('kompetenzbereiche:reorder', (_, ids) => kompetenzenDomain.bereichReorder(db, ids))
+  ipcMain.handle('kompetenzbereiche:initVorlagen', (_, fachId, fachName) => kompetenzenDomain.initVorlagen(db, kernDeps, fachId, fachName))
 
   // ─── Schüler:innen-Kompetenzen ─────────────────────────────────────────────
-  ipcMain.handle('schuelerKompetenzen:getAll', (_, fachId) => {
-    return db.prepare(`
-      SELECT sk.* FROM schueler_kompetenzen sk
-      JOIN kompetenzbereiche kb ON kb.id = sk.kompetenzbereich_id
-      WHERE kb.fach_id = ?
-    `).all(fachId)
-  })
-
-  ipcMain.handle('schuelerKompetenzen:set', (_, kompetenzbereichId, schuelerId, niveau, notiz) => {
-    db.prepare(`
-      INSERT INTO schueler_kompetenzen (kompetenzbereich_id, schueler_id, niveau, notiz, aktualisiert)
-      VALUES (?, ?, ?, ?, datetime('now'))
-      ON CONFLICT(kompetenzbereich_id, schueler_id) DO UPDATE SET
-        niveau = excluded.niveau, notiz = excluded.notiz, aktualisiert = excluded.aktualisiert
-    `).run(kompetenzbereichId, schuelerId, niveau, notiz ?? null)
-    return true
-  })
+  ipcMain.handle('schuelerKompetenzen:getAll', (_, fachId) => kompetenzenDomain.schuelerGetAll(db, fachId))
+  ipcMain.handle('schuelerKompetenzen:set', (_, kompetenzbereichId, schuelerId, niveau, notiz) => kompetenzenDomain.schuelerSet(db, kompetenzbereichId, schuelerId, niveau, notiz))
 
   // Schüler:innen. Reihenfolge richtet sich nach der pro Klasse gewählten Sortierung.
-  ipcMain.handle('schueler:getAll', (_, klasseId) => {
-    const modus = db.prepare('SELECT sortierung FROM klassen WHERE id = ?').get(klasseId)?.sortierung || 'nachname'
-    // ORDER-BY aus fester Whitelist (keine Nutzereingabe → sichere Interpolation).
-    const order = modus === 'vorname'
-      ? 'vorname COLLATE NOCASE, nachname COLLATE NOCASE'
-      : modus === 'manuell'
-        ? 'reihenfolge, nachname COLLATE NOCASE, vorname COLLATE NOCASE'
-        : 'nachname COLLATE NOCASE, vorname COLLATE NOCASE'
-    return db.prepare(`SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY ${order}`).all(klasseId)
-  })
-
-  ipcMain.handle('schueler:create', (_, { klasseId, vorname, nachname, fachIds = [] }) => {
-    const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM schueler WHERE klasse_id = ?').get(klasseId)?.m ?? 0
-    const info = db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge) VALUES (?, ?, ?, ?)').run(klasseId, vorname, nachname, maxReihenfolge + 1)
-    const schuelerId = info.lastInsertRowid
-    // In gewählte Fächer aufnehmen: manuelle Fächer bekommen einen fach_schueler-Eintrag,
-    // „alle Schüler:innen"-Fächer schließen neue automatisch ein (nichts zu tun).
-    if (Array.isArray(fachIds) && fachIds.length) {
-      const insFS = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
-      const insN  = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
-      const insH  = db.prepare(`
-        INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
-        SELECT ?, ?, ?, '1900-01-01'
-        WHERE NOT EXISTS (SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?)
-      `)
-      for (const fid of fachIds) {
-        const fach = db.prepare('SELECT alle_schueler, benotungssystem FROM faecher WHERE id = ? AND klasse_id = ?').get(fid, klasseId)
-        if (!fach) continue
-        if (!fach.alle_schueler) insFS.run(fid, schuelerId)
-        if (fach.benotungssystem === 'differenziert') { insN.run(fid, schuelerId, 'AHS'); insH.run(fid, schuelerId, 'AHS', fid, schuelerId) }
-      }
-    }
-    return schuelerId
-  })
-
-  ipcMain.handle('schueler:delete', (_, id) => {
-    db.prepare('UPDATE schueler SET aktiv = 0 WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('schueler:update', (_, id, data) => {
-    db.prepare(`UPDATE schueler SET vorname = ?, nachname = ?,
-      lernschwaeche = CASE WHEN ? IS NOT NULL THEN ? ELSE lernschwaeche END,
-      legasthenie   = CASE WHEN ? IS NOT NULL THEN ? ELSE legasthenie   END,
-      spf           = CASE WHEN ? IS NOT NULL THEN ? ELSE spf           END
-      WHERE id = ?`
-    ).run(
-      data.vorname, data.nachname,
-      data.lernschwaeche ?? null, data.lernschwaeche ?? null,
-      data.legasthenie   ?? null, data.legasthenie   ?? null,
-      data.spf           ?? null, data.spf           ?? null,
-      id
-    )
-    return true
-  })
-
-  // Avatar (JSON-Config) setzen; null = zurück auf Auto-aus-Name
-  ipcMain.handle('schueler:setAvatar', (_, id, avatar) => {
-    db.prepare('UPDATE schueler SET avatar = ? WHERE id = ?').run(avatar ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('schueler:reorder', (_, updates) => {
-    const stmt = db.prepare('UPDATE schueler SET reihenfolge = ? WHERE id = ?')
-    const tx = db.transaction(() => {
-      for (const { id, reihenfolge } of updates) {
-        stmt.run(reihenfolge, id)
-      }
-    })
-    tx()
-    return true
-  })
-
-  ipcMain.handle('schueler:importBatch', (_, klasseId, list, fachIds = []) => {
-    // Gewählte Fächer (nur gültige der Klasse) einmal auflösen.
-    const faecher = (Array.isArray(fachIds) ? fachIds : [])
-      .map(fid => db.prepare('SELECT id, alle_schueler, benotungssystem FROM faecher WHERE id = ? AND klasse_id = ?').get(fid, klasseId))
-      .filter(Boolean)
-    const insFS = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
-    const insN  = db.prepare('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)')
-    const insH  = db.prepare(`
-      INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
-      SELECT ?, ?, ?, '1900-01-01'
-      WHERE NOT EXISTS (SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?)
-    `)
-    const tx = db.transaction(() => {
-      const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM schueler WHERE klasse_id = ?').get(klasseId)?.m ?? 0
-      const stmt = db.prepare('INSERT OR IGNORE INTO schueler (klasse_id, vorname, nachname, reihenfolge) VALUES (?, ?, ?, ?)')
-      list.forEach((s, i) => {
-        const info = stmt.run(klasseId, s.vorname, s.nachname, maxReihenfolge + i + 1)
-        // Nur wirklich neu angelegte Schüler:innen den Fächern zuordnen.
-        if (info.changes && faecher.length) {
-          const sid = info.lastInsertRowid
-          for (const fach of faecher) {
-            if (!fach.alle_schueler) insFS.run(fach.id, sid)
-            if (fach.benotungssystem === 'differenziert') { insN.run(fach.id, sid, 'AHS'); insH.run(fach.id, sid, 'AHS', fach.id, sid) }
-          }
-        }
-      })
-    })
-    tx()
-    return true
-  })
-
-  ipcMain.handle('schueler:getLeistungsProfil', (_, schuelerId) => {
-    const schueler = db.prepare('SELECT * FROM schueler WHERE id = ?').get(schuelerId)
-    if (!schueler) return null
-    // Nur Fächer, in denen der/die Schüler:in im Roster ist (alle_schueler=1 oder in fach_schueler).
-    const faecher = db.prepare(`
-      SELECT f.* FROM faecher f
-      WHERE f.klasse_id = ?
-        AND (f.alle_schueler = 1
-             OR EXISTS (SELECT 1 FROM fach_schueler fs WHERE fs.fach_id = f.id AND fs.schueler_id = ?))
-      ORDER BY f.reihenfolge
-    `).all(schueler.klasse_id, schuelerId)
-
-    // Zeugnisnoten aktuell berechnen (S1, S2 und Endnote), damit das Profil immer aktuelle Werte zeigt
-    for (const fach of faecher) berechneAlleFuerFach(fach.id)
-
-    const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE schueler_id = ?').all(schuelerId)
-    const eintraege = db.prepare(`
-      SELECT e.wert, e.kommentar, s.kategorie, s.datum, s.kuerzel, s.notiz, s.semester, s.fach_id, s.reihenfolge
-      FROM eintraege e
-      JOIN spalten s ON e.spalte_id = s.id
-      WHERE e.schueler_id = ? AND e.wert IS NOT NULL
-      ORDER BY s.fach_id, s.semester, s.reihenfolge
-    `).all(schuelerId)
-    const notizen = db.prepare(`
-      SELECT n.schueler_id, n.fach_id, n.text, f.name AS fach_name FROM notizen n
-      JOIN faecher f ON n.fach_id = f.id
-      WHERE n.schueler_id = ? AND n.text IS NOT NULL AND n.text != ''
-    `).all(schuelerId)
-    // Aktuelles Niveau je Fach (für korrekte Rückrechnung differenzierter Noten im Export)
-    const niveaus = {}
-    db.prepare('SELECT fach_id, niveau FROM schueler_niveau WHERE schueler_id = ?')
-      .all(schuelerId)
-      .forEach(r => { niveaus[r.fach_id] = r.niveau })
-    // Niveau-Historie je Fach (für die Darstellung von AHS/ST-Wechseln im Leistungsdiagramm)
-    const niveauHistorie = {}
-    db.prepare(`SELECT fach_id, niveau, gueltig_ab FROM schueler_niveau_historie
-      WHERE schueler_id = ? ORDER BY fach_id, gueltig_ab DESC, id DESC`).all(schuelerId)
-      .forEach(r => { (niveauHistorie[r.fach_id] ??= []).push({ niveau: r.niveau, gueltig_ab: r.gueltig_ab }) })
-    return { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus, niveauHistorie }
-  })
+  ipcMain.handle('schueler:getAll', (_, klasseId) => schuelerDomain.getAll(db, klasseId))
+  ipcMain.handle('schueler:create', (_, data) => schuelerDomain.create(db, data))
+  ipcMain.handle('schueler:delete', (_, id) => schuelerDomain.remove(db, id))
+  ipcMain.handle('schueler:update', (_, id, data) => schuelerDomain.update(db, id, data))
+  ipcMain.handle('schueler:setAvatar', (_, id, avatar) => schuelerDomain.setAvatar(db, id, avatar))
+  ipcMain.handle('schueler:reorder', (_, updates) => schuelerDomain.reorder(db, updates))
+  ipcMain.handle('schueler:importBatch', (_, klasseId, list, fachIds = []) => schuelerDomain.importBatch(db, klasseId, list, fachIds))
+  ipcMain.handle('schueler:getLeistungsProfil', (_, schuelerId) => schuelerDomain.getLeistungsProfil(db, kernDeps, schuelerId))
 
   ipcMain.handle('schueler:exportProfilPDF', async (_, { profil, klassenname }) => {
     const { filePath, canceled } = await dialog.showSaveDialog({
@@ -2178,282 +1617,35 @@ function registerIPC() {
   })
 
   // Spalten
-  ipcMain.handle('spalten:getAll', (_, fachId) => {
-    return db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge, datum').all(fachId)
-  })
-
-  ipcMain.handle('spalten:create', (_, data) => {
-    const maxReihenfolge = db.prepare('SELECT MAX(reihenfolge) as m FROM spalten WHERE fach_id = ? AND semester = ?').get(data.fachId, data.semester)?.m ?? 0
-    const info = db.prepare(`
-      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('spalten:delete', (_, id) => {
-    const betroffene = db.prepare('SELECT spalte_id, schueler_id, wert, kommentar FROM eintraege WHERE spalte_id = ?').all(id)
-    if (betroffene.length > 0) {
-      const spalte = db.prepare('SELECT fach_id FROM spalten WHERE id = ?').get(id)
-      const verlaufStmt = db.prepare(`
-        INSERT INTO eintraege_verlauf (fach_id, spalte_id, schueler_id, wert_alt, wert_neu, kommentar_alt, kommentar_neu, aktion)
-        VALUES (?, ?, ?, ?, NULL, ?, NULL, 'spalte_geloescht')
-      `)
-      db.transaction(() => {
-        for (const e of betroffene) {
-          verlaufStmt.run(spalte?.fach_id ?? null, e.spalte_id, e.schueler_id, e.wert, e.kommentar)
-        }
-      })()
-    }
-    db.prepare('DELETE FROM eintraege WHERE spalte_id = ?').run(id)
-    db.prepare('DELETE FROM spalten WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('spalten:update', (_, id, data) => {
-    const old = db.prepare('SELECT kuerzel, datum, notiz FROM spalten WHERE id = ?').get(id)
-    db.prepare('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?').run(data.kuerzel, data.datum, data.notiz ?? null, id)
-    if (old) pushUndo({
-      description: 'Spalte umbenennen',
-      undo: () => db.prepare('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?').run(old.kuerzel, old.datum, old.notiz, id),
-      redo: () => db.prepare('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?').run(data.kuerzel, data.datum, data.notiz ?? null, id),
-    })
-    return true
-  })
-
-  ipcMain.handle('spalten:toggleEingeklappt', (_, id) => {
-    db.prepare('UPDATE spalten SET eingeklappt = CASE WHEN eingeklappt = 0 THEN 1 ELSE 0 END WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('spalten:setEingeklappt', (_, ids, wert) => {
-    const stmt = db.prepare('UPDATE spalten SET eingeklappt = ? WHERE id = ?')
-    const tx = db.transaction(() => {
-      for (const id of ids) stmt.run(wert ? 1 : 0, id)
-    })
-    tx()
-    return true
-  })
-
-  ipcMain.handle('spalten:sortByKategorie', (_, fachId, semester) => {
-    const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? AND semester = ? ORDER BY kategorie, datum').all(fachId, semester)
-    const stmt = db.prepare('UPDATE spalten SET reihenfolge = ? WHERE id = ?')
-    const tx = db.transaction(() => {
-      spalten.forEach((s, i) => stmt.run(i + 1, s.id))
-    })
-    tx()
-    return true
-  })
-
-  // Spalten wieder chronologisch (nach Datum) sortieren; Spalten ohne Datum ans Ende.
-  ipcMain.handle('spalten:sortChronologisch', (_, fachId, semester) => {
-    const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? AND semester = ? ORDER BY datum IS NULL, datum, id').all(fachId, semester)
-    const stmt = db.prepare('UPDATE spalten SET reihenfolge = ? WHERE id = ?')
-    const tx = db.transaction(() => {
-      spalten.forEach((s, i) => stmt.run(i + 1, s.id))
-    })
-    tx()
-    return true
-  })
+  ipcMain.handle('spalten:getAll', (_, fachId) => spaltenDomain.getAll(db, fachId))
+  ipcMain.handle('spalten:create', (_, data) => spaltenDomain.create(db, data))
+  ipcMain.handle('spalten:delete', (_, id) => spaltenDomain.remove(db, id))
+  ipcMain.handle('spalten:update', (_, id, data) => spaltenDomain.update(db, kernDeps, id, data))
+  ipcMain.handle('spalten:toggleEingeklappt', (_, id) => spaltenDomain.toggleEingeklappt(db, id))
+  ipcMain.handle('spalten:setEingeklappt', (_, ids, wert) => spaltenDomain.setEingeklappt(db, ids, wert))
+  ipcMain.handle('spalten:sortByKategorie', (_, fachId, semester) => spaltenDomain.sortByKategorie(db, fachId, semester))
+  ipcMain.handle('spalten:sortChronologisch', (_, fachId, semester) => spaltenDomain.sortChronologisch(db, fachId, semester))
 
   // Einträge
-  ipcMain.handle('eintraege:getAll', (_, fachId) => {
-    return db.prepare(`
-      SELECT e.* FROM eintraege e
-      JOIN spalten s ON e.spalte_id = s.id
-      WHERE s.fach_id = ?
-    `).all(fachId)
-  })
-
-  ipcMain.handle('eintraege:set', (_, spalteId, schuelerId, wert) => {
-    const existing = db.prepare('SELECT wert, kommentar FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').get(spalteId, schuelerId)
-    const oldWert = existing ? existing.wert : null
-    const wertAlt = existing?.wert ?? null
-    const wertNeu = wert || null
-    if (wertAlt !== wertNeu) {
-      const spalte = db.prepare('SELECT fach_id FROM spalten WHERE id = ?').get(spalteId)
-      const kommentarAlt = existing?.kommentar ?? null
-      db.prepare(`
-        INSERT INTO eintraege_verlauf (fach_id, spalte_id, schueler_id, wert_alt, wert_neu, kommentar_alt, kommentar_neu, aktion)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'aenderung')
-      `).run(spalte?.fach_id ?? null, spalteId, schuelerId, wertAlt, wertNeu, kommentarAlt, kommentarAlt)
-    }
-    const apply = (w) => {
-      const hasKommentar = !!db.prepare("SELECT 1 FROM eintraege WHERE spalte_id = ? AND schueler_id = ? AND kommentar IS NOT NULL AND kommentar != ''").get(spalteId, schuelerId)
-      if (w === '' || w === null) {
-        if (hasKommentar) {
-          db.prepare('UPDATE eintraege SET wert = NULL WHERE spalte_id = ? AND schueler_id = ?').run(spalteId, schuelerId)
-        } else {
-          db.prepare('DELETE FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').run(spalteId, schuelerId)
-        }
-      } else {
-        db.prepare('INSERT INTO eintraege (spalte_id, schueler_id, wert) VALUES (?, ?, ?) ON CONFLICT(spalte_id, schueler_id) DO UPDATE SET wert = excluded.wert').run(spalteId, schuelerId, w)
-      }
-    }
-    apply(wert)
-    pushUndo({ description: 'Eintrag', undo: () => apply(oldWert), redo: () => apply(wert) })
-    // KV-Trigger-Hook: nur wenn sich der Wert geändert hat
-    if (wertAlt !== wertNeu) {
-      try { pruefeNotenTrigger(spalteId, schuelerId, wertNeu, wertAlt) } catch (e) { console.error('[KV] pruefeNotenTrigger:', e) }
-    }
-    return true
-  })
-
-  ipcMain.handle('eintraege:setKommentar', (_, spalteId, schuelerId, kommentar) => {
-    const existing = db.prepare('SELECT wert FROM eintraege WHERE spalte_id = ? AND schueler_id = ?').get(spalteId, schuelerId)
-    const k = kommentar?.trim() || null
-    if (existing) {
-      db.prepare('UPDATE eintraege SET kommentar = ? WHERE spalte_id = ? AND schueler_id = ?').run(k, spalteId, schuelerId)
-    } else if (k) {
-      db.prepare('INSERT INTO eintraege (spalte_id, schueler_id, wert, kommentar) VALUES (?, ?, NULL, ?)').run(spalteId, schuelerId, k)
-    }
-    return true
-  })
-
-  ipcMain.handle('verlauf:get', (_, schuelerId, fachId) => {
-    return db.prepare(`
-      SELECT
-        v.id, v.spalte_id, v.schueler_id,
-        v.wert_alt, v.wert_neu, v.kommentar_alt, v.kommentar_neu,
-        v.zeitstempel, v.aktion,
-        s.kategorie, s.kuerzel, s.datum
-      FROM eintraege_verlauf v
-      LEFT JOIN spalten s ON s.id = v.spalte_id
-      WHERE v.schueler_id = ? AND v.fach_id = ?
-      ORDER BY v.zeitstempel DESC
-      LIMIT 100
-    `).all(schuelerId, fachId)
-  })
+  ipcMain.handle('eintraege:getAll', (_, fachId) => eintraegeDomain.getAll(db, fachId))
+  ipcMain.handle('eintraege:set', (_, spalteId, schuelerId, wert) => eintraegeDomain.set(db, kernDeps, spalteId, schuelerId, wert))
+  ipcMain.handle('eintraege:setKommentar', (_, spalteId, schuelerId, kommentar) => eintraegeDomain.setKommentar(db, spalteId, schuelerId, kommentar))
+  ipcMain.handle('verlauf:get', (_, schuelerId, fachId) => eintraegeDomain.verlaufGet(db, schuelerId, fachId))
 
   // Zeugnisnoten
-  ipcMain.handle('zeugnisnoten:getAll', (_, fachId) => {
-    return db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fachId)
-  })
-
-  ipcMain.handle('zeugnisnoten:berechne', (_, fachId, schuelerId, semester) => {
-    const note = semester === 3
-      ? berechneEndnote(fachId, schuelerId)
-      : berechneZeugnisnote(fachId, schuelerId, semester).note
-    if (note !== null) {
-      db.prepare(`
-        INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(fach_id, schueler_id, semester)
-        DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
-      `).run(fachId, schuelerId, semester, note, semester === 3 ? 1 : 0)
-    }
-    return note
-  })
-
-  ipcMain.handle('zeugnisnoten:setManuell', (_, fachId, schuelerId, semester, note) => {
-    const existing = db.prepare('SELECT note_manuell FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = ?').get(fachId, schuelerId, semester)
-    const rowExisted = !!existing
-    const oldManuell = existing ? existing.note_manuell : undefined
-    const berechnet = semester === 3
-      ? berechneEndnote(fachId, schuelerId)
-      : berechneZeugnisnote(fachId, schuelerId, semester).note
-    const upsert = (n) => db.prepare(`
-      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, note_manuell, s1_eingerechnet)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(fach_id, schueler_id, semester)
-      DO UPDATE SET note_berechnet = excluded.note_berechnet, note_manuell = excluded.note_manuell, s1_eingerechnet = excluded.s1_eingerechnet
-    `).run(fachId, schuelerId, semester, berechnet, n, semester === 3 ? 1 : 0)
-    upsert(note)
-    pushUndo({
-      description: 'Zeugnisnote',
-      undo: () => {
-        if (!rowExisted) {
-          db.prepare('DELETE FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(fachId, schuelerId, semester)
-        } else {
-          db.prepare('UPDATE zeugnisnoten SET note_manuell = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(oldManuell ?? null, fachId, schuelerId, semester)
-        }
-      },
-      redo: () => upsert(note),
-    })
-    return true
-  })
-
-  ipcMain.handle('zeugnisnoten:clearManuell', (_, fachId, schuelerId, semester) => {
-    const existing = db.prepare('SELECT note_manuell FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = ?').get(fachId, schuelerId, semester)
-    const oldManuell = existing?.note_manuell ?? null
-    db.prepare('UPDATE zeugnisnoten SET note_manuell = NULL WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(fachId, schuelerId, semester)
-    pushUndo({
-      description: 'Zeugnisnote zurücksetzen',
-      undo: () => db.prepare('UPDATE zeugnisnoten SET note_manuell = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(oldManuell, fachId, schuelerId, semester),
-      redo: () => db.prepare('UPDATE zeugnisnoten SET note_manuell = NULL WHERE fach_id = ? AND schueler_id = ? AND semester = ?').run(fachId, schuelerId, semester),
-    })
-    return true
-  })
-
-  ipcMain.handle('zeugnisnoten:berechneFach', (_, fachId) => {
-    // Alle Schüler:innen: S1, S2 und Endnote neu berechnen
-    const fach = db.prepare('SELECT * FROM faecher WHERE id = ?').get(fachId)
-    if (!fach) return false
-    const schueler = rosterIdsFuerFach(fachId).map(id => ({ id }))
-    const upsert = db.prepare(`
-      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(fach_id, schueler_id, semester)
-      DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
-    `)
-    const updateOnly = db.prepare(`
-      UPDATE zeugnisnoten SET note_berechnet = ?, s1_eingerechnet = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?
-    `)
-    db.transaction(() => {
-      for (const s of schueler) {
-        for (const sem of [1, 2]) {
-          const { note } = berechneZeugnisnote(fachId, s.id, sem)
-          if (note !== null) {
-            upsert.run(fachId, s.id, sem, note, 0)
-          } else {
-            updateOnly.run(null, 0, fachId, s.id, sem)
-          }
-        }
-      }
-      for (const s of schueler) {
-        const endnote = berechneEndnote(fachId, s.id)
-        if (endnote !== null) {
-          upsert.run(fachId, s.id, 3, endnote, 1)
-        } else {
-          updateOnly.run(null, 1, fachId, s.id, 3)
-        }
-      }
-    })()
-    return true
-  })
+  ipcMain.handle('zeugnisnoten:getAll', (_, fachId) => zeugnisnotenDomain.getAll(db, fachId))
+  ipcMain.handle('zeugnisnoten:berechne', (_, fachId, schuelerId, semester) => zeugnisnotenDomain.berechne(db, kernDeps, fachId, schuelerId, semester))
+  ipcMain.handle('zeugnisnoten:setManuell', (_, fachId, schuelerId, semester, note) => zeugnisnotenDomain.setManuell(db, kernDeps, fachId, schuelerId, semester, note))
+  ipcMain.handle('zeugnisnoten:clearManuell', (_, fachId, schuelerId, semester) => zeugnisnotenDomain.clearManuell(db, kernDeps, fachId, schuelerId, semester))
+  ipcMain.handle('zeugnisnoten:berechneFach', (_, fachId) => zeugnisnotenDomain.berechneFach(db, kernDeps, fachId))
 
   // Notizen
-  ipcMain.handle('notizen:get', (_, schuelerId, fachId) => {
-    return db.prepare('SELECT text FROM notizen WHERE schueler_id = ? AND fach_id = ?').get(schuelerId, fachId)?.text ?? ''
-  })
-
-  ipcMain.handle('notizen:set', (_, schuelerId, fachId, text) => {
-    const existing = db.prepare('SELECT text FROM notizen WHERE schueler_id = ? AND fach_id = ?').get(schuelerId, fachId)
-    const oldText = existing ? existing.text : null
-    const apply = (t) => {
-      if (t === null) {
-        db.prepare('DELETE FROM notizen WHERE schueler_id = ? AND fach_id = ?').run(schuelerId, fachId)
-      } else {
-        db.prepare('INSERT OR REPLACE INTO notizen (schueler_id, fach_id, text) VALUES (?, ?, ?)').run(schuelerId, fachId, t)
-      }
-    }
-    apply(text)
-    pushUndo({ description: 'Notiz', undo: () => apply(oldText), redo: () => apply(text) })
-    return true
-  })
+  ipcMain.handle('notizen:get', (_, schuelerId, fachId) => notizenDomain.get(db, schuelerId, fachId))
+  ipcMain.handle('notizen:set', (_, schuelerId, fachId, text) => notizenDomain.set(db, kernDeps, schuelerId, fachId, text))
 
   // Gewichtung global
-  ipcMain.handle('gewichtungGlobal:getAll', () => {
-    return db.prepare('SELECT * FROM gewichtung_global').all()
-  })
-
-  ipcMain.handle('gewichtungGlobal:update', (_, kategorie, gewichtung) => {
-    db.prepare('INSERT OR REPLACE INTO gewichtung_global (kategorie, gewichtung) VALUES (?, ?)').run(kategorie, gewichtung)
-    // Alle Fächer im aktiven Schuljahr neu berechnen (auch teilweise globale Gewichtungen sind betroffen)
-    const aktuellesSchuljahr = db.prepare('SELECT id FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
-    berechneAlleFuerSchuljahr(aktuellesSchuljahr?.id)
-    return true
-  })
+  ipcMain.handle('gewichtungGlobal:getAll', () => gewichtungDomain.getAll(db))
+  ipcMain.handle('gewichtungGlobal:update', (_, kategorie, gewichtung) => gewichtungDomain.update(db, kernDeps, kategorie, gewichtung))
 
   // Alle Zeugnisnoten im aktuellen Schuljahr neu berechnen
   // (z.B. nach Änderung von s1_gewichtung, ma_plus_wert, ma_minus_wert)
@@ -2464,201 +1656,29 @@ function registerIPC() {
   })
 
   // Stundenzeiten
-  ipcMain.handle('stundenzeiten:getAll', () => {
-    return db.prepare('SELECT * FROM stundenzeiten ORDER BY stunde').all()
-  })
-
-  ipcMain.handle('stundenzeiten:update', (_, id, data) => {
-    db.prepare('UPDATE stundenzeiten SET beginn = ?, ende = ? WHERE id = ?').run(data.beginn, data.ende, id)
-    return true
-  })
-
-  ipcMain.handle('stundenzeiten:create', () => {
-    const max = db.prepare('SELECT MAX(stunde) as m FROM stundenzeiten').get()
-    const naechste = (max?.m ?? 0) + 1
-    const info = db.prepare('INSERT INTO stundenzeiten (stunde, beginn, ende) VALUES (?, ?, ?)').run(naechste, '00:00', '00:00')
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('stundenzeiten:delete', (_, id) => {
-    db.prepare('DELETE FROM stundenzeiten WHERE id = ?').run(id)
-    return true
-  })
-
-  // Komplette Stundenzeiten-Liste in einem Rutsch speichern.
-  // rows = [{ id?, beginn:'HH:MM', ende:'HH:MM' }] in Anzeigereihenfolge.
-  // Bestehende IDs werden per UPDATE beibehalten (damit stundenplan.stunde_id gültig bleibt);
-  // entfernte Stunden werden inkl. abhängiger stundenplan-/planungs-Zeilen kaskadiert gelöscht.
-  ipcMain.handle('stundenzeiten:saveAll', (_, rows) => {
-    const liste = Array.isArray(rows) ? rows : []
-    const tx = db.transaction(() => {
-      const existing = db.prepare('SELECT id FROM stundenzeiten').all().map(r => r.id)
-      const keepIds = new Set(liste.filter(r => r.id != null).map(r => r.id))
-
-      // Entfernte Stunden inkl. Referenzen löschen (foreign_keys = ON, stundenplan kein CASCADE)
-      const entfernt = existing.filter(id => !keepIds.has(id))
-      const delPlanung = db.prepare('DELETE FROM stunden_planung WHERE stundenplan_id IN (SELECT id FROM stundenplan WHERE stunde_id = ?)')
-      const delPlan    = db.prepare('DELETE FROM stundenplan WHERE stunde_id = ?')
-      const delZeit    = db.prepare('DELETE FROM stundenzeiten WHERE id = ?')
-      for (const id of entfernt) {
-        try { delPlanung.run(id) } catch (e) { logError('stundenzeiten:speichern stunden_planung', e) }
-        delPlan.run(id)          // supplierstunden.stunde_id kaskadiert über stundenzeiten
-        delZeit.run(id)          // supplierstunden ON DELETE CASCADE
-      }
-
-      // Upsert in Reihenfolge; stunde durchgehend 1..N neu vergeben
-      const upd = db.prepare('UPDATE stundenzeiten SET stunde = ?, beginn = ?, ende = ? WHERE id = ?')
-      const ins = db.prepare('INSERT INTO stundenzeiten (stunde, beginn, ende) VALUES (?, ?, ?)')
-      const existingSet = new Set(existing)
-      liste.forEach((r, i) => {
-        const nr = i + 1
-        if (r.id != null && existingSet.has(r.id)) {
-          upd.run(nr, r.beginn, r.ende, r.id)
-        } else {
-          ins.run(nr, r.beginn, r.ende)
-        }
-      })
-    })
-    tx()
-    return db.prepare('SELECT * FROM stundenzeiten ORDER BY stunde').all()
-  })
+  ipcMain.handle('stundenzeiten:getAll', () => stundenzeitenDomain.getAll(db))
+  ipcMain.handle('stundenzeiten:update', (_, id, data) => stundenzeitenDomain.update(db, id, data))
+  ipcMain.handle('stundenzeiten:create', () => stundenzeitenDomain.create(db))
+  ipcMain.handle('stundenzeiten:delete', (_, id) => stundenzeitenDomain.remove(db, id))
+  ipcMain.handle('stundenzeiten:saveAll', (_, rows) => stundenzeitenDomain.saveAll(db, kernDeps, rows))
 
   // Stundenplan
-  ipcMain.handle('stundenplan:getAll', () => {
-    return db.prepare(`
-      SELECT sp.*, sz.stunde, sz.beginn, sz.ende,
-             f.name AS fach_name, k.name AS klasse_name,
-             k.id AS klasse_id, k.teams_link AS klasse_teams_link
-      FROM stundenplan sp
-      JOIN stundenzeiten sz ON sp.stunde_id = sz.id
-      JOIN faecher f ON sp.fach_id = f.id
-      JOIN klassen k ON f.klasse_id = k.id
-      ORDER BY sp.wochentag, sz.stunde
-    `).all()
-  })
-
-  ipcMain.handle('stundenplan:create', (_, data) => {
-    const iv = Math.max(1, parseInt(data.wochenIntervall) || 1)
-    const anker = iv > 1 ? (data.ankerDatum ?? null) : null
-    const info = db.prepare('INSERT INTO stundenplan (wochentag, stunde_id, fach_id, wochen_intervall, anker_datum) VALUES (?, ?, ?, ?, ?)')
-      .run(data.wochentag, data.stundeId, data.fachId, iv, anker)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('stundenplan:delete', (_, id) => {
-    db.prepare('DELETE FROM stundenplan WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('stundenplan:update', (_, id, data) => {
-    if (data.wochenIntervall !== undefined) {
-      const iv = Math.max(1, parseInt(data.wochenIntervall) || 1)
-      const anker = iv > 1 ? (data.ankerDatum ?? null) : null
-      db.prepare('UPDATE stundenplan SET fach_id = ?, wochen_intervall = ?, anker_datum = ? WHERE id = ?')
-        .run(data.fachId, iv, anker, id)
-    } else {
-      db.prepare('UPDATE stundenplan SET fach_id = ? WHERE id = ?').run(data.fachId, id)
-    }
-    return true
-  })
-
-  // Stunde per Drag & Drop in einen anderen Slot verschieben. Die id bleibt erhalten,
-  // damit die Wochen-Planung (stunden_planung, per stundenplan_id) mitwandert.
-  // Ist der Ziel-Slot belegt, werden die beiden Stunden getauscht (transaktional).
-  ipcMain.handle('stundenplan:verschieben', (_, id, wochentag, stundeId) => {
-    const eintrag = db.prepare('SELECT wochentag, stunde_id FROM stundenplan WHERE id = ?').get(id)
-    if (!eintrag) return false
-    if (eintrag.wochentag === wochentag && eintrag.stunde_id === stundeId) return true
-    const belegt = db.prepare('SELECT id FROM stundenplan WHERE wochentag = ? AND stunde_id = ? AND id != ?')
-      .get(wochentag, stundeId, id)
-    const setSlot = db.prepare('UPDATE stundenplan SET wochentag = ?, stunde_id = ? WHERE id = ?')
-    db.transaction(() => {
-      if (belegt) setSlot.run(eintrag.wochentag, eintrag.stunde_id, belegt.id) // Tausch: Ziel-Eintrag auf Quell-Slot
-      setSlot.run(wochentag, stundeId, id)
-    })()
-    return true
-  })
-
-  ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => {
-    return db.prepare(`
-      SELECT sp.id, sp.wochentag, sp.stunde_id, sp.fach_id,
-             sz.stunde, sz.beginn, sz.ende,
-             f.name AS fach_name,
-             k.name AS klasse_name, k.id AS klasse_id, k.teams_link AS klasse_teams_link
-      FROM stundenplan sp
-      JOIN stundenzeiten sz ON sz.id = sp.stunde_id
-      JOIN faecher f ON f.id = sp.fach_id
-      JOIN klassen k ON k.id = f.klasse_id
-      WHERE k.id = ?
-      ORDER BY sp.wochentag, sz.stunde
-    `).all(klasseId)
-  })
-
-  ipcMain.handle('stundenplan:getParallelFach', (_, aktuelleKlasseId, fachName) => {
-    // Parallelklassen-Fächer finden (gleicher Name, anderes Klasse, selbes Schuljahr)
-    const parallelFaecher = db.prepare(`
-      SELECT f.id AS fach_id, f.name AS fach_name,
-             k.id AS klasse_id, k.name AS klasse_name, k.teams_link AS klasse_teams_link
-      FROM faecher f
-      JOIN klassen k ON f.klasse_id = k.id
-      WHERE f.name = ?
-        AND k.schuljahr_id = (SELECT schuljahr_id FROM klassen WHERE id = ?)
-        AND k.id != ?
-      ORDER BY k.name
-    `).all(fachName, aktuelleKlasseId, aktuelleKlasseId)
-
-    // Für jedes parallele Fach die Stundenplan-Slots laden
-    const slotsStmt = db.prepare(`
-      SELECT sp.id, sp.wochentag, sp.stunde_id, sp.fach_id,
-             sz.stunde, sz.beginn, sz.ende,
-             f.name AS fach_name,
-             k.name AS klasse_name, k.id AS klasse_id, k.teams_link AS klasse_teams_link
-      FROM stundenplan sp
-      JOIN stundenzeiten sz ON sz.id = sp.stunde_id
-      JOIN faecher f ON f.id = sp.fach_id
-      JOIN klassen k ON k.id = f.klasse_id
-      WHERE f.id = ?
-      ORDER BY sp.wochentag, sz.stunde
-    `)
-
-    return parallelFaecher.map(pf => ({
-      ...pf,
-      slots: slotsStmt.all(pf.fach_id),
-    }))
-  })
+  ipcMain.handle('stundenplan:getAll', () => stundenplanDomain.getAll(db))
+  ipcMain.handle('stundenplan:create', (_, data) => stundenplanDomain.create(db, data))
+  ipcMain.handle('stundenplan:delete', (_, id) => stundenplanDomain.remove(db, id))
+  ipcMain.handle('stundenplan:update', (_, id, data) => stundenplanDomain.update(db, id, data))
+  ipcMain.handle('stundenplan:verschieben', (_, id, wochentag, stundeId) => stundenplanDomain.verschieben(db, id, wochentag, stundeId))
+  ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => stundenplanDomain.getByKlasse(db, klasseId))
+  ipcMain.handle('stundenplan:getParallelFach', (_, aktuelleKlasseId, fachName) => stundenplanDomain.getParallelFach(db, aktuelleKlasseId, fachName))
 
   // Stunden-Planung
-  ipcMain.handle('stundenPlanung:get', (_, stundenplanId, wocheDatum) => {
-    return db.prepare(
-      'SELECT * FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ?'
-    ).get(stundenplanId, wocheDatum) ?? null
-  })
+  ipcMain.handle('stundenPlanung:get', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.get(db, stundenplanId, wocheDatum))
 
   // ─── Supplierstunden ─────────────────────────────────────────────────────────
-  ipcMain.handle('supplierstunden:getWoche', (_, wocheDatum) =>
-    db.prepare('SELECT * FROM supplierstunden WHERE woche_datum = ?').all(wocheDatum)
-  )
-
-  ipcMain.handle('supplierstunden:create', (_, { wocheDatum, wochentag, stundeId, klasseText, fachText, notiz }) => {
-    const info = db.prepare(
-      'INSERT INTO supplierstunden (woche_datum, wochentag, stunde_id, klasse_text, fach_text, notiz) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(wocheDatum, wochentag, stundeId, klasseText, fachText, notiz ?? null)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('supplierstunden:delete', (_, id) => {
-    db.prepare('DELETE FROM supplierstunden WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('supplierstunden:update', (_, id, { fachText, klasseText, notiz, titel, inhalt, hueText, hueFristDatum, link }) => {
-    db.prepare(`
-      UPDATE supplierstunden
-      SET fach_text = ?, klasse_text = ?, notiz = ?, titel = ?, inhalt = ?, hue_text = ?, hue_frist_datum = ?, link = ?
-      WHERE id = ?
-    `).run(fachText ?? '', klasseText ?? '', notiz ?? null, titel ?? null, inhalt ?? null, hueText ?? null, hueFristDatum ?? null, link ?? null, id)
-    return true
-  })
+  ipcMain.handle('supplierstunden:getWoche', (_, wocheDatum) => supplierstundenDomain.getWoche(db, wocheDatum))
+  ipcMain.handle('supplierstunden:create', (_, data) => supplierstundenDomain.create(db, data))
+  ipcMain.handle('supplierstunden:delete', (_, id) => supplierstundenDomain.remove(db, id))
+  ipcMain.handle('supplierstunden:update', (_, id, data) => supplierstundenDomain.update(db, id, data))
 
   ipcMain.handle('shell:open', (_, url) => {
     return oeffneExternSicher(url)
@@ -2668,246 +1688,21 @@ function registerIPC() {
     try { clipboard.writeText(String(text ?? '')); return true } catch (e) { logError('app:clipboard', e); return false }
   })
 
-  ipcMain.handle('stundenPlanung:getWoche', (_, wocheDatum) => {
-    return db.prepare(
-      'SELECT * FROM stunden_planung WHERE woche_datum = ?'
-    ).all(wocheDatum)
-  })
+  ipcMain.handle('stundenPlanung:getWoche', (_, wocheDatum) => stundenPlanungDomain.getWoche(db, wocheDatum))
+  ipcMain.handle('stundenPlanung:save', (_, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link) => stundenPlanungDomain.save(db, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link))
+  ipcMain.handle('stundenPlanung:getHueWoche', (_, wocheDatum) => stundenPlanungDomain.getHueWoche(db, wocheDatum))
+  ipcMain.handle('stundenPlanung:checkMusizieren', (_, wocheDatum, klasseId, excludeStundenplanId) => stundenPlanungDomain.checkMusizieren(db, wocheDatum, klasseId, excludeStundenplanId))
 
-  ipcMain.handle('stundenPlanung:save', (_, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link) => {
-    db.prepare(`
-      INSERT INTO stunden_planung (stundenplan_id, woche_datum, titel, inhalt, musizieren, hue_text, hue_frist_datum, link)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(stundenplan_id, woche_datum) DO UPDATE SET
-        titel = excluded.titel, inhalt = excluded.inhalt, musizieren = excluded.musizieren,
-        hue_text = excluded.hue_text, hue_frist_datum = excluded.hue_frist_datum, link = excluded.link
-    `).run(stundenplanId, wocheDatum, titel, inhalt, musizieren ? 1 : 0, hueText ?? null, hueFristDatum ?? null, link ?? null)
-    return true
-  })
-
-  ipcMain.handle('stundenPlanung:getHueWoche', (_, wocheDatum) => {
-    const d = new Date(wocheDatum + 'T00:00:00')
-    const sonntag = new Date(d)
-    sonntag.setDate(d.getDate() + 6)
-    const sonntagStr = `${sonntag.getFullYear()}-${String(sonntag.getMonth()+1).padStart(2,'0')}-${String(sonntag.getDate()).padStart(2,'0')}`
-    const rows = db.prepare(`
-      SELECT sp.*, s.wochentag AS quell_wochentag, s.stunde_id, s.fach_id
-      FROM stunden_planung sp
-      JOIN stundenplan s ON s.id = sp.stundenplan_id
-      WHERE sp.hue_frist_datum >= ? AND sp.hue_frist_datum <= ?
-        AND sp.hue_text IS NOT NULL AND sp.hue_text != ''
-    `).all(wocheDatum, sonntagStr)
-    // Wochentag aus dem Fristdatum ableiten (1=Mo..5=Fr)
-    // und den passenden Stundenplan-Slot für das Fach an diesem Tag finden
-    return rows.map(row => {
-      const fristDate = new Date(row.hue_frist_datum + 'T00:00:00')
-      const fristWochentag = fristDate.getDay() === 0 ? 7 : fristDate.getDay() // 1=Mo..7=So
-      // Finde den Stundenplan-Eintrag für dieses Fach am Frist-Wochentag
-      const zielSlot = db.prepare('SELECT stunde_id FROM stundenplan WHERE fach_id = ? AND wochentag = ? LIMIT 1').get(row.fach_id, fristWochentag)
-      return {
-        ...row,
-        wochentag: fristWochentag,
-        stunde_id: zielSlot?.stunde_id ?? row.stunde_id,
-      }
-    })
-  })
-
-  ipcMain.handle('stundenPlanung:checkMusizieren', (_, wocheDatum, klasseId, excludeStundenplanId) => {
-    const row = db.prepare(`
-      SELECT spl.id FROM stunden_planung spl
-      JOIN stundenplan sp ON spl.stundenplan_id = sp.id
-      JOIN faecher f ON sp.fach_id = f.id
-      WHERE spl.woche_datum = ?
-        AND f.klasse_id = ?
-        AND spl.musizieren = 1
-        AND spl.stundenplan_id != ?
-        AND LOWER(f.name) LIKE '%musik%'
-    `).get(wocheDatum, klasseId, excludeStundenplanId)
-    return !!row
-  })
-
-  ipcMain.handle('stundenPlanung:setEntfall', (_, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume) => {
-    // Entfall-Eintrag erstellen/aktualisieren
-    db.prepare(`
-      INSERT INTO stunden_planung (stundenplan_id, woche_datum, titel, inhalt, entfall)
-      VALUES (?, ?, '', '', 1)
-      ON CONFLICT(stundenplan_id, woche_datum) DO UPDATE SET entfall = 1
-    `).run(stundenplanId, wocheDatum)
-
-    if (vorruecken) {
-      // Vorrücken: Planungen ab dem Entfall-Slot um je eine Stunde IN DIE ZUKUNFT schieben.
-      // Ferien-Tage werden dabei übersprungen.
-      //
-      // 1. Fach-ID des entfallenen Slots ermitteln
-      const slot = db.prepare('SELECT * FROM stundenplan WHERE id = ?').get(stundenplanId)
-      if (!slot) return true
-
-      // 2. Alle wöchentlichen Slots für dieses Fach chronologisch laden
-      const alleSlots = db.prepare(`
-        SELECT sp.id, sp.wochentag, sz.stunde as stunde_nr
-        FROM stundenplan sp
-        JOIN stundenzeiten sz ON sz.id = sp.stunde_id
-        WHERE sp.fach_id = ?
-        ORDER BY sp.wochentag, sz.stunde
-      `).all(slot.fach_id)
-
-      if (alleSlots.length === 0) return true
-
-      const cancelIdx = alleSlots.findIndex(s => s.id === stundenplanId)
-      if (cancelIdx === -1) return true
-
-      function addWeeks(dateStr, weeks) {
-        const d = new Date(dateStr + 'T00:00:00')
-        d.setDate(d.getDate() + weeks * 7)
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      }
-
-      // Helper: Prüft ob ein bestimmter Wochentag in einer Woche ein Ferientag ist
-      function istFerientag(weekDatum, wochentag) {
-        if (!ferienZeitraeume || ferienZeitraeume.length === 0) return false
-        const d = new Date(weekDatum + 'T00:00:00')
-        d.setDate(d.getDate() + (wochentag - 1))
-        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-        return ferienZeitraeume.some(f => dateStr >= f.von && dateStr <= f.bis)
-      }
-
-      // 3. Ab dem Entfall-Slot vorwärts wandern und ALLE Slots sammeln (auch leere),
-      //    Ferien-Tage überspringen. Wir sammeln: Entfall-Slot + alle folgenden mit Planung.
-      const slots = [] // { slotId, weekDatum, planning|null }
-      let curIdx = cancelIdx
-      let curWeek = wocheDatum
-
-      // Entfall-Slot selbst
-      const entfallPlanung = db.prepare(
-        'SELECT * FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ?'
-      ).get(stundenplanId, wocheDatum)
-      slots.push({ slotId: stundenplanId, weekDatum: wocheDatum, planning: entfallPlanung })
-
-      // Folgende Slots sammeln, solange sie eine Planung haben (Ferien überspringen)
-      const maxSteps = alleSlots.length * 52
-      for (let step = 0; step < maxSteps; step++) {
-        const atEndOfCycle = curIdx === alleSlots.length - 1
-        const nextIdx = (curIdx + 1) % alleSlots.length
-        const nextWeek = atEndOfCycle ? addWeeks(curWeek, 1) : curWeek
-
-        // Ferientag? → überspringen, aber weiterzählen
-        if (istFerientag(nextWeek, alleSlots[nextIdx].wochentag)) {
-          curIdx = nextIdx
-          curWeek = nextWeek
-          continue
-        }
-
-        const planning = db.prepare(
-          'SELECT * FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ? AND entfall = 0'
-        ).get(alleSlots[nextIdx].id, nextWeek)
-
-        slots.push({ slotId: alleSlots[nextIdx].id, weekDatum: nextWeek, planning: planning ?? null })
-
-        if (!planning) break // Erster leerer Slot → Ende der Kette
-
-        curIdx = nextIdx
-        curWeek = nextWeek
-      }
-
-      // 4. Planungen verschieben: Jeder Slot bekommt die Planung des vorherigen Slots.
-      //    slots[0] = Entfall (wird zum entfall markiert)
-      //    slots[1] bekommt Planung von slots[0]  (Di-Inhalt → Mi)
-      //    slots[2] bekommt Planung von slots[1]  (Mi-Inhalt → Do)
-      //    ...
-      //    slots[N] (letzter, war leer) bekommt Planung von slots[N-1]
-      if (slots.length >= 2) {
-        const vorrueckTransaction = db.transaction(() => {
-          // Von hinten nach vorne verschieben, um keine Daten zu überschreiben
-          for (let i = slots.length - 1; i >= 1; i--) {
-            const ziel = slots[i]       // Ziel-Slot (weiter in der Zukunft)
-            const quelle = slots[i - 1] // Quell-Slot (näher an der Gegenwart)
-
-            if (quelle.planning && (quelle.planning.titel || quelle.planning.inhalt || quelle.planning.hue_text || quelle.planning.link)) {
-              // Planung vom Quell-Slot in den Ziel-Slot kopieren
-              const p = quelle.planning
-              db.prepare(`
-                INSERT INTO stunden_planung (stundenplan_id, woche_datum, titel, inhalt, musizieren, hue_text, hue_frist_datum, link, entfall)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
-                ON CONFLICT(stundenplan_id, woche_datum) DO UPDATE SET
-                  titel = excluded.titel, inhalt = excluded.inhalt, musizieren = excluded.musizieren,
-                  hue_text = excluded.hue_text, hue_frist_datum = excluded.hue_frist_datum,
-                  link = excluded.link, entfall = 0
-              `).run(ziel.slotId, ziel.weekDatum, p.titel, p.inhalt, p.musizieren, p.hue_text, p.hue_frist_datum, p.link)
-            } else {
-              // Quell-Slot war leer → Ziel-Slot leeren
-              db.prepare('DELETE FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ? AND entfall = 0')
-                .run(ziel.slotId, ziel.weekDatum)
-            }
-          }
-          // Entfall-Slot als Entfall markieren (Inhalt wird geleert, entfall=1 bleibt)
-          db.prepare(`
-            UPDATE stunden_planung SET titel = '', inhalt = '', musizieren = 0,
-              hue_text = NULL, hue_frist_datum = NULL, link = NULL, entfall = 1
-            WHERE stundenplan_id = ? AND woche_datum = ?
-          `).run(stundenplanId, wocheDatum)
-        })
-        vorrueckTransaction()
-      }
-    }
-    return true
-  })
-
-  ipcMain.handle('stundenPlanung:removeEntfall', (_, stundenplanId, wocheDatum) => {
-    // Entfall aufheben – wenn keine anderen Inhalte vorhanden sind, Eintrag löschen
-    const existing = db.prepare('SELECT * FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ?').get(stundenplanId, wocheDatum)
-    if (existing && !existing.titel && !existing.inhalt && !existing.hue_text && !existing.link) {
-      db.prepare('DELETE FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ?').run(stundenplanId, wocheDatum)
-    } else {
-      db.prepare('UPDATE stunden_planung SET entfall = 0 WHERE stundenplan_id = ? AND woche_datum = ?').run(stundenplanId, wocheDatum)
-    }
-    return true
-  })
-
-  ipcMain.handle('stundenPlanung:delete', (_, stundenplanId, wocheDatum) => {
-    db.prepare(
-      'DELETE FROM stunden_planung WHERE stundenplan_id = ? AND woche_datum = ?'
-    ).run(stundenplanId, wocheDatum)
-    return true
-  })
+  ipcMain.handle('stundenPlanung:setEntfall', (_, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume) => stundenPlanungDomain.setEntfall(db, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume))
+  ipcMain.handle('stundenPlanung:removeEntfall', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.removeEntfall(db, stundenplanId, wocheDatum))
+  ipcMain.handle('stundenPlanung:delete', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.remove(db, stundenplanId, wocheDatum))
 
   // Todos
-  ipcMain.handle('todos:getAll', (_, schuljahrId) => {
-    return db.prepare(`
-      SELECT t.*, k.name as klasse_name, f.name as fach_name
-      FROM todos t
-      LEFT JOIN klassen k ON k.id = t.klasse_id
-      LEFT JOIN faecher f ON f.id = t.fach_id
-      WHERE t.klasse_id IS NULL OR k.schuljahr_id = ?
-      ORDER BY t.erledigt, t.reihenfolge, t.id
-    `).all(schuljahrId)
-  })
-
-  ipcMain.handle('todos:create', (_, { titel, klasseId, fachId, faelligkeit, erinnerung }) => {
-    console.log('[main] todos:create:', { titel, faelligkeit, erinnerung })
-    const maxReihenfolge = klasseId
-      ? db.prepare('SELECT MAX(reihenfolge) as m FROM todos WHERE klasse_id = ?').get(klasseId)?.m ?? 0
-      : db.prepare('SELECT MAX(reihenfolge) as m FROM todos WHERE klasse_id IS NULL').get()?.m ?? 0
-    const info = db.prepare(
-      'INSERT INTO todos (titel, klasse_id, fach_id, faelligkeit, erinnerung, reihenfolge) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(titel, klasseId ?? null, fachId ?? null, faelligkeit ?? null, erinnerung ?? null, maxReihenfolge + 1)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('todos:update', (_, id, { titel, klasseId, fachId, faelligkeit, erinnerung }) => {
-    db.prepare('UPDATE todos SET titel = ?, klasse_id = ?, fach_id = ?, faelligkeit = ?, erinnerung = ? WHERE id = ?')
-      .run(titel, klasseId ?? null, fachId ?? null, faelligkeit ?? null, erinnerung ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('todos:delete', (_, id) => {
-    db.prepare('DELETE FROM todos WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('todos:toggleErledigt', (_, id) => {
-    db.prepare('UPDATE todos SET erledigt = CASE WHEN erledigt = 0 THEN 1 ELSE 0 END WHERE id = ?').run(id)
-    return true
-  })
+  ipcMain.handle('todos:getAll', (_, schuljahrId) => todosDomain.getAll(db, schuljahrId))
+  ipcMain.handle('todos:create', (_, data) => todosDomain.create(db, data))
+  ipcMain.handle('todos:update', (_, id, data) => todosDomain.update(db, id, data))
+  ipcMain.handle('todos:delete', (_, id) => todosDomain.remove(db, id))
+  ipcMain.handle('todos:toggleErledigt', (_, id) => todosDomain.toggleErledigt(db, id))
 
   // Backup
   ipcMain.handle('backup:create', () => doBackupCreate())
@@ -3074,87 +1869,10 @@ function registerIPC() {
     return true
   })
 
-  // ─── Wetter ─────────────────────────────────────────────────────────────────
-  // Tagesvorhersage (Mo–Fr) einer Woche für das eingestellte Bundesland.
-  ipcMain.handle('wetter:getWoche', async (_, bundesland, montagDatum) => {
-    try {
-      // Genauer Ort (falls gesetzt) hat Vorrang vor der Bundesland-Hauptstadt.
-      let koord = null
-      const lat = parseFloat(bkGet('wetter_lat'))
-      const lon = parseFloat(bkGet('wetter_lon'))
-      if (!isNaN(lat) && !isNaN(lon)) koord = [lat, lon]
-      else koord = WETTER_KOORD[bundesland]
-      if (!koord || !montagDatum) return null
-      const startD = new Date(montagDatum + 'T00:00:00')
-      if (isNaN(startD)) return null
-      const endD = new Date(startD); endD.setDate(endD.getDate() + 4)   // Mo..Fr
-      const heute = new Date(); heute.setHours(0, 0, 0, 0)
-      const tageBisStart = (startD - heute) / 86400000
-      const tageBisEnde  = (endD - heute) / 86400000
-      // Open-Meteo-Vorhersage sinnvoll etwa -3 … +15 Tage; sonst kein Wetter.
-      if (tageBisEnde < -3 || tageBisStart > 15) return null
-      // Lokale (nicht UTC-)Datums-Strings, sonst verschiebt sich der Tag.
-      const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      const start = iso(startD), ende = iso(endD)
-      const key = `${koord[0]},${koord[1]},${start}`
-      const cached = wetterCache.get(key)
-      if (cached && (Date.now() - cached.zeit) < 3600000) return cached.data
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${koord[0]}&longitude=${koord[1]}`
-        + `&daily=weather_code,temperature_2m_max,temperature_2m_min`
-        + `&hourly=weather_code,temperature_2m&timezone=Europe%2FVienna`
-        + `&start_date=${start}&end_date=${ende}`
-      const json = await httpsGetJson(url)
-      const d = json.daily || {}
-      // Alle Stundenwerte je Tag (für Zellen-Symbole und die Tageszeiten Vm/Mi/Ab).
-      const h = json.hourly || {}
-      const proTag = {}   // 'YYYY-MM-DD' -> { 'HH': { code, temp } }
-      ;(h.time || []).forEach((t, i) => {
-        const [datum, zeit] = t.split('T')
-        const hh = (zeit || '').slice(0, 2)
-        if (!datum || !hh) return
-        if (!proTag[datum]) proTag[datum] = {}
-        proTag[datum][hh] = { code: h.weather_code?.[i] ?? null, temp: h.temperature_2m?.[i] ?? null }
-      })
-      const out = {}
-      ;(d.time || []).forEach((t, i) => {
-        const st = proTag[t] || {}
-        out[t] = {
-          code: d.weather_code?.[i] ?? null,
-          tmax: d.temperature_2m_max?.[i] ?? null,
-          tmin: d.temperature_2m_min?.[i] ?? null,
-          vm: st['09'] || null,
-          mi: st['13'] || null,
-          ab: st['18'] || null,
-          stunden: st,
-        }
-      })
-      wetterCache.set(key, { zeit: Date.now(), data: out })
-      return out
-    } catch (e) {
-      logError('wetter:getWoche', e)
-      return null
-    }
-  })
-
-  // Ortssuche (Geocoding) für eine genauere Wettervorschau.
-  ipcMain.handle('wetter:sucheOrt', async (_, query) => {
-    try {
-      const q = (query || '').trim()
-      if (q.length < 2) return []
-      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=de&format=json`
-      const json = await httpsGetJson(url)
-      return (json.results || []).map(r => ({
-        name: r.name,
-        admin1: r.admin1 || '',
-        land: r.country_code || r.country || '',
-        lat: r.latitude,
-        lon: r.longitude,
-      }))
-    } catch (e) {
-      logError('wetter:sucheOrt', e)
-      return []
-    }
-  })
+  // ─── Wetter (Logik in core/services/wetter.js; ueber HttpPort) ──────────────
+  const wetterDeps = { http: httpPort, bkGet, logError }
+  ipcMain.handle('wetter:getWoche', (_, bundesland, montagDatum) => wetterService.getWoche(wetterDeps, bundesland, montagDatum))
+  ipcMain.handle('wetter:sucheOrt', (_, query) => wetterService.sucheOrt(wetterDeps, query))
 
   ipcMain.handle('db:saveAs', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender)
@@ -3167,24 +1885,9 @@ function registerIPC() {
   })
 
   // ─── Undo/Redo ─────────────────────────────────────────────────────────────
-  ipcMain.handle('undo:execute', () => {
-    if (undoStack.length === 0) return { ok: false }
-    executeUndo()
-    return { ok: true }
-  })
-
-  ipcMain.handle('undo:redo', () => {
-    if (redoStack.length === 0) return { ok: false }
-    executeRedo()
-    return { ok: true }
-  })
-
-  ipcMain.handle('undo:state', () => ({
-    canUndo: undoStack.length > 0,
-    canRedo: redoStack.length > 0,
-    undoDescription: undoStack[undoStack.length - 1]?.description,
-    redoDescription: redoStack[redoStack.length - 1]?.description,
-  }))
+  ipcMain.handle('undo:execute', () => undo.execute())
+  ipcMain.handle('undo:redo', () => undo.redo())
+  ipcMain.handle('undo:state', () => undo.state())
 
 
   // Dialog
@@ -3211,1125 +1914,67 @@ function registerIPC() {
     }
   })
 
-  // Export: JSON
-  ipcMain.handle('export:toJson', async () => {
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: `daskala_export_${exportDatum()}.json`,
-      filters: [{ name: 'JSON', extensions: ['json'] }],
-    })
-    if (savePath.canceled) return false
+  // ─── Export (Logik in core/services/export.js; exDeps = Ports + Helfer) ──────
+  ipcMain.handle('export:toJson', () => exportService.toJson(db, exDeps))
+  ipcMain.handle('export:fachOds', (_, fachId) => exportService.fachOds(db, exDeps, fachId))
 
-    const data = {
-      schuljahre: db.prepare('SELECT * FROM schuljahre').all(),
-      klassen: db.prepare('SELECT * FROM klassen').all(),
-      faecher: db.prepare('SELECT * FROM faecher').all(),
-      schueler: db.prepare('SELECT * FROM schueler').all(),
-      spalten: db.prepare('SELECT * FROM spalten').all(),
-      eintraege: db.prepare('SELECT * FROM eintraege').all(),
-      zeugnisnoten: db.prepare('SELECT * FROM zeugnisnoten').all(),
-      notizen: db.prepare('SELECT * FROM notizen').all(),
-      gewichtung_global: db.prepare('SELECT * FROM gewichtung_global').all(),
-      einstellungen: db.prepare('SELECT * FROM einstellungen').all(),
-    }
-    fs.writeFileSync(savePath.filePath, JSON.stringify(data, null, 2), 'utf-8')
-    return true
-  })
+  // Import: CSV/Excel Schüler:innen (Logik in core/services/import.js)
+  ipcMain.handle('import:schuelerFromFile', (_, filePath) => importService.schuelerFromFile({ fs: fsPort }, filePath))
 
-  // Export: Noten eines Fachs als ODS-Tabelle
-  ipcMain.handle('export:fachOds', async (_, fachId) => {
-    const XLSX = require('xlsx')
-    const fach = db.prepare('SELECT f.*, k.name AS klasse_name FROM faecher f JOIN klassen k ON f.klasse_id = k.id WHERE f.id = ?').get(fachId)
-    if (!fach) return false
-
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: `export_noten_${dateiTeil(fach.klasse_name)}_${dateiTeil(fach.name)}_${exportDatum()}.ods`,
-      filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
-    })
-    if (savePath.canceled) return false
-
-    const schueler = rosterFuerFach(fachId)
-    const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge').all(fachId)
-    const eintraege = db.prepare('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)').all(fachId)
-    const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fachId)
-
-    const entryMap = {}
-    eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
-    const istDiff = fach.benotungssystem === 'differenziert'
-    const niveauMap = {}
-    if (istDiff) {
-      db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fachId)
-        .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
-    }
-    const znMap = {}
-    zeugnisnoten.forEach(z => {
-      znMap[`${z.schueler_id}_${z.semester}`] =
-        znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
-    })
-
-    const header = ['Name', ...spalten.map(s => `${s.kuerzel} ${s.datum ?? ''}`), 'SN 1', 'SN 2', 'ZN']
-    const rows = [header]
-
-    for (const s of schueler) {
-      const row = [`${s.nachname} ${s.vorname}`]
-      for (const sp of spalten) {
-        row.push(entryMap[`${sp.id}_${s.id}`] ?? '')
-      }
-      row.push(znMap[`${s.id}_1`] ?? '')
-      row.push(znMap[`${s.id}_2`] ?? '')
-      row.push(znMap[`${s.id}_3`] ?? '')
-      rows.push(row)
-    }
-
-    const ws = XLSX.utils.aoa_to_sheet(rows)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, `${fach.klasse_name} ${fach.name}`.slice(0, 31))
-    XLSX.writeFile(wb, savePath.filePath, { bookType: 'ods' })
-    return true
-  })
-
-  // Import: CSV/Excel Schüler:innen
-  ipcMain.handle('import:schuelerFromFile', async (_, filePath) => {
-    const ext = path.extname(filePath).toLowerCase()
-    let list = []
-
-    if (ext === '.csv') {
-      const content = fs.readFileSync(filePath, 'utf-8')
-      const lines = content.split('\n').filter(l => l.trim())
-      const header = lines[0].split(/[,;]/).map(h => h.trim().toLowerCase())
-      const vornameIdx = header.findIndex(h => h.includes('vorname'))
-      const nachnameIdx = header.findIndex(h => h.includes('nachname') || h.includes('name'))
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(/[,;]/).map(c => c.trim().replace(/^["']|["']$/g, ''))
-        if (cols.length < 2) continue
-        list.push({
-          vorname: cols[vornameIdx !== -1 ? vornameIdx : 0],
-          nachname: cols[nachnameIdx !== -1 ? nachnameIdx : 1],
-        })
-      }
-    } else {
-      const XLSX = require('xlsx')
-      const wb = XLSX.readFile(filePath)
-      const ws = wb.Sheets[wb.SheetNames[0]]
-      const data = XLSX.utils.sheet_to_json(ws)
-      for (const row of data) {
-        const vorname = row['Vorname'] ?? row['vorname'] ?? ''
-        const nachname = row['Nachname'] ?? row['nachname'] ?? row['Name'] ?? ''
-        if (vorname || nachname) list.push({ vorname, nachname })
-      }
-    }
-
-    return list.filter(s => s.vorname || s.nachname)
-  })
-
-  // Jahresabschluss
-  ipcMain.handle('jahresabschluss:neuesSchuljahr', (_, { altesSchuljahreId, neueBezeichnung, klassen = null, schuelerZuordnungen }) => {
-    const tx = db.transaction(() => {
-      // Altes Schuljahr archivieren
-      db.prepare('UPDATE schuljahre SET archiviert = 1 WHERE id = ?').run(altesSchuljahreId)
-
-      // Neues Schuljahr anlegen
-      const neuesSchuljahr = db.prepare('INSERT INTO schuljahre (bezeichnung) VALUES (?)').run(neueBezeichnung)
-      const neuesSchuljahreId = neuesSchuljahr.lastInsertRowid
-
-      // Aktuelles Schuljahr persistieren, damit Kalender/Stundenplan/Ferien auch nach Neustart folgen
-      db.prepare('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)').run('schuljahr_aktuell', neueBezeichnung)
-
-      const klasseIdMapping = {}
-      const fachIdMapping = {}
-      const schuelerIdMapping = {}
-
-      // Auswahl der vorzurückenden Klassen/Fächer. Fehlt "klassen" (Alt-Aufrufer) → alle Klassen, alle Fächer.
-      let auswahl = klassen
-      if (!auswahl) {
-        auswahl = db.prepare('SELECT id FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0').all(altesSchuljahreId)
-          .map(k => ({ alteKlasseId: k.id, neuerName: null, fachIds: null }))   // fachIds null = alle Fächer
-      }
-
-      for (const kSel of auswahl) {
-        const alteKlasse = db.prepare('SELECT * FROM klassen WHERE id = ?').get(kSel.alteKlasseId)
-        if (!alteKlasse) continue
-        const neueKlasse = db.prepare('INSERT INTO klassen (schuljahr_id, name, reihenfolge) VALUES (?, ?, ?)')
-          .run(neuesSchuljahreId, kSel.neuerName ?? alteKlasse.name, alteKlasse.reihenfolge)
-        klasseIdMapping[alteKlasse.id] = neueKlasse.lastInsertRowid
-
-        // Nur ausgewählte Fächer übernehmen (fachIds null = alle)
-        const fachFilter = Array.isArray(kSel.fachIds) ? new Set(kSel.fachIds) : null
-        const alteFaecher = db.prepare('SELECT * FROM faecher WHERE klasse_id = ?').all(alteKlasse.id)
-        for (const altesFach of alteFaecher) {
-          if (fachFilter && !fachFilter.has(altesFach.id)) continue   // nicht angehakt → nicht vorrücken
-          const nf = db.prepare('INSERT INTO faecher (klasse_id, name, reihenfolge, alle_schueler) VALUES (?, ?, ?, ?)')
-            .run(neueKlasse.lastInsertRowid, altesFach.name, altesFach.reihenfolge, altesFach.alle_schueler ?? 1)
-          fachIdMapping[altesFach.id] = nf.lastInsertRowid
-        }
-      }
-
-      // Schüler:innen zuordnen (nur für vorgerückte Klassen; klasseIdMapping existiert nur für diese)
-      for (const z of schuelerZuordnungen) {
-        if (!klasseIdMapping[z.alteKlasseId]) continue   // Klasse nicht vorgerückt → Schüler:in bleibt im alten Jahr
-        if (z.aktion === 'ausgeschieden') {
-          db.prepare('UPDATE schueler SET aktiv = 0 WHERE id = ?').run(z.schuelerId)
-        } else if (z.aktion === 'bleibt') {
-          // Schüler:in in neuer Klasse anlegen
-          const s = db.prepare('SELECT * FROM schueler WHERE id = ?').get(z.schuelerId)
-          const ns = db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge) VALUES (?, ?, ?, ?)').run(klasseIdMapping[z.alteKlasseId], s.vorname, s.nachname, s.reihenfolge)
-          schuelerIdMapping[z.schuelerId] = ns.lastInsertRowid
-          db.prepare('UPDATE schueler SET aktiv = 0 WHERE id = ?').run(z.schuelerId)
-        }
-      }
-
-      // Fach-Zuordnung (Gruppenfächer) ins neue Jahr übernehmen, IDs remappt (nur "bleibt"-Schüler:innen).
-      for (const [altFachId, neuFachId] of Object.entries(fachIdMapping)) {
-        const f = db.prepare('SELECT alle_schueler FROM faecher WHERE id = ?').get(neuFachId)
-        if (f.alle_schueler) continue   // "alle"-Fächer brauchen keine Junction-Zeilen
-        const rows = db.prepare('SELECT schueler_id FROM fach_schueler WHERE fach_id = ?').all(altFachId)
-        const ins = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
-        for (const r of rows) {
-          const neuSid = schuelerIdMapping[r.schueler_id]
-          if (neuSid) ins.run(neuFachId, neuSid)   // ausgeschiedene fehlen im Mapping → übersprungen
-        }
-      }
-
-      return neuesSchuljahreId
-    })
-
-    return tx()
-  })
+  // Jahresabschluss (Logik in core/domain/jahresabschluss.js)
+  ipcMain.handle('jahresabschluss:neuesSchuljahr', (_, payload) => jahresabschlussDomain.neuesSchuljahr(db, payload))
 
   // ─── Planung: verfügbare Wochen ────────────────────────────────────────────
-  ipcMain.handle('planung:getVorhandeneWochen', () => {
-    return db.prepare('SELECT DISTINCT woche_datum FROM stunden_planung ORDER BY woche_datum').all().map(r => r.woche_datum)
-  })
+  ipcMain.handle('planung:getVorhandeneWochen', () => stundenPlanungDomain.getVorhandeneWochen(db))
 
   // ─── Export: Planungs-PDF ──────────────────────────────────────────────────
-  ipcMain.handle('export:planungPdf', async (_, wochen, einzeln) => {
-    const WOCHENTAGE = ['', 'Mo', 'Di', 'Mi', 'Do', 'Fr']
-
-    function getKW(d) {
-      const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
-      const dayNum = date.getUTCDay() || 7
-      date.setUTCDate(date.getUTCDate() + 4 - dayNum)
-      const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
-      return Math.ceil((((date - yearStart) / 86400000) + 1) / 7)
-    }
-
-    function wocheLabel(datum) {
-      const d = new Date(datum)
-      const fr = new Date(d); fr.setDate(d.getDate() + 4)
-      return `KW ${getKW(d)} · ${d.getDate()}.${d.getMonth()+1}. – ${fr.getDate()}.${fr.getMonth()+1}.${fr.getFullYear()}`
-    }
-
-    function escHtml(t) {
-      return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    }
-
-    function formatInhalt(text) {
-      return escHtml(text)
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/^- (.+)/gm, '• $1')
-        .replace(/---/g, '<hr/>')
-    }
-
-    const css = `
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:Arial,sans-serif;font-size:11px;color:#1a1a1a}
-      @page{size:A4;margin:1.5cm}
-      h1{font-size:20px;font-weight:300;margin-bottom:4px}
-      .meta{font-size:10px;color:#666;margin-bottom:24px}
-      .woche{margin-bottom:28px;page-break-inside:avoid}
-      .woche-titel{font-size:13px;font-weight:700;color:#4f46e5;border-bottom:2px solid #6366f1;padding-bottom:4px;margin-bottom:10px}
-      .stunde{margin-bottom:8px;padding:8px 10px;border-left:3px solid #e0e0e0}
-      .stunde-meta{font-size:9px;color:#888;margin-bottom:3px}
-      .stunde-titel{font-size:12px;font-weight:600;margin-bottom:4px}
-      .stunde-inhalt{font-size:10px;white-space:pre-wrap;line-height:1.5;color:#374151}
-      hr{border:none;border-top:1px solid #ddd;margin:4px 0}
-    `
-
-    function generiereWocheHtml(wocheDatum) {
-      const planungen = db.prepare(`
-        SELECT sp.*, st.wochentag, sz.stunde, sz.beginn, sz.ende,
-               f.name AS fach_name, k.name AS klasse_name
-        FROM stunden_planung sp
-        JOIN stundenplan st ON st.id = sp.stundenplan_id
-        JOIN stundenzeiten sz ON sz.id = st.stunde_id
-        JOIN faecher f ON f.id = st.fach_id
-        JOIN klassen k ON k.id = f.klasse_id
-        WHERE sp.woche_datum = ?
-        ORDER BY st.wochentag, sz.stunde
-      `).all(wocheDatum)
-      if (!planungen.length) return ''
-      const stunden = planungen.map(p => `
-        <div class="stunde">
-          <div class="stunde-meta">${WOCHENTAGE[p.wochentag]||''} · ${p.stunde}. Stunde (${p.beginn}–${p.ende}) · ${escHtml(p.fach_name)} · ${escHtml(p.klasse_name)}</div>
-          ${p.titel ? `<div class="stunde-titel">${escHtml(p.titel)}</div>` : ''}
-          ${p.inhalt ? `<div class="stunde-inhalt">${formatInhalt(p.inhalt)}</div>` : ''}
-        </div>`).join('')
-      return `<div class="woche"><div class="woche-titel">${wocheLabel(wocheDatum)}</div>${stunden}</div>`
-    }
-
-    const generiereHtml = (wochen) => {
-      const body = wochen.map(w => generiereWocheHtml(w)).join('')
-      return `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>${css}</style></head>
-      <body><h1>Stundenplanung – Daskala</h1><div class="meta">Exportiert am ${new Date().toLocaleDateString('de-AT')}</div>${body}</body></html>`
-    }
-
-    if (einzeln) {
-      for (const wocheDatum of wochen) {
-        const savePath = await dialog.showSaveDialog({
-          defaultPath: `planung_${wocheDatum}.pdf`,
-          filters: [{ name: 'PDF', extensions: ['pdf'] }],
-        })
-        if (!savePath.canceled) {
-          const buf = await htmlZuPdf(generiereHtml([wocheDatum]))
-          fs.writeFileSync(savePath.filePath, buf)
-        }
-      }
-      return true
-    } else {
-      const savePath = await dialog.showSaveDialog({
-        defaultPath: `planung_export_${exportDatum()}.pdf`,
-        filters: [{ name: 'PDF', extensions: ['pdf'] }],
-      })
-      if (savePath.canceled) return false
-      const buf = await htmlZuPdf(generiereHtml(wochen))
-      fs.writeFileSync(savePath.filePath, buf)
-      return true
-    }
-  })
+  ipcMain.handle('export:planungPdf', (_, wochen, einzeln) => exportService.planungPdf(db, exDeps, wochen, einzeln))
 
   // ─── Export: Stundenplan als ansprechendes PDF (Querformat, zum Aufhängen) ──
-  ipcMain.handle('export:stundenplanPdf', async (_, titelZusatz) => {
-    const WOCHENTAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
-
-    // Farbpalette analog zur App (getKlasseFarbe: klasse_id % 7).
-    const FARBEN = [
-      { bg: '#ffe6e2', bar: '#f97362', text: '#7f2418' }, // coral
-      { bg: '#d1fae5', bar: '#34d399', text: '#065f46' }, // emerald
-      { bg: '#ede9fe', bar: '#a78bfa', text: '#5b21b6' }, // violet
-      { bg: '#fef3c7', bar: '#fbbf24', text: '#92400e' }, // amber
-      { bg: '#ffe4e6', bar: '#fb7185', text: '#9f1239' }, // rose
-      { bg: '#cffafe', bar: '#22d3ee', text: '#155e75' }, // cyan
-      { bg: '#ffedd5', bar: '#fb923c', text: '#9a3412' }, // orange
-    ]
-    const farbeFuer = (klasseId) => FARBEN[((klasseId % FARBEN.length) + FARBEN.length) % FARBEN.length]
-    const escHtml = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    const ivLabel = (iv) => iv === 2 ? '14-tg.' : `alle ${iv} Wo.`
-
-    const stundenzeiten = db.prepare('SELECT * FROM stundenzeiten ORDER BY stunde').all()
-    const eintraege = db.prepare(`
-      SELECT sp.*, sz.stunde, sz.beginn, sz.ende,
-             f.name AS fach_name, k.name AS klasse_name, k.id AS klasse_id
-      FROM stundenplan sp
-      JOIN stundenzeiten sz ON sz.id = sp.stunde_id
-      JOIN faecher f ON f.id = sp.fach_id
-      JOIN klassen k ON k.id = f.klasse_id
-      ORDER BY sp.wochentag, sz.stunde
-    `).all()
-
-    // Einträge nach Slot gruppieren (mehrere möglich, z. B. bei 14-tägigem Wechsel).
-    const slotMap = {}
-    for (const e of eintraege) {
-      const key = `${e.wochentag}_${e.stunde_id}`
-      ;(slotMap[key] ??= []).push(e)
-    }
-
-    // Legende: vorhandene Klassen mit ihrer Farbe.
-    const klassenGesehen = new Map()
-    for (const e of eintraege) if (!klassenGesehen.has(e.klasse_id)) klassenGesehen.set(e.klasse_id, e.klasse_name)
-
-    const zelleHtml = (wochentag, stunde) => {
-      const list = slotMap[`${wochentag}_${stunde.id}`] || []
-      if (!list.length) return '<td class="leer"></td>'
-      const inner = list.map(e => {
-        const f = farbeFuer(e.klasse_id)
-        const iv = e.wochen_intervall || 1
-        return `<div class="fach" style="background:${f.bg};border-left:5px solid ${f.bar};color:${f.text}">
-          <div class="fach-name">${escHtml(e.fach_name)}</div>
-          <div class="fach-klasse">${escHtml(e.klasse_name)}${iv > 1 ? ` · <span class="iv">${ivLabel(iv)}</span>` : ''}</div>
-        </div>`
-      }).join('')
-      return `<td>${inner}</td>`
-    }
-
-    const kopf = `<tr>
-      <th class="zeit-kopf">Zeit</th>
-      ${WOCHENTAGE.map(t => `<th>${t}</th>`).join('')}
-    </tr>`
-
-    const zeilen = stundenzeiten.map(stunde => `
-      <tr>
-        <td class="zeit">
-          <div class="zeit-nr">${stunde.stunde}.</div>
-          <div class="zeit-span">${stunde.beginn}<br>${stunde.ende}</div>
-        </td>
-        ${WOCHENTAGE.map((_, i) => zelleHtml(i + 1, stunde)).join('')}
-      </tr>`).join('')
-
-    const legende = klassenGesehen.size ? `<div class="legende">
-      ${[...klassenGesehen.entries()].map(([id, name]) => {
-        const f = farbeFuer(id)
-        return `<span class="leg-item"><span class="leg-dot" style="background:${f.bar}"></span>${escHtml(name)}</span>`
-      }).join('')}
-    </div>` : ''
-
-    const css = `
-      *{box-sizing:border-box;margin:0;padding:0}
-      @page{size:A4 landscape;margin:1cm}
-      body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937}
-      h1{font-size:26px;font-weight:300;letter-spacing:.5px}
-      .meta{font-size:12px;color:#6b7280;margin-bottom:14px}
-      table{width:100%;border-collapse:separate;border-spacing:4px;table-layout:fixed}
-      th{font-size:14px;font-weight:600;color:#374151;padding:6px 0;text-align:center}
-      th.zeit-kopf{width:70px}
-      td{vertical-align:top;height:80px;border-radius:8px;background:#f9fafb;padding:4px}
-      td.leer{background:#fcfcfd;border:1px dashed #e5e7eb}
-      td.zeit{background:transparent;text-align:center;padding-top:8px}
-      .zeit-nr{font-size:18px;font-weight:700;color:#111827}
-      .zeit-span{font-size:10px;color:#9ca3af;margin-top:2px;line-height:1.3}
-      .fach{border-radius:6px;padding:6px 8px;margin-bottom:4px;min-height:66px;display:flex;flex-direction:column;justify-content:center}
-      .fach:last-child{margin-bottom:0}
-      .fach-name{font-size:15px;font-weight:700;line-height:1.15}
-      .fach-klasse{font-size:11px;opacity:.8;margin-top:2px}
-      .iv{font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:.3px}
-      .legende{margin-top:16px;display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:#4b5563}
-      .leg-item{display:flex;align-items:center;gap:5px}
-      .leg-dot{width:11px;height:11px;border-radius:3px;display:inline-block}
-    `
-
-    const titel = titelZusatz ? `Stundenplan · ${escHtml(titelZusatz)}` : 'Stundenplan'
-    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>${css}</style></head>
-      <body>
-        <h1>${titel}</h1>
-        <div class="meta">Erstellt am ${new Date().toLocaleDateString('de-AT')} · Daskala</div>
-        <table><thead>${kopf}</thead><tbody>${zeilen}</tbody></table>
-        ${legende}
-      </body></html>`
-
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: `stundenplan_${titelZusatz ? dateiTeil(titelZusatz) + '_' : ''}${exportDatum()}.pdf`,
-      filters: [{ name: 'PDF', extensions: ['pdf'] }],
-    })
-    if (savePath.canceled) return false
-    const buf = await htmlZuPdf(html, { landscape: true })
-    fs.writeFileSync(savePath.filePath, buf)
-    return true
-  })
+  ipcMain.handle('export:stundenplanPdf', (_, titelZusatz) => exportService.stundenplanPdf(db, exDeps, titelZusatz))
 
   // ─── Export: Jahresplanung als ODT (tabellarisch, Querformat) ─────────────
-  ipcMain.handle('export:jahresplanungOdt', async (_, fachId) => {
-    const JSZip = require('jszip')
-    const h = abschnittHierarchie(fachId)
-    if (!h) return false
-    const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id').all(fachId)
-    if (abschnitte.length === 0) {
-      dialog.showMessageBox({ type: 'info', message: 'Keine Abschnitte in der Jahresplanung vorhanden.' })
-      return false
-    }
-    const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const fdat = (d) => { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${parseInt(dd)}.${parseInt(m)}.${y}` }
-    // Mehrzeiliger Text → ODT-Absätze (grobe Markdown-Bereinigung, "- " → "• ").
-    const absaetze = (raw, style) => {
-      const zeilen = String(raw || '').split('\n')
-        .map(l => l.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/^\s*[-*]\s+/, '• ').trimEnd())
-        .filter(l => l.trim() !== '')
-      if (zeilen.length === 0) return `<text:p text:style-name="${style}"/>`
-      return zeilen.map(l => `<text:p text:style-name="${style}">${esc(l)}</text:p>`).join('')
-    }
-    const matZelle = (a) => {
-      const { dateien, links } = sammleMaterialien(a.id)
-      const items = []
-      for (const d of dateien) items.push(`• ${d.anzeigename || d.ref}${d.fehlt ? ' (fehlt)' : ''}`)
-      for (const l of links) items.push(`• ${l.anzeigename || l.ref}`)
-      if (items.length === 0) return `<text:p text:style-name="PStd"/>`
-      return items.map(t => `<text:p text:style-name="PStd">${esc(t)}</text:p>`).join('')
-    }
-    const zeile = (a) => {
-      const zeitraum = a.datum_von ? `${fdat(a.datum_von)} – ${fdat(a.datum_bis)}` : 'Nicht eingeplant'
-      const inhalt = `<text:p text:style-name="PTitel">${esc(a.titel || 'Ohne Titel')}</text:p>` + absaetze(a.inhalt, 'PStd')
-      const ziele = (a.lernziele && a.lernziele.trim()) ? absaetze(a.lernziele, 'PStd') : '<text:p text:style-name="PStd">–</text:p>'
-      const komp = (a.kompetenzen && a.kompetenzen.trim()) ? absaetze(a.kompetenzen, 'PStd') : '<text:p text:style-name="PStd">–</text:p>'
-      return '<table:table-row>'
-        + `<table:table-cell table:style-name="Zelle"><text:p text:style-name="${a.datum_von ? 'PZeit' : 'PZeitLeer'}">${esc(zeitraum)}</text:p></table:table-cell>`
-        + `<table:table-cell table:style-name="Zelle">${inhalt}</table:table-cell>`
-        + `<table:table-cell table:style-name="Zelle">${ziele}</table:table-cell>`
-        + `<table:table-cell table:style-name="Zelle">${komp}</table:table-cell>`
-        + `<table:table-cell table:style-name="Zelle">${matZelle(a)}</table:table-cell>`
-        + '</table:table-row>'
-    }
-
-    const content = `<?xml version="1.0" encoding="UTF-8"?>`
-      + `<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" office:version="1.2">`
-      + `<office:automatic-styles>`
-      + `<style:style style:name="Tabelle1" style:family="table"><style:table-properties style:width="26.7cm" table:align="margins"/></style:style>`
-      + `<style:style style:name="Tabelle1.A" style:family="table-column"><style:table-column-properties style:column-width="3.2cm"/></style:style>`
-      + `<style:style style:name="Tabelle1.B" style:family="table-column"><style:table-column-properties style:column-width="8.3cm"/></style:style>`
-      + `<style:style style:name="Tabelle1.C" style:family="table-column"><style:table-column-properties style:column-width="5.3cm"/></style:style>`
-      + `<style:style style:name="Tabelle1.D" style:family="table-column"><style:table-column-properties style:column-width="5.3cm"/></style:style>`
-      + `<style:style style:name="Tabelle1.E" style:family="table-column"><style:table-column-properties style:column-width="4.6cm"/></style:style>`
-      + `<style:style style:name="Zelle" style:family="table-cell"><style:table-cell-properties fo:border="0.5pt solid #99a0ad" fo:padding="0.12cm"/></style:style>`
-      + `<style:style style:name="Kopf" style:family="table-cell"><style:table-cell-properties fo:border="0.5pt solid #99a0ad" fo:padding="0.14cm" fo:background-color="#4f46e5"/></style:style>`
-      + `<style:style style:name="PStd" style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.05cm"/><style:text-properties fo:font-size="10pt"/></style:style>`
-      + `<style:style style:name="PTitel" style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.1cm"/><style:text-properties fo:font-size="11pt" fo:font-weight="bold"/></style:style>`
-      + `<style:style style:name="PZeit" style:family="paragraph"><style:text-properties fo:font-size="10pt" fo:font-weight="bold" fo:color="#374151"/></style:style>`
-      + `<style:style style:name="PZeitLeer" style:family="paragraph"><style:text-properties fo:font-size="10pt" fo:font-style="italic" fo:color="#9aa0ac"/></style:style>`
-      + `<style:style style:name="PKopf" style:family="paragraph"><style:text-properties fo:font-size="10pt" fo:font-weight="bold" fo:color="#ffffff"/></style:style>`
-      + `<style:style style:name="PTitelDoc" style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.05cm"/><style:text-properties fo:font-size="16pt" fo:font-weight="bold"/></style:style>`
-      + `<style:style style:name="PMeta" style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.3cm"/><style:text-properties fo:font-size="9pt" fo:color="#888888"/></style:style>`
-      + `</office:automatic-styles>`
-      + `<office:body><office:text>`
-      + `<text:p text:style-name="PTitelDoc">Jahresplanung – ${esc(h.fach_name)}</text:p>`
-      + `<text:p text:style-name="PMeta">${esc(h.klasse_name)} · ${esc(h.schuljahr_bez)} · Exportiert am ${new Date().toLocaleDateString('de-AT')}</text:p>`
-      + `<table:table table:name="Jahresplanung" table:style-name="Tabelle1">`
-      + `<table:table-column table:style-name="Tabelle1.A"/><table:table-column table:style-name="Tabelle1.B"/><table:table-column table:style-name="Tabelle1.C"/><table:table-column table:style-name="Tabelle1.D"/><table:table-column table:style-name="Tabelle1.E"/>`
-      + `<table:table-header-rows><table:table-row>`
-      + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Zeitraum</text:p></table:table-cell>`
-      + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Inhalt</text:p></table:table-cell>`
-      + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Zielsetzungen</text:p></table:table-cell>`
-      + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Kompetenzen</text:p></table:table-cell>`
-      + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Materialien</text:p></table:table-cell>`
-      + `</table:table-row></table:table-header-rows>`
-      + abschnitte.map(zeile).join('')
-      + `</table:table></office:text></office:body></office:document-content>`
-
-    const styles = `<?xml version="1.0" encoding="UTF-8"?>`
-      + `<office:document-styles xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" office:version="1.2">`
-      + `<office:automatic-styles><style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="29.7cm" fo:page-height="21cm" style:print-orientation="landscape" fo:margin-top="1.5cm" fo:margin-bottom="1.5cm" fo:margin-left="1.5cm" fo:margin-right="1.5cm"/></style:page-layout></office:automatic-styles>`
-      + `<office:master-styles><style:master-page style:name="Standard" style:page-layout-name="pm1"/></office:master-styles>`
-      + `</office:document-styles>`
-
-    const manifest = `<?xml version="1.0" encoding="UTF-8"?>`
-      + `<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">`
-      + `<manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/>`
-      + `<manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>`
-      + `<manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/>`
-      + `</manifest:manifest>`
-
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: `Jahresplanung_${sanitizeSegment(h.fach_name)}_${sanitizeSegment(h.klasse_name)}_${exportDatum()}.odt`,
-      filters: [{ name: 'OpenDocument-Text', extensions: ['odt'] }],
-    })
-    if (savePath.canceled) return false
-    const zip = new JSZip()
-    zip.file('mimetype', 'application/vnd.oasis.opendocument.text', { compression: 'STORE' })
-    zip.file('META-INF/manifest.xml', manifest)
-    zip.file('styles.xml', styles)
-    zip.file('content.xml', content)
-    const buf = await zip.generateAsync({ type: 'nodebuffer' })
-    fs.writeFileSync(savePath.filePath, buf)
-    return true
-  })
-
-  // ─── Export: Fach-Planung als DOCX ────────────────────────────────────────
-  ipcMain.handle('export:fachPlanungDocx', async (_, fachId, fachName, klasseName, wochenDaten) => {
-    const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, BorderStyle, HeadingLevel } = require('docx')
-
-    const WOCHENTAGE = ['', 'Mo', 'Di', 'Mi', 'Do', 'Fr']
-
-    // Alle Stundenplan-Slots für dieses Fach
-    const fachSlots = db.prepare(`
-      SELECT st.id, st.wochentag, sz.stunde, sz.beginn, sz.ende
-      FROM stundenplan st
-      JOIN stundenzeiten sz ON sz.id = st.stunde_id
-      WHERE st.fach_id = ?
-      ORDER BY st.wochentag, sz.stunde
-    `).all(fachId)
-
-    if (fachSlots.length === 0) return false
-
-    const slotIds = fachSlots.map(s => s.id)
-
-    // Planungen für alle angefragten Wochen laden
-    const planStmt = db.prepare(`
-      SELECT sp.*, sp.stundenplan_id
-      FROM stunden_planung sp
-      WHERE sp.stundenplan_id IN (${slotIds.map(() => '?').join(',')})
-        AND sp.woche_datum = ?
-    `)
-
-    const thinBorder = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
-    const cellBorders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
-
-    const sections = []
-    const exportierteKWs = []
-
-    for (let wi = 0; wi < wochenDaten.length; wi++) {
-      const wd = wochenDaten[wi]
-      const planungen = planStmt.all(...slotIds, wd.wocheDatum)
-      const planMap = {}
-      for (const p of planungen) planMap[p.stundenplan_id] = p
-
-      // Nur Wochen mit mindestens einer Planung
-      const hatPlanung = fachSlots.some(s => planMap[s.id]?.titel || planMap[s.id]?.inhalt)
-      if (!hatPlanung) continue
-
-      // Tabellenzeilen: Header + je eine Zeile pro Slot
-      const headerRow = new TableRow({
-        tableHeader: true,
-        children: [
-          new TableCell({ width: { size: 1800, type: WidthType.DXA }, borders: cellBorders, shading: { fill: 'F3F4F6' },
-            children: [new Paragraph({ children: [new TextRun({ text: 'Stunde', bold: true, size: 18, font: 'Arial' })] })] }),
-          new TableCell({ width: { size: 2000, type: WidthType.DXA }, borders: cellBorders, shading: { fill: 'F3F4F6' },
-            children: [new Paragraph({ children: [new TextRun({ text: 'Thema', bold: true, size: 18, font: 'Arial' })] })] }),
-          new TableCell({ borders: cellBorders, shading: { fill: 'F3F4F6' },
-            children: [new Paragraph({ children: [new TextRun({ text: 'Inhalt', bold: true, size: 18, font: 'Arial' })] })] }),
-          new TableCell({ width: { size: 2000, type: WidthType.DXA }, borders: cellBorders, shading: { fill: 'F3F4F6' },
-            children: [new Paragraph({ children: [new TextRun({ text: 'HÜ', bold: true, size: 18, font: 'Arial' })] })] }),
-        ],
-      })
-
-      const dataRows = fachSlots.map(slot => {
-        const plan = planMap[slot.id]
-        const stundeText = `${WOCHENTAGE[slot.wochentag]} ${slot.stunde}. (${slot.beginn}–${slot.ende})`
-
-        const inhaltParas = (plan?.inhalt || '').split('\n').filter(l => l.trim()).map(line =>
-          new Paragraph({ children: [new TextRun({ text: line, size: 18, font: 'Arial' })] })
-        )
-        if (inhaltParas.length === 0) inhaltParas.push(new Paragraph({ children: [] }))
-
-        return new TableRow({
-          children: [
-            new TableCell({ width: { size: 1800, type: WidthType.DXA }, borders: cellBorders, verticalAlign: 'top',
-              children: [new Paragraph({ children: [new TextRun({ text: stundeText, size: 18, font: 'Arial', color: '666666' })] })] }),
-            new TableCell({ width: { size: 2000, type: WidthType.DXA }, borders: cellBorders, verticalAlign: 'top',
-              children: [new Paragraph({ children: [new TextRun({ text: plan?.titel || '', size: 18, font: 'Arial', bold: !!plan?.titel })] })] }),
-            new TableCell({ borders: cellBorders, verticalAlign: 'top', children: inhaltParas }),
-            new TableCell({ width: { size: 2000, type: WidthType.DXA }, borders: cellBorders, verticalAlign: 'top',
-              children: [new Paragraph({ children: [new TextRun({ text: plan?.hue_text || '', size: 18, font: 'Arial', italics: true })] })] }),
-          ],
-        })
-      })
-
-      const table = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [headerRow, ...dataRows],
-      })
-
-      exportierteKWs.push(wd.kw)
-      sections.push({
-        properties: wi > 0 ? { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } } : { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } },
-        children: [
-          ...(wi === 0 ? [
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `${fachName} – ${klasseName}`, font: 'Arial' })] }),
-            new Paragraph({ spacing: { after: 100 }, children: [new TextRun({ text: `Exportiert am ${new Date().toLocaleDateString('de-AT')}`, size: 18, font: 'Arial', color: '999999' })] }),
-          ] : []),
-          new Paragraph({ spacing: { before: 200, after: 100 },
-            children: [new TextRun({ text: `KW ${wd.kw} · ${wd.montagStr} – ${wd.freitagStr}${wd.jahr}`, bold: true, size: 22, font: 'Arial', color: '4F46E5' })] }),
-          table,
-        ],
-      })
-    }
-
-    if (sections.length === 0) {
-      dialog.showMessageBox({ type: 'info', message: 'Keine Planungsdaten zum Exportieren vorhanden.' })
-      return false
-    }
-
-    const doc = new Document({ sections })
-    const buf = await Packer.toBuffer(doc)
-
-    const kwMin = Math.min(...exportierteKWs)
-    const kwMax = Math.max(...exportierteKWs)
-    const kwLabel = kwMin === kwMax ? `KW${kwMin}` : `KW${kwMin}-${kwMax}`
-
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: `planung_${fachName}_${klasseName}_${kwLabel}.docx`,
-      filters: [{ name: 'Word-Dokument', extensions: ['docx'] }],
-    })
-    if (savePath.canceled) return false
-    fs.writeFileSync(savePath.filePath, buf)
-    return true
-  })
-
-  // ─── Export: Alle Schüler:innen als ODS ───────────────────────────────────
-  ipcMain.handle('export:allSchuelerOds', async () => {
-    const XLSX = require('xlsx')
-    const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
-    if (!aktuellesSchuljahr) return false
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: `daskala_noten_${dateiTeil(aktuellesSchuljahr.bezeichnung)}_${exportDatum()}.ods`,
-      filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
-    })
-    if (savePath.canceled) return false
-
-    const wb = XLSX.utils.book_new()
-    const klassen = db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name').all(aktuellesSchuljahr.id)
-
-    for (const klasse of klassen) {
-      const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasse.id)
-      const schueler = db.prepare('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY reihenfolge, nachname, vorname').all(klasse.id)
-      if (!schueler.length) continue
-
-      for (const fach of faecher) {
-        const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge').all(fach.id)
-        const eintraege = db.prepare('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)').all(fach.id)
-        const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fach.id)
-        const entryMap = {}
-        eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
-        const istDiff = fach.benotungssystem === 'differenziert'
-        const niveauMap = {}
-        if (istDiff) {
-          db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fach.id)
-            .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
-        }
-        const znMap = {}
-        zeugnisnoten.forEach(z => {
-          znMap[`${z.schueler_id}_${z.semester}`] =
-            znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
-        })
-
-        const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum.slice(5).replace('-', '.') : ''}`), 'SN 1', 'SN 2', 'ZN']
-        const rows = [header]
-        for (const s of rosterFuerFach(fach.id)) {
-          const badges = [s.lernschwaeche ? 'LS' : null, s.legasthenie ? 'LEG' : null].filter(Boolean)
-          const name = `${s.nachname} ${s.vorname}${badges.length ? ' [' + badges.join(' ') + ']' : ''}`
-          const row = [name, ...spalten.map(sp => entryMap[`${sp.id}_${s.id}`] ?? ''), znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '', znMap[`${s.id}_3`] ?? '']
-          rows.push(row)
-        }
-
-        const sheetName = `${klasse.name} ${fach.name}`.slice(0, 31)
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), sheetName)
-      }
-    }
-
-    XLSX.writeFile(wb, savePath.filePath, { bookType: 'ods' })
-    return true
-  })
-
-  // ─── Export: Alle Schüler:innen PDF ───────────────────────────────────────
-  // Vollständige Notenübersicht (alle Klassen/Fächer eines Schuljahres) als HTML für den PDF-Export.
-  function baueNotenUebersichtHtml(schuljahr, titelPrefix = '') {
-    const klassen = db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name').all(schuljahr.id)
-    const css = `
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:Arial,sans-serif;font-size:10px;color:#1a1a1a}
-      @page{size:A4 landscape;margin:1.5cm}
-      h1{font-size:18px;font-weight:300;margin-bottom:2px}
-      .schuljahr{font-size:10px;color:#666;margin-bottom:20px}
-      .klasse-fach{margin-bottom:28px;page-break-inside:avoid}
-      .klasse-fach-titel{font-size:13px;font-weight:700;color:#4f46e5;border-bottom:2px solid #6366f1;padding-bottom:3px;margin-bottom:8px}
-      table{width:100%;border-collapse:collapse;font-size:9px}
-      th{background:#f4f4f5;text-align:center;padding:4px 6px;border:1px solid #e0e0e0;font-weight:600;white-space:nowrap}
-      th.name{text-align:left;min-width:120px}
-      td{padding:3px 6px;border:1px solid #e0e0e0;text-align:center}
-      td.name{text-align:left;font-weight:500}
-      td.zn{font-weight:700}
-      .badge{font-size:8px;background:#fef3c7;color:#92400e;border-radius:2px;padding:0 2px;margin-left:2px}
-      .badge.leg{background:#ede9fe;color:#5b21b6}
-      tr:nth-child(even) td{background:#fafafa}
-    `
-    const escHtml = (t) => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-
-    let bodyHtml = `<h1>Notenübersicht – Daskala</h1><div class="schuljahr">${titelPrefix}${escHtml(schuljahr.bezeichnung)}</div>`
-
-    for (const klasse of klassen) {
-      const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasse.id)
-      const schueler = db.prepare('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY reihenfolge, nachname, vorname').all(klasse.id)
-      if (!schueler.length) continue
-
-      for (const fach of faecher) {
-        const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge').all(fach.id)
-        const eintraege = db.prepare('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)').all(fach.id)
-        const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fach.id)
-        const entryMap = {}
-        eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
-        const istDiff = fach.benotungssystem === 'differenziert'
-        const niveauMap = {}
-        if (istDiff) {
-          db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fach.id)
-            .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
-        }
-        const znMap = {}
-        zeugnisnoten.forEach(z => {
-          znMap[`${z.schueler_id}_${z.semester}`] =
-            znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
-        })
-
-        const thead = `<tr><th class="name">Name</th>${spalten.map(sp =>
-          `<th>${escHtml(sp.kuerzel)}${sp.datum ? '<br>' + sp.datum.slice(5).replace('-', '.') : ''}</th>`
-        ).join('')}<th>SN 1</th><th>SN 2</th><th>ZN</th></tr>`
-
-        const tbody = rosterFuerFach(fach.id).map(s => {
-          const lsBadge = s.lernschwaeche ? '<span class="badge">LS</span>' : ''
-          const legBadge = s.legasthenie ? '<span class="badge leg">LEG</span>' : ''
-          const cells = spalten.map(sp => `<td>${escHtml(entryMap[`${sp.id}_${s.id}`] ?? '')}</td>`).join('')
-          return `<tr><td class="name">${escHtml(s.nachname)} ${escHtml(s.vorname)}${lsBadge}${legBadge}</td>${cells}<td class="zn">${znMap[`${s.id}_1`] ?? ''}</td><td class="zn">${znMap[`${s.id}_2`] ?? ''}</td><td class="zn">${znMap[`${s.id}_3`] ?? ''}</td></tr>`
-        }).join('')
-
-        bodyHtml += `<div class="klasse-fach"><div class="klasse-fach-titel">${escHtml(klasse.name)} · ${escHtml(fach.name)}</div><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`
-      }
-    }
-    return `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>${css}</style></head><body>${bodyHtml}</body></html>`
-  }
-
-  ipcMain.handle('export:allSchuelerPdf', async () => {
-    const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
-    if (!aktuellesSchuljahr) return false
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: `daskala_noten_${dateiTeil(aktuellesSchuljahr.bezeichnung)}_${exportDatum()}.pdf`,
-      filters: [{ name: 'PDF', extensions: ['pdf'] }],
-    })
-    if (savePath.canceled) return false
-    const buf = await htmlZuPdf(baueNotenUebersichtHtml(aktuellesSchuljahr))
-    fs.writeFileSync(savePath.filePath, buf)
-    return true
-  })
-
-  // Archiviertes Schuljahr vollständig als PDF exportieren (Notenübersicht aller Klassen/Fächer).
-  ipcMain.handle('export:archivPdf', async (_, schuljahrId) => {
-    const schuljahr = db.prepare('SELECT * FROM schuljahre WHERE id = ?').get(schuljahrId)
-    if (!schuljahr) return false
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: `Daskala_Archiv_${dateiTeil(schuljahr.bezeichnung)}_${exportDatum()}.pdf`,
-      filters: [{ name: 'PDF', extensions: ['pdf'] }],
-    })
-    if (savePath.canceled) return false
-    const buf = await htmlZuPdf(baueNotenUebersichtHtml(schuljahr, 'Archiv · '))
-    fs.writeFileSync(savePath.filePath, buf)
-    return true
-  })
-
-  // Archiviertes Schuljahr vollständig als ODS exportieren (je Klasse+Fach ein Tabellenblatt).
-  ipcMain.handle('export:archivOds', async (_, schuljahrId) => {
-    const schuljahr = db.prepare('SELECT * FROM schuljahre WHERE id = ?').get(schuljahrId)
-    if (!schuljahr) return false
-    const XLSX = require('xlsx')
-    const savePath = await dialog.showSaveDialog({
-      defaultPath: `Daskala_Archiv_${dateiTeil(schuljahr.bezeichnung)}_${exportDatum()}.ods`,
-      filters: [{ name: 'OpenDocument-Tabelle', extensions: ['ods'] }],
-    })
-    if (savePath.canceled) return false
-
-    const klassen = db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name').all(schuljahrId)
-    const wb = XLSX.utils.book_new()
-    const usedNames = new Set()
-    for (const klasse of klassen) {
-      const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasse.id)
-      for (const fach of faecher) {
-        const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge').all(fach.id)
-        const eintraege = db.prepare('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)').all(fach.id)
-        const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fach.id)
-        const entryMap = {}
-        eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
-        const istDiff = fach.benotungssystem === 'differenziert'
-        const niveauMap = {}
-        if (istDiff) {
-          db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fach.id)
-            .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
-        }
-        const znMap = {}
-        zeugnisnoten.forEach(z => {
-          znMap[`${z.schueler_id}_${z.semester}`] =
-            znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
-        })
-
-        const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum : ''}`), 'SN 1', 'SN 2', 'ZN']
-        const rows = [header]
-        for (const s of rosterFuerFach(fach.id)) {
-          const row = [`${s.nachname} ${s.vorname}`]
-          for (const sp of spalten) row.push(entryMap[`${sp.id}_${s.id}`] ?? '')
-          row.push(znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '', znMap[`${s.id}_3`] ?? '')
-          rows.push(row)
-        }
-
-        const ws = XLSX.utils.aoa_to_sheet(rows)
-        // Blattname: max. 31 Zeichen, ohne Sonderzeichen, eindeutig
-        let basis = `${klasse.name} ${fach.name}`.replace(/[:\\/?*[\]]/g, ' ').slice(0, 31).trim() || 'Blatt'
-        let name = basis, i = 2
-        while (usedNames.has(name)) { name = basis.slice(0, 28) + '~' + i; i++ }
-        usedNames.add(name)
-        XLSX.utils.book_append_sheet(wb, ws, name)
-      }
-    }
-    if (wb.SheetNames.length === 0) return false
-    XLSX.writeFile(wb, savePath.filePath, { bookType: 'ods' })
-    return true
-  })
+  ipcMain.handle('export:jahresplanungOdt', (_, fachId) => exportService.jahresplanungOdt(db, exDeps, fachId))
+  ipcMain.handle('export:fachPlanungDocx', (_, fachId, fachName, klasseName, wochenDaten) => exportService.fachPlanungDocx(db, exDeps, fachId, fachName, klasseName, wochenDaten))
+  ipcMain.handle('export:allSchuelerOds', () => exportService.allSchuelerOds(db, exDeps))
+  ipcMain.handle('export:allSchuelerPdf', () => exportService.allSchuelerPdf(db, exDeps))
+  ipcMain.handle('export:archivPdf', (_, schuljahrId) => exportService.archivPdf(db, exDeps, schuljahrId))
+  ipcMain.handle('export:archivOds', (_, schuljahrId) => exportService.archivOds(db, exDeps, schuljahrId))
 
   // ─── Sitzplan ───────────────────────────────────────────────────────────────
-  ipcMain.handle('sitzplan:getTische', (_, fachId) => {
-    const rows = db.prepare(`
-      SELECT t.id as tisch_id, t.typ, t.x, t.y, t.rotation,
-             s.id as sitz_id, s.position,
-             s.schueler_id,
-             sch.vorname, sch.nachname, sch.avatar
-      FROM sitzplan_tische t
-      LEFT JOIN sitzplan_sitzplaetze s ON s.tisch_id = t.id
-      LEFT JOIN schueler sch ON sch.id = s.schueler_id
-      WHERE t.fach_id = ?
-      ORDER BY t.id, s.position
-    `).all(fachId)
-    // Gruppiere Rows zu Tisch-Objekten
-    const map = {}
-    for (const row of rows) {
-      if (!map[row.tisch_id]) {
-        map[row.tisch_id] = { id: row.tisch_id, typ: row.typ, x: row.x, y: row.y, rotation: row.rotation ?? 0, sitze: [] }
-      }
-      if (row.sitz_id != null) {
-        map[row.tisch_id].sitze.push({
-          id: row.sitz_id, position: row.position,
-          schueler_id: row.schueler_id, vorname: row.vorname, nachname: row.nachname, avatar: row.avatar,
-        })
-      }
-    }
-    return Object.values(map)
-  })
-
-  ipcMain.handle('sitzplan:createTisch', (_, fachId, typ, x, y) => {
-    const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(fachId)
-    const tisch = db.prepare(
-      'INSERT INTO sitzplan_tische (klasse_id, fach_id, typ, x, y) VALUES (?, ?, ?, ?, ?)'
-    ).run(fach.klasse_id, fachId, typ, x, y)
-    const tischId = tisch.lastInsertRowid
-    db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position) VALUES (?, 0)').run(tischId)
-    if (typ === 'doppel') {
-      db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position) VALUES (?, 1)').run(tischId)
-    }
-    return tischId
-  })
-
-  ipcMain.handle('sitzplan:deleteTisch', (_, tischId) => {
-    db.prepare('DELETE FROM sitzplan_tische WHERE id = ?').run(tischId)
-    return true
-  })
-
-  ipcMain.handle('sitzplan:moveTisch', (_, tischId, x, y) => {
-    db.prepare('UPDATE sitzplan_tische SET x = ?, y = ? WHERE id = ?').run(x, y, tischId)
-    return true
-  })
-
-  ipcMain.handle('sitzplan:setRotation', (_, tischId, rotation) => {
-    const r = ((Number(rotation) % 360) + 360) % 360 // auf 0/90/180/270 normalisieren
-    db.prepare('UPDATE sitzplan_tische SET rotation = ? WHERE id = ?').run(r, tischId)
-    return true
-  })
-
-  ipcMain.handle('sitzplan:assignSchueler', (_, sitzplatzId, schuelerId) => {
-    db.prepare('UPDATE sitzplan_sitzplaetze SET schueler_id = ? WHERE id = ?')
-      .run(schuelerId ?? null, sitzplatzId)
-    return true
-  })
-
-  ipcMain.handle('sitzplan:duplicateTisch', (_, fachId, sourceTischId, x, y) => {
-    const source = db.prepare('SELECT * FROM sitzplan_tische WHERE id = ?').get(sourceTischId)
-    const sourceSitze = db.prepare('SELECT * FROM sitzplan_sitzplaetze WHERE tisch_id = ? ORDER BY position').all(sourceTischId)
-    const fach = db.prepare('SELECT klasse_id FROM faecher WHERE id = ?').get(fachId)
-    const tisch = db.prepare(
-      'INSERT INTO sitzplan_tische (klasse_id, fach_id, typ, x, y, rotation) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(fach.klasse_id, fachId, source.typ, x, y, source.rotation ?? 0)
-    const newTischId = tisch.lastInsertRowid
-    for (const sitz of sourceSitze) {
-      db.prepare('INSERT INTO sitzplan_sitzplaetze (tisch_id, position) VALUES (?, ?)')
-        .run(newTischId, sitz.position)
-    }
-    return newTischId
-  })
+  ipcMain.handle('sitzplan:getTische', (_, fachId) => sitzplanDomain.getTische(db, fachId))
+  ipcMain.handle('sitzplan:createTisch', (_, fachId, typ, x, y) => sitzplanDomain.createTisch(db, fachId, typ, x, y))
+  ipcMain.handle('sitzplan:deleteTisch', (_, tischId) => sitzplanDomain.deleteTisch(db, tischId))
+  ipcMain.handle('sitzplan:moveTisch', (_, tischId, x, y) => sitzplanDomain.moveTisch(db, tischId, x, y))
+  ipcMain.handle('sitzplan:setRotation', (_, tischId, rotation) => sitzplanDomain.setRotation(db, tischId, rotation))
+  ipcMain.handle('sitzplan:assignSchueler', (_, sitzplatzId, schuelerId) => sitzplanDomain.assignSchueler(db, sitzplatzId, schuelerId))
+  ipcMain.handle('sitzplan:duplicateTisch', (_, fachId, sourceTischId, x, y) => sitzplanDomain.duplicateTisch(db, fachId, sourceTischId, x, y))
 
   // ─── Custom Ferien ───────────────────────────────────────────────────────────
-  ipcMain.handle('customFerien:getAll', (_, schuljahrId) =>
-    db.prepare('SELECT * FROM custom_ferien WHERE schuljahr_id = ? ORDER BY von').all(schuljahrId)
-  )
-
-  ipcMain.handle('customFerien:save', (_, schuljahrId, ferien) => {
-    // ferien = [{ id?, name, von, bis }, ...]
-    // Komplett ersetzen: alle löschen und neu einfügen
-    const transaction = db.transaction(() => {
-      db.prepare('DELETE FROM custom_ferien WHERE schuljahr_id = ?').run(schuljahrId)
-      const insert = db.prepare('INSERT INTO custom_ferien (schuljahr_id, name, von, bis) VALUES (?, ?, ?, ?)')
-      for (const f of ferien) {
-        if (f.name && f.von && f.bis) {
-          insert.run(schuljahrId, f.name, f.von, f.bis)
-        }
-      }
-    })
-    transaction()
-    return true
-  })
+  ipcMain.handle('customFerien:getAll', (_, schuljahrId) => customFerienDomain.getAll(db, schuljahrId))
+  ipcMain.handle('customFerien:save', (_, schuljahrId, ferien) => customFerienDomain.save(db, schuljahrId, ferien))
 
   // ─── Termine ─────────────────────────────────────────────────────────────────
-  ipcMain.handle('termine:getAll', (_, schuljahrId) =>
-    db.prepare(`
-      SELECT t.*, k.name as klasse_name
-      FROM termine t
-      LEFT JOIN klassen k ON k.id = t.klasse_id
-      WHERE t.schuljahr_id = ?
-      ORDER BY t.datum, t.uhrzeit
-    `).all(schuljahrId)
-  )
-
-  ipcMain.handle('termine:create', (_, { titel, datum, uhrzeit, bisUhrzeit, notiz, klasseId, schuljahrId, stundeId }) => {
-    const info = db.prepare(
-      'INSERT INTO termine (titel, datum, uhrzeit, bis_uhrzeit, notiz, klasse_id, schuljahr_id, stunde_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(titel, datum, uhrzeit ?? null, bisUhrzeit ?? null, notiz ?? null, klasseId ?? null, schuljahrId, stundeId ?? null)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('termine:update', (_, id, { titel, datum, uhrzeit, bisUhrzeit, notiz, klasseId, stundeId }) => {
-    db.prepare('UPDATE termine SET titel = ?, datum = ?, uhrzeit = ?, bis_uhrzeit = ?, notiz = ?, klasse_id = ?, stunde_id = ? WHERE id = ?')
-      .run(titel, datum, uhrzeit ?? null, bisUhrzeit ?? null, notiz ?? null, klasseId ?? null, stundeId ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('termine:delete', (_, id) => {
-    db.prepare('DELETE FROM termine WHERE id = ?').run(id)
-    return true
-  })
+  ipcMain.handle('termine:getAll', (_, schuljahrId) => termineDomain.getAll(db, schuljahrId))
+  ipcMain.handle('termine:create', (_, data) => termineDomain.create(db, data))
+  ipcMain.handle('termine:update', (_, id, data) => termineDomain.update(db, id, data))
+  ipcMain.handle('termine:delete', (_, id) => termineDomain.remove(db, id))
 
   // ─── Jahresplanung ────────────────────────────────────────────────────────────
-  ipcMain.handle('jahresplanung:getAll', (_, fachId) =>
-    db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY reihenfolge, id').all(fachId)
-  )
-  ipcMain.handle('jahresplanung:create', (_, d) => {
-    const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(d.fachId).m
-    const id = Number(db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)').run(d.fachId, d.titel, d.inhalt ?? '', d.lernziele ?? '', d.kompetenzen ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, maxOrd + 1).lastInsertRowid)
-    try { if (materialRoot()) { ensureAbschnittFolder(id); schreibeMaterialIndex(id) } } catch (e) { logError('jahresplanung:create ordner', e) }
-    return id
-  })
-  ipcMain.handle('jahresplanung:update', (_, id, d) => {
-    const alt = db.prepare('SELECT titel, fach_id, material_ordner FROM jahresplanung_abschnitte WHERE id=?').get(id)
-    db.prepare('UPDATE jahresplanung_abschnitte SET titel=?, inhalt=?, lernziele=?, kompetenzen=?, datum_von=?, datum_bis=?, farbe=? WHERE id=?').run(d.titel, d.inhalt ?? '', d.lernziele ?? '', d.kompetenzen ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, id)
-    let ordnerWarnung = null
-    const root = materialRoot()
-    if (root && alt && alt.material_ordner && d.titel != null && d.titel !== alt.titel) {
-      const h = abschnittHierarchie(alt.fach_id)
-      if (h) {
-        const baseDir = fachDir(root, h)
-        const oldDir = path.join(baseDir, alt.material_ordner)
-        if (fs.existsSync(oldDir)) {
-          const neuLeaf = eindeutigerLeaf(baseDir, sanitizeSegment(d.titel))
-          ordnerWarnung = verschiebeDir(oldDir, path.join(baseDir, neuLeaf))
-          if (!ordnerWarnung) { db.prepare('UPDATE jahresplanung_abschnitte SET material_ordner=? WHERE id=?').run(neuLeaf, id); schreibeMaterialIndex(id) }
-        }
-      }
-    }
-    return { ok: true, ordnerWarnung }
-  })
-  ipcMain.handle('jahresplanung:delete', (_, id) => {
-    db.prepare('DELETE FROM jahresplanung_abschnitte WHERE id=?').run(id)
-    return true
-  })
-  ipcMain.handle('jahresplanung:getFaecherMitPlan', () =>
-    db.prepare(`
-      SELECT f.id, f.name, f.farbe, k.name as klasse_name, k.id as klasse_id,
-             k.ist_vorlage as ist_vorlage,
-             COUNT(a.id) as abschnitt_anzahl
-      FROM jahresplanung_abschnitte a
-      JOIN faecher f ON a.fach_id = f.id
-      JOIN klassen k ON f.klasse_id = k.id
-      GROUP BY f.id
-      ORDER BY k.ist_vorlage DESC, k.name, f.name
-    `).all()
-  )
-  ipcMain.handle('jahresplanung:importVonFach', (_, quellFachId, zielFachId, options = {}) => {
-    const ohneTermine = options && options.ohneTermine === true
-    const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY reihenfolge').all(quellFachId)
-    const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(zielFachId).m
-    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)')
-    db.transaction(() => {
-      abschnitte.forEach((a, i) => insert.run(
-        zielFachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen,
-        ohneTermine ? null : a.datum_von,
-        ohneTermine ? null : a.datum_bis,
-        a.farbe, maxOrd + 1 + i
-      ))
-    })()
-    return true
-  })
-  // Eine Fach-Planung (z. B. eine Vorlage) auf MEHRERE Ziel-Fächer anwenden.
-  // ohneTermine (Default true) = Datumsangaben strippen; ersetzen = Ziel-Planung vorher löschen;
-  // mitMaterialien (Default true) = Dokumente/Links je Abschnitt mitkopieren.
-  ipcMain.handle('jahresplanung:anwendenAufFaecher', (_, quellFachId, zielFachIds, options = {}) => {
-    const ohneTermine = options.ohneTermine !== false
-    const ersetzen = options.ersetzen === true
-    const mitMaterialien = options.mitMaterialien !== false
-    const ziele = (Array.isArray(zielFachIds) ? zielFachIds : []).filter(id => id && id !== quellFachId)
-    const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id = ? ORDER BY reihenfolge, id').all(quellFachId)
-    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)')
-    const tx = db.transaction(() => {
-      for (const zielFachId of ziele) {
-        if (ersetzen) db.prepare('DELETE FROM jahresplanung_abschnitte WHERE fach_id = ?').run(zielFachId)
-        const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(zielFachId).m
-        abschnitte.forEach((a, i) => {
-          const na = insert.run(zielFachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen,
-            ohneTermine ? null : a.datum_von, ohneTermine ? null : a.datum_bis,
-            a.farbe, maxOrd + 1 + i)
-          if (mitMaterialien) kopiereMaterialien(a.id, na.lastInsertRowid)
-        })
-      }
-    })
-    tx()
-    return { ok: true, anzahlZiele: ziele.length, anzahlAbschnitte: abschnitte.length }
-  })
-  // Import einer vom Chatbot erzeugten JSON-Datei in ein Fach (robustes Parsen + Validierung).
-  ipcMain.handle('jahresplanung:importVonDatei', (_, fachId, filePath, options = {}) => {
-    const ersetzen = options.ersetzen === true
-    let roh
-    try { roh = fs.readFileSync(filePath, 'utf-8') }
-    catch (e) { logError('importVonDatei:read', e); return { ok: false, fehler: 'Datei konnte nicht gelesen werden.' } }
-
-    // Robust: Code-Fences (```json …```) entfernen; sonst den äußersten {…}/[…]-Block extrahieren.
-    const parseJson = (text) => {
-      let t = String(text).trim()
-      const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i)
-      if (fence) t = fence[1].trim()
-      try { return JSON.parse(t) } catch {}
-      const m = t.match(/[[{][\s\S]*[\]}]/)
-      if (m) { try { return JSON.parse(m[0]) } catch {} }
-      return undefined
-    }
-    const parsed = parseJson(roh)
-    if (parsed === undefined) return { ok: false, fehler: 'Die Datei enthält kein gültiges JSON.' }
-
-    const liste = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.abschnitte) ? parsed.abschnitte : null)
-    if (!liste) return { ok: false, fehler: 'Kein „abschnitte"-Array in der Datei gefunden.' }
-
-    const istDatum = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)
-    const istFarbe = (s) => typeof s === 'string' && /^#[0-9a-fA-F]{6}$/.test(s)
-    // Strings direkt; Arrays (falls der Chatbot Listen liefert) zeilenweise zusammenführen.
-    const str = (v) => Array.isArray(v)
-      ? v.map(x => (x == null ? '' : (typeof x === 'object' ? String(x.text ?? x.titel ?? x.name ?? x.kompetenz ?? '') : String(x)))).filter(s => s.trim() !== '').join('\n')
-      : (v == null ? '' : String(v))
-    const pickDatum = (...vals) => { for (const v of vals) if (istDatum(v)) return v; return null }
-    const norm = liste.map(a => (a && typeof a === 'object') ? {
-      titel: str(a.titel ?? a.title).trim(),
-      inhalt: str(a.inhalt ?? a.beschreibung),
-      lernziele: str(a.lernziele ?? a.lernziel ?? a.ziele),
-      kompetenzen: str(a.kompetenzen ?? a.kompetenz),
-      datum_von: pickDatum(a.datum_von, a.datumVon, a.von),
-      datum_bis: pickDatum(a.datum_bis, a.datumBis, a.bis),
-      farbe: istFarbe(a.farbe ?? a.color) ? (a.farbe ?? a.color) : null,
-    } : null).filter(a => a && a.titel)
-
-    if (norm.length === 0) return { ok: false, fehler: 'Keine gültigen Abschnitte (mit Titel) gefunden.' }
-
-    const insert = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)')
-    const neueIds = []
-    db.transaction(() => {
-      if (ersetzen) db.prepare('DELETE FROM jahresplanung_abschnitte WHERE fach_id = ?').run(fachId)
-      const maxOrd = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) as m FROM jahresplanung_abschnitte WHERE fach_id = ?').get(fachId).m
-      norm.forEach((a, i) => {
-        const info = insert.run(fachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen, a.datum_von, a.datum_bis, a.farbe, maxOrd + 1 + i)
-        neueIds.push(Number(info.lastInsertRowid))
-      })
-    })()
-    // Material-Ordner je Abschnitt anlegen (konsistent mit jahresplanung:create)
-    try { if (materialRoot()) for (const id of neueIds) { ensureAbschnittFolder(id); schreibeMaterialIndex(id) } }
-    catch (e) { logError('importVonDatei:ordner', e) }
-    return { ok: true, anzahl: neueIds.length }
-  })
-  ipcMain.handle('jahresplanung:swap', (_, idA, idB) => {
-    const a = db.prepare('SELECT datum_von, datum_bis, reihenfolge FROM jahresplanung_abschnitte WHERE id = ?').get(idA)
-    const b = db.prepare('SELECT datum_von, datum_bis, reihenfolge FROM jahresplanung_abschnitte WHERE id = ?').get(idB)
-    if (!a || !b) return false
-    const upd = db.prepare('UPDATE jahresplanung_abschnitte SET datum_von=?, datum_bis=?, reihenfolge=? WHERE id=?')
-    db.transaction(() => {
-      upd.run(b.datum_von, b.datum_bis, b.reihenfolge, idA)
-      upd.run(a.datum_von, a.datum_bis, a.reihenfolge, idB)
-    })()
-    return true
-  })
+  ipcMain.handle('jahresplanung:getAll', (_, fachId) => jahresplanungDomain.getAll(db, fachId))
+  ipcMain.handle('jahresplanung:create', (_, d) => jahresplanungDomain.create(db, jpDeps, d))
+  ipcMain.handle('jahresplanung:update', (_, id, d) => jahresplanungDomain.update(db, jpDeps, id, d))
+  ipcMain.handle('jahresplanung:delete', (_, id) => jahresplanungDomain.remove(db, id))
+  ipcMain.handle('jahresplanung:getFaecherMitPlan', () => jahresplanungDomain.getFaecherMitPlan(db))
+  ipcMain.handle('jahresplanung:importVonFach', (_, quellFachId, zielFachId, options = {}) => jahresplanungDomain.importVonFach(db, quellFachId, zielFachId, options))
+  ipcMain.handle('jahresplanung:anwendenAufFaecher', (_, quellFachId, zielFachIds, options = {}) => jahresplanungDomain.anwendenAufFaecher(db, jpDeps, quellFachId, zielFachIds, options))
+  ipcMain.handle('jahresplanung:importVonDatei', (_, fachId, filePath, options = {}) => jahresplanungDomain.importVonDatei(db, jpDeps, fachId, filePath, options))
+  ipcMain.handle('jahresplanung:swap', (_, idA, idB) => jahresplanungDomain.swap(db, idA, idB))
 
   // ─── Materialien (Abschnitts-Ordner) ─────────────────────────────────────────
-  const MATERIAL_INDEX_NAME = '_Materialübersicht.txt'
+  // Handler-Logik in core/domain/materialien.js; lokale Bindungen (materialRoot,
+  // ensureAbschnittFolder, schreibeMaterialIndex, verschiebeDir, kopiereMaterialien …)
+  // stehen am Anfang von registerIPC. sanitizeSegment bleibt hier (Export + kernDeps).
 
   // Freitext → dateisystem-sicheres Segment (Windows-Regeln)
   function sanitizeSegment(name, fallback = 'Unbenannt') {
@@ -4340,208 +1985,16 @@ function registerIPC() {
     if (!s || /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(s)) s = fallback
     return s
   }
-  function materialRoot() {
-    return db.prepare("SELECT wert FROM einstellungen WHERE schluessel='material_root_pfad'").get()?.wert || null
-  }
-  function abschnittHierarchie(fachId) {
-    return db.prepare(`SELECT f.name AS fach_name, k.name AS klasse_name, s.bezeichnung AS schuljahr_bez
-      FROM faecher f JOIN klassen k ON f.klasse_id=k.id JOIN schuljahre s ON k.schuljahr_id=s.id
-      WHERE f.id=?`).get(fachId)
-  }
-  function fachDir(root, h) {
-    return path.join(root, sanitizeSegment(h.schuljahr_bez), sanitizeSegment(h.klasse_name), sanitizeSegment(h.fach_name))
-  }
-  function eindeutigerLeaf(baseDir, wunsch) {
-    let leaf = wunsch, n = 2
-    while (fs.existsSync(path.join(baseDir, leaf))) leaf = `${wunsch} (${n++})`
-    return leaf
-  }
-  function eindeutigerDateiname(dir, name) {
-    const ext = path.extname(name), base = path.basename(name, ext)
-    let ziel = name, n = 2
-    while (fs.existsSync(path.join(dir, ziel))) ziel = `${base} (${n++})${ext}`
-    return ziel
-  }
-  // Legt den Ordner an, weist material_ordner bei Erstnutzung zu. Null wenn Root fehlt.
-  function ensureAbschnittFolder(abschnittId) {
-    const root = materialRoot(); if (!root) return null
-    const a = db.prepare('SELECT id, fach_id, titel, material_ordner FROM jahresplanung_abschnitte WHERE id=?').get(abschnittId)
-    if (!a) return null
-    const h = abschnittHierarchie(a.fach_id); if (!h) return null
-    const baseDir = fachDir(root, h)
-    fs.mkdirSync(baseDir, { recursive: true })
-    let leaf = a.material_ordner
-    if (!leaf) {
-      leaf = eindeutigerLeaf(baseDir, sanitizeSegment(a.titel || 'Abschnitt'))
-      db.prepare('UPDATE jahresplanung_abschnitte SET material_ordner=? WHERE id=?').run(leaf, abschnittId)
-    }
-    const dir = path.join(baseDir, leaf)
-    fs.mkdirSync(dir, { recursive: true })
-    return dir
-  }
-  // Read-only-Auflösung (kein Anlegen).
-  function abschnittFolderIfExists(abschnittId) {
-    const root = materialRoot(); if (!root) return null
-    const a = db.prepare('SELECT fach_id, material_ordner FROM jahresplanung_abschnitte WHERE id=?').get(abschnittId)
-    if (!a || !a.material_ordner) return null
-    const h = abschnittHierarchie(a.fach_id); if (!h) return null
-    const dir = path.join(fachDir(root, h), a.material_ordner)
-    return fs.existsSync(dir) ? dir : null
-  }
-  function verschiebeDir(oldDir, newDir) {
-    try {
-      if (!oldDir || !newDir || oldDir === newDir) return null
-      if (!fs.existsSync(oldDir)) return null
-      if (fs.existsSync(newDir)) return 'Zielordner existiert bereits – bitte manuell zusammenführen.'
-      fs.mkdirSync(path.dirname(newDir), { recursive: true })
-      fs.renameSync(oldDir, newDir)
-      return null
-    } catch (e) { logError('verschiebeDir', e); return 'Ordner konnte nicht verschoben werden (evtl. geöffnet).' }
-  }
-  // Gemeinsame Auflistung (Dokumente aus Ordner + Datei-Meta + Links aus DB). Index-Datei/Dotfiles übersprungen.
-  function sammleMaterialien(abschnittId) {
-    const dir = abschnittFolderIfExists(abschnittId)
-    const meta = db.prepare('SELECT * FROM abschnitt_materialien WHERE abschnitt_id=? ORDER BY reihenfolge, id').all(abschnittId)
-    const metaDatei = new Map(meta.filter(m => m.typ === 'datei').map(m => [m.ref, m]))
-    const dateien = []
-    const gesehen = new Set()
-    if (dir) {
-      for (const de of fs.readdirSync(dir, { withFileTypes: true })) {
-        if (!de.isFile() || de.name.startsWith('.') || de.name === MATERIAL_INDEX_NAME) continue
-        const m = metaDatei.get(de.name)
-        gesehen.add(de.name)
-        dateien.push({ typ: 'datei', ref: de.name, id: m?.id ?? null, anzeigename: m?.anzeigename ?? null, beschreibung: m?.beschreibung ?? null, fehlt: false })
-      }
-    }
-    for (const m of metaDatei.values()) {
-      if (!gesehen.has(m.ref)) dateien.push({ typ: 'datei', ref: m.ref, id: m.id, anzeigename: m.anzeigename, beschreibung: m.beschreibung, fehlt: true })
-    }
-    const links = meta.filter(m => m.typ === 'link').map(m => ({ typ: 'link', id: m.id, ref: m.ref, anzeigename: m.anzeigename, beschreibung: m.beschreibung }))
-    return { dir, dateien, links }
-  }
-  // Menschenlesbare Übersichts-Datei im Ordner (neu geschrieben bei jeder Änderung).
-  function schreibeMaterialIndex(abschnittId) {
-    try {
-      const dir = abschnittFolderIfExists(abschnittId)
-      if (!dir) return
-      const a = db.prepare('SELECT fach_id, titel FROM jahresplanung_abschnitte WHERE id=?').get(abschnittId)
-      const h = a ? abschnittHierarchie(a.fach_id) : null
-      const { dateien, links } = sammleMaterialien(abschnittId)
-      const z = []
-      z.push(`Materialübersicht — ${a?.titel ?? ''}`)
-      if (h) z.push(`${h.fach_name} · ${h.klasse_name} · ${h.schuljahr_bez}`)
-      z.push(`Stand: ${new Date().toLocaleString('de-AT')}`)
-      z.push('')
-      z.push('DOKUMENTE')
-      if (dateien.length === 0) z.push('  (keine)')
-      for (const d of dateien) {
-        z.push(`  - ${d.anzeigename ? d.anzeigename + '  [' + d.ref + ']' : d.ref}${d.fehlt ? '  (Datei fehlt)' : ''}`)
-        if (d.beschreibung) z.push(`      ${d.beschreibung}`)
-      }
-      z.push('')
-      z.push('LINKS')
-      if (links.length === 0) z.push('  (keine)')
-      for (const l of links) {
-        z.push(`  - ${l.anzeigename || l.ref}`)
-        z.push(`      ${l.ref}`)
-        if (l.beschreibung) z.push(`      ${l.beschreibung}`)
-      }
-      fs.writeFileSync(path.join(dir, MATERIAL_INDEX_NAME), z.join('\r\n'), 'utf8')
-    } catch (e) { logError('schreibeMaterialIndex', e) }
-  }
 
-  ipcMain.handle('materialien:waehleRoot', async () => {
-    const r = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
-    if (r.canceled || !r.filePaths[0]) return null
-    db.prepare("INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES ('material_root_pfad', ?)").run(r.filePaths[0])
-    return r.filePaths[0]
-  })
-  ipcMain.handle('materialien:getRoot', () => materialRoot())
-  ipcMain.handle('materialien:list', (_, abschnittId) => {
-    const root = materialRoot()
-    const { dir, dateien, links } = sammleMaterialien(abschnittId)
-    return { root: !!root, ordner: dir, dateien, links }
-  })
-  ipcMain.handle('materialien:dateienHinzufuegen', async (_, abschnittId) => {
-    const r = await dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] })
-    if (r.canceled) return { ok: false, grund: 'abbruch' }
-    let dir
-    try { dir = ensureAbschnittFolder(abschnittId) } catch (e) { logError('materialien:dateien mkdir', e); return { ok: false, grund: 'fs' } }
-    if (!dir) return { ok: false, grund: 'kein_root' }
-    for (const src of r.filePaths) {
-      try { fs.copyFileSync(src, path.join(dir, eindeutigerDateiname(dir, path.basename(src)))) }
-      catch (e) { logError('materialien:copy', e) }
-    }
-    schreibeMaterialIndex(abschnittId)
-    return { ok: true }
-  })
-  ipcMain.handle('materialien:linkHinzufuegen', (_, abschnittId, data) => {
-    const { url, anzeigename, beschreibung } = data || {}
-    if (!url) return { ok: false }
-    const max = db.prepare('SELECT COALESCE(MAX(reihenfolge),0) m FROM abschnitt_materialien WHERE abschnitt_id=?').get(abschnittId).m
-    db.prepare(`INSERT INTO abschnitt_materialien (abschnitt_id,typ,ref,anzeigename,beschreibung,reihenfolge,erstellt_am)
-      VALUES (?,?,?,?,?,?,datetime('now'))`).run(abschnittId, 'link', url, anzeigename || null, beschreibung || null, max + 1)
-    schreibeMaterialIndex(abschnittId)
-    return { ok: true }
-  })
-  ipcMain.handle('materialien:metaSetzen', (_, data) => {
-    const { abschnittId, typ, ref, id, anzeigename, beschreibung } = data || {}
-    if (typ === 'link' && id) {
-      db.prepare('UPDATE abschnitt_materialien SET anzeigename=?, beschreibung=? WHERE id=?').run(anzeigename || null, beschreibung || null, id)
-    } else if (typ === 'datei') {
-      const ex = db.prepare("SELECT id FROM abschnitt_materialien WHERE abschnitt_id=? AND typ='datei' AND ref=?").get(abschnittId, ref)
-      if (ex) db.prepare('UPDATE abschnitt_materialien SET anzeigename=?, beschreibung=? WHERE id=?').run(anzeigename || null, beschreibung || null, ex.id)
-      else db.prepare("INSERT INTO abschnitt_materialien (abschnitt_id,typ,ref,anzeigename,beschreibung) VALUES (?,'datei',?,?,?)").run(abschnittId, ref, anzeigename || null, beschreibung || null)
-    }
-    schreibeMaterialIndex(abschnittId)
-    return { ok: true }
-  })
-  ipcMain.handle('materialien:entfernen', (_, data) => {
-    const { abschnittId, typ, ref, id } = data || {}
-    if (typ === 'datei') {
-      const dir = abschnittFolderIfExists(abschnittId)
-      if (dir) { try { fs.unlinkSync(path.join(dir, ref)) } catch (e) { logError('materialien:unlink', e) } }
-      db.prepare("DELETE FROM abschnitt_materialien WHERE abschnitt_id=? AND typ='datei' AND ref=?").run(abschnittId, ref)
-    } else if (id) {
-      db.prepare('DELETE FROM abschnitt_materialien WHERE id=?').run(id)
-    }
-    schreibeMaterialIndex(abschnittId)
-    return { ok: true }
-  })
-  ipcMain.handle('materialien:oeffnen', async (_, data) => {
-    const { abschnittId, typ, ref } = data || {}
-    if (typ === 'link') { return { ok: oeffneExternSicher(ref) } }
-    const dir = abschnittFolderIfExists(abschnittId)
-    if (!dir) return { ok: false, grund: 'kein_ordner' }
-    const err = await shell.openPath(path.join(dir, ref))
-    return { ok: !err, fehler: err || null }
-  })
-  ipcMain.handle('materialien:ordnerOeffnen', async (_, abschnittId) => {
-    let dir
-    try { dir = ensureAbschnittFolder(abschnittId) } catch (e) { logError('materialien:ordnerOeffnen', e); return { ok: false, grund: 'fs' } }
-    if (!dir) return { ok: false, grund: 'kein_root' }
-    schreibeMaterialIndex(abschnittId)
-    const err = await shell.openPath(dir)
-    return { ok: !err, fehler: err || null }
-  })
-
-  // Materialien eines Abschnitts (Links + Datei-Metadaten + echte Dateien) auf einen anderen kopieren.
-  function kopiereMaterialien(vonAbschnittId, nachAbschnittId) {
-    const rows = db.prepare('SELECT typ, ref, anzeigename, beschreibung, reihenfolge FROM abschnitt_materialien WHERE abschnitt_id=? ORDER BY reihenfolge, id').all(vonAbschnittId)
-    const ins = db.prepare('INSERT INTO abschnitt_materialien (abschnitt_id, typ, ref, anzeigename, beschreibung, reihenfolge) VALUES (?,?,?,?,?,?)')
-    for (const r of rows) ins.run(nachAbschnittId, r.typ, r.ref, r.anzeigename, r.beschreibung, r.reihenfolge)
-    try {
-      const vonDir = abschnittFolderIfExists(vonAbschnittId)
-      if (!vonDir) return
-      const nachDir = ensureAbschnittFolder(nachAbschnittId)
-      if (!nachDir) return
-      for (const de of fs.readdirSync(vonDir, { withFileTypes: true })) {
-        if (!de.isFile() || de.name.startsWith('.') || de.name === MATERIAL_INDEX_NAME) continue
-        fs.copyFileSync(path.join(vonDir, de.name), path.join(nachDir, de.name))
-      }
-      schreibeMaterialIndex(nachAbschnittId)
-    } catch (e) { logError('kopiereMaterialien', e) }
-  }
+  ipcMain.handle('materialien:waehleRoot', () => materialienDomain.waehleRoot(db, matDeps))
+  ipcMain.handle('materialien:getRoot', () => materialienDomain.getRoot(db))
+  ipcMain.handle('materialien:list', (_, abschnittId) => materialienDomain.list(db, matDeps, abschnittId))
+  ipcMain.handle('materialien:dateienHinzufuegen', (_, abschnittId) => materialienDomain.dateienHinzufuegen(db, matDeps, abschnittId))
+  ipcMain.handle('materialien:linkHinzufuegen', (_, abschnittId, data) => materialienDomain.linkHinzufuegen(db, matDeps, abschnittId, data))
+  ipcMain.handle('materialien:metaSetzen', (_, data) => materialienDomain.metaSetzen(db, matDeps, data))
+  ipcMain.handle('materialien:entfernen', (_, data) => materialienDomain.entfernen(db, matDeps, data))
+  ipcMain.handle('materialien:oeffnen', (_, data) => materialienDomain.oeffnen(db, matDeps, data))
+  ipcMain.handle('materialien:ordnerOeffnen', (_, abschnittId) => materialienDomain.ordnerOeffnen(db, matDeps, abschnittId))
 
   // Eine echte Klasse duplizieren: Fächer immer; optional Jahresplanung+Materialien und/oder Schüler:innen (ohne Noten).
   ipcMain.handle('klassen:duplizieren', (_, { klasseId, neuerName, mitPlanung, mitSchueler }) => {
@@ -4609,310 +2062,50 @@ function registerIPC() {
 
   // Jahresaufgaben: Template + Status per Klasse + Schuljahr (LEFT JOIN)
   // Liefert auch parent_id (NULL = Top-Level, sonst Sub-Aufgabe)
-  ipcMain.handle('kv:jahresaufgaben:getAlle', (_, klasseId, schuljahrId) => {
-    return db.prepare(`
-      SELECT
-        a.id, a.monat, a.titel, a.beschreibung, a.rechtsbezug, a.kategorie, a.sortierung, a.parent_id,
-        s.id AS status_id, s.erledigt_am, s.notiz
-      FROM kv_jahresaufgaben a
-      LEFT JOIN kv_jahresaufgaben_status s
-        ON s.aufgabe_id = a.id AND s.klasse_id = ? AND s.schuljahr_id = ?
-      ORDER BY a.monat, a.sortierung, a.id
-    `).all(klasseId, schuljahrId)
-  })
-
-  // Jahresaufgaben — Template-CRUD
-  // Bei parent_id wird die Sub-Aufgabe an die Parent-Aufgabe gehängt; sie erbt den Monat des Parents
-  // (und kann optional eigene Sortierung am Ende der Geschwister-Subs).
-  ipcMain.handle('kv:jahresaufgaben:createTemplate', (_, data) => {
-    let monat = data.monat
-    if (data.parentId) {
-      const parent = db.prepare('SELECT monat FROM kv_jahresaufgaben WHERE id = ?').get(data.parentId)
-      if (parent) monat = parent.monat
-    }
-    const maxSort = data.parentId
-      ? db.prepare('SELECT COALESCE(MAX(sortierung), 0) AS m FROM kv_jahresaufgaben WHERE parent_id = ?').get(data.parentId).m
-      : db.prepare('SELECT COALESCE(MAX(sortierung), 0) AS m FROM kv_jahresaufgaben WHERE monat = ? AND parent_id IS NULL').get(monat).m
-    const info = db.prepare(`
-      INSERT INTO kv_jahresaufgaben (monat, titel, beschreibung, rechtsbezug, kategorie, sortierung, parent_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(monat, data.titel, data.beschreibung ?? null, data.rechtsbezug ?? null, data.kategorie ?? null, maxSort + 1, data.parentId ?? null)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kv:jahresaufgaben:updateTemplate', (_, id, data) => {
-    // Wenn Sub-Aufgabe: Monat & Kategorie kommen vom Parent — wir lassen sie aber updatebar
-    db.prepare(`
-      UPDATE kv_jahresaufgaben
-      SET monat = ?, titel = ?, beschreibung = ?, rechtsbezug = ?, kategorie = ?
-      WHERE id = ?
-    `).run(data.monat, data.titel, data.beschreibung ?? null, data.rechtsbezug ?? null, data.kategorie ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('kv:jahresaufgaben:deleteTemplate', (_, id) => {
-    // Status-Einträge kaskadieren via ON DELETE CASCADE weg
-    db.prepare('DELETE FROM kv_jahresaufgaben WHERE id = ?').run(id)
-    return true
-  })
-
-  ipcMain.handle('kv:jahresaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, erledigtAm, notiz) => {
-    // Defensive Prüfung: fehlende IDs würden sonst als kryptischer NOT-NULL-Fehler auflaufen.
-    if (aufgabeId == null || klasseId == null || schuljahrId == null) {
-      throw new Error(`kv:jahresaufgaben:setStatus – fehlende ID (aufgabeId=${aufgabeId}, klasseId=${klasseId}, schuljahrId=${schuljahrId})`)
-    }
-    db.prepare(`
-      INSERT INTO kv_jahresaufgaben_status (aufgabe_id, schuljahr_id, klasse_id, erledigt_am, notiz)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(aufgabe_id, schuljahr_id, klasse_id) DO UPDATE SET
-        erledigt_am = excluded.erledigt_am,
-        notiz       = excluded.notiz
-    `).run(aufgabeId, schuljahrId, klasseId, erledigtAm ?? null, notiz ?? null)
-    return true
-  })
+  ipcMain.handle('kv:jahresaufgaben:getAlle', (_, klasseId, schuljahrId) => kvJahresaufgaben.getAlle(db, klasseId, schuljahrId))
+  ipcMain.handle('kv:jahresaufgaben:createTemplate', (_, data) => kvJahresaufgaben.createTemplate(db, data))
+  ipcMain.handle('kv:jahresaufgaben:updateTemplate', (_, id, data) => kvJahresaufgaben.updateTemplate(db, id, data))
+  ipcMain.handle('kv:jahresaufgaben:deleteTemplate', (_, id) => kvJahresaufgaben.deleteTemplate(db, id))
+  ipcMain.handle('kv:jahresaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, erledigtAm, notiz) => kvJahresaufgaben.setStatus(db, aufgabeId, klasseId, schuljahrId, erledigtAm, notiz))
 
   // Wochenaufgaben
-  ipcMain.handle('kv:wochenaufgaben:getAlle', () => {
-    return db.prepare('SELECT * FROM kv_wochenaufgaben WHERE aktiv = 1 ORDER BY sortierung, id').all()
-  })
-
-  // Wochenaufgaben — Template-CRUD
-  ipcMain.handle('kv:wochenaufgaben:createTemplate', (_, data) => {
-    const maxSort = db.prepare('SELECT COALESCE(MAX(sortierung), 0) AS m FROM kv_wochenaufgaben').get().m
-    const info = db.prepare(`
-      INSERT INTO kv_wochenaufgaben (titel, rechtsbezug, sortierung, aktiv)
-      VALUES (?, ?, ?, 1)
-    `).run(data.titel, data.rechtsbezug ?? null, maxSort + 1)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kv:wochenaufgaben:updateTemplate', (_, id, data) => {
-    db.prepare(`
-      UPDATE kv_wochenaufgaben SET titel = ?, rechtsbezug = ? WHERE id = ?
-    `).run(data.titel, data.rechtsbezug ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('kv:wochenaufgaben:deleteTemplate', (_, id) => {
-    // Status-Einträge kaskadieren weg
-    db.prepare('DELETE FROM kv_wochenaufgaben WHERE id = ?').run(id)
-    return true
-  })
-
-  // Status für mehrere Wochen (für die Tabellen-Ansicht)
-  // wochen: Array von { kw, jahr }
-  ipcMain.handle('kv:wochenaufgaben:getStatusFuerWochen', (_, klasseId, schuljahrId, wochen) => {
-    if (!Array.isArray(wochen) || wochen.length === 0) return []
-    // Bauen ein OR-Konstrukt — bei 10 Wochen × 1 Klasse völlig OK
-    const conditions = wochen.map(() => '(kalenderwoche = ? AND jahr = ?)').join(' OR ')
-    const params = [klasseId, schuljahrId, ...wochen.flatMap(w => [w.kw, w.jahr])]
-    return db.prepare(`
-      SELECT * FROM kv_wochenaufgaben_status
-      WHERE klasse_id = ? AND schuljahr_id = ? AND (${conditions})
-    `).all(...params)
-  })
-
-  ipcMain.handle('kv:wochenaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz) => {
-    db.prepare(`
-      INSERT INTO kv_wochenaufgaben_status (aufgabe_id, schuljahr_id, klasse_id, kalenderwoche, jahr, erledigt_am, notiz)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(aufgabe_id, klasse_id, kalenderwoche, jahr) DO UPDATE SET
-        erledigt_am = excluded.erledigt_am,
-        notiz       = excluded.notiz
-    `).run(aufgabeId, schuljahrId, klasseId, kw, jahr, erledigtAm ?? null, notiz ?? null)
-    return true
-  })
+  ipcMain.handle('kv:wochenaufgaben:getAlle', () => kvWochenaufgaben.getAlle(db))
+  ipcMain.handle('kv:wochenaufgaben:createTemplate', (_, data) => kvWochenaufgaben.createTemplate(db, data))
+  ipcMain.handle('kv:wochenaufgaben:updateTemplate', (_, id, data) => kvWochenaufgaben.updateTemplate(db, id, data))
+  ipcMain.handle('kv:wochenaufgaben:deleteTemplate', (_, id) => kvWochenaufgaben.deleteTemplate(db, id))
+  ipcMain.handle('kv:wochenaufgaben:getStatusFuerWochen', (_, klasseId, schuljahrId, wochen) => kvWochenaufgaben.getStatusFuerWochen(db, klasseId, schuljahrId, wochen))
+  ipcMain.handle('kv:wochenaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz) => kvWochenaufgaben.setStatus(db, aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz))
 
   // Trigger — gefiltert (offene / archivierte / nach Schweregrad)
-  ipcMain.handle('kv:trigger:getAlle', (_, klasseId, opts = {}) => {
-    const { archiviert = 0, schweregrad } = opts
-    // Spalten mit t. qualifizieren – kv_trigger UND schueler haben je eine Spalte klasse_id,
-    // sonst: "ambiguous column name: klasse_id".
-    const wheres = ['t.klasse_id = ?', 't.archiviert = ?']
-    const params = [klasseId, archiviert ? 1 : 0]
-    if (schweregrad) { wheres.push('t.schweregrad = ?'); params.push(schweregrad) }
-    return db.prepare(`
-      SELECT t.*, s.vorname AS schueler_vorname, s.nachname AS schueler_nachname
-      FROM kv_trigger t
-      LEFT JOIN schueler s ON s.id = t.schueler_id
-      WHERE ${wheres.join(' AND ')}
-      ORDER BY
-        CASE t.schweregrad WHEN 'critical' THEN 0 WHEN 'warn' THEN 1 ELSE 2 END,
-        t.erstellt_am DESC
-    `).all(...params)
-  })
-
-  ipcMain.handle('kv:trigger:getAlleFuerSchueler', (_, schuelerId) => {
-    return db.prepare(`
-      SELECT * FROM kv_trigger WHERE schueler_id = ? ORDER BY erstellt_am DESC
-    `).all(schuelerId)
-  })
-
-  ipcMain.handle('kv:trigger:reagieren', (_, id, reaktion) => {
-    db.prepare(`
-      UPDATE kv_trigger
-      SET reagiert_am = datetime('now','localtime'), reaktion = ?, archiviert = 1
-      WHERE id = ?
-    `).run(reaktion ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('kv:trigger:create', (_, { klasseId, schuelerId, typ, schweregrad, ausloeser, beschreibung }) => {
-    return erzeugeTrigger(klasseId, schuelerId ?? null, typ, schweregrad ?? 'info', ausloeser ?? null, beschreibung ?? null)
-  })
-
-  ipcMain.handle('kv:trigger:delete', (_, id) => {
-    db.prepare('DELETE FROM kv_trigger WHERE id = ?').run(id)
-    return true
-  })
+  ipcMain.handle('kv:trigger:getAlle', (_, klasseId, opts = {}) => kvTrigger.getAlle(db, klasseId, opts))
+  ipcMain.handle('kv:trigger:getAlleFuerSchueler', (_, schuelerId) => kvTrigger.getAlleFuerSchueler(db, schuelerId))
+  ipcMain.handle('kv:trigger:reagieren', (_, id, reaktion) => kvTrigger.reagieren(db, id, reaktion))
+  ipcMain.handle('kv:trigger:create', (_, data) => kvTrigger.create(db, kernDeps, data))
+  ipcMain.handle('kv:trigger:delete', (_, id) => kvTrigger.remove(db, id))
 
   // Aktenvermerke
-  ipcMain.handle('kv:aktenvermerke:getAlleFuerKlasse', (_, klasseId) => {
-    return db.prepare(`
-      SELECT a.*, s.vorname AS schueler_vorname, s.nachname AS schueler_nachname
-      FROM kv_aktenvermerke a
-      LEFT JOIN schueler s ON s.id = a.schueler_id
-      WHERE a.klasse_id = ?
-      ORDER BY a.datum DESC, a.id DESC
-    `).all(klasseId)
-  })
-
-  ipcMain.handle('kv:aktenvermerke:getAlleFuerSchueler', (_, schuelerId) => {
-    return db.prepare('SELECT * FROM kv_aktenvermerke WHERE schueler_id = ? ORDER BY datum DESC, id DESC').all(schuelerId)
-  })
-
-  ipcMain.handle('kv:aktenvermerke:create', (_, data) => {
-    const info = db.prepare(`
-      INSERT INTO kv_aktenvermerke (schueler_id, klasse_id, datum, typ, titel, beschreibung, zeugen, folgemassnahme)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      data.schuelerId ?? null, data.klasseId, data.datum, data.typ,
-      data.titel, data.beschreibung, data.zeugen ?? null, data.folgemassnahme ?? null
-    )
-    // Trigger auto: Bei Typ "vorfall" → info-Trigger
-    if (data.typ === 'vorfall') {
-      erzeugeTrigger(
-        data.klasseId, data.schuelerId ?? null, 'vorfall', 'info',
-        `Aktenvermerk: ${data.titel}`,
-        data.beschreibung
-      )
-    }
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kv:aktenvermerke:update', (_, id, data) => {
-    db.prepare(`
-      UPDATE kv_aktenvermerke
-      SET datum = ?, typ = ?, titel = ?, beschreibung = ?, zeugen = ?, folgemassnahme = ?
-      WHERE id = ?
-    `).run(data.datum, data.typ, data.titel, data.beschreibung, data.zeugen ?? null, data.folgemassnahme ?? null, id)
-    return true
-  })
-
-  ipcMain.handle('kv:aktenvermerke:delete', (_, id) => {
-    db.prepare('DELETE FROM kv_aktenvermerke WHERE id = ?').run(id)
-    return true
-  })
+  ipcMain.handle('kv:aktenvermerke:getAlleFuerKlasse', (_, klasseId) => kvDoku.aktenGetAlleFuerKlasse(db, klasseId))
+  ipcMain.handle('kv:aktenvermerke:getAlleFuerSchueler', (_, schuelerId) => kvDoku.aktenGetAlleFuerSchueler(db, schuelerId))
+  ipcMain.handle('kv:aktenvermerke:create', (_, data) => kvDoku.aktenCreate(db, kernDeps, data))
+  ipcMain.handle('kv:aktenvermerke:update', (_, id, data) => kvDoku.aktenUpdate(db, id, data))
+  ipcMain.handle('kv:aktenvermerke:delete', (_, id) => kvDoku.aktenDelete(db, id))
 
   // Elternkontakte
-  ipcMain.handle('kv:elternkontakte:getAlleFuerSchueler', (_, schuelerId) => {
-    return db.prepare(`
-      SELECT * FROM kv_elternkontakte WHERE schueler_id = ?
-      ORDER BY erledigt ASC, datum DESC, id DESC
-    `).all(schuelerId)
-  })
-
-  ipcMain.handle('kv:elternkontakte:getOffeneFuerKlasse', (_, klasseId) => {
-    return db.prepare(`
-      SELECT e.*, s.vorname AS schueler_vorname, s.nachname AS schueler_nachname
-      FROM kv_elternkontakte e
-      JOIN schueler s ON s.id = e.schueler_id
-      WHERE s.klasse_id = ? AND e.erledigt = 0
-      ORDER BY e.datum ASC
-    `).all(klasseId)
-  })
-
-  ipcMain.handle('kv:elternkontakte:create', (_, data) => {
-    const info = db.prepare(`
-      INSERT INTO kv_elternkontakte (schueler_id, datum, art, initiator, thema, inhalt, erledigt)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(data.schuelerId, data.datum, data.art, data.initiator, data.thema, data.inhalt ?? null, data.erledigt ? 1 : 0)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kv:elternkontakte:update', (_, id, data) => {
-    db.prepare(`
-      UPDATE kv_elternkontakte
-      SET datum = ?, art = ?, initiator = ?, thema = ?, inhalt = ?, erledigt = ?
-      WHERE id = ?
-    `).run(data.datum, data.art, data.initiator, data.thema, data.inhalt ?? null, data.erledigt ? 1 : 0, id)
-    return true
-  })
-
-  ipcMain.handle('kv:elternkontakte:setErledigt', (_, id, erledigt) => {
-    db.prepare('UPDATE kv_elternkontakte SET erledigt = ? WHERE id = ?').run(erledigt ? 1 : 0, id)
-    return true
-  })
-
-  ipcMain.handle('kv:elternkontakte:delete', (_, id) => {
-    db.prepare('DELETE FROM kv_elternkontakte WHERE id = ?').run(id)
-    return true
-  })
+  ipcMain.handle('kv:elternkontakte:getAlleFuerSchueler', (_, schuelerId) => kvDoku.elternGetAlleFuerSchueler(db, schuelerId))
+  ipcMain.handle('kv:elternkontakte:getOffeneFuerKlasse', (_, klasseId) => kvDoku.elternGetOffeneFuerKlasse(db, klasseId))
+  ipcMain.handle('kv:elternkontakte:create', (_, data) => kvDoku.elternCreate(db, data))
+  ipcMain.handle('kv:elternkontakte:update', (_, id, data) => kvDoku.elternUpdate(db, id, data))
+  ipcMain.handle('kv:elternkontakte:setErledigt', (_, id, erledigt) => kvDoku.elternSetErledigt(db, id, erledigt))
+  ipcMain.handle('kv:elternkontakte:delete', (_, id) => kvDoku.elternDelete(db, id))
 
   // Fehlstunden
-  ipcMain.handle('kv:fehlstunden:getAlleFuerSchueler', (_, schuelerId, _schuljahrId) => {
-    // Schuljahr-Filterung: Wir kennen kein start/end pro Datensatz; nutze Bezeichnung
-    // → Pragmatic: alle Fehlstunden zurückgeben (das Frontend kann filtern wenn nötig)
-    return db.prepare('SELECT * FROM kv_fehlstunden WHERE schueler_id = ? ORDER BY datum DESC, id DESC').all(schuelerId)
-  })
-
-  ipcMain.handle('kv:fehlstunden:create', (_, data) => {
-    const info = db.prepare(`
-      INSERT INTO kv_fehlstunden (schueler_id, datum, stunden, entschuldigt, grund)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(data.schuelerId, data.datum, data.stunden, data.entschuldigt ? 1 : 0, data.grund ?? null)
-    // Trigger-Schwellen prüfen
-    pruefeFehlstundenSchwellen(data.schuelerId)
-    return info.lastInsertRowid
-  })
-
-  ipcMain.handle('kv:fehlstunden:update', (_, id, data) => {
-    db.prepare(`
-      UPDATE kv_fehlstunden SET datum = ?, stunden = ?, entschuldigt = ?, grund = ? WHERE id = ?
-    `).run(data.datum, data.stunden, data.entschuldigt ? 1 : 0, data.grund ?? null, id)
-    const row = db.prepare('SELECT schueler_id FROM kv_fehlstunden WHERE id = ?').get(id)
-    if (row) pruefeFehlstundenSchwellen(row.schueler_id)
-    return true
-  })
-
-  ipcMain.handle('kv:fehlstunden:delete', (_, id) => {
-    const row = db.prepare('SELECT schueler_id FROM kv_fehlstunden WHERE id = ?').get(id)
-    db.prepare('DELETE FROM kv_fehlstunden WHERE id = ?').run(id)
-    if (row) pruefeFehlstundenSchwellen(row.schueler_id)
-    return true
-  })
+  ipcMain.handle('kv:fehlstunden:getAlleFuerSchueler', (_, schuelerId) => kvDoku.fehlGetAlleFuerSchueler(db, schuelerId))
+  ipcMain.handle('kv:fehlstunden:create', (_, data) => kvDoku.fehlCreate(db, kernDeps, data))
+  ipcMain.handle('kv:fehlstunden:update', (_, id, data) => kvDoku.fehlUpdate(db, kernDeps, id, data))
+  ipcMain.handle('kv:fehlstunden:delete', (_, id) => kvDoku.fehlDelete(db, kernDeps, id))
 
   // Periodische Prüfung: offene Eltern-Rückrufe älter als 3 Tage → Trigger
-  ipcMain.handle('kv:pruefeOffeneRueckrufe', () => {
-    const heute = new Date()
-    const dreiTageZurueck = new Date(heute.getTime() - 3 * 86400000)
-    const cutoff = `${dreiTageZurueck.getFullYear()}-${String(dreiTageZurueck.getMonth() + 1).padStart(2, '0')}-${String(dreiTageZurueck.getDate()).padStart(2, '0')}`
-    const offene = db.prepare(`
-      SELECT e.id, e.thema, e.datum, s.id AS schueler_id, s.klasse_id, s.vorname, s.nachname
-      FROM kv_elternkontakte e
-      JOIN schueler s ON s.id = e.schueler_id
-      JOIN klassen k ON k.id = s.klasse_id
-      WHERE e.erledigt = 0 AND e.datum <= ? AND k.ist_kv = 1
-    `).all(cutoff)
-    for (const o of offene) {
-      erzeugeTrigger(
-        o.klasse_id, o.schueler_id, 'elternkontakt', 'warn',
-        `Offener Rückruf seit ${o.datum}`,
-        `Thema: ${o.thema}`
-      )
-    }
-    return offene.length
-  })
+  ipcMain.handle('kv:pruefeOffeneRueckrufe', () => kvRoutine.pruefeOffeneRueckrufe(db, kernDeps))
 }
 
 // ─── Fenster erstellen ────────────────────────────────────────────────────────
@@ -4953,8 +2146,8 @@ function createWindow() {
     if (appGesperrt) return   // gesperrt: keine App-Kürzel (PIN-Eingabe bleibt möglich)
     if (!(input.control || input.meta)) return
     const key = (input.key || '').toLowerCase()
-    if (key === 'z' && !input.shift) { event.preventDefault(); executeUndo() }
-    else if (key === 'y' || (key === 'z' && input.shift)) { event.preventDefault(); executeRedo() }
+    if (key === 'z' && !input.shift) { event.preventDefault(); undo.execute() }
+    else if (key === 'y' || (key === 'z' && input.shift)) { event.preventDefault(); undo.redo() }
     else if (key === 'o' && !input.shift) { event.preventDefault(); doOpen(win) }
     else if (key === 's' && input.shift) { event.preventDefault(); doSaveAs(win) }
   })
