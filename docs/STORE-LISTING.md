@@ -20,10 +20,12 @@ deine Daten bleiben dabei ausschließlich auf deinem Gerät.
 
 NOTEN & BEURTEILUNG
 Lege pro Fach beliebige Spalten an – Schularbeiten, Tests, individuelle Bewertungen,
-Mitarbeit (+/−) und Hausübungen (erledigt / nicht erledigt / nicht gewertet). Daskala
-berechnet daraus automatisch die Semester- und Zeugnisnoten. Gewichtung von
-Schularbeiten, Tests und Co. legst du global und pro Fach fest; Mitarbeit und
-Hausübung verschieben die Note als Bonus/Malus – mit getrennt einstellbarer Deckelung.
+Mitarbeit und Hausübungen (erledigt / nicht erledigt / nicht gewertet). Die Mitarbeit
+erfasst du wahlweise als + / −, als Pfeile ↗ / ↘ oder auf einer vierstufigen
+Smiley-Skala (😄 🙂 🙁 😞). Daskala berechnet daraus automatisch die Semester- und
+Zeugnisnoten. Gewichtung von Schularbeiten, Tests und Co. legst du global und pro Fach
+fest; Mitarbeit und Hausübung verschieben die Note als Bonus/Malus – wie stark jeder
+Eintrag zählt, bestimmst du je Stufe selbst, mit getrennt einstellbarer Deckelung.
 Liegt eine Note genau dazwischen (z. B. 2,5), entscheidest du per Klick.
 
 DIFFERENZIERTE BEURTEILUNG (AHS/ST)
@@ -72,7 +74,7 @@ Daskala ist freie Software (Open Source, GPL-3.0).
 
 - Automatische Berechnung von Semester- und Zeugnisnoten
 - Flexible Spalten: Schularbeiten, Tests, individuelle Bewertungen
-- Mitarbeit (+/−) und Hausübungen als Bonus/Malus mit einstellbarer Deckelung
+- Mitarbeit als + / −, Pfeile ↗ / ↘ oder vierstufige Smileys – Einfluss je Stufe einstellbar; Hausübung als Bonus/Malus mit Deckelung
 - Frei einstellbare Gewichtung – global und pro Fach
 - Differenzierte Beurteilung AHS/ST mit Niveauführung pro Schüler:in
 - Schüler:innen-Profile mit Leistungsdiagramm und PDF-Export
