@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Daskala — Digitales Notenbuch für österreichische Schulen</title>
-<meta name="description" content="Daskala ist ein offline-fähiges, quelloffenes Notenbuch für österreichische Schulen – geeignet für jede Schulstufe. Noten, Klassen und Jahresplanung – lokal auf deinem Gerät, ohne Cloud.">
+<meta name="description" content="Daskala ist ein offline-fähiges, quelloffenes Notenbuch für österreichische Schulen – geeignet für jede Schulstufe. Noten, Stundenplan und Jahresplanung – lokal auf deinem Gerät, ohne Cloud.">
 
 <link rel="canonical" href="https://daskala.schulapps.at/">
 
@@ -13,7 +13,7 @@
 <meta property="og:locale" content="de_AT">
 <meta property="og:url" content="https://daskala.schulapps.at/">
 <meta property="og:title" content="Daskala — Digitales Notenbuch für österreichische Schulen">
-<meta property="og:description" content="Offline-fähiges, quelloffenes Notenbuch für österreichische Schulen. Noten, Klassen und Jahresplanung – lokal auf deinem Gerät, ohne Cloud.">
+<meta property="og:description" content="Offline-fähiges, quelloffenes Notenbuch für österreichische Schulen. Noten, Stundenplan und Jahresplanung – lokal auf deinem Gerät, ohne Cloud.">
 <meta property="og:image" content="https://daskala.schulapps.at/daskala-og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -30,7 +30,7 @@
   "name": "Daskala",
   "applicationCategory": "EducationalApplication",
   "operatingSystem": "Windows, Linux, macOS",
-  "description": "Offline-fähiges, quelloffenes Notenbuch für österreichische Schulen. Noten, Klassen und Jahresplanung – lokal, ohne Cloud.",
+  "description": "Offline-fähiges, quelloffenes Notenbuch für österreichische Schulen. Noten, Stundenplan und Jahresplanung – lokal, ohne Cloud.",
   "url": "https://daskala.schulapps.at/",
   "downloadUrl": "https://github.com/tobGat/daskala/releases",
   "license": "https://www.gnu.org/licenses/gpl-3.0.html",
@@ -298,7 +298,7 @@
       <div>
         <span class="eyebrow">Für jede Schulstufe · <b>quelloffen</b></span>
         <h1>Das <span class="accent">Notenbuch</span>, das offline bleibt.</h1>
-        <p class="lead">Daskala verwaltet Noten, Klassen und die Jahresplanung – als schlanke Desktop-App direkt auf deinem Rechner.</p>
+        <p class="lead">Daskala verwaltet Noten, Klassen, Stunden- und Jahresplanung – als schlanke Desktop-App direkt auf deinem Rechner.</p>
         <div class="cta">
           <a class="btn btn-gold" href="https://github.com/tobGat/daskala/releases">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -342,32 +342,47 @@
         <div class="cell">
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5.5L20 8.3l-4 4 1 5.7L12 15l-5 3 1-5.7-4-4 5.6-.8z"/></svg>
           <h3>Noten &amp; Beurteilung</h3>
-          <p>Leistungen erfassen, gewichten und den Notenstand einer Klasse jederzeit im Blick behalten.</p>
+          <p>Flexible Spalten für Schularbeiten, Tests und individuelle Bewertungen – Semester- und Zeugnisnoten berechnet Daskala automatisch, mit Gewichtung global und pro Fach.</p>
+        </div>
+        <div class="cell">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          <h3>Mitarbeit, ganz flexibel</h3>
+          <p>Erfasse Mitarbeit als + / −, als Pfeile ↗ / ↘ oder auf einer vierstufigen Smiley-Skala (😄 🙂 🙁 😞) – wie stark jede Stufe die Note verschiebt, bestimmst du selbst.</p>
+        </div>
+        <div class="cell">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          <h3>Differenzierte Beurteilung</h3>
+          <p>Für AHS/ST-Fächer führt Daskala pro Schüler:in ein Niveau und rechnet intern korrekt auf die angezeigte Note um – samt Niveau-Verlauf im Leistungsdiagramm.</p>
+        </div>
+        <div class="cell">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          <h3>Stundenplan</h3>
+          <p>Wochenplan mit Drag-&amp;-Drop, Entfall und Supplierung – wöchentlich oder im 14-tägigen Rhythmus. Ferien je Bundesland, optionale Wettervorschau und PDF im Querformat zum Aufhängen.</p>
+        </div>
+        <div class="cell">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <h3>Jahresplanung &amp; Materialien</h3>
+          <p>Das Schuljahr in farbige Abschnitte mit Lernzielen und Kompetenzen gliedern, Dokumente und Links anhängen und eine Fach-Vorlage auf mehrere Klassen übertragen.</p>
         </div>
         <div class="cell">
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <h3>Klassen &amp; Schüler:innen</h3>
-          <p>Klassenlisten anlegen und pflegen, mit freundlichen Avataren statt sensibler Fotos.</p>
+          <p>Listen per Einzeleingabe, Text oder CSV-/Excel-Import. Jedes Profil mit Leistungsdiagramm und freundlichem Avatar statt sensibler Fotos.</p>
         </div>
         <div class="cell">
-          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <h3>Jahresplanung</h3>
-          <p>Das Schuljahr strukturieren und Beurteilungen den richtigen Zeiträumen zuordnen.</p>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <h3>Organisiert durch den Tag</h3>
+          <p>Ein Dashboard mit To-dos und Terminen, ein Sitzplan mit drehbaren Tischen und ein Kompetenzraster je Fach halten den Unterricht im Griff.</p>
         </div>
         <div class="cell">
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
           <h3>Export &amp; Import</h3>
-          <p>Ergebnisse als Excel- oder Word-Datei ausgeben und Inhalte aus PDF einlesen.</p>
-        </div>
-        <div class="cell">
-          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          <h3>Läuft überall</h3>
-          <p>Eine installierte Desktop-App für Windows und Linux – kein Browser-Tab, kein Server, keine Abhängigkeit vom WLAN.</p>
+          <p>Auswertungen als PDF, Tabellen als OpenDocument (ODS) und die Jahresplanung als ODT – Klassenlisten liest du aus CSV, Excel oder PDF ein.</p>
         </div>
         <div class="cell">
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <h3>Daten bleiben bei dir</h3>
-          <p>Alle Einträge liegen in einer lokalen Datenbank auf deinem Gerät – nichts verlässt den Rechner.</p>
+          <h3>Offline &amp; sicher</h3>
+          <p>Alle Daten bleiben lokal – keine Cloud, keine Konten. Sicherungskopien jederzeit selbst, PIN-Sperre und ein dunkles Design inklusive.</p>
         </div>
       </div>
       <div class="rv" style="max-width:64ch;margin:34px auto 0;text-align:center">
