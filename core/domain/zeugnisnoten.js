@@ -4,6 +4,8 @@
 // Kern-Domäne: Zeugnisnoten (berechnet + manuell), Semester 1/2 + Endnote (3).
 // Async DbPort; deps = { berechneZeugnisnote, berechneEndnote, pushUndo, rosterIdsFuerFach }.
 
+const { neueUuid } = require('../db/uuid')
+
 async function getAll(db, fachId) {
   return db.select('SELECT * FROM zeugnisnoten WHERE fach_id = ?', [fachId])
 }
@@ -14,11 +16,11 @@ async function berechne(db, deps, fachId, schuelerId, semester) {
     : (await deps.berechneZeugnisnote(fachId, schuelerId, semester)).note
   if (note !== null) {
     await db.execute(`
-        INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet, uuid)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(fach_id, schueler_id, semester)
         DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
-      `, [fachId, schuelerId, semester, note, semester === 3 ? 1 : 0])
+      `, [fachId, schuelerId, semester, note, semester === 3 ? 1 : 0, neueUuid()])
   }
   return note
 }
@@ -31,11 +33,11 @@ async function setManuell(db, deps, fachId, schuelerId, semester, note) {
     ? await deps.berechneEndnote(fachId, schuelerId)
     : (await deps.berechneZeugnisnote(fachId, schuelerId, semester)).note
   const upsert = (n) => db.execute(`
-      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, note_manuell, s1_eingerechnet)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, note_manuell, s1_eingerechnet, uuid)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(fach_id, schueler_id, semester)
       DO UPDATE SET note_berechnet = excluded.note_berechnet, note_manuell = excluded.note_manuell, s1_eingerechnet = excluded.s1_eingerechnet
-    `, [fachId, schuelerId, semester, berechnet, n, semester === 3 ? 1 : 0])
+    `, [fachId, schuelerId, semester, berechnet, n, semester === 3 ? 1 : 0, neueUuid()])
   await upsert(note)
   deps.pushUndo({
     description: 'Zeugnisnote',
@@ -69,8 +71,8 @@ async function berechneFach(db, deps, fachId) {
   if (!fach) return false
   const schueler = (await deps.rosterIdsFuerFach(fachId)).map((id) => ({ id }))
   const UPSERT = `
-      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet, uuid)
+      VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(fach_id, schueler_id, semester)
       DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
     `
@@ -79,13 +81,13 @@ async function berechneFach(db, deps, fachId) {
     for (const s of schueler) {
       for (const sem of [1, 2]) {
         const { note } = await deps.berechneZeugnisnote(fachId, s.id, sem)
-        if (note !== null) await tx.execute(UPSERT, [fachId, s.id, sem, note, 0])
+        if (note !== null) await tx.execute(UPSERT, [fachId, s.id, sem, note, 0, neueUuid()])
         else await tx.execute(UPDATE_ONLY, [null, 0, fachId, s.id, sem])
       }
     }
     for (const s of schueler) {
       const endnote = await deps.berechneEndnote(fachId, s.id)
-      if (endnote !== null) await tx.execute(UPSERT, [fachId, s.id, 3, endnote, 1])
+      if (endnote !== null) await tx.execute(UPSERT, [fachId, s.id, 3, endnote, 1, neueUuid()])
       else await tx.execute(UPDATE_ONLY, [null, 1, fachId, s.id, 3])
     }
   })

@@ -4,6 +4,8 @@
 // Kern-Domäne: Spalten (Bewertungsspalten je Fach). Async DbPort;
 // deps = { pushUndo } (nur für update). delete protokolliert inline in den Verlauf.
 
+const { neueUuid } = require('../db/uuid')
+
 async function getAll(db, fachId) {
   return db.select('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge, datum', [fachId])
 }
@@ -11,9 +13,9 @@ async function getAll(db, fachId) {
 async function create(db, data) {
   const maxReihenfolge = (await db.selectOne('SELECT MAX(reihenfolge) as m FROM spalten WHERE fach_id = ? AND semester = ?', [data.fachId, data.semester]))?.m ?? 0
   const info = await db.execute(`
-      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen, ma_symbol)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, data.maStufen === 4 ? 4 : 2, data.maSymbol === 'pfeil' ? 'pfeil' : 'pm'])
+      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen, ma_symbol, uuid)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, data.maStufen === 4 ? 4 : 2, data.maSymbol === 'pfeil' ? 'pfeil' : 'pm', neueUuid()])
   return info.lastInsertRowid
 }
 

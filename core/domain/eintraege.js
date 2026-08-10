@@ -4,6 +4,8 @@
 // Kern-Domäne: Einträge (Noten/Werte je Spalte × Schüler:in) inkl. Verlauf.
 // Async DbPort; deps = { pushUndo, pruefeNotenTrigger }.
 
+const { neueUuid } = require('../db/uuid')
+
 async function getAll(db, fachId) {
   return db.select(`
       SELECT e.* FROM eintraege e
@@ -34,7 +36,7 @@ async function set(db, deps, spalteId, schuelerId, wert) {
         await db.execute('DELETE FROM eintraege WHERE spalte_id = ? AND schueler_id = ?', [spalteId, schuelerId])
       }
     } else {
-      await db.execute('INSERT INTO eintraege (spalte_id, schueler_id, wert) VALUES (?, ?, ?) ON CONFLICT(spalte_id, schueler_id) DO UPDATE SET wert = excluded.wert', [spalteId, schuelerId, w])
+      await db.execute('INSERT INTO eintraege (spalte_id, schueler_id, wert, uuid) VALUES (?, ?, ?, ?) ON CONFLICT(spalte_id, schueler_id) DO UPDATE SET wert = excluded.wert', [spalteId, schuelerId, w, neueUuid()])
     }
   }
   await apply(wert)
@@ -52,7 +54,7 @@ async function setKommentar(db, spalteId, schuelerId, kommentar) {
   if (existing) {
     await db.execute('UPDATE eintraege SET kommentar = ? WHERE spalte_id = ? AND schueler_id = ?', [k, spalteId, schuelerId])
   } else if (k) {
-    await db.execute('INSERT INTO eintraege (spalte_id, schueler_id, wert, kommentar) VALUES (?, ?, NULL, ?)', [spalteId, schuelerId, k])
+    await db.execute('INSERT INTO eintraege (spalte_id, schueler_id, wert, kommentar, uuid) VALUES (?, ?, NULL, ?, ?)', [spalteId, schuelerId, k, neueUuid()])
   }
   return true
 }

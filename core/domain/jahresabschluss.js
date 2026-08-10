@@ -5,13 +5,15 @@
 // ausgewählte Klassen/Fächer vorrücken, Schüler:innen zuordnen. Async DbPort,
 // gesamte Logik in einer Transaktion.
 
+const { neueUuid } = require('../db/uuid')
+
 async function neuesSchuljahr(db, { altesSchuljahreId, neueBezeichnung, klassen = null, schuelerZuordnungen }) {
   return db.transaction(async (tx) => {
     // Altes Schuljahr archivieren
     await tx.execute('UPDATE schuljahre SET archiviert = 1 WHERE id = ?', [altesSchuljahreId])
 
     // Neues Schuljahr anlegen
-    const neuesSchuljahr = await tx.execute('INSERT INTO schuljahre (bezeichnung) VALUES (?)', [neueBezeichnung])
+    const neuesSchuljahr = await tx.execute('INSERT INTO schuljahre (bezeichnung, uuid) VALUES (?, ?)', [neueBezeichnung, neueUuid()])
     const neuesSchuljahreId = neuesSchuljahr.lastInsertRowid
 
     // Aktuelles Schuljahr persistieren, damit Kalender/Stundenplan/Ferien auch nach Neustart folgen
@@ -33,7 +35,7 @@ async function neuesSchuljahr(db, { altesSchuljahreId, neueBezeichnung, klassen 
     for (const kSel of auswahl) {
       const alteKlasse = await tx.selectOne('SELECT * FROM klassen WHERE id = ?', [kSel.alteKlasseId])
       if (!alteKlasse) continue
-      const neueKlasse = await tx.execute('INSERT INTO klassen (schuljahr_id, name, reihenfolge) VALUES (?, ?, ?)', [neuesSchuljahreId, kSel.neuerName ?? alteKlasse.name, alteKlasse.reihenfolge])
+      const neueKlasse = await tx.execute('INSERT INTO klassen (schuljahr_id, name, reihenfolge, uuid) VALUES (?, ?, ?, ?)', [neuesSchuljahreId, kSel.neuerName ?? alteKlasse.name, alteKlasse.reihenfolge, neueUuid()])
       klasseIdMapping[alteKlasse.id] = neueKlasse.lastInsertRowid
 
       // Nur ausgewählte Fächer übernehmen (fachIds null = alle)
@@ -41,7 +43,7 @@ async function neuesSchuljahr(db, { altesSchuljahreId, neueBezeichnung, klassen 
       const alteFaecher = await tx.select('SELECT * FROM faecher WHERE klasse_id = ?', [alteKlasse.id])
       for (const altesFach of alteFaecher) {
         if (fachFilter && !fachFilter.has(altesFach.id)) continue   // nicht angehakt → nicht vorrücken
-        const nf = await tx.execute('INSERT INTO faecher (klasse_id, name, reihenfolge, alle_schueler, benotungssystem) VALUES (?, ?, ?, ?, ?)', [neueKlasse.lastInsertRowid, altesFach.name, altesFach.reihenfolge, altesFach.alle_schueler ?? 1, altesFach.benotungssystem ?? 'standard'])
+        const nf = await tx.execute('INSERT INTO faecher (klasse_id, name, reihenfolge, alle_schueler, benotungssystem, uuid) VALUES (?, ?, ?, ?, ?, ?)', [neueKlasse.lastInsertRowid, altesFach.name, altesFach.reihenfolge, altesFach.alle_schueler ?? 1, altesFach.benotungssystem ?? 'standard', neueUuid()])
         fachIdMapping[altesFach.id] = nf.lastInsertRowid
       }
     }
@@ -54,7 +56,7 @@ async function neuesSchuljahr(db, { altesSchuljahreId, neueBezeichnung, klassen 
       } else if (z.aktion === 'bleibt') {
         // Schüler:in in neuer Klasse anlegen
         const s = await tx.selectOne('SELECT * FROM schueler WHERE id = ?', [z.schuelerId])
-        const ns = await tx.execute('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge) VALUES (?, ?, ?, ?)', [klasseIdMapping[z.alteKlasseId], s.vorname, s.nachname, s.reihenfolge])
+        const ns = await tx.execute('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge, uuid) VALUES (?, ?, ?, ?, ?)', [klasseIdMapping[z.alteKlasseId], s.vorname, s.nachname, s.reihenfolge, neueUuid()])
         schuelerIdMapping[z.schuelerId] = ns.lastInsertRowid
         await tx.execute('UPDATE schueler SET aktiv = 0 WHERE id = ?', [z.schuelerId])
       }

@@ -6,6 +6,7 @@
 // (main.js-Helfer, u. a. Dateisystem für rename). path ist ein Node-Builtin.
 
 const path = require('path')
+const { neueUuid } = require('../db/uuid')
 
 async function getAll(db, schuljahrId) {
   return db.select('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY reihenfolge, name', [schuljahrId])
@@ -17,7 +18,7 @@ async function getVorlagen(db) {
 
 async function create(db, { schuljahrId, name, farbe, teamsLink, istVorlage }) {
   const maxReihenfolge = (await db.selectOne('SELECT MAX(reihenfolge) as m FROM klassen WHERE schuljahr_id = ?', [schuljahrId]))?.m ?? 0
-  const info = await db.execute('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link, ist_vorlage) VALUES (?, ?, ?, ?, ?, ?)', [schuljahrId, name, farbe ?? null, maxReihenfolge + 1, teamsLink ?? null, istVorlage ? 1 : 0])
+  const info = await db.execute('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link, ist_vorlage, uuid) VALUES (?, ?, ?, ?, ?, ?, ?)', [schuljahrId, name, farbe ?? null, maxReihenfolge + 1, teamsLink ?? null, istVorlage ? 1 : 0, neueUuid()])
   return info.lastInsertRowid
 }
 

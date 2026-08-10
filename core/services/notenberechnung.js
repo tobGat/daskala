@@ -5,6 +5,8 @@
 // DbPort an; DB-Funktionen sind async, reine Helfer (niveau/znAnzeige/maBewertung)
 // bleiben synchron. Funktionen rufen einander mit durchgereichtem db/tx auf.
 
+const { neueUuid } = require('../db/uuid')
+
 // Niveau-Auflösung für ein Datum aus der Historie. niveauHist absteigend sortiert nach gueltig_ab.
 // Fallback: aktuelles Niveau (jüngster Eintrag bzw. übergebener Default).
 function niveauZurZeit(niveauHist, datum, fallback) {
@@ -220,8 +222,8 @@ async function rosterIdsFuerFach(db, fachId) {
 }
 
 const ZN_UPSERT = `
-    INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet, uuid)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(fach_id, schueler_id, semester)
     DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
   `
@@ -238,14 +240,14 @@ async function berechneAlleFuerFach(db, fachId) {
     for (const s of schueler) {
       for (const sem of [1, 2]) {
         const { note } = await berechneZeugnisnote(tx, fachId, s.id, sem)
-        if (note !== null) await tx.execute(ZN_UPSERT, [fachId, s.id, sem, note, 0])
+        if (note !== null) await tx.execute(ZN_UPSERT, [fachId, s.id, sem, note, 0, neueUuid()])
         else await tx.execute(ZN_UPDATE_ONLY, [null, 0, fachId, s.id, sem])
       }
     }
     // Dann Endnote (liest die eben gespeicherten S1/S2-Noten)
     for (const s of schueler) {
       const endnote = await berechneEndnote(tx, fachId, s.id)
-      if (endnote !== null) await tx.execute(ZN_UPSERT, [fachId, s.id, 3, endnote, 1])
+      if (endnote !== null) await tx.execute(ZN_UPSERT, [fachId, s.id, 3, endnote, 1, neueUuid()])
       else await tx.execute(ZN_UPDATE_ONLY, [null, 1, fachId, s.id, 3])
     }
   })

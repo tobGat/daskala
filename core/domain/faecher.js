@@ -6,6 +6,7 @@
 // berechneAlleFuerFach, rosterIdsFuerFach, initKompetenzVorlagen }.
 
 const path = require('path')
+const { neueUuid } = require('../db/uuid')
 
 async function getAll(db, klasseId) {
   return db.select('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name', [klasseId])
@@ -24,8 +25,8 @@ async function getAllImSchuljahr(db, schuljahrId) {
 
 async function create(db, deps, { klasseId, name, farbe, benotungssystem, alleSchueler = 1, schuelerIds = [] }) {
   const maxReihenfolge = (await db.selectOne('SELECT MAX(reihenfolge) as m FROM faecher WHERE klasse_id = ?', [klasseId]))?.m ?? 0
-  const info = await db.execute('INSERT INTO faecher (klasse_id, name, farbe, reihenfolge, benotungssystem, alle_schueler) VALUES (?, ?, ?, ?, ?, ?)',
-    [klasseId, name, farbe ?? null, maxReihenfolge + 1, benotungssystem ?? 'standard', alleSchueler ? 1 : 0])
+  const info = await db.execute('INSERT INTO faecher (klasse_id, name, farbe, reihenfolge, benotungssystem, alle_schueler, uuid) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [klasseId, name, farbe ?? null, maxReihenfolge + 1, benotungssystem ?? 'standard', alleSchueler ? 1 : 0, neueUuid()])
   const fachId = info.lastInsertRowid
   // Manuelle Teilmenge: gewählte Schüler:innen als Fach-Mitglieder eintragen
   if (!alleSchueler && schuelerIds.length) {

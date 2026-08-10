@@ -4,6 +4,8 @@
 // Kern-Domäne: Schüler:innen. Async DbPort.
 // deps = { berechneAlleFuerFach } (nur für getLeistungsProfil).
 
+const { neueUuid } = require('../db/uuid')
+
 async function getAll(db, klasseId) {
   const modus = (await db.selectOne('SELECT sortierung FROM klassen WHERE id = ?', [klasseId]))?.sortierung || 'nachname'
   // ORDER-BY aus fester Whitelist (keine Nutzereingabe → sichere Interpolation).
@@ -17,7 +19,7 @@ async function getAll(db, klasseId) {
 
 async function create(db, { klasseId, vorname, nachname, fachIds = [] }) {
   const maxReihenfolge = (await db.selectOne('SELECT MAX(reihenfolge) as m FROM schueler WHERE klasse_id = ?', [klasseId]))?.m ?? 0
-  const info = await db.execute('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge) VALUES (?, ?, ?, ?)', [klasseId, vorname, nachname, maxReihenfolge + 1])
+  const info = await db.execute('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge, uuid) VALUES (?, ?, ?, ?, ?)', [klasseId, vorname, nachname, maxReihenfolge + 1, neueUuid()])
   const schuelerId = info.lastInsertRowid
   // In gewählte Fächer aufnehmen: manuelle Fächer bekommen einen fach_schueler-Eintrag,
   // „alle Schüler:innen"-Fächer schließen neue automatisch ein (nichts zu tun).

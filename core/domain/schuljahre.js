@@ -3,12 +3,14 @@
 //
 // Kern-Domäne: Schuljahre. Plattformunabhängig; spricht den async DbPort an.
 
+const { neueUuid } = require('../db/uuid')
+
 async function getAll(db) {
   return db.select('SELECT * FROM schuljahre ORDER BY id DESC')
 }
 
 async function create(db, bezeichnung) {
-  const info = await db.execute('INSERT INTO schuljahre (bezeichnung) VALUES (?)', [bezeichnung])
+  const info = await db.execute('INSERT INTO schuljahre (bezeichnung, uuid) VALUES (?, ?)', [bezeichnung, neueUuid()])
   return info.lastInsertRowid
 }
 

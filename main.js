@@ -43,6 +43,7 @@ const importService = require('./core/services/import')
 const jahresabschlussDomain = require('./core/domain/jahresabschluss')
 const noten = require('./core/services/notenberechnung')
 const schema = require('./core/db/schema')
+const { neueUuid } = require('./core/db/uuid')
 
 // ── Ports (Phase 1.2): plattformabhaengige Adapter, in core injizierbar ──
 const { createFsPort } = require('./platform/electron/ports/fs')
@@ -1013,8 +1014,8 @@ function registerIPC() {
       const orig = await tx.selectOne('SELECT * FROM klassen WHERE id=?', [klasseId])
       if (!orig) return null
       const maxReihen = (await tx.selectOne('SELECT MAX(reihenfolge) as m FROM klassen WHERE schuljahr_id=?', [orig.schuljahr_id]))?.m ?? 0
-      const nk = await tx.execute('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link, ist_vorlage, ist_kv) VALUES (?,?,?,?,?,0,?)',
-        [orig.schuljahr_id, (neuerName && neuerName.trim()) || (orig.name + ' (Kopie)'), orig.farbe ?? null, maxReihen + 1, orig.teams_link ?? null, orig.ist_kv ?? 0])
+      const nk = await tx.execute('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link, ist_vorlage, ist_kv, uuid) VALUES (?,?,?,?,?,0,?,?)',
+        [orig.schuljahr_id, (neuerName && neuerName.trim()) || (orig.name + ' (Kopie)'), orig.farbe ?? null, maxReihen + 1, orig.teams_link ?? null, orig.ist_kv ?? 0, neueUuid()])
       const neueKlasseId = nk.lastInsertRowid
 
       // Schüler:innen kopieren (ohne Noten)
@@ -1022,8 +1023,8 @@ function registerIPC() {
       if (mitSchueler) {
         const schueler = await tx.select('SELECT * FROM schueler WHERE klasse_id=? AND aktiv=1 ORDER BY reihenfolge, id', [klasseId])
         for (const s of schueler) {
-          const r = await tx.execute('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge, aktiv, avatar, lernschwaeche, legasthenie, spf) VALUES (?,?,?,?,1,?,?,?,?)',
-            [neueKlasseId, s.vorname, s.nachname, s.reihenfolge, s.avatar ?? null, s.lernschwaeche ?? 0, s.legasthenie ?? 0, s.spf ?? 0])
+          const r = await tx.execute('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge, aktiv, avatar, lernschwaeche, legasthenie, spf, uuid) VALUES (?,?,?,?,1,?,?,?,?,?)',
+            [neueKlasseId, s.vorname, s.nachname, s.reihenfolge, s.avatar ?? null, s.lernschwaeche ?? 0, s.legasthenie ?? 0, s.spf ?? 0, neueUuid()])
           schuelerMap[s.id] = r.lastInsertRowid
         }
       }
@@ -1033,10 +1034,10 @@ function registerIPC() {
       for (const f of faecher) {
         const nf = await tx.execute(`INSERT INTO faecher
           (klasse_id, name, farbe, reihenfolge, benotungssystem, alle_schueler,
-           gewichtung_sa, gewichtung_t, gewichtung_custom, ma_max_einfluss, hue_max_einfluss)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+           gewichtung_sa, gewichtung_t, gewichtung_custom, ma_max_einfluss, hue_max_einfluss, uuid)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
         [neueKlasseId, f.name, f.farbe ?? null, f.reihenfolge, f.benotungssystem ?? 'standard', f.alle_schueler ?? 1,
-          f.gewichtung_sa, f.gewichtung_t, f.gewichtung_custom, f.ma_max_einfluss, f.hue_max_einfluss])
+          f.gewichtung_sa, f.gewichtung_t, f.gewichtung_custom, f.ma_max_einfluss, f.hue_max_einfluss, neueUuid()])
         const neuFachId = nf.lastInsertRowid
         await initKompetenzVorlagen(neuFachId, f.name)
 

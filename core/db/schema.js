@@ -8,7 +8,7 @@
 
 // Aktuelle Schema-Version. Erhoehen bei neuer EINMALIGER Migration (Daten-Umbau/Rebuild);
 // reine Spalten-Ergaenzungen laufen idempotent ueber spalteErgaenzen().
-const SCHEMA_VERSION = 1
+const SCHEMA_VERSION = 2
 
 // ─── Schema als Daten (Portierung Phase 2.3) ─────────────────────────────────
 //
@@ -33,7 +33,8 @@ const TABLE_DDL = [
       bezeichnung TEXT NOT NULL,
       archiviert INTEGER DEFAULT 0,
       start_datum TEXT,
-      end_datum TEXT
+      end_datum TEXT,
+      uuid TEXT
     )`,
   `CREATE TABLE IF NOT EXISTS klassen (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,6 +46,7 @@ const TABLE_DDL = [
       sortierung TEXT DEFAULT 'nachname',
       ist_kv INTEGER DEFAULT 0,
       ist_vorlage INTEGER DEFAULT 0,
+      uuid TEXT,
       FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id)
     )`,
   `CREATE TABLE IF NOT EXISTS faecher (
@@ -63,6 +65,7 @@ const TABLE_DDL = [
       ma_hue_max_einfluss REAL,
       benotungssystem TEXT DEFAULT 'standard',
       alle_schueler INTEGER DEFAULT 1,
+      uuid TEXT,
       FOREIGN KEY (klasse_id) REFERENCES klassen(id)
     )`,
   `CREATE TABLE IF NOT EXISTS schueler (
@@ -76,6 +79,7 @@ const TABLE_DDL = [
       legasthenie INTEGER DEFAULT 0,
       spf INTEGER DEFAULT 0,
       avatar TEXT,
+      uuid TEXT,
       FOREIGN KEY (klasse_id) REFERENCES klassen(id)
     )`,
   `CREATE TABLE IF NOT EXISTS spalten (
@@ -90,6 +94,7 @@ const TABLE_DDL = [
       notiz TEXT,
       ma_stufen INTEGER DEFAULT 2,
       ma_symbol TEXT DEFAULT 'pm',
+      uuid TEXT,
       FOREIGN KEY (fach_id) REFERENCES faecher(id)
     )`,
   `CREATE TABLE IF NOT EXISTS eintraege (
@@ -98,6 +103,7 @@ const TABLE_DDL = [
       schueler_id INTEGER NOT NULL,
       wert TEXT DEFAULT '',
       kommentar TEXT,
+      uuid TEXT,
       UNIQUE(spalte_id, schueler_id),
       FOREIGN KEY (spalte_id) REFERENCES spalten(id),
       FOREIGN KEY (schueler_id) REFERENCES schueler(id)
@@ -122,6 +128,7 @@ const TABLE_DDL = [
       note_berechnet REAL,
       note_manuell INTEGER,
       s1_eingerechnet INTEGER DEFAULT 0,
+      uuid TEXT,
       UNIQUE(fach_id, schueler_id, semester),
       FOREIGN KEY (fach_id) REFERENCES faecher(id),
       FOREIGN KEY (schueler_id) REFERENCES schueler(id)
@@ -131,6 +138,7 @@ const TABLE_DDL = [
       schueler_id INTEGER NOT NULL,
       fach_id INTEGER NOT NULL,
       text TEXT DEFAULT '',
+      uuid TEXT,
       UNIQUE(schueler_id, fach_id),
       FOREIGN KEY (schueler_id) REFERENCES schueler(id),
       FOREIGN KEY (fach_id) REFERENCES faecher(id)
@@ -407,6 +415,17 @@ const INDEX_DDL = [
       ON kv_aktenvermerke (klasse_id, datum DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_kv_fehlstunden_schueler
       ON kv_fehlstunden (schueler_id, datum)`,
+  // UUID-Weiche (Phase 2.4): geräteübergreifend eindeutige Identität je Entität
+  // für ein späteres Zusammenführen. UNIQUE-Index; mehrere NULL sind in SQLite
+  // erlaubt, daher stören noch nicht befüllte Zeilen die Eindeutigkeit nicht.
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_schuljahre_uuid ON schuljahre (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_klassen_uuid ON klassen (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_faecher_uuid ON faecher (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_schueler_uuid ON schueler (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_spalten_uuid ON spalten (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_eintraege_uuid ON eintraege (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_zeugnisnoten_uuid ON zeugnisnoten (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_notizen_uuid ON notizen (uuid)`,
 ]
 
 // Deklaratives, versioniertes Schema für die mobilen Zielrahmen (siehe oben).
@@ -1113,6 +1132,33 @@ function applySchema(db, deps) {
 
   const semester = month >= 9 || month <= 1 ? '1' : '2'
   insertEinstellung.run('semester_aktuell', semester)
+
+  // ─── UUID-Weiche (Phase 2.4, additiv) ────────────────────────────────────────
+  // Zusätzliche geräteübergreifend eindeutige Identität je Entität für ein späteres
+  // Zusammenführen getrennt gepflegter Bestände. Der Integer-PK bleibt interner
+  // Schlüssel und FK-Referenz – an bestehenden Beziehungen ändert sich nichts.
+  const UUID_ENTITAETEN = ['schuljahre', 'klassen', 'faecher', 'schueler', 'spalten', 'eintraege', 'zeugnisnoten', 'notizen']
+  for (const t of UUID_ENTITAETEN) spalteErgaenzen(t, 'uuid', 'TEXT')
+  // Einmaliges Backfill bestehender Zeilen (nur < Version 2). SQLite-seitig erzeugt
+  // (randomblob), damit es ohne JS-Abhängigkeit in jedem Zielrahmen läuft.
+  if (schemaVersion < 2) {
+    const UUID_SQL = `lower(
+      hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
+      substr(hex(randomblob(2)), 2) || '-' ||
+      substr('89ab', 1 + (abs(random()) % 4), 1) || substr(hex(randomblob(2)), 2) || '-' ||
+      hex(randomblob(6))
+    )`
+    for (const t of UUID_ENTITAETEN) {
+      try { db.prepare(`UPDATE ${t} SET uuid = (${UUID_SQL}) WHERE uuid IS NULL`).run() }
+      catch (e) { deps.logError(`migration:uuid-backfill ${t}`, e) }
+    }
+  }
+  // UNIQUE-Index je Entität (mehrere NULL sind in SQLite erlaubt).
+  try {
+    for (const t of UUID_ENTITAETEN) {
+      db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${t}_uuid ON ${t} (uuid)`).run()
+    }
+  } catch (e) { deps.logError('migration:uuid-index', e) }
 
   // Alle einmaligen Migrationen dieser Version sind durchlaufen → Schema-Version festschreiben.
   if (schemaVersion < SCHEMA_VERSION) db.pragma(`user_version = ${SCHEMA_VERSION}`)
