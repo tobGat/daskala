@@ -815,6 +815,131 @@
       ]
     }
   },
+  "schuljahre:letztesArchivWiederherstellen": {
+    "ret": {
+      "ok": true,
+      "schuljahrId": 2,
+      "bezeichnung": "2024/25",
+      "insArchivVerschoben": "2025/26"
+    },
+    "state": {
+      "schuljahre": [
+        {
+          "id": 1,
+          "bezeichnung": "2025/26",
+          "archiviert": 1,
+          "start_datum": "2025-09-08",
+          "end_datum": "2026-07-03",
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "bezeichnung": "2024/25",
+          "archiviert": 0,
+          "start_datum": "2024-09-09",
+          "end_datum": "2025-07-04",
+          "uuid": null
+        }
+      ],
+      "schueler": [
+        {
+          "id": 1,
+          "klasse_id": 1,
+          "vorname": "Anna",
+          "nachname": "Bauer",
+          "reihenfolge": 1,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "klasse_id": 1,
+          "vorname": "Ben",
+          "nachname": "Auer",
+          "reihenfolge": 2,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 3,
+          "klasse_id": 1,
+          "vorname": "Clara",
+          "nachname": "Zimmermann",
+          "reihenfolge": 3,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 1,
+          "vorname": "David",
+          "nachname": "Müller",
+          "reihenfolge": 4,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 5,
+          "klasse_id": 1,
+          "vorname": "Emma",
+          "nachname": "Auer",
+          "reihenfolge": 5,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 6,
+          "klasse_id": 1,
+          "vorname": "Felix",
+          "nachname": "Xaver",
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        }
+      ]
+    }
+  },
+  "schuljahre:loeschen": {
+    "ret": {
+      "ok": true
+    },
+    "state": {
+      "schuljahre": [
+        {
+          "id": 1,
+          "bezeichnung": "2025/26",
+          "archiviert": 0,
+          "start_datum": "2025-09-08",
+          "end_datum": "2026-07-03",
+          "uuid": null
+        }
+      ]
+    }
+  },
   "klassen:rename": {
     "ret": {
       "ok": true,

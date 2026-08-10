@@ -110,7 +110,7 @@ function baueKiPrompt({ bez, startJahr, endJahr, ferienData, faecherListe }) {
 }
 
 export default function Einstellungen({ onClose }) {
-  const { gewichtungGlobal, theme, setTheme, einstellungen, pushToast, aktuellesSchuljahr, schuljahre } = useStore()
+  const { gewichtungGlobal, theme, setTheme, einstellungen, pushToast, aktuellesSchuljahr, schuljahre, archivWiederherstellen, archivLoeschen } = useStore()
   const [kiExportLaeuft, setKiExportLaeuft] = useState(false)
 
   // Baut die Chatbot-Anleitung und speichert sie als Markdown-Datei.
@@ -221,6 +221,8 @@ export default function Einstellungen({ onClose }) {
   const toggleBereich = (id) => setOffenerBereich(o => (o === id ? null : id))
 
   const archivierteSchuljahre = (schuljahre ?? []).filter(s => s.archiviert)
+  // Das "letzte" Archiv (zuletzt archiviert) = höchste id – nur dieses ist wiederherstellbar.
+  const letztesArchivId = archivierteSchuljahre.reduce((max, s) => (s.id > max ? s.id : max), -1)
   const [archivBusy, setArchivBusy] = useState(false)
   const archivExport = async (sj, format) => {
     setArchivBusy(true)
@@ -231,6 +233,33 @@ export default function Einstellungen({ onClose }) {
       if (ok) pushToast(`Archiv ${sj.bezeichnung} als ${format.toUpperCase()} exportiert.`, 'success')
     } catch {
       pushToast('Export fehlgeschlagen.', 'error')
+    } finally {
+      setArchivBusy(false)
+    }
+  }
+  const archivWiederherstellenKlick = async (sj) => {
+    const aktuellName = aktuellesSchuljahr?.bezeichnung
+    if (!confirm(`„${sj.bezeichnung}" wird wieder zum aktuellen Schuljahr.${aktuellName ? `\n\nDas derzeit aktuelle Jahr „${aktuellName}" wandert dafür ins Archiv (es wird nichts gelöscht).` : ''}\n\nFortfahren?`)) return
+    setArchivBusy(true)
+    try {
+      const r = await archivWiederherstellen()
+      if (r?.ok) pushToast(`„${r.bezeichnung}" ist wieder das aktuelle Schuljahr.`, 'success')
+      else pushToast('Wiederherstellen fehlgeschlagen.', 'error')
+    } catch {
+      pushToast('Wiederherstellen fehlgeschlagen.', 'error')
+    } finally {
+      setArchivBusy(false)
+    }
+  }
+  const archivLoeschenKlick = async (sj) => {
+    if (!confirm(`Archiv „${sj.bezeichnung}" endgültig löschen?\n\nAlle Klassen, Fächer, Schüler:innen und Noten dieses Jahres werden unwiderruflich entfernt.`)) return
+    setArchivBusy(true)
+    try {
+      const r = await archivLoeschen(sj.id)
+      if (r?.ok) pushToast(`Archiv „${sj.bezeichnung}" gelöscht.`, 'success')
+      else pushToast('Löschen fehlgeschlagen.', 'error')
+    } catch {
+      pushToast('Löschen fehlgeschlagen.', 'error')
     } finally {
       setArchivBusy(false)
     }
@@ -666,6 +695,8 @@ export default function Einstellungen({ onClose }) {
           <Akkordeon id="archiv" icon="🗄️" titel="Archiv" offen={offenerBereich} onToggle={toggleBereich}>
             <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">
               Abgeschlossene (archivierte) Schuljahre. Ein Jahr lässt sich vollständig als Tabelle (ODS) oder als PDF exportieren.
+              Das zuletzt archivierte Jahr kann wiederhergestellt werden (es wird wieder zum aktuellen Schuljahr, das derzeit aktuelle
+              wandert dafür ins Archiv). Archive können endgültig gelöscht werden.
             </p>
             {archivierteSchuljahre.length === 0 ? (
               <p className="text-sm text-ink-400 text-center py-4">Noch keine archivierten Schuljahre.</p>
@@ -677,6 +708,10 @@ export default function Einstellungen({ onClose }) {
                     <div className="flex gap-2 flex-shrink-0">
                       <button className="btn-secondary text-xs" disabled={archivBusy} onClick={() => archivExport(sj, 'ods')}>ODS</button>
                       <button className="btn-secondary text-xs" disabled={archivBusy} onClick={() => archivExport(sj, 'pdf')}>PDF</button>
+                      {sj.id === letztesArchivId && (
+                        <button className="btn-secondary text-xs" disabled={archivBusy} onClick={() => archivWiederherstellenKlick(sj)} title="Wieder zum aktuellen Schuljahr machen">↩ Wiederherstellen</button>
+                      )}
+                      <button className="text-xs px-2 py-1 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 disabled:opacity-50" disabled={archivBusy} onClick={() => archivLoeschenKlick(sj)} title="Archiv endgültig löschen">Löschen</button>
                     </div>
                   </div>
                 ))}

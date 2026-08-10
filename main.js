@@ -561,6 +561,8 @@ function registerIPC() {
   // Schuljahre
   ipcMain.handle('schuljahre:getAll', () => schuljahreDomain.getAll(dbPort))
   ipcMain.handle('schuljahre:create', (_, bezeichnung) => schuljahreDomain.create(dbPort, bezeichnung))
+  ipcMain.handle('schuljahre:letztesArchivWiederherstellen', () => schuljahreDomain.letztesArchivWiederherstellen(dbPort))
+  ipcMain.handle('schuljahre:loeschen', (_, id) => schuljahreDomain.loeschen(dbPort, kernDeps, id))
 
   // Klassen
   ipcMain.handle('klassen:getAll', (_, schuljahrId) => klassenDomain.getAll(dbPort, schuljahrId))

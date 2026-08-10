@@ -149,6 +149,8 @@ const DOKU = [
         'Das alte Schuljahr wird archiviert und schreibgeschützt',
       ] },
       'Archivierte Schuljahre findest du unter Einstellungen → „Archiv". Von dort exportierst du ein abgeschlossenes Jahr vollständig als Tabelle (ODS) oder als PDF (Notenübersicht aller Klassen und Fächer).',
+      'Das zuletzt archivierte Jahr lässt sich dort auch „wiederherstellen": Es wird wieder zum aktuellen Schuljahr, das derzeit aktuelle Jahr wandert dafür ins Archiv – es wird nichts gelöscht. So nimmst du einen versehentlichen Jahreswechsel zurück.',
+      'Nicht mehr benötigte Archive kannst du unter „Archiv" endgültig löschen (mit allen Klassen, Fächern, Schüler:innen und Noten dieses Jahres).',
       { tipp: 'Kalender und Ferienberechnung stellen sich automatisch auf das aktive Schuljahr um.' },
     ],
   },

@@ -140,6 +140,21 @@ const useStore = create((set, get) => ({
     }
   },
 
+  // Letztes Archiv wiederherstellen (Jahreswechsel zurücknehmen, ohne zu löschen).
+  archivWiederherstellen: async () => {
+    const r = await window.api.schuljahre.letztesArchivWiederherstellen()
+    if (r?.ok) await get().ladeSchuljahrDaten(r.schuljahrId)
+    return r
+  },
+
+  // Ein archiviertes Schuljahr endgültig löschen; danach Schuljahr-Liste auffrischen.
+  archivLoeschen: async (id) => {
+    const r = await window.api.schuljahre.loeschen(id)
+    const schuljahre = await window.api.schuljahre.getAll()
+    set({ schuljahre })
+    return r
+  },
+
   setAktuellesSchuljahr: async (schuljahr) => {
     set({ aktuellesSchuljahr: schuljahr, klassen: [], aktiveKlasse: null, faecher: [], aktivesFach: null })
     await get().ladeKlassen(schuljahr.id)
