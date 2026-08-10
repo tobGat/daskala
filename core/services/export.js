@@ -2,10 +2,9 @@
 // Copyright (C) 2026 Tobias Gatterbauer
 //
 // Kern-Service: Datenexporte (JSON, ODS via xlsx, PDF via PdfPort, ODT via jszip,
-// DOCX via docx). `db` pro Aufruf. `deps` bündelt Ports + Helfer:
-//   { dialog, fs, pdf, dateiTeil, exportDatum, rosterFuerFach, znInternZuAnzeige,
-//     abschnittHierarchie, sammleMaterialien, sanitizeSegment }
-// dialog/fs/pdf sind Ports (siehe core/ports/index.js). Die Bibliotheken
+// DOCX via docx). `db` ist der async DbPort. `deps` bündelt Ports + Helfer:
+//   { dialog, fs, pdf, dateiTeil, exportDatum, rosterFuerFach (async),
+//     znInternZuAnzeige, abschnittHierarchie (async), sammleMaterialien (async), sanitizeSegment }
 // xlsx/jszip/docx sind plattformunabhängig und werden lazy geladen.
 
 async function toJson(db, deps) {
@@ -16,16 +15,16 @@ async function toJson(db, deps) {
   if (!filePath) return false
 
   const data = {
-    schuljahre: db.prepare('SELECT * FROM schuljahre').all(),
-    klassen: db.prepare('SELECT * FROM klassen').all(),
-    faecher: db.prepare('SELECT * FROM faecher').all(),
-    schueler: db.prepare('SELECT * FROM schueler').all(),
-    spalten: db.prepare('SELECT * FROM spalten').all(),
-    eintraege: db.prepare('SELECT * FROM eintraege').all(),
-    zeugnisnoten: db.prepare('SELECT * FROM zeugnisnoten').all(),
-    notizen: db.prepare('SELECT * FROM notizen').all(),
-    gewichtung_global: db.prepare('SELECT * FROM gewichtung_global').all(),
-    einstellungen: db.prepare('SELECT * FROM einstellungen').all(),
+    schuljahre: await db.select('SELECT * FROM schuljahre'),
+    klassen: await db.select('SELECT * FROM klassen'),
+    faecher: await db.select('SELECT * FROM faecher'),
+    schueler: await db.select('SELECT * FROM schueler'),
+    spalten: await db.select('SELECT * FROM spalten'),
+    eintraege: await db.select('SELECT * FROM eintraege'),
+    zeugnisnoten: await db.select('SELECT * FROM zeugnisnoten'),
+    notizen: await db.select('SELECT * FROM notizen'),
+    gewichtung_global: await db.select('SELECT * FROM gewichtung_global'),
+    einstellungen: await db.select('SELECT * FROM einstellungen'),
   }
   deps.fs.write(filePath, JSON.stringify(data, null, 2), 'utf-8')
   return true
@@ -34,7 +33,7 @@ async function toJson(db, deps) {
 // Noten eines Fachs als ODS-Tabelle
 async function fachOds(db, deps, fachId) {
   const XLSX = require('xlsx')
-  const fach = db.prepare('SELECT f.*, k.name AS klasse_name FROM faecher f JOIN klassen k ON f.klasse_id = k.id WHERE f.id = ?').get(fachId)
+  const fach = await db.selectOne('SELECT f.*, k.name AS klasse_name FROM faecher f JOIN klassen k ON f.klasse_id = k.id WHERE f.id = ?', [fachId])
   if (!fach) return false
 
   const filePath = await deps.dialog.saveFile({
@@ -43,17 +42,17 @@ async function fachOds(db, deps, fachId) {
   })
   if (!filePath) return false
 
-  const schueler = deps.rosterFuerFach(fachId)
-  const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge').all(fachId)
-  const eintraege = db.prepare('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)').all(fachId)
-  const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fachId)
+  const schueler = await deps.rosterFuerFach(fachId)
+  const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge', [fachId])
+  const eintraege = await db.select('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)', [fachId])
+  const zeugnisnoten = await db.select('SELECT * FROM zeugnisnoten WHERE fach_id = ?', [fachId])
 
   const entryMap = {}
   eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
   const istDiff = fach.benotungssystem === 'differenziert'
   const niveauMap = {}
   if (istDiff) {
-    db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fachId)
+    (await db.select('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?', [fachId]))
       .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
   }
   const znMap = {}
@@ -128,8 +127,8 @@ async function planungPdf(db, deps, wochen, einzeln) {
       hr{border:none;border-top:1px solid #ddd;margin:4px 0}
     `
 
-  function generiereWocheHtml(wocheDatum) {
-    const planungen = db.prepare(`
+  async function generiereWocheHtml(wocheDatum) {
+    const planungen = await db.select(`
         SELECT sp.*, st.wochentag, sz.stunde, sz.beginn, sz.ende,
                f.name AS fach_name, k.name AS klasse_name
         FROM stunden_planung sp
@@ -139,7 +138,7 @@ async function planungPdf(db, deps, wochen, einzeln) {
         JOIN klassen k ON k.id = f.klasse_id
         WHERE sp.woche_datum = ?
         ORDER BY st.wochentag, sz.stunde
-      `).all(wocheDatum)
+      `, [wocheDatum])
     if (!planungen.length) return ''
     const stunden = planungen.map(p => `
         <div class="stunde">
@@ -150,8 +149,9 @@ async function planungPdf(db, deps, wochen, einzeln) {
     return `<div class="woche"><div class="woche-titel">${wocheLabel(wocheDatum)}</div>${stunden}</div>`
   }
 
-  const generiereHtml = (wochenArg) => {
-    const body = wochenArg.map(w => generiereWocheHtml(w)).join('')
+  const generiereHtml = async (wochenArg) => {
+    let body = ''
+    for (const w of wochenArg) body += await generiereWocheHtml(w)
     return `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>${css}</style></head>
       <body><h1>Stundenplanung – Daskala</h1><div class="meta">Exportiert am ${new Date().toLocaleDateString('de-AT')}</div>${body}</body></html>`
   }
@@ -163,7 +163,7 @@ async function planungPdf(db, deps, wochen, einzeln) {
         filters: [{ name: 'PDF', extensions: ['pdf'] }],
       })
       if (filePath) {
-        const buf = await deps.pdf.fromHtml(generiereHtml([wocheDatum]))
+        const buf = await deps.pdf.fromHtml(await generiereHtml([wocheDatum]))
         deps.fs.write(filePath, buf)
       }
     }
@@ -174,7 +174,7 @@ async function planungPdf(db, deps, wochen, einzeln) {
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     })
     if (!filePath) return false
-    const buf = await deps.pdf.fromHtml(generiereHtml(wochen))
+    const buf = await deps.pdf.fromHtml(await generiereHtml(wochen))
     deps.fs.write(filePath, buf)
     return true
   }
@@ -198,8 +198,8 @@ async function stundenplanPdf(db, deps, titelZusatz) {
   const escHtml = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const ivLabel = (iv) => iv === 2 ? '14-tg.' : `alle ${iv} Wo.`
 
-  const stundenzeiten = db.prepare('SELECT * FROM stundenzeiten ORDER BY stunde').all()
-  const eintraege = db.prepare(`
+  const stundenzeiten = await db.select('SELECT * FROM stundenzeiten ORDER BY stunde')
+  const eintraege = await db.select(`
       SELECT sp.*, sz.stunde, sz.beginn, sz.ende,
              f.name AS fach_name, k.name AS klasse_name, k.id AS klasse_id
       FROM stundenplan sp
@@ -207,7 +207,7 @@ async function stundenplanPdf(db, deps, titelZusatz) {
       JOIN faecher f ON f.id = sp.fach_id
       JOIN klassen k ON k.id = f.klasse_id
       ORDER BY sp.wochentag, sz.stunde
-    `).all()
+    `)
 
   // Einträge nach Slot gruppieren (mehrere möglich, z. B. bei 14-tägigem Wechsel).
   const slotMap = {}
@@ -301,9 +301,9 @@ async function stundenplanPdf(db, deps, titelZusatz) {
 // Jahresplanung als ODT (tabellarisch, Querformat)
 async function jahresplanungOdt(db, deps, fachId) {
   const JSZip = require('jszip')
-  const h = deps.abschnittHierarchie(fachId)
+  const h = await deps.abschnittHierarchie(fachId)
   if (!h) return false
-  const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id').all(fachId)
+  const abschnitte = await db.select('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id', [fachId])
   if (abschnitte.length === 0) {
     deps.dialog.message({ type: 'info', message: 'Keine Abschnitte in der Jahresplanung vorhanden.' })
     return false
@@ -318,15 +318,15 @@ async function jahresplanungOdt(db, deps, fachId) {
     if (zeilen.length === 0) return `<text:p text:style-name="${style}"/>`
     return zeilen.map(l => `<text:p text:style-name="${style}">${esc(l)}</text:p>`).join('')
   }
-  const matZelle = (a) => {
-    const { dateien, links } = deps.sammleMaterialien(a.id)
+  const matZelle = async (a) => {
+    const { dateien, links } = await deps.sammleMaterialien(a.id)
     const items = []
     for (const d of dateien) items.push(`• ${d.anzeigename || d.ref}${d.fehlt ? ' (fehlt)' : ''}`)
     for (const l of links) items.push(`• ${l.anzeigename || l.ref}`)
     if (items.length === 0) return `<text:p text:style-name="PStd"/>`
     return items.map(t => `<text:p text:style-name="PStd">${esc(t)}</text:p>`).join('')
   }
-  const zeile = (a) => {
+  const zeile = async (a) => {
     const zeitraum = a.datum_von ? `${fdat(a.datum_von)} – ${fdat(a.datum_bis)}` : 'Nicht eingeplant'
     const inhalt = `<text:p text:style-name="PTitel">${esc(a.titel || 'Ohne Titel')}</text:p>` + absaetze(a.inhalt, 'PStd')
     const ziele = (a.lernziele && a.lernziele.trim()) ? absaetze(a.lernziele, 'PStd') : '<text:p text:style-name="PStd">–</text:p>'
@@ -336,9 +336,12 @@ async function jahresplanungOdt(db, deps, fachId) {
       + `<table:table-cell table:style-name="Zelle">${inhalt}</table:table-cell>`
       + `<table:table-cell table:style-name="Zelle">${ziele}</table:table-cell>`
       + `<table:table-cell table:style-name="Zelle">${komp}</table:table-cell>`
-      + `<table:table-cell table:style-name="Zelle">${matZelle(a)}</table:table-cell>`
+      + `<table:table-cell table:style-name="Zelle">${await matZelle(a)}</table:table-cell>`
       + '</table:table-row>'
   }
+
+  let zeilenHtml = ''
+  for (const a of abschnitte) zeilenHtml += await zeile(a)
 
   const content = `<?xml version="1.0" encoding="UTF-8"?>`
     + `<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" office:version="1.2">`
@@ -371,7 +374,7 @@ async function jahresplanungOdt(db, deps, fachId) {
     + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Kompetenzen</text:p></table:table-cell>`
     + `<table:table-cell table:style-name="Kopf"><text:p text:style-name="PKopf">Materialien</text:p></table:table-cell>`
     + `</table:table-row></table:table-header-rows>`
-    + abschnitte.map(zeile).join('')
+    + zeilenHtml
     + `</table:table></office:text></office:body></office:document-content>`
 
   const styles = `<?xml version="1.0" encoding="UTF-8"?>`
@@ -409,25 +412,23 @@ async function fachPlanungDocx(db, deps, fachId, fachName, klasseName, wochenDat
   const WOCHENTAGE = ['', 'Mo', 'Di', 'Mi', 'Do', 'Fr']
 
   // Alle Stundenplan-Slots für dieses Fach
-  const fachSlots = db.prepare(`
+  const fachSlots = await db.select(`
       SELECT st.id, st.wochentag, sz.stunde, sz.beginn, sz.ende
       FROM stundenplan st
       JOIN stundenzeiten sz ON sz.id = st.stunde_id
       WHERE st.fach_id = ?
       ORDER BY st.wochentag, sz.stunde
-    `).all(fachId)
+    `, [fachId])
 
   if (fachSlots.length === 0) return false
 
   const slotIds = fachSlots.map(s => s.id)
-
-  // Planungen für alle angefragten Wochen laden
-  const planStmt = db.prepare(`
+  const planSql = `
       SELECT sp.*, sp.stundenplan_id
       FROM stunden_planung sp
       WHERE sp.stundenplan_id IN (${slotIds.map(() => '?').join(',')})
         AND sp.woche_datum = ?
-    `)
+    `
 
   const thinBorder = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
   const cellBorders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
@@ -437,7 +438,7 @@ async function fachPlanungDocx(db, deps, fachId, fachName, klasseName, wochenDat
 
   for (let wi = 0; wi < wochenDaten.length; wi++) {
     const wd = wochenDaten[wi]
-    const planungen = planStmt.all(...slotIds, wd.wocheDatum)
+    const planungen = await db.select(planSql, [...slotIds, wd.wocheDatum])
     const planMap = {}
     for (const p of planungen) planMap[p.stundenplan_id] = p
 
@@ -526,7 +527,7 @@ async function fachPlanungDocx(db, deps, fachId, fachName, klasseName, wochenDat
 // Alle Schüler:innen als ODS (je Klasse+Fach ein Tabellenblatt)
 async function allSchuelerOds(db, deps) {
   const XLSX = require('xlsx')
-  const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
+  const aktuellesSchuljahr = await db.selectOne('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1')
   if (!aktuellesSchuljahr) return false
   const filePath = await deps.dialog.saveFile({
     defaultName: `daskala_noten_${deps.dateiTeil(aktuellesSchuljahr.bezeichnung)}_${deps.exportDatum()}.ods`,
@@ -535,23 +536,23 @@ async function allSchuelerOds(db, deps) {
   if (!filePath) return false
 
   const wb = XLSX.utils.book_new()
-  const klassen = db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name').all(aktuellesSchuljahr.id)
+  const klassen = await db.select('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name', [aktuellesSchuljahr.id])
 
   for (const klasse of klassen) {
-    const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasse.id)
-    const schueler = db.prepare('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY reihenfolge, nachname, vorname').all(klasse.id)
+    const faecher = await db.select('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name', [klasse.id])
+    const schueler = await db.select('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY reihenfolge, nachname, vorname', [klasse.id])
     if (!schueler.length) continue
 
     for (const fach of faecher) {
-      const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge').all(fach.id)
-      const eintraege = db.prepare('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)').all(fach.id)
-      const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fach.id)
+      const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge', [fach.id])
+      const eintraege = await db.select('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)', [fach.id])
+      const zeugnisnoten = await db.select('SELECT * FROM zeugnisnoten WHERE fach_id = ?', [fach.id])
       const entryMap = {}
       eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
       const istDiff = fach.benotungssystem === 'differenziert'
       const niveauMap = {}
       if (istDiff) {
-        db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fach.id)
+        (await db.select('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?', [fach.id]))
           .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
       }
       const znMap = {}
@@ -562,7 +563,7 @@ async function allSchuelerOds(db, deps) {
 
       const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum.slice(5).replace('-', '.') : ''}`), 'SN 1', 'SN 2', 'ZN']
       const rows = [header]
-      for (const s of deps.rosterFuerFach(fach.id)) {
+      for (const s of await deps.rosterFuerFach(fach.id)) {
         const badges = [s.lernschwaeche ? 'LS' : null, s.legasthenie ? 'LEG' : null].filter(Boolean)
         const name = `${s.nachname} ${s.vorname}${badges.length ? ' [' + badges.join(' ') + ']' : ''}`
         const row = [name, ...spalten.map(sp => entryMap[`${sp.id}_${s.id}`] ?? ''), znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '', znMap[`${s.id}_3`] ?? '']
@@ -579,8 +580,8 @@ async function allSchuelerOds(db, deps) {
 }
 
 // Vollständige Notenübersicht (alle Klassen/Fächer eines Schuljahres) als HTML für den PDF-Export.
-function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '') {
-  const klassen = db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name').all(schuljahr.id)
+async function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '') {
+  const klassen = await db.select('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name', [schuljahr.id])
   const css = `
       *{box-sizing:border-box;margin:0;padding:0}
       body{font-family:Arial,sans-serif;font-size:10px;color:#1a1a1a}
@@ -604,20 +605,20 @@ function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '') {
   let bodyHtml = `<h1>Notenübersicht – Daskala</h1><div class="schuljahr">${titelPrefix}${escHtml(schuljahr.bezeichnung)}</div>`
 
   for (const klasse of klassen) {
-    const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasse.id)
-    const schueler = db.prepare('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY reihenfolge, nachname, vorname').all(klasse.id)
+    const faecher = await db.select('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name', [klasse.id])
+    const schueler = await db.select('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY reihenfolge, nachname, vorname', [klasse.id])
     if (!schueler.length) continue
 
     for (const fach of faecher) {
-      const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge').all(fach.id)
-      const eintraege = db.prepare('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)').all(fach.id)
-      const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fach.id)
+      const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge', [fach.id])
+      const eintraege = await db.select('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)', [fach.id])
+      const zeugnisnoten = await db.select('SELECT * FROM zeugnisnoten WHERE fach_id = ?', [fach.id])
       const entryMap = {}
       eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
       const istDiff = fach.benotungssystem === 'differenziert'
       const niveauMap = {}
       if (istDiff) {
-        db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fach.id)
+        (await db.select('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?', [fach.id]))
           .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
       }
       const znMap = {}
@@ -630,12 +631,13 @@ function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '') {
         `<th>${escHtml(sp.kuerzel)}${sp.datum ? '<br>' + sp.datum.slice(5).replace('-', '.') : ''}</th>`
       ).join('')}<th>SN 1</th><th>SN 2</th><th>ZN</th></tr>`
 
-      const tbody = deps.rosterFuerFach(fach.id).map(s => {
+      let tbody = ''
+      for (const s of await deps.rosterFuerFach(fach.id)) {
         const lsBadge = s.lernschwaeche ? '<span class="badge">LS</span>' : ''
         const legBadge = s.legasthenie ? '<span class="badge leg">LEG</span>' : ''
         const cells = spalten.map(sp => `<td>${escHtml(entryMap[`${sp.id}_${s.id}`] ?? '')}</td>`).join('')
-        return `<tr><td class="name">${escHtml(s.nachname)} ${escHtml(s.vorname)}${lsBadge}${legBadge}</td>${cells}<td class="zn">${znMap[`${s.id}_1`] ?? ''}</td><td class="zn">${znMap[`${s.id}_2`] ?? ''}</td><td class="zn">${znMap[`${s.id}_3`] ?? ''}</td></tr>`
-      }).join('')
+        tbody += `<tr><td class="name">${escHtml(s.nachname)} ${escHtml(s.vorname)}${lsBadge}${legBadge}</td>${cells}<td class="zn">${znMap[`${s.id}_1`] ?? ''}</td><td class="zn">${znMap[`${s.id}_2`] ?? ''}</td><td class="zn">${znMap[`${s.id}_3`] ?? ''}</td></tr>`
+      }
 
       bodyHtml += `<div class="klasse-fach"><div class="klasse-fach-titel">${escHtml(klasse.name)} · ${escHtml(fach.name)}</div><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`
     }
@@ -644,35 +646,35 @@ function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '') {
 }
 
 async function allSchuelerPdf(db, deps) {
-  const aktuellesSchuljahr = db.prepare('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
+  const aktuellesSchuljahr = await db.selectOne('SELECT * FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1')
   if (!aktuellesSchuljahr) return false
   const filePath = await deps.dialog.saveFile({
     defaultName: `daskala_noten_${deps.dateiTeil(aktuellesSchuljahr.bezeichnung)}_${deps.exportDatum()}.pdf`,
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
   })
   if (!filePath) return false
-  const buf = await deps.pdf.fromHtml(baueNotenUebersichtHtml(db, deps, aktuellesSchuljahr))
+  const buf = await deps.pdf.fromHtml(await baueNotenUebersichtHtml(db, deps, aktuellesSchuljahr))
   deps.fs.write(filePath, buf)
   return true
 }
 
 // Archiviertes Schuljahr vollständig als PDF exportieren (Notenübersicht aller Klassen/Fächer).
 async function archivPdf(db, deps, schuljahrId) {
-  const schuljahr = db.prepare('SELECT * FROM schuljahre WHERE id = ?').get(schuljahrId)
+  const schuljahr = await db.selectOne('SELECT * FROM schuljahre WHERE id = ?', [schuljahrId])
   if (!schuljahr) return false
   const filePath = await deps.dialog.saveFile({
     defaultName: `Daskala_Archiv_${deps.dateiTeil(schuljahr.bezeichnung)}_${deps.exportDatum()}.pdf`,
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
   })
   if (!filePath) return false
-  const buf = await deps.pdf.fromHtml(baueNotenUebersichtHtml(db, deps, schuljahr, 'Archiv · '))
+  const buf = await deps.pdf.fromHtml(await baueNotenUebersichtHtml(db, deps, schuljahr, 'Archiv · '))
   deps.fs.write(filePath, buf)
   return true
 }
 
 // Archiviertes Schuljahr vollständig als ODS exportieren (je Klasse+Fach ein Tabellenblatt).
 async function archivOds(db, deps, schuljahrId) {
-  const schuljahr = db.prepare('SELECT * FROM schuljahre WHERE id = ?').get(schuljahrId)
+  const schuljahr = await db.selectOne('SELECT * FROM schuljahre WHERE id = ?', [schuljahrId])
   if (!schuljahr) return false
   const XLSX = require('xlsx')
   const filePath = await deps.dialog.saveFile({
@@ -681,21 +683,21 @@ async function archivOds(db, deps, schuljahrId) {
   })
   if (!filePath) return false
 
-  const klassen = db.prepare('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name').all(schuljahrId)
+  const klassen = await db.select('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name', [schuljahrId])
   const wb = XLSX.utils.book_new()
   const usedNames = new Set()
   for (const klasse of klassen) {
-    const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name').all(klasse.id)
+    const faecher = await db.select('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name', [klasse.id])
     for (const fach of faecher) {
-      const spalten = db.prepare('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge').all(fach.id)
-      const eintraege = db.prepare('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)').all(fach.id)
-      const zeugnisnoten = db.prepare('SELECT * FROM zeugnisnoten WHERE fach_id = ?').all(fach.id)
+      const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge', [fach.id])
+      const eintraege = await db.select('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)', [fach.id])
+      const zeugnisnoten = await db.select('SELECT * FROM zeugnisnoten WHERE fach_id = ?', [fach.id])
       const entryMap = {}
       eintraege.forEach(e => { entryMap[`${e.spalte_id}_${e.schueler_id}`] = e.wert })
       const istDiff = fach.benotungssystem === 'differenziert'
       const niveauMap = {}
       if (istDiff) {
-        db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fach.id)
+        (await db.select('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?', [fach.id]))
           .forEach(r => { niveauMap[r.schueler_id] = r.niveau })
       }
       const znMap = {}
@@ -706,7 +708,7 @@ async function archivOds(db, deps, schuljahrId) {
 
       const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum : ''}`), 'SN 1', 'SN 2', 'ZN']
       const rows = [header]
-      for (const s of deps.rosterFuerFach(fach.id)) {
+      for (const s of await deps.rosterFuerFach(fach.id)) {
         const row = [`${s.nachname} ${s.vorname}`]
         for (const sp of spalten) row.push(entryMap[`${sp.id}_${s.id}`] ?? '')
         row.push(znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '', znMap[`${s.id}_3`] ?? '')
