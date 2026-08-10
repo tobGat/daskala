@@ -674,16 +674,16 @@ function registerIPC() {
   ipcMain.handle('stundenzeiten:saveAll', (_, rows) => stundenzeitenDomain.saveAll(db, kernDeps, rows))
 
   // Stundenplan
-  ipcMain.handle('stundenplan:getAll', () => stundenplanDomain.getAll(db))
-  ipcMain.handle('stundenplan:create', (_, data) => stundenplanDomain.create(db, data))
-  ipcMain.handle('stundenplan:delete', (_, id) => stundenplanDomain.remove(db, id))
-  ipcMain.handle('stundenplan:update', (_, id, data) => stundenplanDomain.update(db, id, data))
-  ipcMain.handle('stundenplan:verschieben', (_, id, wochentag, stundeId) => stundenplanDomain.verschieben(db, id, wochentag, stundeId))
-  ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => stundenplanDomain.getByKlasse(db, klasseId))
-  ipcMain.handle('stundenplan:getParallelFach', (_, aktuelleKlasseId, fachName) => stundenplanDomain.getParallelFach(db, aktuelleKlasseId, fachName))
+  ipcMain.handle('stundenplan:getAll', () => stundenplanDomain.getAll(dbPort))
+  ipcMain.handle('stundenplan:create', (_, data) => stundenplanDomain.create(dbPort, data))
+  ipcMain.handle('stundenplan:delete', (_, id) => stundenplanDomain.remove(dbPort, id))
+  ipcMain.handle('stundenplan:update', (_, id, data) => stundenplanDomain.update(dbPort, id, data))
+  ipcMain.handle('stundenplan:verschieben', (_, id, wochentag, stundeId) => stundenplanDomain.verschieben(dbPort, id, wochentag, stundeId))
+  ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => stundenplanDomain.getByKlasse(dbPort, klasseId))
+  ipcMain.handle('stundenplan:getParallelFach', (_, aktuelleKlasseId, fachName) => stundenplanDomain.getParallelFach(dbPort, aktuelleKlasseId, fachName))
 
   // Stunden-Planung
-  ipcMain.handle('stundenPlanung:get', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.get(db, stundenplanId, wocheDatum))
+  ipcMain.handle('stundenPlanung:get', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.get(dbPort, stundenplanId, wocheDatum))
 
   // ─── Supplierstunden ─────────────────────────────────────────────────────────
   ipcMain.handle('supplierstunden:getWoche', (_, wocheDatum) => supplierstundenDomain.getWoche(dbPort, wocheDatum))
@@ -699,14 +699,14 @@ function registerIPC() {
     try { clipboard.writeText(String(text ?? '')); return true } catch (e) { logError('app:clipboard', e); return false }
   })
 
-  ipcMain.handle('stundenPlanung:getWoche', (_, wocheDatum) => stundenPlanungDomain.getWoche(db, wocheDatum))
-  ipcMain.handle('stundenPlanung:save', (_, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link) => stundenPlanungDomain.save(db, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link))
-  ipcMain.handle('stundenPlanung:getHueWoche', (_, wocheDatum) => stundenPlanungDomain.getHueWoche(db, wocheDatum))
-  ipcMain.handle('stundenPlanung:checkMusizieren', (_, wocheDatum, klasseId, excludeStundenplanId) => stundenPlanungDomain.checkMusizieren(db, wocheDatum, klasseId, excludeStundenplanId))
+  ipcMain.handle('stundenPlanung:getWoche', (_, wocheDatum) => stundenPlanungDomain.getWoche(dbPort, wocheDatum))
+  ipcMain.handle('stundenPlanung:save', (_, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link) => stundenPlanungDomain.save(dbPort, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link))
+  ipcMain.handle('stundenPlanung:getHueWoche', (_, wocheDatum) => stundenPlanungDomain.getHueWoche(dbPort, wocheDatum))
+  ipcMain.handle('stundenPlanung:checkMusizieren', (_, wocheDatum, klasseId, excludeStundenplanId) => stundenPlanungDomain.checkMusizieren(dbPort, wocheDatum, klasseId, excludeStundenplanId))
 
-  ipcMain.handle('stundenPlanung:setEntfall', (_, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume) => stundenPlanungDomain.setEntfall(db, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume))
-  ipcMain.handle('stundenPlanung:removeEntfall', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.removeEntfall(db, stundenplanId, wocheDatum))
-  ipcMain.handle('stundenPlanung:delete', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.remove(db, stundenplanId, wocheDatum))
+  ipcMain.handle('stundenPlanung:setEntfall', (_, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume) => stundenPlanungDomain.setEntfall(dbPort, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume))
+  ipcMain.handle('stundenPlanung:removeEntfall', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.removeEntfall(dbPort, stundenplanId, wocheDatum))
+  ipcMain.handle('stundenPlanung:delete', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.remove(dbPort, stundenplanId, wocheDatum))
 
   // Todos
   ipcMain.handle('todos:getAll', (_, schuljahrId) => todosDomain.getAll(dbPort, schuljahrId))
@@ -936,7 +936,7 @@ function registerIPC() {
   ipcMain.handle('jahresabschluss:neuesSchuljahr', (_, payload) => jahresabschlussDomain.neuesSchuljahr(db, payload))
 
   // ─── Planung: verfügbare Wochen ────────────────────────────────────────────
-  ipcMain.handle('planung:getVorhandeneWochen', () => stundenPlanungDomain.getVorhandeneWochen(db))
+  ipcMain.handle('planung:getVorhandeneWochen', () => stundenPlanungDomain.getVorhandeneWochen(dbPort))
 
   // ─── Export: Planungs-PDF ──────────────────────────────────────────────────
   ipcMain.handle('export:planungPdf', (_, wochen, einzeln) => exportService.planungPdf(db, exDeps, wochen, einzeln))
@@ -953,13 +953,13 @@ function registerIPC() {
   ipcMain.handle('export:archivOds', (_, schuljahrId) => exportService.archivOds(db, exDeps, schuljahrId))
 
   // ─── Sitzplan ───────────────────────────────────────────────────────────────
-  ipcMain.handle('sitzplan:getTische', (_, fachId) => sitzplanDomain.getTische(db, fachId))
-  ipcMain.handle('sitzplan:createTisch', (_, fachId, typ, x, y) => sitzplanDomain.createTisch(db, fachId, typ, x, y))
-  ipcMain.handle('sitzplan:deleteTisch', (_, tischId) => sitzplanDomain.deleteTisch(db, tischId))
-  ipcMain.handle('sitzplan:moveTisch', (_, tischId, x, y) => sitzplanDomain.moveTisch(db, tischId, x, y))
-  ipcMain.handle('sitzplan:setRotation', (_, tischId, rotation) => sitzplanDomain.setRotation(db, tischId, rotation))
-  ipcMain.handle('sitzplan:assignSchueler', (_, sitzplatzId, schuelerId) => sitzplanDomain.assignSchueler(db, sitzplatzId, schuelerId))
-  ipcMain.handle('sitzplan:duplicateTisch', (_, fachId, sourceTischId, x, y) => sitzplanDomain.duplicateTisch(db, fachId, sourceTischId, x, y))
+  ipcMain.handle('sitzplan:getTische', (_, fachId) => sitzplanDomain.getTische(dbPort, fachId))
+  ipcMain.handle('sitzplan:createTisch', (_, fachId, typ, x, y) => sitzplanDomain.createTisch(dbPort, fachId, typ, x, y))
+  ipcMain.handle('sitzplan:deleteTisch', (_, tischId) => sitzplanDomain.deleteTisch(dbPort, tischId))
+  ipcMain.handle('sitzplan:moveTisch', (_, tischId, x, y) => sitzplanDomain.moveTisch(dbPort, tischId, x, y))
+  ipcMain.handle('sitzplan:setRotation', (_, tischId, rotation) => sitzplanDomain.setRotation(dbPort, tischId, rotation))
+  ipcMain.handle('sitzplan:assignSchueler', (_, sitzplatzId, schuelerId) => sitzplanDomain.assignSchueler(dbPort, sitzplatzId, schuelerId))
+  ipcMain.handle('sitzplan:duplicateTisch', (_, fachId, sourceTischId, x, y) => sitzplanDomain.duplicateTisch(dbPort, fachId, sourceTischId, x, y))
 
   // ─── Custom Ferien ───────────────────────────────────────────────────────────
   ipcMain.handle('customFerien:getAll', (_, schuljahrId) => customFerienDomain.getAll(dbPort, schuljahrId))
