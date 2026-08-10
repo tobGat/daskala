@@ -71,6 +71,8 @@
       "dist/**/*",
       "main.js",
       "preload.js",
+      "core/**/*",
+      "platform/**/*",
       "daskalalogo.png",
       "node_modules/**/*"
     ],

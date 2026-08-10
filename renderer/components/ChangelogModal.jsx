@@ -8,6 +8,13 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.2.1',
+    datum: 'August 2026',
+    punkte: [
+      'Behoben: Die App ließ sich nach dem Update auf 1.2.0 nicht mehr öffnen (ein Paketierungsfehler ließ interne Programmteile im Installationspaket fehlen). 1.2.1 startet wieder normal – alle Daten bleiben unverändert erhalten.',
+    ],
+  },
+  {
     version: '1.2.0',
     datum: 'August 2026',
     punkte: [
