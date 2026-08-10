@@ -50,6 +50,7 @@ const { createPdfPort } = require('./platform/electron/ports/pdf')
 const { createHttpPort } = require('./platform/electron/ports/http')
 const { createDialogPort } = require('./platform/electron/ports/dialog')
 const { createShellPort } = require('./platform/electron/ports/shell')
+const { createDbAdapter } = require('./platform/electron/db-better-sqlite3')
 const fsPort = createFsPort()
 const pdfPort = createPdfPort()
 const httpPort = createHttpPort()
@@ -237,6 +238,9 @@ try {
 }
 
 let db
+// Async DbPort (Phase 2). Getter statt fester Referenz → übersteht DB-Neuöffnen.
+// Kern-Domänen werden schrittweise hierauf umgestellt (Pilot: einstellungen).
+const dbPort = createDbAdapter(() => db)
 
 // ─── Undo/Redo ────────────────────────────────────────────────────────────────
 // Undo/Redo als Kern-Service; Renderer-Notify (BrowserWindow) als Callback injiziert.
@@ -549,9 +553,9 @@ function registerIPC() {
 
   // Einstellungen
   // Handler delegieren an die Kern-Domäne (siehe core/domain/einstellungen.js).
-  ipcMain.handle('einstellungen:get', (_, schluessel) => einstellungenDomain.get(db, schluessel))
-  ipcMain.handle('einstellungen:set', (_, schluessel, wert) => einstellungenDomain.set(db, schluessel, wert))
-  ipcMain.handle('einstellungen:getAll', () => einstellungenDomain.getAll(db))
+  ipcMain.handle('einstellungen:get', (_, schluessel) => einstellungenDomain.get(dbPort, schluessel))
+  ipcMain.handle('einstellungen:set', (_, schluessel, wert) => einstellungenDomain.set(dbPort, schluessel, wert))
+  ipcMain.handle('einstellungen:getAll', () => einstellungenDomain.getAll(dbPort))
 
   // Schuljahre
   ipcMain.handle('schuljahre:getAll', () => schuljahreDomain.getAll(db))

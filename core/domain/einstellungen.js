@@ -3,23 +3,24 @@
 //
 // Kern-Domäne: Einstellungen (Schlüssel/Wert-Speicher).
 //
-// Phase-1-Pilot der Kern-Extraktion: plattformunabhängig, KEIN require('electron').
-// Die Datenbank wird als Parameter übergeben (better-sqlite3-kompatible Schnittstelle
-// mit prepare().get/all/run). Verhalten identisch zu den bisherigen IPC-Handlern.
+// Phase-2-Pilot: spricht ausschließlich den asynchronen DbPort an
+// (core/db/connection.js) – select/selectOne/execute statt prepare().get/all/run.
+// Verhalten identisch; alle Funktionen sind async.
 
-function getAll(db) {
-  const rows = db.prepare('SELECT * FROM einstellungen').all()
+async function getAll(db) {
+  const rows = await db.select('SELECT * FROM einstellungen')
   const result = {}
   rows.forEach((r) => { result[r.schluessel] = r.wert })
   return result
 }
 
-function get(db, schluessel) {
-  return db.prepare('SELECT wert FROM einstellungen WHERE schluessel = ?').get(schluessel)?.wert ?? null
+async function get(db, schluessel) {
+  const row = await db.selectOne('SELECT wert FROM einstellungen WHERE schluessel = ?', [schluessel])
+  return row?.wert ?? null
 }
 
-function set(db, schluessel, wert) {
-  db.prepare('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)').run(schluessel, wert)
+async function set(db, schluessel, wert) {
+  await db.execute('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)', [schluessel, wert])
   return true
 }
 
