@@ -558,8 +558,8 @@ function registerIPC() {
   ipcMain.handle('einstellungen:getAll', () => einstellungenDomain.getAll(dbPort))
 
   // Schuljahre
-  ipcMain.handle('schuljahre:getAll', () => schuljahreDomain.getAll(db))
-  ipcMain.handle('schuljahre:create', (_, bezeichnung) => schuljahreDomain.create(db, bezeichnung))
+  ipcMain.handle('schuljahre:getAll', () => schuljahreDomain.getAll(dbPort))
+  ipcMain.handle('schuljahre:create', (_, bezeichnung) => schuljahreDomain.create(dbPort, bezeichnung))
 
   // Klassen
   ipcMain.handle('klassen:getAll', (_, schuljahrId) => klassenDomain.getAll(db, schuljahrId))
@@ -686,10 +686,10 @@ function registerIPC() {
   ipcMain.handle('stundenPlanung:get', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.get(db, stundenplanId, wocheDatum))
 
   // ─── Supplierstunden ─────────────────────────────────────────────────────────
-  ipcMain.handle('supplierstunden:getWoche', (_, wocheDatum) => supplierstundenDomain.getWoche(db, wocheDatum))
-  ipcMain.handle('supplierstunden:create', (_, data) => supplierstundenDomain.create(db, data))
-  ipcMain.handle('supplierstunden:delete', (_, id) => supplierstundenDomain.remove(db, id))
-  ipcMain.handle('supplierstunden:update', (_, id, data) => supplierstundenDomain.update(db, id, data))
+  ipcMain.handle('supplierstunden:getWoche', (_, wocheDatum) => supplierstundenDomain.getWoche(dbPort, wocheDatum))
+  ipcMain.handle('supplierstunden:create', (_, data) => supplierstundenDomain.create(dbPort, data))
+  ipcMain.handle('supplierstunden:delete', (_, id) => supplierstundenDomain.remove(dbPort, id))
+  ipcMain.handle('supplierstunden:update', (_, id, data) => supplierstundenDomain.update(dbPort, id, data))
 
   ipcMain.handle('shell:open', (_, url) => {
     return oeffneExternSicher(url)
@@ -709,11 +709,11 @@ function registerIPC() {
   ipcMain.handle('stundenPlanung:delete', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.remove(db, stundenplanId, wocheDatum))
 
   // Todos
-  ipcMain.handle('todos:getAll', (_, schuljahrId) => todosDomain.getAll(db, schuljahrId))
-  ipcMain.handle('todos:create', (_, data) => todosDomain.create(db, data))
-  ipcMain.handle('todos:update', (_, id, data) => todosDomain.update(db, id, data))
-  ipcMain.handle('todos:delete', (_, id) => todosDomain.remove(db, id))
-  ipcMain.handle('todos:toggleErledigt', (_, id) => todosDomain.toggleErledigt(db, id))
+  ipcMain.handle('todos:getAll', (_, schuljahrId) => todosDomain.getAll(dbPort, schuljahrId))
+  ipcMain.handle('todos:create', (_, data) => todosDomain.create(dbPort, data))
+  ipcMain.handle('todos:update', (_, id, data) => todosDomain.update(dbPort, id, data))
+  ipcMain.handle('todos:delete', (_, id) => todosDomain.remove(dbPort, id))
+  ipcMain.handle('todos:toggleErledigt', (_, id) => todosDomain.toggleErledigt(dbPort, id))
 
   // Backup
   ipcMain.handle('backup:create', () => doBackupCreate())
@@ -962,14 +962,14 @@ function registerIPC() {
   ipcMain.handle('sitzplan:duplicateTisch', (_, fachId, sourceTischId, x, y) => sitzplanDomain.duplicateTisch(db, fachId, sourceTischId, x, y))
 
   // ─── Custom Ferien ───────────────────────────────────────────────────────────
-  ipcMain.handle('customFerien:getAll', (_, schuljahrId) => customFerienDomain.getAll(db, schuljahrId))
-  ipcMain.handle('customFerien:save', (_, schuljahrId, ferien) => customFerienDomain.save(db, schuljahrId, ferien))
+  ipcMain.handle('customFerien:getAll', (_, schuljahrId) => customFerienDomain.getAll(dbPort, schuljahrId))
+  ipcMain.handle('customFerien:save', (_, schuljahrId, ferien) => customFerienDomain.save(dbPort, schuljahrId, ferien))
 
   // ─── Termine ─────────────────────────────────────────────────────────────────
-  ipcMain.handle('termine:getAll', (_, schuljahrId) => termineDomain.getAll(db, schuljahrId))
-  ipcMain.handle('termine:create', (_, data) => termineDomain.create(db, data))
-  ipcMain.handle('termine:update', (_, id, data) => termineDomain.update(db, id, data))
-  ipcMain.handle('termine:delete', (_, id) => termineDomain.remove(db, id))
+  ipcMain.handle('termine:getAll', (_, schuljahrId) => termineDomain.getAll(dbPort, schuljahrId))
+  ipcMain.handle('termine:create', (_, data) => termineDomain.create(dbPort, data))
+  ipcMain.handle('termine:update', (_, id, data) => termineDomain.update(dbPort, id, data))
+  ipcMain.handle('termine:delete', (_, id) => termineDomain.remove(dbPort, id))
 
   // ─── Jahresplanung ────────────────────────────────────────────────────────────
   ipcMain.handle('jahresplanung:getAll', (_, fachId) => jahresplanungDomain.getAll(db, fachId))

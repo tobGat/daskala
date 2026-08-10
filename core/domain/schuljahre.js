@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 //
-// Kern-Domäne: Schuljahre. Plattformunabhängig, ohne electron; db wird injiziert.
+// Kern-Domäne: Schuljahre. Plattformunabhängig; spricht den async DbPort an.
 
-function getAll(db) {
-  return db.prepare('SELECT * FROM schuljahre ORDER BY id DESC').all()
+async function getAll(db) {
+  return db.select('SELECT * FROM schuljahre ORDER BY id DESC')
 }
 
-function create(db, bezeichnung) {
-  const info = db.prepare('INSERT INTO schuljahre (bezeichnung) VALUES (?)').run(bezeichnung)
+async function create(db, bezeichnung) {
+  const info = await db.execute('INSERT INTO schuljahre (bezeichnung) VALUES (?)', [bezeichnung])
   return info.lastInsertRowid
 }
 
