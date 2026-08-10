@@ -1,0 +1,10 @@
+{
+  "appId": "at.daskala.app",
+  "appName": "Daskala",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorSQLite": {
+      "androidIsEncryption": false
+    }
+  }
+}

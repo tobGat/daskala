@@ -8,9 +8,21 @@ import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import Toaster from './components/Toaster'
 
-createRoot(document.getElementById('root')).render(
-  <ErrorBoundary>
-    <App />
-    <Toaster />
-  </ErrorBoundary>
-)
+// Desktop (Electron): window.api wird von preload.js gesetzt, bevor dieser Code läuft.
+// Mobil (Capacitor-Spike): kein preload/IPC → wir bauen window.api im WebView auf
+// (SQLite via @capacitor-community/sqlite + Kern-Domänen). Der dynamische Import
+// hält den Capacitor-Code aus dem Desktop-Ladepfad heraus.
+async function boot() {
+  if (!window.api) {
+    const { bootstrapMobile } = await import('../platform/capacitor/bootstrap')
+    await bootstrapMobile()
+  }
+  createRoot(document.getElementById('root')).render(
+    <ErrorBoundary>
+      <App />
+      <Toaster />
+    </ErrorBoundary>
+  )
+}
+
+boot()
