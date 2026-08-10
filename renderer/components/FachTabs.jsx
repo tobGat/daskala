@@ -23,7 +23,7 @@ const FARB_PALETTE = [
 export default function FachTabs() {
   const {
     faecher, aktivesFach, setAktivesFach,
-    aktiveKlasse, openModal, ladeAktiveKlassenliste, pushToast,
+    aktiveKlasse, openModal, ladeAktiveKlassenliste, ladeFaecher, pushToast,
     vorlagenModus,
   } = useStore()
 
@@ -219,7 +219,7 @@ export default function FachTabs() {
                 }`}
                 onClick={async () => {
                   await window.api.faecher.setBenotungssystem(benotungMenuFach.id, 'standard')
-                  await ladeAktiveKlassenliste()
+                  await ladeFaecher()
                   setBenotungMenuFach(null)
                 }}
               >
@@ -234,7 +234,7 @@ export default function FachTabs() {
                 }`}
                 onClick={async () => {
                   await window.api.faecher.setBenotungssystem(benotungMenuFach.id, 'differenziert')
-                  await ladeAktiveKlassenliste()
+                  await ladeFaecher()
                   setBenotungMenuFach(null)
                 }}
               >

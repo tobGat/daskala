@@ -251,6 +251,18 @@ const useStore = create((set, get) => ({
     await get().ladeFachDaten(fach.id)
   },
 
+  // Fächer der aktiven Klasse neu laden, aber die aktuelle Fach-Auswahl behalten
+  // (z. B. nach Umschalten des Benotungssystems – kein Sprung auf den ersten Tab).
+  ladeFaecher: async () => {
+    const { aktiveKlasse, aktivesFach } = get()
+    if (!aktiveKlasse) return
+    const faecher = await window.api.faecher.getAll(aktiveKlasse.id)
+    set({ faecher })
+    const ziel = (aktivesFach && faecher.find(f => f.id === aktivesFach.id)) || faecher[0] || null
+    if (ziel) await get().setAktivesFach(ziel)
+    else set({ aktivesFach: null, spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchuelerIds: new Set() })
+  },
+
   ladeFachDaten: async (fachId) => {
     const { aktivesFach } = get()
     const [spalten, eintraegeArr, zeugnisnotenArr, schuelerIdArr] = await Promise.all([

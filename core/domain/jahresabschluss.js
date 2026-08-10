@@ -39,7 +39,7 @@ async function neuesSchuljahr(db, { altesSchuljahreId, neueBezeichnung, klassen 
       const alteFaecher = await tx.select('SELECT * FROM faecher WHERE klasse_id = ?', [alteKlasse.id])
       for (const altesFach of alteFaecher) {
         if (fachFilter && !fachFilter.has(altesFach.id)) continue   // nicht angehakt → nicht vorrücken
-        const nf = await tx.execute('INSERT INTO faecher (klasse_id, name, reihenfolge, alle_schueler) VALUES (?, ?, ?, ?)', [neueKlasse.lastInsertRowid, altesFach.name, altesFach.reihenfolge, altesFach.alle_schueler ?? 1])
+        const nf = await tx.execute('INSERT INTO faecher (klasse_id, name, reihenfolge, alle_schueler, benotungssystem) VALUES (?, ?, ?, ?, ?)', [neueKlasse.lastInsertRowid, altesFach.name, altesFach.reihenfolge, altesFach.alle_schueler ?? 1, altesFach.benotungssystem ?? 'standard'])
         fachIdMapping[altesFach.id] = nf.lastInsertRowid
       }
     }
