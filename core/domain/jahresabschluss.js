@@ -16,6 +16,8 @@ async function neuesSchuljahr(db, { altesSchuljahreId, neueBezeichnung, klassen 
 
     // Aktuelles Schuljahr persistieren, damit Kalender/Stundenplan/Ferien auch nach Neustart folgen
     await tx.execute('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)', ['schuljahr_aktuell', neueBezeichnung])
+    // Neues Jahr beginnt immer im 1. Semester
+    await tx.execute('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)', ['semester_aktuell', '1'])
 
     const klasseIdMapping = {}
     const fachIdMapping = {}
