@@ -202,23 +202,25 @@ async function berechneAlleFuerSchuljahr(db, schuljahrId) {
   for (const f of faecher) await berechneAlleFuerFach(db, f.id)
 }
 
-// Roster eines Fachs: alle_schueler=1 → alle aktiven Klassen-Schüler:innen; sonst die
-// in fach_schueler eingetragene Teilmenge.
-async function rosterFuerFach(db, fachId) {
+// Roster eines Fachs: alle_schueler=1 → alle Klassen-Schüler:innen; sonst die
+// in fach_schueler eingetragene Teilmenge. Standardmäßig nur aktive; opts.inklInaktiv
+// nimmt auch inaktive mit (nötig für Archiv-Exporte, wo alle Schüler:innen inaktiv sind).
+async function rosterFuerFach(db, fachId, opts = {}) {
   const fach = await db.selectOne('SELECT klasse_id, alle_schueler FROM faecher WHERE id = ?', [fachId])
   if (!fach) return []
+  const inkl = opts.inklInaktiv === true
   if (fach.alle_schueler) {
-    return db.select('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY reihenfolge, nachname, vorname', [fach.klasse_id])
+    return db.select(`SELECT * FROM schueler WHERE klasse_id = ?${inkl ? '' : ' AND aktiv = 1'} ORDER BY reihenfolge, nachname, vorname`, [fach.klasse_id])
   }
   return db.select(`
     SELECT s.* FROM schueler s
     JOIN fach_schueler fs ON fs.schueler_id = s.id
-    WHERE fs.fach_id = ? AND s.aktiv = 1
+    WHERE fs.fach_id = ?${inkl ? '' : ' AND s.aktiv = 1'}
     ORDER BY s.reihenfolge, s.nachname, s.vorname
   `, [fachId])
 }
-async function rosterIdsFuerFach(db, fachId) {
-  return (await rosterFuerFach(db, fachId)).map((s) => s.id)
+async function rosterIdsFuerFach(db, fachId, opts = {}) {
+  return (await rosterFuerFach(db, fachId, opts)).map((s) => s.id)
 }
 
 const ZN_UPSERT = `

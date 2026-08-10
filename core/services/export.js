@@ -580,7 +580,7 @@ async function allSchuelerOds(db, deps) {
 }
 
 // Vollständige Notenübersicht (alle Klassen/Fächer eines Schuljahres) als HTML für den PDF-Export.
-async function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '') {
+async function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '', inklInaktiv = false) {
   const klassen = await db.select('SELECT * FROM klassen WHERE schuljahr_id = ? AND ist_vorlage = 0 ORDER BY name', [schuljahr.id])
   const css = `
       *{box-sizing:border-box;margin:0;padding:0}
@@ -606,7 +606,7 @@ async function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '') {
 
   for (const klasse of klassen) {
     const faecher = await db.select('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name', [klasse.id])
-    const schueler = await db.select('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY reihenfolge, nachname, vorname', [klasse.id])
+    const schueler = await db.select(`SELECT * FROM schueler WHERE klasse_id = ?${inklInaktiv ? '' : ' AND aktiv = 1'} ORDER BY reihenfolge, nachname, vorname`, [klasse.id])
     if (!schueler.length) continue
 
     for (const fach of faecher) {
@@ -632,7 +632,7 @@ async function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '') {
       ).join('')}<th>SN 1</th><th>SN 2</th><th>ZN</th></tr>`
 
       let tbody = ''
-      for (const s of await deps.rosterFuerFach(fach.id)) {
+      for (const s of await deps.rosterFuerFach(fach.id, { inklInaktiv })) {
         const lsBadge = s.lernschwaeche ? '<span class="badge">LS</span>' : ''
         const legBadge = s.legasthenie ? '<span class="badge leg">LEG</span>' : ''
         const cells = spalten.map(sp => `<td>${escHtml(entryMap[`${sp.id}_${s.id}`] ?? '')}</td>`).join('')
@@ -667,7 +667,7 @@ async function archivPdf(db, deps, schuljahrId) {
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
   })
   if (!filePath) return false
-  const buf = await deps.pdf.fromHtml(await baueNotenUebersichtHtml(db, deps, schuljahr, 'Archiv · '))
+  const buf = await deps.pdf.fromHtml(await baueNotenUebersichtHtml(db, deps, schuljahr, 'Archiv · ', true))
   deps.fs.write(filePath, buf)
   return true
 }
@@ -708,7 +708,7 @@ async function archivOds(db, deps, schuljahrId) {
 
       const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum : ''}`), 'SN 1', 'SN 2', 'ZN']
       const rows = [header]
-      for (const s of await deps.rosterFuerFach(fach.id)) {
+      for (const s of await deps.rosterFuerFach(fach.id, { inklInaktiv: true })) {
         const row = [`${s.nachname} ${s.vorname}`]
         for (const sp of spalten) row.push(entryMap[`${sp.id}_${s.id}`] ?? '')
         row.push(znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '', znMap[`${s.id}_3`] ?? '')

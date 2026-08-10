@@ -476,7 +476,7 @@ function znInternZuAnzeige(intern, niveau, istDifferenziert) { return noten.znIn
 function berechneZeugnisnote(fachId, schuelerId, semester) { return noten.berechneZeugnisnote(dbPort, fachId, schuelerId, semester) }
 function berechneEndnote(fachId, schuelerId) { return noten.berechneEndnote(dbPort, fachId, schuelerId) }
 function berechneAlleFuerSchuljahr(schuljahrId) { return noten.berechneAlleFuerSchuljahr(dbPort, schuljahrId) }
-function rosterFuerFach(fachId) { return noten.rosterFuerFach(dbPort, fachId) }
+function rosterFuerFach(fachId, opts) { return noten.rosterFuerFach(dbPort, fachId, opts) }
 function rosterIdsFuerFach(fachId) { return noten.rosterIdsFuerFach(dbPort, fachId) }
 function berechneAlleFuerFach(fachId) { return noten.berechneAlleFuerFach(dbPort, fachId) }
 function erzeugeTrigger(klasseId, schuelerId, typ, schweregrad, ausloeser, beschreibung) { return noten.erzeugeTrigger(dbPort, klasseId, schuelerId, typ, schweregrad, ausloeser, beschreibung) }
