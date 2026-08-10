@@ -39,7 +39,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 1,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -50,7 +51,8 @@
           "teams_link": null,
           "sortierung": "vorname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 3,
@@ -61,7 +63,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -72,7 +75,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 1
+          "ist_vorlage": 1,
+          "uuid": null
         },
         {
           "id": 5,
@@ -83,7 +87,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": "<UUID>"
         }
       ]
     }
@@ -101,7 +106,8 @@
           "teams_link": null,
           "sortierung": "vorname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 3,
@@ -112,7 +118,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -123,7 +130,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 1
+          "ist_vorlage": 1,
+          "uuid": null
         }
       ],
       "faecher": [
@@ -142,7 +150,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         }
       ],
       "schueler": [],
@@ -170,7 +179,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 2,
@@ -187,7 +197,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 3,
@@ -204,7 +215,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 4,
@@ -221,7 +233,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": "<UUID>"
         }
       ]
     }
@@ -240,7 +253,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 2,
@@ -252,7 +266,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 3,
@@ -264,7 +279,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 4,
@@ -276,7 +292,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 5,
@@ -288,7 +305,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 6,
@@ -300,7 +318,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 7,
@@ -312,7 +331,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": "<UUID>"
         }
       ],
       "fach_schueler": []
@@ -333,7 +353,8 @@
           "eingeklappt": 0,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         },
         {
           "id": 2,
@@ -346,7 +367,8 @@
           "eingeklappt": 0,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         },
         {
           "id": 3,
@@ -359,7 +381,8 @@
           "eingeklappt": 0,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": "<UUID>"
         }
       ]
     }
@@ -373,28 +396,32 @@
           "spalte_id": 1,
           "schueler_id": 1,
           "wert": "2",
-          "kommentar": null
+          "kommentar": null,
+          "uuid": null
         },
         {
           "id": 2,
           "spalte_id": 1,
           "schueler_id": 2,
           "wert": "3",
-          "kommentar": null
+          "kommentar": null,
+          "uuid": null
         },
         {
           "id": 3,
           "spalte_id": 2,
           "schueler_id": 1,
           "wert": "1",
-          "kommentar": null
+          "kommentar": null,
+          "uuid": null
         },
         {
           "id": 4,
           "spalte_id": 1,
           "schueler_id": 3,
           "wert": "4",
-          "kommentar": null
+          "kommentar": null,
+          "uuid": "<UUID>"
         }
       ],
       "eintraege_verlauf": [
@@ -422,21 +449,24 @@
           "spalte_id": 1,
           "schueler_id": 1,
           "wert": "1",
-          "kommentar": null
+          "kommentar": null,
+          "uuid": null
         },
         {
           "id": 2,
           "spalte_id": 1,
           "schueler_id": 2,
           "wert": "3",
-          "kommentar": null
+          "kommentar": null,
+          "uuid": null
         },
         {
           "id": 3,
           "spalte_id": 2,
           "schueler_id": 1,
           "wert": "1",
-          "kommentar": null
+          "kommentar": null,
+          "uuid": null
         }
       ],
       "eintraege_verlauf": [
@@ -463,19 +493,22 @@
           "id": 1,
           "schueler_id": 1,
           "fach_id": 1,
-          "text": "Sehr engagiert, liest gern vor."
+          "text": "Sehr engagiert, liest gern vor.",
+          "uuid": null
         },
         {
           "id": 2,
           "schueler_id": 2,
           "fach_id": 1,
-          "text": "Braucht Unterstützung bei Rechtschreibung."
+          "text": "Braucht Unterstützung bei Rechtschreibung.",
+          "uuid": null
         },
         {
           "id": 3,
           "schueler_id": 3,
           "fach_id": 1,
-          "text": "Fleißig im Unterricht."
+          "text": "Fleißig im Unterricht.",
+          "uuid": "<UUID>"
         }
       ]
     }
@@ -760,21 +793,149 @@
           "bezeichnung": "2025/26",
           "archiviert": 0,
           "start_datum": "2025-09-08",
-          "end_datum": "2026-07-03"
+          "end_datum": "2026-07-03",
+          "uuid": null
         },
         {
           "id": 2,
           "bezeichnung": "2024/25",
           "archiviert": 1,
           "start_datum": "2024-09-09",
-          "end_datum": "2025-07-04"
+          "end_datum": "2025-07-04",
+          "uuid": null
         },
         {
           "id": 3,
           "bezeichnung": "2026/27",
           "archiviert": 0,
           "start_datum": null,
-          "end_datum": null
+          "end_datum": null,
+          "uuid": "<UUID>"
+        }
+      ]
+    }
+  },
+  "schuljahre:letztesArchivWiederherstellen": {
+    "ret": {
+      "ok": true,
+      "schuljahrId": 2,
+      "bezeichnung": "2024/25",
+      "insArchivVerschoben": "2025/26"
+    },
+    "state": {
+      "schuljahre": [
+        {
+          "id": 1,
+          "bezeichnung": "2025/26",
+          "archiviert": 1,
+          "start_datum": "2025-09-08",
+          "end_datum": "2026-07-03",
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "bezeichnung": "2024/25",
+          "archiviert": 0,
+          "start_datum": "2024-09-09",
+          "end_datum": "2025-07-04",
+          "uuid": null
+        }
+      ],
+      "schueler": [
+        {
+          "id": 1,
+          "klasse_id": 1,
+          "vorname": "Anna",
+          "nachname": "Bauer",
+          "reihenfolge": 1,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "klasse_id": 1,
+          "vorname": "Ben",
+          "nachname": "Auer",
+          "reihenfolge": 2,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 3,
+          "klasse_id": 1,
+          "vorname": "Clara",
+          "nachname": "Zimmermann",
+          "reihenfolge": 3,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 1,
+          "vorname": "David",
+          "nachname": "Müller",
+          "reihenfolge": 4,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 5,
+          "klasse_id": 1,
+          "vorname": "Emma",
+          "nachname": "Auer",
+          "reihenfolge": 5,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 6,
+          "klasse_id": 1,
+          "vorname": "Felix",
+          "nachname": "Xaver",
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        }
+      ]
+    }
+  },
+  "schuljahre:loeschen": {
+    "ret": {
+      "ok": true
+    },
+    "state": {
+      "schuljahre": [
+        {
+          "id": 1,
+          "bezeichnung": "2025/26",
+          "archiviert": 0,
+          "start_datum": "2025-09-08",
+          "end_datum": "2026-07-03",
+          "uuid": null
         }
       ]
     }
@@ -795,7 +956,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 1,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -806,7 +968,8 @@
           "teams_link": null,
           "sortierung": "vorname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 3,
@@ -817,7 +980,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -828,7 +992,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 1
+          "ist_vorlage": 1,
+          "uuid": null
         }
       ]
     }
@@ -846,7 +1011,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 1,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -857,7 +1023,8 @@
           "teams_link": null,
           "sortierung": "vorname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 3,
@@ -868,7 +1035,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -879,7 +1047,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 1
+          "ist_vorlage": 1,
+          "uuid": null
         }
       ]
     }
@@ -897,7 +1066,8 @@
           "teams_link": "https://teams/1a",
           "sortierung": "nachname",
           "ist_kv": 1,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -908,7 +1078,8 @@
           "teams_link": null,
           "sortierung": "vorname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 3,
@@ -919,7 +1090,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -930,7 +1102,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 1
+          "ist_vorlage": 1,
+          "uuid": null
         }
       ]
     }
@@ -948,7 +1121,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 1,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -959,7 +1133,8 @@
           "teams_link": null,
           "sortierung": "vorname",
           "ist_kv": 1,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 3,
@@ -970,7 +1145,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -981,7 +1157,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 1
+          "ist_vorlage": 1,
+          "uuid": null
         }
       ]
     }
@@ -999,7 +1176,8 @@
           "teams_link": null,
           "sortierung": "vorname",
           "ist_kv": 1,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1010,7 +1188,8 @@
           "teams_link": null,
           "sortierung": "vorname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1021,7 +1200,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -1032,7 +1212,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 1
+          "ist_vorlage": 1,
+          "uuid": null
         }
       ]
     }
@@ -1050,7 +1231,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 1,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1061,7 +1243,8 @@
           "teams_link": null,
           "sortierung": "vorname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1072,7 +1255,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -1083,7 +1267,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 1
+          "ist_vorlage": 1,
+          "uuid": null
         }
       ]
     }
@@ -1110,7 +1295,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1127,7 +1313,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1144,7 +1331,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         }
       ]
     }
@@ -1168,7 +1356,8 @@
           "farbe": "#abcdef",
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1185,7 +1374,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1202,7 +1392,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         }
       ]
     }
@@ -1226,7 +1417,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "punkte",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1243,7 +1435,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1260,7 +1453,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         }
       ]
     }
@@ -1284,7 +1478,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1301,7 +1496,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1318,7 +1514,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         }
       ]
     }
@@ -1342,7 +1539,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1359,7 +1557,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1376,7 +1575,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         }
       ]
     }
@@ -1400,7 +1600,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 0
+          "alle_schueler": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1417,7 +1618,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1434,7 +1636,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         }
       ],
       "fach_schueler": [
@@ -1468,7 +1671,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1485,7 +1689,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         }
       ]
     }
@@ -1504,7 +1709,8 @@
           "lernschwaeche": 1,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1516,7 +1722,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1528,7 +1735,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 4,
@@ -1540,7 +1748,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 5,
@@ -1552,7 +1761,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 6,
@@ -1564,7 +1774,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         }
       ]
     }
@@ -1583,7 +1794,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": "DSK1|test"
+          "avatar": "DSK1|test",
+          "uuid": null
         },
         {
           "id": 2,
@@ -1595,7 +1807,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1607,7 +1820,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 4,
@@ -1619,7 +1833,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 5,
@@ -1631,7 +1846,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 6,
@@ -1643,7 +1859,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         }
       ]
     }
@@ -1662,7 +1879,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1674,7 +1892,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1686,7 +1905,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 4,
@@ -1698,7 +1918,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 5,
@@ -1710,7 +1931,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 6,
@@ -1722,7 +1944,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         }
       ]
     }
@@ -1741,7 +1964,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 2,
@@ -1753,7 +1977,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 3,
@@ -1765,7 +1990,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 4,
@@ -1777,7 +2003,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 5,
@@ -1789,7 +2016,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 6,
@@ -1801,7 +2029,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         }
       ]
     }
@@ -1821,7 +2050,8 @@
           "eingeklappt": 0,
           "notiz": "geändert",
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         },
         {
           "id": 2,
@@ -1834,7 +2064,8 @@
           "eingeklappt": 0,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         }
       ]
     }
@@ -1854,7 +2085,8 @@
           "eingeklappt": 0,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         }
       ],
       "eintraege": [
@@ -1863,14 +2095,16 @@
           "spalte_id": 1,
           "schueler_id": 1,
           "wert": "2",
-          "kommentar": null
+          "kommentar": null,
+          "uuid": null
         },
         {
           "id": 2,
           "spalte_id": 1,
           "schueler_id": 2,
           "wert": "3",
-          "kommentar": null
+          "kommentar": null,
+          "uuid": null
         }
       ]
     }
@@ -1890,7 +2124,8 @@
           "eingeklappt": 1,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         },
         {
           "id": 2,
@@ -1903,7 +2138,8 @@
           "eingeklappt": 0,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         }
       ]
     }
@@ -1923,7 +2159,8 @@
           "eingeklappt": 1,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         },
         {
           "id": 2,
@@ -1936,7 +2173,8 @@
           "eingeklappt": 1,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         }
       ]
     }
@@ -1956,7 +2194,8 @@
           "eingeklappt": 0,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         },
         {
           "id": 2,
@@ -1969,7 +2208,8 @@
           "eingeklappt": 0,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         }
       ]
     }
@@ -1989,7 +2229,8 @@
           "eingeklappt": 0,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         },
         {
           "id": 2,
@@ -2002,7 +2243,8 @@
           "eingeklappt": 0,
           "notiz": null,
           "ma_stufen": 2,
-          "ma_symbol": "pm"
+          "ma_symbol": "pm",
+          "uuid": null
         }
       ]
     }
@@ -2016,21 +2258,24 @@
           "spalte_id": 1,
           "schueler_id": 1,
           "wert": "2",
-          "kommentar": "gut gemacht"
+          "kommentar": "gut gemacht",
+          "uuid": null
         },
         {
           "id": 2,
           "spalte_id": 1,
           "schueler_id": 2,
           "wert": "3",
-          "kommentar": null
+          "kommentar": null,
+          "uuid": null
         },
         {
           "id": 3,
           "spalte_id": 2,
           "schueler_id": 1,
           "wert": "1",
-          "kommentar": null
+          "kommentar": null,
+          "uuid": null
         }
       ],
       "eintraege_verlauf": []
@@ -2047,7 +2292,8 @@
           "semester": 1,
           "note_berechnet": 2,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -2056,7 +2302,8 @@
           "semester": 2,
           "note_berechnet": 2.5,
           "note_manuell": null,
-          "s1_eingerechnet": 1
+          "s1_eingerechnet": 1,
+          "uuid": null
         },
         {
           "id": 3,
@@ -2065,7 +2312,8 @@
           "semester": 1,
           "note_berechnet": 3,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -2074,7 +2322,8 @@
           "semester": 2,
           "note_berechnet": null,
           "note_manuell": 3,
-          "s1_eingerechnet": 1
+          "s1_eingerechnet": 1,
+          "uuid": null
         },
         {
           "id": 5,
@@ -2083,7 +2332,8 @@
           "semester": 1,
           "note_berechnet": null,
           "note_manuell": 2,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": "<UUID>"
         }
       ]
     }
@@ -2099,7 +2349,8 @@
           "semester": 1,
           "note_berechnet": 2,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -2108,7 +2359,8 @@
           "semester": 2,
           "note_berechnet": 2.5,
           "note_manuell": null,
-          "s1_eingerechnet": 1
+          "s1_eingerechnet": 1,
+          "uuid": null
         },
         {
           "id": 3,
@@ -2117,7 +2369,8 @@
           "semester": 1,
           "note_berechnet": 3,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -2126,7 +2379,8 @@
           "semester": 2,
           "note_berechnet": null,
           "note_manuell": null,
-          "s1_eingerechnet": 1
+          "s1_eingerechnet": 1,
+          "uuid": null
         }
       ]
     }
@@ -2142,7 +2396,8 @@
           "semester": 1,
           "note_berechnet": 1.8,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -2151,7 +2406,8 @@
           "semester": 2,
           "note_berechnet": 2.5,
           "note_manuell": null,
-          "s1_eingerechnet": 1
+          "s1_eingerechnet": 1,
+          "uuid": null
         },
         {
           "id": 3,
@@ -2160,7 +2416,8 @@
           "semester": 1,
           "note_berechnet": 3,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -2169,7 +2426,8 @@
           "semester": 2,
           "note_berechnet": null,
           "note_manuell": 3,
-          "s1_eingerechnet": 1
+          "s1_eingerechnet": 1,
+          "uuid": null
         }
       ]
     }
@@ -2185,7 +2443,8 @@
           "semester": 1,
           "note_berechnet": 1.8,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -2194,7 +2453,8 @@
           "semester": 2,
           "note_berechnet": null,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 3,
@@ -2203,7 +2463,8 @@
           "semester": 1,
           "note_berechnet": 3,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -2212,7 +2473,8 @@
           "semester": 2,
           "note_berechnet": null,
           "note_manuell": 3,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 7,
@@ -2221,7 +2483,8 @@
           "semester": 3,
           "note_berechnet": 1.8,
           "note_manuell": null,
-          "s1_eingerechnet": 1
+          "s1_eingerechnet": 1,
+          "uuid": "<UUID>"
         },
         {
           "id": 8,
@@ -2230,7 +2493,8 @@
           "semester": 3,
           "note_berechnet": 3,
           "note_manuell": null,
-          "s1_eingerechnet": 1
+          "s1_eingerechnet": 1,
+          "uuid": "<UUID>"
         }
       ]
     }
@@ -2265,7 +2529,8 @@
           "semester": 1,
           "note_berechnet": 1.8,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -2274,7 +2539,8 @@
           "semester": 2,
           "note_berechnet": null,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 3,
@@ -2283,7 +2549,8 @@
           "semester": 1,
           "note_berechnet": 3,
           "note_manuell": null,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -2292,7 +2559,8 @@
           "semester": 2,
           "note_berechnet": null,
           "note_manuell": 3,
-          "s1_eingerechnet": 0
+          "s1_eingerechnet": 0,
+          "uuid": null
         },
         {
           "id": 7,
@@ -2301,7 +2569,8 @@
           "semester": 3,
           "note_berechnet": 1.8,
           "note_manuell": null,
-          "s1_eingerechnet": 1
+          "s1_eingerechnet": 1,
+          "uuid": "<UUID>"
         },
         {
           "id": 8,
@@ -2310,7 +2579,8 @@
           "semester": 3,
           "note_berechnet": 3,
           "note_manuell": null,
-          "s1_eingerechnet": 1
+          "s1_eingerechnet": 1,
+          "uuid": "<UUID>"
         }
       ]
     }
@@ -3680,7 +3950,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 2,
@@ -3692,7 +3963,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 3,
@@ -3704,7 +3976,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 4,
@@ -3716,7 +3989,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 5,
@@ -3728,7 +4002,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 6,
@@ -3740,7 +4015,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 7,
@@ -3752,7 +4028,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 8,
@@ -3764,7 +4041,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         }
       ],
       "fach_schueler": []
@@ -3936,7 +4214,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 1,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 2,
@@ -3947,7 +4226,8 @@
           "teams_link": null,
           "sortierung": "vorname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 3,
@@ -3958,7 +4238,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": null
         },
         {
           "id": 4,
@@ -3969,7 +4250,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 0,
-          "ist_vorlage": 1
+          "ist_vorlage": 1,
+          "uuid": null
         },
         {
           "id": 5,
@@ -3980,7 +4262,8 @@
           "teams_link": null,
           "sortierung": "nachname",
           "ist_kv": 1,
-          "ist_vorlage": 0
+          "ist_vorlage": 0,
+          "uuid": "<UUID>"
         }
       ],
       "faecher": [
@@ -3999,7 +4282,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 2,
@@ -4016,7 +4300,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 3,
@@ -4033,7 +4318,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": null
         },
         {
           "id": 4,
@@ -4050,7 +4336,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": "<UUID>"
         },
         {
           "id": 5,
@@ -4067,7 +4354,8 @@
           "farbe": null,
           "ma_hue_max_einfluss": null,
           "benotungssystem": "standard",
-          "alle_schueler": 1
+          "alle_schueler": 1,
+          "uuid": "<UUID>"
         }
       ],
       "schueler": [
@@ -4081,7 +4369,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 2,
@@ -4093,7 +4382,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 3,
@@ -4105,7 +4395,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 4,
@@ -4117,7 +4408,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 5,
@@ -4129,7 +4421,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 6,
@@ -4141,7 +4434,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": null
         },
         {
           "id": 7,
@@ -4153,7 +4447,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": "<UUID>"
         },
         {
           "id": 8,
@@ -4165,7 +4460,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": "<UUID>"
         },
         {
           "id": 9,
@@ -4177,7 +4473,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": "<UUID>"
         },
         {
           "id": 10,
@@ -4189,7 +4486,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": "<UUID>"
         },
         {
           "id": 11,
@@ -4201,7 +4499,8 @@
           "lernschwaeche": 0,
           "legasthenie": 0,
           "spf": 0,
-          "avatar": null
+          "avatar": null,
+          "uuid": "<UUID>"
         }
       ]
     }

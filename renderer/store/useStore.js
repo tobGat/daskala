@@ -140,6 +140,21 @@ const useStore = create((set, get) => ({
     }
   },
 
+  // Letztes Archiv wiederherstellen (Jahreswechsel zurücknehmen, ohne zu löschen).
+  archivWiederherstellen: async () => {
+    const r = await window.api.schuljahre.letztesArchivWiederherstellen()
+    if (r?.ok) await get().ladeSchuljahrDaten(r.schuljahrId)
+    return r
+  },
+
+  // Ein archiviertes Schuljahr endgültig löschen; danach Schuljahr-Liste auffrischen.
+  archivLoeschen: async (id) => {
+    const r = await window.api.schuljahre.loeschen(id)
+    const schuljahre = await window.api.schuljahre.getAll()
+    set({ schuljahre })
+    return r
+  },
+
   setAktuellesSchuljahr: async (schuljahr) => {
     set({ aktuellesSchuljahr: schuljahr, klassen: [], aktiveKlasse: null, faecher: [], aktivesFach: null })
     await get().ladeKlassen(schuljahr.id)
@@ -249,6 +264,18 @@ const useStore = create((set, get) => ({
   setAktivesFach: async (fach) => {
     set({ aktivesFach: fach })
     await get().ladeFachDaten(fach.id)
+  },
+
+  // Fächer der aktiven Klasse neu laden, aber die aktuelle Fach-Auswahl behalten
+  // (z. B. nach Umschalten des Benotungssystems – kein Sprung auf den ersten Tab).
+  ladeFaecher: async () => {
+    const { aktiveKlasse, aktivesFach } = get()
+    if (!aktiveKlasse) return
+    const faecher = await window.api.faecher.getAll(aktiveKlasse.id)
+    set({ faecher })
+    const ziel = (aktivesFach && faecher.find(f => f.id === aktivesFach.id)) || faecher[0] || null
+    if (ziel) await get().setAktivesFach(ziel)
+    else set({ aktivesFach: null, spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchuelerIds: new Set() })
   },
 
   ladeFachDaten: async (fachId) => {

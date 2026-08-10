@@ -8,6 +8,17 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.2.0',
+    datum: 'August 2026',
+    punkte: [
+      'Archiv: Das zuletzt archivierte Schuljahr lässt sich unter Einstellungen → „Archiv" wiederherstellen – es wird wieder zum aktuellen Jahr, das derzeit aktuelle wandert dafür ins Archiv. So nimmst du einen versehentlichen Jahreswechsel zurück, ohne dass etwas verloren geht.',
+      'Archiv: Nicht mehr benötigte archivierte Schuljahre können endgültig gelöscht werden (mit allen Klassen, Fächern, Schüler:innen und Noten).',
+      'Behoben: Der PDF- und ODS-Export eines Archivs enthält wieder alle Schüler:innen und Noten (zuvor blieb der Export eines abgeschlossenen Jahres leer).',
+      'Behoben: Beim Jahreswechsel übernimmt jedes neue Fach nun das Benotungssystem des Vorgängerfachs, und die App startet automatisch im 1. Semester.',
+      'Behoben: Beim Umschalten des Benotungssystems bleibt das aktuell gewählte Fach aktiv (kein Sprung auf den ersten Tab mehr).',
+    ],
+  },
+  {
     version: '1.0.72',
     datum: 'August 2026',
     punkte: [

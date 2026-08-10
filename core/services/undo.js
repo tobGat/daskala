@@ -15,18 +15,19 @@ function createUndo({ onApplied } = {}) {
     redoStack.length = 0
   }
 
-  function execute() {
+  // Async: die undo/redo-Closures greifen jetzt über den async DbPort auf die DB zu.
+  async function execute() {
     if (undoStack.length === 0) return { ok: false }
     const action = undoStack.pop()
-    try { action.undo(); redoStack.push(action) } catch (e) { console.error('Undo fehlgeschlagen:', e) }
+    try { await action.undo(); redoStack.push(action) } catch (e) { console.error('Undo fehlgeschlagen:', e) }
     onApplied?.()
     return { ok: true }
   }
 
-  function redo() {
+  async function redo() {
     if (redoStack.length === 0) return { ok: false }
     const action = redoStack.pop()
-    try { action.redo(); undoStack.push(action) } catch (e) { console.error('Redo fehlgeschlagen:', e) }
+    try { await action.redo(); undoStack.push(action) } catch (e) { console.error('Redo fehlgeschlagen:', e) }
     onApplied?.()
     return { ok: true }
   }

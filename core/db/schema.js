@@ -8,7 +8,434 @@
 
 // Aktuelle Schema-Version. Erhoehen bei neuer EINMALIGER Migration (Daten-Umbau/Rebuild);
 // reine Spalten-Ergaenzungen laufen idempotent ueber spalteErgaenzen().
-const SCHEMA_VERSION = 1
+const SCHEMA_VERSION = 2
+
+// ─── Schema als Daten (Portierung Phase 2.3) ─────────────────────────────────
+//
+// `MIGRATIONS` beschreibt das Schema deklarativ als [{ version, description, sql }].
+// Diese Form brauchen die mobilen Zielrahmen (Capacitor `@capacitor-community/sqlite`,
+// Tauri `tauri_plugin_sql::Migration`), die Migrationen versionsweise auf eine FRISCHE
+// DB anwenden.
+//
+// Version 1 ist die konsolidierte Baseline: jede Tabelle bereits in ihrer heutigen
+// Endform (die per `spalteErgaenzen` nachgerüsteten Spalten sind hier direkt in die
+// CREATE-Statements eingearbeitet). Für den Desktop bleibt `applySchema` unten die
+// Wahrheit; es kennt zusätzlich den inkrementellen Migrationspfad bestehender
+// Produktiv-Datenbanken. Ein Paritätstest (test/characterization/schema-as-data)
+// stellt sicher, dass beide Wege exakt dasselbe Endschema erzeugen – kein Drift.
+const TABLE_DDL = [
+  `CREATE TABLE IF NOT EXISTS einstellungen (
+      schluessel TEXT PRIMARY KEY,
+      wert TEXT
+    )`,
+  `CREATE TABLE IF NOT EXISTS schuljahre (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      bezeichnung TEXT NOT NULL,
+      archiviert INTEGER DEFAULT 0,
+      start_datum TEXT,
+      end_datum TEXT,
+      uuid TEXT
+    )`,
+  `CREATE TABLE IF NOT EXISTS klassen (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schuljahr_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      reihenfolge INTEGER DEFAULT 0,
+      farbe TEXT,
+      teams_link TEXT,
+      sortierung TEXT DEFAULT 'nachname',
+      ist_kv INTEGER DEFAULT 0,
+      ist_vorlage INTEGER DEFAULT 0,
+      uuid TEXT,
+      FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id)
+    )`,
+  `CREATE TABLE IF NOT EXISTS faecher (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      klasse_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      reihenfolge INTEGER DEFAULT 0,
+      gewichtung_sa REAL,
+      gewichtung_t REAL,
+      gewichtung_ma REAL,
+      gewichtung_hue REAL,
+      gewichtung_custom REAL,
+      ma_max_einfluss REAL,
+      hue_max_einfluss REAL,
+      farbe TEXT,
+      ma_hue_max_einfluss REAL,
+      benotungssystem TEXT DEFAULT 'standard',
+      alle_schueler INTEGER DEFAULT 1,
+      uuid TEXT,
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id)
+    )`,
+  `CREATE TABLE IF NOT EXISTS schueler (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      klasse_id INTEGER NOT NULL,
+      vorname TEXT NOT NULL,
+      nachname TEXT NOT NULL,
+      reihenfolge INTEGER DEFAULT 0,
+      aktiv INTEGER DEFAULT 1,
+      lernschwaeche INTEGER DEFAULT 0,
+      legasthenie INTEGER DEFAULT 0,
+      spf INTEGER DEFAULT 0,
+      avatar TEXT,
+      uuid TEXT,
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id)
+    )`,
+  `CREATE TABLE IF NOT EXISTS spalten (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fach_id INTEGER NOT NULL,
+      semester INTEGER NOT NULL DEFAULT 1,
+      kategorie TEXT NOT NULL,
+      kuerzel TEXT NOT NULL,
+      datum TEXT,
+      reihenfolge INTEGER DEFAULT 0,
+      eingeklappt INTEGER DEFAULT 0,
+      notiz TEXT,
+      ma_stufen INTEGER DEFAULT 2,
+      ma_symbol TEXT DEFAULT 'pm',
+      uuid TEXT,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id)
+    )`,
+  `CREATE TABLE IF NOT EXISTS eintraege (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      spalte_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      wert TEXT DEFAULT '',
+      kommentar TEXT,
+      uuid TEXT,
+      UNIQUE(spalte_id, schueler_id),
+      FOREIGN KEY (spalte_id) REFERENCES spalten(id),
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id)
+    )`,
+  `CREATE TABLE IF NOT EXISTS eintraege_verlauf (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      fach_id       INTEGER,
+      spalte_id     INTEGER NOT NULL,
+      schueler_id   INTEGER NOT NULL,
+      wert_alt      TEXT,
+      wert_neu      TEXT,
+      kommentar_alt TEXT,
+      kommentar_neu TEXT,
+      zeitstempel   TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      aktion        TEXT NOT NULL
+    )`,
+  `CREATE TABLE IF NOT EXISTS zeugnisnoten (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      semester INTEGER NOT NULL,
+      note_berechnet REAL,
+      note_manuell INTEGER,
+      s1_eingerechnet INTEGER DEFAULT 0,
+      uuid TEXT,
+      UNIQUE(fach_id, schueler_id, semester),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id),
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id)
+    )`,
+  `CREATE TABLE IF NOT EXISTS notizen (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schueler_id INTEGER NOT NULL,
+      fach_id INTEGER NOT NULL,
+      text TEXT DEFAULT '',
+      uuid TEXT,
+      UNIQUE(schueler_id, fach_id),
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id)
+    )`,
+  `CREATE TABLE IF NOT EXISTS gewichtung_global (
+      kategorie TEXT PRIMARY KEY,
+      gewichtung REAL NOT NULL
+    )`,
+  `CREATE TABLE IF NOT EXISTS stundenzeiten (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      stunde INTEGER NOT NULL,
+      beginn TEXT NOT NULL,
+      ende TEXT NOT NULL
+    )`,
+  `CREATE TABLE IF NOT EXISTS stundenplan (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wochentag INTEGER NOT NULL,
+      stunde_id INTEGER NOT NULL,
+      fach_id INTEGER NOT NULL,
+      wochen_intervall INTEGER DEFAULT 1,
+      anker_datum TEXT,
+      FOREIGN KEY (stunde_id) REFERENCES stundenzeiten(id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id)
+    )`,
+  `CREATE TABLE IF NOT EXISTS stunden_planung (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      stundenplan_id INTEGER NOT NULL,
+      woche_datum TEXT NOT NULL,
+      titel TEXT NOT NULL DEFAULT '',
+      inhalt TEXT NOT NULL DEFAULT '',
+      musizieren INTEGER NOT NULL DEFAULT 0,
+      hue_text TEXT,
+      hue_frist_datum TEXT,
+      link TEXT,
+      entfall INTEGER DEFAULT 0,
+      FOREIGN KEY (stundenplan_id) REFERENCES stundenplan(id) ON DELETE CASCADE,
+      UNIQUE(stundenplan_id, woche_datum)
+    )`,
+  `CREATE TABLE IF NOT EXISTS todos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      titel TEXT NOT NULL,
+      erledigt INTEGER DEFAULT 0,
+      klasse_id INTEGER,
+      fach_id INTEGER,
+      faelligkeit TEXT,
+      erinnerung TEXT,
+      reihenfolge INTEGER DEFAULT 0,
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE CASCADE,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE SET NULL
+    )`,
+  `CREATE TABLE IF NOT EXISTS fach_schueler (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS schueler_niveau (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      niveau TEXT NOT NULL DEFAULT 'AHS',
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS schueler_niveau_historie (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      niveau TEXT NOT NULL,
+      gueltig_ab TEXT NOT NULL,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS termine (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      titel TEXT NOT NULL,
+      datum TEXT NOT NULL,
+      uhrzeit TEXT,
+      notiz TEXT,
+      klasse_id INTEGER,
+      schuljahr_id INTEGER NOT NULL,
+      stunde_id INTEGER,
+      bis_uhrzeit TEXT,
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE SET NULL,
+      FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS custom_ferien (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schuljahr_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      von TEXT NOT NULL,
+      bis TEXT NOT NULL,
+      FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS kompetenzbereiche (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fach_id INTEGER NOT NULL,
+      titel TEXT NOT NULL,
+      beschreibung TEXT,
+      reihenfolge INTEGER DEFAULT 0,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS schueler_kompetenzen (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kompetenzbereich_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      niveau INTEGER NOT NULL DEFAULT 0,
+      notiz TEXT,
+      aktualisiert TEXT,
+      UNIQUE(kompetenzbereich_id, schueler_id),
+      FOREIGN KEY (kompetenzbereich_id) REFERENCES kompetenzbereiche(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS supplierstunden (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      woche_datum TEXT NOT NULL,
+      wochentag INTEGER NOT NULL,
+      stunde_id INTEGER NOT NULL,
+      klasse_text TEXT NOT NULL DEFAULT '',
+      fach_text TEXT NOT NULL DEFAULT '',
+      notiz TEXT,
+      titel TEXT,
+      inhalt TEXT,
+      hue_text TEXT,
+      hue_frist_datum TEXT,
+      link TEXT,
+      FOREIGN KEY (stunde_id) REFERENCES stundenzeiten(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS jahresplanung_abschnitte (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fach_id INTEGER NOT NULL,
+      titel TEXT NOT NULL DEFAULT '',
+      inhalt TEXT DEFAULT '',
+      datum_von TEXT,
+      datum_bis TEXT,
+      farbe TEXT,
+      reihenfolge INTEGER NOT NULL DEFAULT 0,
+      material_ordner TEXT,
+      lernziele TEXT,
+      kompetenzen TEXT,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS abschnitt_materialien (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      abschnitt_id INTEGER NOT NULL,
+      typ TEXT NOT NULL,
+      ref TEXT NOT NULL,
+      anzeigename TEXT,
+      beschreibung TEXT,
+      reihenfolge INTEGER NOT NULL DEFAULT 0,
+      erstellt_am TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (abschnitt_id) REFERENCES jahresplanung_abschnitte(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS sitzplan_tische (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      klasse_id INTEGER NOT NULL,
+      typ TEXT NOT NULL DEFAULT 'einzel',
+      x REAL NOT NULL DEFAULT 100,
+      y REAL NOT NULL DEFAULT 100,
+      fach_id INTEGER,
+      rotation INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS sitzplan_sitzplaetze (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tisch_id INTEGER NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      schueler_id INTEGER,
+      UNIQUE(tisch_id, position),
+      FOREIGN KEY (tisch_id) REFERENCES sitzplan_tische(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE SET NULL
+    )`,
+  `CREATE TABLE IF NOT EXISTS sitzplan_fach_zuweisungen (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sitzplatz_id INTEGER NOT NULL,
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER,
+      UNIQUE(sitzplatz_id, fach_id),
+      FOREIGN KEY (sitzplatz_id) REFERENCES sitzplan_sitzplaetze(id) ON DELETE CASCADE,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE SET NULL
+    )`,
+  `CREATE TABLE IF NOT EXISTS kv_jahresaufgaben (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      monat        INTEGER NOT NULL,
+      titel        TEXT NOT NULL,
+      beschreibung TEXT,
+      rechtsbezug  TEXT,
+      kategorie    TEXT,
+      sortierung   INTEGER DEFAULT 0,
+      parent_id    INTEGER REFERENCES kv_jahresaufgaben(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS kv_jahresaufgaben_status (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      aufgabe_id   INTEGER NOT NULL REFERENCES kv_jahresaufgaben(id) ON DELETE CASCADE,
+      schuljahr_id INTEGER NOT NULL REFERENCES schuljahre(id) ON DELETE CASCADE,
+      klasse_id    INTEGER NOT NULL REFERENCES klassen(id) ON DELETE CASCADE,
+      erledigt_am  TEXT,
+      notiz        TEXT,
+      UNIQUE(aufgabe_id, schuljahr_id, klasse_id)
+    )`,
+  `CREATE TABLE IF NOT EXISTS kv_wochenaufgaben (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      titel       TEXT NOT NULL,
+      rechtsbezug TEXT,
+      sortierung  INTEGER DEFAULT 0,
+      aktiv       INTEGER DEFAULT 1
+    )`,
+  `CREATE TABLE IF NOT EXISTS kv_wochenaufgaben_status (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      aufgabe_id    INTEGER NOT NULL REFERENCES kv_wochenaufgaben(id) ON DELETE CASCADE,
+      schuljahr_id  INTEGER NOT NULL REFERENCES schuljahre(id) ON DELETE CASCADE,
+      klasse_id     INTEGER NOT NULL REFERENCES klassen(id) ON DELETE CASCADE,
+      kalenderwoche INTEGER NOT NULL,
+      jahr          INTEGER NOT NULL,
+      erledigt_am   TEXT,
+      notiz         TEXT,
+      UNIQUE(aufgabe_id, klasse_id, kalenderwoche, jahr)
+    )`,
+  `CREATE TABLE IF NOT EXISTS kv_trigger (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      klasse_id    INTEGER NOT NULL REFERENCES klassen(id) ON DELETE CASCADE,
+      schueler_id  INTEGER REFERENCES schueler(id) ON DELETE CASCADE,
+      typ          TEXT NOT NULL,
+      schweregrad  TEXT NOT NULL DEFAULT 'info',
+      ausloeser    TEXT,
+      beschreibung TEXT,
+      erstellt_am  TEXT DEFAULT (datetime('now', 'localtime')),
+      reagiert_am  TEXT,
+      reaktion     TEXT,
+      archiviert   INTEGER DEFAULT 0
+    )`,
+  `CREATE TABLE IF NOT EXISTS kv_aktenvermerke (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      schueler_id    INTEGER REFERENCES schueler(id) ON DELETE CASCADE,
+      klasse_id      INTEGER NOT NULL REFERENCES klassen(id) ON DELETE CASCADE,
+      datum          TEXT NOT NULL,
+      typ            TEXT NOT NULL,
+      titel          TEXT NOT NULL,
+      beschreibung   TEXT NOT NULL,
+      zeugen         TEXT,
+      folgemassnahme TEXT,
+      erstellt_am    TEXT DEFAULT (datetime('now', 'localtime'))
+    )`,
+  `CREATE TABLE IF NOT EXISTS kv_elternkontakte (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      schueler_id INTEGER NOT NULL REFERENCES schueler(id) ON DELETE CASCADE,
+      datum       TEXT NOT NULL,
+      art         TEXT NOT NULL,
+      initiator   TEXT NOT NULL,
+      thema       TEXT NOT NULL,
+      inhalt      TEXT,
+      erledigt    INTEGER DEFAULT 1
+    )`,
+  `CREATE TABLE IF NOT EXISTS kv_fehlstunden (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      schueler_id  INTEGER NOT NULL REFERENCES schueler(id) ON DELETE CASCADE,
+      datum        TEXT NOT NULL,
+      stunden      INTEGER NOT NULL,
+      entschuldigt INTEGER NOT NULL DEFAULT 0,
+      grund        TEXT
+    )`,
+]
+
+const INDEX_DDL = [
+  `CREATE INDEX IF NOT EXISTS idx_niveau_historie_lookup
+      ON schueler_niveau_historie (fach_id, schueler_id, gueltig_ab)`,
+  `CREATE INDEX IF NOT EXISTS idx_abschnitt_materialien_abschnitt
+      ON abschnitt_materialien (abschnitt_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_kv_trigger_klasse_archiv
+      ON kv_trigger (klasse_id, archiviert)`,
+  `CREATE INDEX IF NOT EXISTS idx_kv_aktenvermerke_klasse
+      ON kv_aktenvermerke (klasse_id, datum DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_kv_fehlstunden_schueler
+      ON kv_fehlstunden (schueler_id, datum)`,
+  // UUID-Weiche (Phase 2.4): geräteübergreifend eindeutige Identität je Entität
+  // für ein späteres Zusammenführen. UNIQUE-Index; mehrere NULL sind in SQLite
+  // erlaubt, daher stören noch nicht befüllte Zeilen die Eindeutigkeit nicht.
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_schuljahre_uuid ON schuljahre (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_klassen_uuid ON klassen (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_faecher_uuid ON faecher (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_schueler_uuid ON schueler (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_spalten_uuid ON spalten (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_eintraege_uuid ON eintraege (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_zeugnisnoten_uuid ON zeugnisnoten (uuid)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_notizen_uuid ON notizen (uuid)`,
+]
+
+// Deklaratives, versioniertes Schema für die mobilen Zielrahmen (siehe oben).
+const MIGRATIONS = [
+  {
+    version: 1,
+    description: 'Initiales Schema (Baseline, konsolidiert aus Desktop-Schema v1.x)',
+    sql: [...TABLE_DDL, ...INDEX_DDL].map((s) => s.trim() + ';').join('\n\n'),
+  },
+]
 
 function applySchema(db, deps) {
   // Idempotente Spalten-Migration (ALTER TABLE ADD COLUMN, falls fehlend).
@@ -706,8 +1133,35 @@ function applySchema(db, deps) {
   const semester = month >= 9 || month <= 1 ? '1' : '2'
   insertEinstellung.run('semester_aktuell', semester)
 
+  // ─── UUID-Weiche (Phase 2.4, additiv) ────────────────────────────────────────
+  // Zusätzliche geräteübergreifend eindeutige Identität je Entität für ein späteres
+  // Zusammenführen getrennt gepflegter Bestände. Der Integer-PK bleibt interner
+  // Schlüssel und FK-Referenz – an bestehenden Beziehungen ändert sich nichts.
+  const UUID_ENTITAETEN = ['schuljahre', 'klassen', 'faecher', 'schueler', 'spalten', 'eintraege', 'zeugnisnoten', 'notizen']
+  for (const t of UUID_ENTITAETEN) spalteErgaenzen(t, 'uuid', 'TEXT')
+  // Einmaliges Backfill bestehender Zeilen (nur < Version 2). SQLite-seitig erzeugt
+  // (randomblob), damit es ohne JS-Abhängigkeit in jedem Zielrahmen läuft.
+  if (schemaVersion < 2) {
+    const UUID_SQL = `lower(
+      hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
+      substr(hex(randomblob(2)), 2) || '-' ||
+      substr('89ab', 1 + (abs(random()) % 4), 1) || substr(hex(randomblob(2)), 2) || '-' ||
+      hex(randomblob(6))
+    )`
+    for (const t of UUID_ENTITAETEN) {
+      try { db.prepare(`UPDATE ${t} SET uuid = (${UUID_SQL}) WHERE uuid IS NULL`).run() }
+      catch (e) { deps.logError(`migration:uuid-backfill ${t}`, e) }
+    }
+  }
+  // UNIQUE-Index je Entität (mehrere NULL sind in SQLite erlaubt).
+  try {
+    for (const t of UUID_ENTITAETEN) {
+      db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${t}_uuid ON ${t} (uuid)`).run()
+    }
+  } catch (e) { deps.logError('migration:uuid-index', e) }
+
   // Alle einmaligen Migrationen dieser Version sind durchlaufen → Schema-Version festschreiben.
   if (schemaVersion < SCHEMA_VERSION) db.pragma(`user_version = ${SCHEMA_VERSION}`)
 }
 
-module.exports = { applySchema }
+module.exports = { applySchema, MIGRATIONS, SCHEMA_VERSION, TABLE_DDL, INDEX_DDL }

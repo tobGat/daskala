@@ -103,6 +103,9 @@ async function createHarness({ seedSql = null } = {}) {
         for (const row of rows) {
           for (const k of Object.keys(row)) {
             if (TS_SPALTEN.test(k) && row[k] != null) row[k] = '<TS>'
+            // UUID-Weiche (Phase 2.4): neu erzeugte Zeilen tragen eine zufällige UUID –
+            // für deterministische Snapshots normalisieren.
+            if (k === 'uuid' && row[k] != null) row[k] = '<UUID>'
           }
         }
         out[name] = rows

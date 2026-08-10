@@ -2,54 +2,56 @@
 // Copyright (C) 2026 Tobias Gatterbauer
 //
 // Kern-Domäne: Kompetenzen (Kompetenzbereiche + Schüler:innen-Kompetenzen).
-// db injiziert; deps = { initKompetenzVorlagen }.
+// Async DbPort; deps = { initKompetenzVorlagen }.
 
-function bereicheGetAll(db, fachId) {
-  return db.prepare('SELECT * FROM kompetenzbereiche WHERE fach_id = ? ORDER BY reihenfolge, id').all(fachId)
+async function bereicheGetAll(db, fachId) {
+  return db.select('SELECT * FROM kompetenzbereiche WHERE fach_id = ? ORDER BY reihenfolge, id', [fachId])
 }
 
-function bereichCreate(db, fachId, titel, beschreibung) {
-  const maxR = db.prepare('SELECT MAX(reihenfolge) as m FROM kompetenzbereiche WHERE fach_id = ?').get(fachId)?.m ?? 0
-  const info = db.prepare('INSERT INTO kompetenzbereiche (fach_id, titel, beschreibung, reihenfolge) VALUES (?, ?, ?, ?)').run(fachId, titel, beschreibung ?? null, maxR + 1)
+async function bereichCreate(db, fachId, titel, beschreibung) {
+  const maxR = (await db.selectOne('SELECT MAX(reihenfolge) as m FROM kompetenzbereiche WHERE fach_id = ?', [fachId]))?.m ?? 0
+  const info = await db.execute('INSERT INTO kompetenzbereiche (fach_id, titel, beschreibung, reihenfolge) VALUES (?, ?, ?, ?)', [fachId, titel, beschreibung ?? null, maxR + 1])
   return info.lastInsertRowid
 }
 
-function bereichUpdate(db, id, { titel, beschreibung }) {
-  db.prepare('UPDATE kompetenzbereiche SET titel = ?, beschreibung = ? WHERE id = ?').run(titel, beschreibung ?? null, id)
+async function bereichUpdate(db, id, { titel, beschreibung }) {
+  await db.execute('UPDATE kompetenzbereiche SET titel = ?, beschreibung = ? WHERE id = ?', [titel, beschreibung ?? null, id])
   return true
 }
 
-function bereichDelete(db, id) {
-  db.prepare('DELETE FROM kompetenzbereiche WHERE id = ?').run(id)
+async function bereichDelete(db, id) {
+  await db.execute('DELETE FROM kompetenzbereiche WHERE id = ?', [id])
   return true
 }
 
-function bereichReorder(db, ids) {
-  const stmt = db.prepare('UPDATE kompetenzbereiche SET reihenfolge = ? WHERE id = ?')
-  ids.forEach((id, idx) => stmt.run(idx, id))
+async function bereichReorder(db, ids) {
+  await db.transaction(async (tx) => {
+    let idx = 0
+    for (const id of ids) await tx.execute('UPDATE kompetenzbereiche SET reihenfolge = ? WHERE id = ?', [idx++, id])
+  })
   return true
 }
 
-function initVorlagen(db, deps, fachId, fachName) {
-  deps.initKompetenzVorlagen(fachId, fachName)
+async function initVorlagen(db, deps, fachId, fachName) {
+  await deps.initKompetenzVorlagen(fachId, fachName)
   return true
 }
 
-function schuelerGetAll(db, fachId) {
-  return db.prepare(`
+async function schuelerGetAll(db, fachId) {
+  return db.select(`
       SELECT sk.* FROM schueler_kompetenzen sk
       JOIN kompetenzbereiche kb ON kb.id = sk.kompetenzbereich_id
       WHERE kb.fach_id = ?
-    `).all(fachId)
+    `, [fachId])
 }
 
-function schuelerSet(db, kompetenzbereichId, schuelerId, niveau, notiz) {
-  db.prepare(`
+async function schuelerSet(db, kompetenzbereichId, schuelerId, niveau, notiz) {
+  await db.execute(`
       INSERT INTO schueler_kompetenzen (kompetenzbereich_id, schueler_id, niveau, notiz, aktualisiert)
       VALUES (?, ?, ?, ?, datetime('now'))
       ON CONFLICT(kompetenzbereich_id, schueler_id) DO UPDATE SET
         niveau = excluded.niveau, notiz = excluded.notiz, aktualisiert = excluded.aktualisiert
-    `).run(kompetenzbereichId, schuelerId, niveau, notiz ?? null)
+    `, [kompetenzbereichId, schuelerId, niveau, notiz ?? null])
   return true
 }
 

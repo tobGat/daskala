@@ -137,6 +137,8 @@
   "schuelerKompetenzen.set",
   "schuljahre.create",
   "schuljahre.getAll",
+  "schuljahre.letztesArchivWiederherstellen",
+  "schuljahre.loeschen",
   "shell.open",
   "sitzplan.assignSchueler",
   "sitzplan.createTisch",

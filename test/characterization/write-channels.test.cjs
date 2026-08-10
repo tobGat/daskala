@@ -40,6 +40,11 @@ const CASES = [
 
   // ── Schuljahre / Klassen / Fächer ──────────────────────────────────────────
   { name: 'schuljahre:create', channel: 'schuljahre:create', args: ['2026/27'], tables: ['schuljahre'] },
+  // Letztes Archiv (SJ 2) wird wieder aktuell, SJ 1 wandert ins Archiv (Tausch, nichts gelöscht);
+  // Schüler:innen des nun archivierten SJ 1 werden deaktiviert.
+  { name: 'schuljahre:letztesArchivWiederherstellen', channel: 'schuljahre:letztesArchivWiederherstellen', args: [], tables: ['schuljahre', 'schueler'] },
+  // Archiviertes Schuljahr (SJ 2) endgültig löschen.
+  { name: 'schuljahre:loeschen', channel: 'schuljahre:loeschen', args: [2], tables: ['schuljahre'] },
   { name: 'klassen:rename', channel: 'klassen:rename', args: [1, '1A neu'], tables: ['klassen'] },
   { name: 'klassen:setFarbe', channel: 'klassen:setFarbe', args: [1, '#000000'], tables: ['klassen'] },
   { name: 'klassen:setTeamsLink', channel: 'klassen:setTeamsLink', args: [1, 'https://teams/1a'], tables: ['klassen'] },

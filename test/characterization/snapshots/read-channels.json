@@ -12,14 +12,16 @@
       "bezeichnung": "2024/25",
       "archiviert": 1,
       "start_datum": "2024-09-09",
-      "end_datum": "2025-07-04"
+      "end_datum": "2025-07-04",
+      "uuid": null
     },
     {
       "id": 1,
       "bezeichnung": "2025/26",
       "archiviert": 0,
       "start_datum": "2025-09-08",
-      "end_datum": "2026-07-03"
+      "end_datum": "2026-07-03",
+      "uuid": null
     }
   ],
   "klassen:getAll": [
@@ -32,7 +34,8 @@
       "teams_link": null,
       "sortierung": "nachname",
       "ist_kv": 1,
-      "ist_vorlage": 0
+      "ist_vorlage": 0,
+      "uuid": null
     },
     {
       "id": 2,
@@ -43,7 +46,8 @@
       "teams_link": null,
       "sortierung": "vorname",
       "ist_kv": 0,
-      "ist_vorlage": 0
+      "ist_vorlage": 0,
+      "uuid": null
     },
     {
       "id": 3,
@@ -54,7 +58,8 @@
       "teams_link": null,
       "sortierung": "nachname",
       "ist_kv": 0,
-      "ist_vorlage": 0
+      "ist_vorlage": 0,
+      "uuid": null
     }
   ],
   "klassen:getVorlagen": [
@@ -67,7 +72,8 @@
       "teams_link": null,
       "sortierung": "nachname",
       "ist_kv": 0,
-      "ist_vorlage": 1
+      "ist_vorlage": 1,
+      "uuid": null
     }
   ],
   "schueler:getAll": [
@@ -81,7 +87,8 @@
       "lernschwaeche": 0,
       "legasthenie": 0,
       "spf": 0,
-      "avatar": null
+      "avatar": null,
+      "uuid": null
     },
     {
       "id": 5,
@@ -93,7 +100,8 @@
       "lernschwaeche": 0,
       "legasthenie": 0,
       "spf": 0,
-      "avatar": null
+      "avatar": null,
+      "uuid": null
     },
     {
       "id": 1,
@@ -105,7 +113,8 @@
       "lernschwaeche": 0,
       "legasthenie": 0,
       "spf": 0,
-      "avatar": null
+      "avatar": null,
+      "uuid": null
     },
     {
       "id": 4,
@@ -117,7 +126,8 @@
       "lernschwaeche": 0,
       "legasthenie": 0,
       "spf": 0,
-      "avatar": null
+      "avatar": null,
+      "uuid": null
     },
     {
       "id": 3,
@@ -129,7 +139,8 @@
       "lernschwaeche": 0,
       "legasthenie": 0,
       "spf": 0,
-      "avatar": null
+      "avatar": null,
+      "uuid": null
     }
   ],
   "zeugnisnoten:getAll": [
@@ -140,7 +151,8 @@
       "semester": 1,
       "note_berechnet": 2,
       "note_manuell": null,
-      "s1_eingerechnet": 0
+      "s1_eingerechnet": 0,
+      "uuid": null
     },
     {
       "id": 2,
@@ -149,7 +161,8 @@
       "semester": 2,
       "note_berechnet": 2.5,
       "note_manuell": null,
-      "s1_eingerechnet": 1
+      "s1_eingerechnet": 1,
+      "uuid": null
     },
     {
       "id": 3,
@@ -158,7 +171,8 @@
       "semester": 1,
       "note_berechnet": 3,
       "note_manuell": null,
-      "s1_eingerechnet": 0
+      "s1_eingerechnet": 0,
+      "uuid": null
     },
     {
       "id": 4,
@@ -167,7 +181,8 @@
       "semester": 2,
       "note_berechnet": null,
       "note_manuell": 3,
-      "s1_eingerechnet": 1
+      "s1_eingerechnet": 1,
+      "uuid": null
     }
   ],
   "notizen:get": "Sehr engagiert, liest gern vor.",
@@ -424,7 +439,8 @@
       "teams_link": null,
       "sortierung": "nachname",
       "ist_kv": 1,
-      "ist_vorlage": 0
+      "ist_vorlage": 0,
+      "uuid": null
     },
     "fachCount": 2,
     "schuelerCount": 6,
@@ -452,7 +468,8 @@
       "farbe": null,
       "ma_hue_max_einfluss": null,
       "benotungssystem": "standard",
-      "alle_schueler": 1
+      "alle_schueler": 1,
+      "uuid": null
     },
     {
       "id": 2,
@@ -469,7 +486,8 @@
       "farbe": null,
       "ma_hue_max_einfluss": null,
       "benotungssystem": "standard",
-      "alle_schueler": 1
+      "alle_schueler": 1,
+      "uuid": null
     }
   ],
   "faecher:getAllImSchuljahr": [
@@ -519,7 +537,8 @@
       "lernschwaeche": 0,
       "legasthenie": 0,
       "spf": 0,
-      "avatar": null
+      "avatar": null,
+      "uuid": null
     },
     "faecher": [
       {
@@ -537,7 +556,8 @@
         "farbe": null,
         "ma_hue_max_einfluss": null,
         "benotungssystem": "standard",
-        "alle_schueler": 1
+        "alle_schueler": 1,
+        "uuid": null
       },
       {
         "id": 2,
@@ -554,7 +574,8 @@
         "farbe": null,
         "ma_hue_max_einfluss": null,
         "benotungssystem": "standard",
-        "alle_schueler": 1
+        "alle_schueler": 1,
+        "uuid": null
       }
     ],
     "zeugnisnoten": [
@@ -565,7 +586,8 @@
         "semester": 1,
         "note_berechnet": 1.8,
         "note_manuell": null,
-        "s1_eingerechnet": 0
+        "s1_eingerechnet": 0,
+        "uuid": null
       },
       {
         "id": 2,
@@ -574,7 +596,8 @@
         "semester": 2,
         "note_berechnet": null,
         "note_manuell": null,
-        "s1_eingerechnet": 0
+        "s1_eingerechnet": 0,
+        "uuid": null
       },
       {
         "id": 7,
@@ -583,7 +606,8 @@
         "semester": 3,
         "note_berechnet": 1.8,
         "note_manuell": null,
-        "s1_eingerechnet": 1
+        "s1_eingerechnet": 1,
+        "uuid": "<UUID>"
       }
     ],
     "eintraege": [
@@ -635,7 +659,8 @@
       "eingeklappt": 0,
       "notiz": null,
       "ma_stufen": 2,
-      "ma_symbol": "pm"
+      "ma_symbol": "pm",
+      "uuid": null
     },
     {
       "id": 2,
@@ -648,7 +673,8 @@
       "eingeklappt": 0,
       "notiz": null,
       "ma_stufen": 2,
-      "ma_symbol": "pm"
+      "ma_symbol": "pm",
+      "uuid": null
     }
   ],
   "eintraege:getAll": [
@@ -657,21 +683,24 @@
       "spalte_id": 1,
       "schueler_id": 1,
       "wert": "2",
-      "kommentar": null
+      "kommentar": null,
+      "uuid": null
     },
     {
       "id": 2,
       "spalte_id": 1,
       "schueler_id": 2,
       "wert": "3",
-      "kommentar": null
+      "kommentar": null,
+      "uuid": null
     },
     {
       "id": 3,
       "spalte_id": 2,
       "schueler_id": 1,
       "wert": "1",
-      "kommentar": null
+      "kommentar": null,
+      "uuid": null
     }
   ],
   "verlauf:get": [],

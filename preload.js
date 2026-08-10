@@ -18,6 +18,8 @@ const api = {
   schuljahre: {
     getAll: () => invoke('schuljahre:getAll'),
     create: (bezeichnung) => invoke('schuljahre:create', bezeichnung),
+    letztesArchivWiederherstellen: () => invoke('schuljahre:letztesArchivWiederherstellen'),
+    loeschen: (id) => invoke('schuljahre:loeschen', id),
   },
 
   klassen: {

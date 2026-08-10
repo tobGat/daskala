@@ -936,6 +936,8 @@ export function SchuljahrwechselModal() {
       })
 
       await ladeSchuljahrDaten(neueId)
+      // Neues Jahr beginnt im 1. Semester → Ansicht sofort umstellen
+      useStore.setState({ aktiveSemester: 1, semester1Eingeklappt: false })
       closeModal()
     } finally {
       setLoading(false)

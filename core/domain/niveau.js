@@ -2,23 +2,23 @@
 // Copyright (C) 2026 Tobias Gatterbauer
 //
 // Kern-Domäne: Schüler-Niveau (AHS/ST-Differenzierung) inkl. Historie.
-// db injiziert; deps = { berechneAlleFuerFach } (Notenberechnung nach Änderung).
+// Async DbPort; deps = { berechneAlleFuerFach } (Notenberechnung nach Änderung).
 
 const HEUTE = () => new Date().toISOString().slice(0, 10)
 
-function get(db, fachId) {
-  const rows = db.prepare('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?').all(fachId)
+async function get(db, fachId) {
+  const rows = await db.select('SELECT schueler_id, niveau FROM schueler_niveau WHERE fach_id = ?', [fachId])
   const map = {}
   for (const r of rows) map[r.schueler_id] = r.niveau
   return map
 }
 
-function getHistorie(db, fachId) {
-  const rows = db.prepare(`
+async function getHistorie(db, fachId) {
+  const rows = await db.select(`
     SELECT schueler_id, niveau, gueltig_ab FROM schueler_niveau_historie
     WHERE fach_id = ?
     ORDER BY schueler_id, gueltig_ab DESC, id DESC
-  `).all(fachId)
+  `, [fachId])
   const map = {}
   for (const r of rows) {
     if (!map[r.schueler_id]) map[r.schueler_id] = []
@@ -27,65 +27,65 @@ function getHistorie(db, fachId) {
   return map
 }
 
-function set(db, deps, fachId, schuelerId, niveau, datum) {
+async function set(db, deps, fachId, schuelerId, niveau, datum) {
   const gueltigAb = datum || HEUTE()
-  db.transaction(() => {
+  await db.transaction(async (tx) => {
     // Aktuellen Stand aktualisieren (nur wenn der Wechsel "jetzt oder früher" gilt)
     const heute = HEUTE()
     if (gueltigAb <= heute) {
-      db.prepare(`
+      await tx.execute(`
         INSERT INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)
         ON CONFLICT(fach_id, schueler_id) DO UPDATE SET niveau = excluded.niveau
-      `).run(fachId, schuelerId, niveau)
+      `, [fachId, schuelerId, niveau])
     }
     // Sicherstellen, dass es einen Initial-Historien-Eintrag gibt (1900-01-01).
-    const hatInitial = db.prepare(`
+    const hatInitial = await tx.selectOne(`
       SELECT 1 FROM schueler_niveau_historie
       WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = '1900-01-01'
-    `).get(fachId, schuelerId)
+    `, [fachId, schuelerId])
     if (!hatInitial) {
       const altNiveau = niveau === 'AHS' ? 'ST' : 'AHS'
-      db.prepare(`
+      await tx.execute(`
         INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
         VALUES (?, ?, ?, '1900-01-01')
-      `).run(fachId, schuelerId, altNiveau)
+      `, [fachId, schuelerId, altNiveau])
     }
-    const existiert = db.prepare(`
+    const existiert = await tx.selectOne(`
       SELECT id FROM schueler_niveau_historie
       WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = ?
-    `).get(fachId, schuelerId, gueltigAb)
+    `, [fachId, schuelerId, gueltigAb])
     if (existiert) {
-      db.prepare('UPDATE schueler_niveau_historie SET niveau = ? WHERE id = ?').run(niveau, existiert.id)
+      await tx.execute('UPDATE schueler_niveau_historie SET niveau = ? WHERE id = ?', [niveau, existiert.id])
     } else {
-      db.prepare(`
+      await tx.execute(`
         INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
         VALUES (?, ?, ?, ?)
-      `).run(fachId, schuelerId, niveau, gueltigAb)
+      `, [fachId, schuelerId, niveau, gueltigAb])
     }
-  })()
-  deps.berechneAlleFuerFach(fachId)
+  })
+  await deps.berechneAlleFuerFach(fachId)
   return true
 }
 
-function deleteHistorie(db, deps, fachId, schuelerId, gueltigAb) {
+async function deleteHistorie(db, deps, fachId, schuelerId, gueltigAb) {
   // Initial-Eintrag '1900-01-01' nicht löschbar — er ist der Anker
   if (gueltigAb === '1900-01-01') return false
-  db.prepare(`
+  await db.execute(`
     DELETE FROM schueler_niveau_historie
     WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab = ?
-  `).run(fachId, schuelerId, gueltigAb)
-  const aktuell = db.prepare(`
+  `, [fachId, schuelerId, gueltigAb])
+  const aktuell = await db.selectOne(`
     SELECT niveau FROM schueler_niveau_historie
     WHERE fach_id = ? AND schueler_id = ? AND gueltig_ab <= ?
     ORDER BY gueltig_ab DESC, id DESC LIMIT 1
-  `).get(fachId, schuelerId, HEUTE())
+  `, [fachId, schuelerId, HEUTE()])
   if (aktuell) {
-    db.prepare(`
+    await db.execute(`
       INSERT INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)
       ON CONFLICT(fach_id, schueler_id) DO UPDATE SET niveau = excluded.niveau
-    `).run(fachId, schuelerId, aktuell.niveau)
+    `, [fachId, schuelerId, aktuell.niveau])
   }
-  deps.berechneAlleFuerFach(fachId)
+  await deps.berechneAlleFuerFach(fachId)
   return true
 }
 

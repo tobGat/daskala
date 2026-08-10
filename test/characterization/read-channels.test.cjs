@@ -82,6 +82,19 @@ const CASES = [
 const SNAP_PATH = path.join(__dirname, 'snapshots', 'read-channels.json')
 const UPDATE = process.env.SNAPSHOT_UPDATE === '1'
 
+// UUID-Weiche (Phase 2.4): manche Reads berechnen Zeugnisnoten neu und erzeugen
+// dabei frische, zufällige UUIDs (z. B. getLeistungsProfil). Für deterministische
+// Snapshots jede nicht-leere uuid rekursiv auf '<UUID>' normalisieren.
+function normalisiereUuid(o) {
+  if (Array.isArray(o)) return o.map(normalisiereUuid)
+  if (o && typeof o === 'object') {
+    const r = {}
+    for (const k of Object.keys(o)) r[k] = (k === 'uuid' && o[k] != null) ? '<UUID>' : normalisiereUuid(o[k])
+    return r
+  }
+  return o
+}
+
 let h
 const erzeugt = {}
 
@@ -99,7 +112,7 @@ after(() => {
 for (const c of CASES) {
   test(c.channel, async () => {
     // JSON-Roundtrip: verwirft undefined-Properties konsistent mit dem Snapshot.
-    const actual = JSON.parse(JSON.stringify(await h.callHandler(c.channel, ...c.args) ?? null))
+    const actual = normalisiereUuid(JSON.parse(JSON.stringify(await h.callHandler(c.channel, ...c.args) ?? null)))
     if (UPDATE) { erzeugt[c.channel] = actual; return }
     const expected = JSON.parse(fs.readFileSync(SNAP_PATH, 'utf8'))
     assert.deepStrictEqual(actual, expected[c.channel])

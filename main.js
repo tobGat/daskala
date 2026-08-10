@@ -43,6 +43,7 @@ const importService = require('./core/services/import')
 const jahresabschlussDomain = require('./core/domain/jahresabschluss')
 const noten = require('./core/services/notenberechnung')
 const schema = require('./core/db/schema')
+const { neueUuid } = require('./core/db/uuid')
 
 // ── Ports (Phase 1.2): plattformabhaengige Adapter, in core injizierbar ──
 const { createFsPort } = require('./platform/electron/ports/fs')
@@ -50,6 +51,7 @@ const { createPdfPort } = require('./platform/electron/ports/pdf')
 const { createHttpPort } = require('./platform/electron/ports/http')
 const { createDialogPort } = require('./platform/electron/ports/dialog')
 const { createShellPort } = require('./platform/electron/ports/shell')
+const { createDbAdapter } = require('./platform/electron/db-better-sqlite3')
 const fsPort = createFsPort()
 const pdfPort = createPdfPort()
 const httpPort = createHttpPort()
@@ -237,6 +239,9 @@ try {
 }
 
 let db
+// Async DbPort (Phase 2). Getter statt fester Referenz → übersteht DB-Neuöffnen.
+// Kern-Domänen werden schrittweise hierauf umgestellt (Pilot: einstellungen).
+const dbPort = createDbAdapter(() => db)
 
 // ─── Undo/Redo ────────────────────────────────────────────────────────────────
 // Undo/Redo als Kern-Service; Renderer-Notify (BrowserWindow) als Callback injiziert.
@@ -314,21 +319,21 @@ function setupMenu() {
 // Die faecher-Zeilen selbst bleiben stehen – der Aufrufer löscht sie danach; die
 // echten CASCADE-Kinder (schueler_niveau, fach_schueler, jahresplanung, sitzplan …)
 // räumt SQLite dabei automatisch ab. Aufrufer ist für die Transaktion zuständig.
-function raeumeFachDatenAuf(fachIds) {
+async function raeumeFachDatenAuf(fachIds) {
   const ids = (Array.isArray(fachIds) ? fachIds : [fachIds]).filter((x) => x != null)
   if (ids.length === 0) return
   const ph = ids.map(() => '?').join(',')
   // Notenraster: Einträge (über Spalten) + Änderungsverlauf + Spalten
-  db.prepare(`DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id IN (${ph}))`).run(...ids)
-  db.prepare(`DELETE FROM eintraege_verlauf WHERE fach_id IN (${ph})`).run(...ids)
-  db.prepare(`DELETE FROM spalten WHERE fach_id IN (${ph})`).run(...ids)
+  await dbPort.execute(`DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id IN (${ph}))`, ids)
+  await dbPort.execute(`DELETE FROM eintraege_verlauf WHERE fach_id IN (${ph})`, ids)
+  await dbPort.execute(`DELETE FROM spalten WHERE fach_id IN (${ph})`, ids)
   // Zeugnisnoten + Notizen (kein CASCADE auf fach)
-  db.prepare(`DELETE FROM zeugnisnoten WHERE fach_id IN (${ph})`).run(...ids)
-  db.prepare(`DELETE FROM notizen WHERE fach_id IN (${ph})`).run(...ids)
+  await dbPort.execute(`DELETE FROM zeugnisnoten WHERE fach_id IN (${ph})`, ids)
+  await dbPort.execute(`DELETE FROM notizen WHERE fach_id IN (${ph})`, ids)
   // Stundenplan: Planung kaskadiert zwar über stundenplan, wird aber vor dem
   // Löschen der stundenplan-Zeilen explizit entfernt (Reihenfolge/Klarheit).
-  db.prepare(`DELETE FROM stunden_planung WHERE stundenplan_id IN (SELECT id FROM stundenplan WHERE fach_id IN (${ph}))`).run(...ids)
-  db.prepare(`DELETE FROM stundenplan WHERE fach_id IN (${ph})`).run(...ids)
+  await dbPort.execute(`DELETE FROM stunden_planung WHERE stundenplan_id IN (SELECT id FROM stundenplan WHERE fach_id IN (${ph}))`, ids)
+  await dbPort.execute(`DELETE FROM stundenplan WHERE fach_id IN (${ph})`, ids)
 }
 
 function initDB() {
@@ -451,16 +456,16 @@ const KOMPETENZ_VORLAGEN = {
   'bildnerische erziehung': ['Wahrnehmen', 'Gestalten', 'Reflektieren'],
 }
 
-function initKompetenzVorlagen(fachId, fachName) {
+async function initKompetenzVorlagen(fachId, fachName) {
   if (!fachName) return
   const nameLower = fachName.toLowerCase()
   const match = Object.keys(KOMPETENZ_VORLAGEN).find(key => nameLower.includes(key))
   if (!match) return
   const vorlagen = KOMPETENZ_VORLAGEN[match]
-  const existing = db.prepare('SELECT COUNT(*) as c FROM kompetenzbereiche WHERE fach_id = ?').get(fachId)
+  const existing = await dbPort.selectOne('SELECT COUNT(*) as c FROM kompetenzbereiche WHERE fach_id = ?', [fachId])
   if (existing.c > 0) return // Bereits Kompetenzbereiche vorhanden
-  const insert = db.prepare('INSERT INTO kompetenzbereiche (fach_id, titel, reihenfolge) VALUES (?, ?, ?)')
-  vorlagen.forEach((titel, idx) => insert.run(fachId, titel, idx))
+  let idx = 0
+  for (const titel of vorlagen) await dbPort.execute('INSERT INTO kompetenzbereiche (fach_id, titel, reihenfolge) VALUES (?, ?, ?)', [fachId, titel, idx++])
 }
 
 
@@ -468,15 +473,15 @@ function initKompetenzVorlagen(fachId, fachName) {
 // Dünne, gehoistete Wrapper reichen die aktuelle db-Verbindung durch; alle
 // Aufrufstellen (kernDeps, exDeps, Handler) bleiben unverändert.
 function znInternZuAnzeige(intern, niveau, istDifferenziert) { return noten.znInternZuAnzeige(intern, niveau, istDifferenziert) }
-function berechneZeugnisnote(fachId, schuelerId, semester) { return noten.berechneZeugnisnote(db, fachId, schuelerId, semester) }
-function berechneEndnote(fachId, schuelerId) { return noten.berechneEndnote(db, fachId, schuelerId) }
-function berechneAlleFuerSchuljahr(schuljahrId) { return noten.berechneAlleFuerSchuljahr(db, schuljahrId) }
-function rosterFuerFach(fachId) { return noten.rosterFuerFach(db, fachId) }
-function rosterIdsFuerFach(fachId) { return noten.rosterIdsFuerFach(db, fachId) }
-function berechneAlleFuerFach(fachId) { return noten.berechneAlleFuerFach(db, fachId) }
-function erzeugeTrigger(klasseId, schuelerId, typ, schweregrad, ausloeser, beschreibung) { return noten.erzeugeTrigger(db, klasseId, schuelerId, typ, schweregrad, ausloeser, beschreibung) }
-function pruefeFehlstundenSchwellen(schuelerId) { return noten.pruefeFehlstundenSchwellen(db, schuelerId) }
-function pruefeNotenTrigger(spalteId, schuelerId, wertNeu, wertAlt) { return noten.pruefeNotenTrigger(db, spalteId, schuelerId, wertNeu, wertAlt) }
+function berechneZeugnisnote(fachId, schuelerId, semester) { return noten.berechneZeugnisnote(dbPort, fachId, schuelerId, semester) }
+function berechneEndnote(fachId, schuelerId) { return noten.berechneEndnote(dbPort, fachId, schuelerId) }
+function berechneAlleFuerSchuljahr(schuljahrId) { return noten.berechneAlleFuerSchuljahr(dbPort, schuljahrId) }
+function rosterFuerFach(fachId, opts) { return noten.rosterFuerFach(dbPort, fachId, opts) }
+function rosterIdsFuerFach(fachId) { return noten.rosterIdsFuerFach(dbPort, fachId) }
+function berechneAlleFuerFach(fachId) { return noten.berechneAlleFuerFach(dbPort, fachId) }
+function erzeugeTrigger(klasseId, schuelerId, typ, schweregrad, ausloeser, beschreibung) { return noten.erzeugeTrigger(dbPort, klasseId, schuelerId, typ, schweregrad, ausloeser, beschreibung) }
+function pruefeFehlstundenSchwellen(schuelerId) { return noten.pruefeFehlstundenSchwellen(dbPort, schuelerId) }
+function pruefeNotenTrigger(spalteId, schuelerId, wertNeu, wertAlt) { return noten.pruefeNotenTrigger(dbPort, spalteId, schuelerId, wertNeu, wertAlt) }
 
 // Zentrales Fehler-Logging: Konsole + persistente error.log im userData-Ordner,
 // damit Fehler auch ohne offene Dev-Tools nachvollziehbar sind.
@@ -522,11 +527,11 @@ function registerIPC() {
   // (kernDeps), abschnittHierarchie/sammleMaterialien (export:jahresplanungOdt),
   // kopiereMaterialien (klassen:duplizieren). sanitizeSegment bleibt als hoisted
   // Funktion in main.js; die Materialien-Domäne hat ihre eigene, identische Kopie.
-  const materialRoot = () => materialienDomain.materialRoot(db)
-  const abschnittHierarchie = (fachId) => materialienDomain.abschnittHierarchie(db, fachId)
+  const materialRoot = () => materialienDomain.materialRoot(dbPort)
+  const abschnittHierarchie = (fachId) => materialienDomain.abschnittHierarchie(dbPort, fachId)
   const verschiebeDir = (oldDir, newDir) => materialienDomain.verschiebeDir(matDeps, oldDir, newDir)
-  const sammleMaterialien = (id) => materialienDomain.sammleMaterialien(db, matDeps, id)
-  const kopiereMaterialien = (von, nach) => materialienDomain.kopiereMaterialien(db, matDeps, von, nach)
+  const sammleMaterialien = (id) => materialienDomain.sammleMaterialien(dbPort, matDeps, id)
+  const kopiereMaterialien = (von, nach) => materialienDomain.kopiereMaterialien(dbPort, matDeps, von, nach)
   // exDeps nach den Material-Bindungen (nutzt abschnittHierarchie/sammleMaterialien).
   const exDeps = { dialog: dialogPort, fs: fsPort, pdf: pdfPort, dateiTeil, exportDatum, rosterFuerFach, znInternZuAnzeige, abschnittHierarchie, sammleMaterialien, sanitizeSegment }
 
@@ -549,67 +554,69 @@ function registerIPC() {
 
   // Einstellungen
   // Handler delegieren an die Kern-Domäne (siehe core/domain/einstellungen.js).
-  ipcMain.handle('einstellungen:get', (_, schluessel) => einstellungenDomain.get(db, schluessel))
-  ipcMain.handle('einstellungen:set', (_, schluessel, wert) => einstellungenDomain.set(db, schluessel, wert))
-  ipcMain.handle('einstellungen:getAll', () => einstellungenDomain.getAll(db))
+  ipcMain.handle('einstellungen:get', (_, schluessel) => einstellungenDomain.get(dbPort, schluessel))
+  ipcMain.handle('einstellungen:set', (_, schluessel, wert) => einstellungenDomain.set(dbPort, schluessel, wert))
+  ipcMain.handle('einstellungen:getAll', () => einstellungenDomain.getAll(dbPort))
 
   // Schuljahre
-  ipcMain.handle('schuljahre:getAll', () => schuljahreDomain.getAll(db))
-  ipcMain.handle('schuljahre:create', (_, bezeichnung) => schuljahreDomain.create(db, bezeichnung))
+  ipcMain.handle('schuljahre:getAll', () => schuljahreDomain.getAll(dbPort))
+  ipcMain.handle('schuljahre:create', (_, bezeichnung) => schuljahreDomain.create(dbPort, bezeichnung))
+  ipcMain.handle('schuljahre:letztesArchivWiederherstellen', () => schuljahreDomain.letztesArchivWiederherstellen(dbPort))
+  ipcMain.handle('schuljahre:loeschen', (_, id) => schuljahreDomain.loeschen(dbPort, kernDeps, id))
 
   // Klassen
-  ipcMain.handle('klassen:getAll', (_, schuljahrId) => klassenDomain.getAll(db, schuljahrId))
-  ipcMain.handle('klassen:getVorlagen', () => klassenDomain.getVorlagen(db))
-  ipcMain.handle('klassen:create', (_, data) => klassenDomain.create(db, data))
-  ipcMain.handle('klassen:setTeamsLink', (_, id, link) => klassenDomain.setTeamsLink(db, id, link))
-  ipcMain.handle('klassen:setIstKv', (_, id, istKv) => klassenDomain.setIstKv(db, id, istKv))
-  ipcMain.handle('klassen:getDeleteStats', (_, id) => klassenDomain.getDeleteStats(db, kernDeps, id))
-  ipcMain.handle('klassen:delete', (_, id) => klassenDomain.remove(db, kernDeps, id))
-  ipcMain.handle('klassen:rename', (_, id, name) => klassenDomain.rename(db, kernDeps, id, name))
-  ipcMain.handle('klassen:setFarbe', (_, id, farbe) => klassenDomain.setFarbe(db, id, farbe))
-  ipcMain.handle('klassen:setSortierung', (_, id, modus) => klassenDomain.setSortierung(db, id, modus))
-  ipcMain.handle('klassen:reorder', (_, updates) => klassenDomain.reorder(db, updates))
+  ipcMain.handle('klassen:getAll', (_, schuljahrId) => klassenDomain.getAll(dbPort, schuljahrId))
+  ipcMain.handle('klassen:getVorlagen', () => klassenDomain.getVorlagen(dbPort))
+  ipcMain.handle('klassen:create', (_, data) => klassenDomain.create(dbPort, data))
+  ipcMain.handle('klassen:setTeamsLink', (_, id, link) => klassenDomain.setTeamsLink(dbPort, id, link))
+  ipcMain.handle('klassen:setIstKv', (_, id, istKv) => klassenDomain.setIstKv(dbPort, id, istKv))
+  ipcMain.handle('klassen:getDeleteStats', (_, id) => klassenDomain.getDeleteStats(dbPort, kernDeps, id))
+  ipcMain.handle('klassen:delete', (_, id) => klassenDomain.remove(dbPort, kernDeps, id))
+  ipcMain.handle('klassen:rename', (_, id, name) => klassenDomain.rename(dbPort, kernDeps, id, name))
+  ipcMain.handle('klassen:setFarbe', (_, id, farbe) => klassenDomain.setFarbe(dbPort, id, farbe))
+  ipcMain.handle('klassen:setSortierung', (_, id, modus) => klassenDomain.setSortierung(dbPort, id, modus))
+  ipcMain.handle('klassen:reorder', (_, updates) => klassenDomain.reorder(dbPort, updates))
 
   // Fächer
-  ipcMain.handle('faecher:getAll', (_, klasseId) => faecherDomain.getAll(db, klasseId))
-  ipcMain.handle('faecher:getAllImSchuljahr', (_, schuljahrId) => faecherDomain.getAllImSchuljahr(db, schuljahrId))
-  ipcMain.handle('faecher:create', (_, data) => faecherDomain.create(db, kernDeps, data))
-  ipcMain.handle('faecher:delete', (_, id) => faecherDomain.remove(db, kernDeps, id))
-  ipcMain.handle('faecher:rename', (_, id, name) => faecherDomain.rename(db, kernDeps, id, name))
-  ipcMain.handle('faecher:setFarbe', (_, id, farbe) => faecherDomain.setFarbe(db, id, farbe))
-  ipcMain.handle('faecher:updateGewichtung', (_, id, data) => faecherDomain.updateGewichtung(db, kernDeps, id, data))
-  ipcMain.handle('faecher:resetGewichtung', (_, id) => faecherDomain.resetGewichtung(db, kernDeps, id))
-  ipcMain.handle('faecher:setBenotungssystem', (_, id, system) => faecherDomain.setBenotungssystem(db, kernDeps, id, system))
-  ipcMain.handle('faecher:getSchuelerIds', (_, fachId) => faecherDomain.getSchuelerIds(db, kernDeps, fachId))
-  ipcMain.handle('faecher:setSchueler', (_, fachId, data) => faecherDomain.setSchueler(db, kernDeps, fachId, data))
+  ipcMain.handle('faecher:getAll', (_, klasseId) => faecherDomain.getAll(dbPort, klasseId))
+  ipcMain.handle('faecher:getAllImSchuljahr', (_, schuljahrId) => faecherDomain.getAllImSchuljahr(dbPort, schuljahrId))
+  ipcMain.handle('faecher:create', (_, data) => faecherDomain.create(dbPort, kernDeps, data))
+  ipcMain.handle('faecher:delete', (_, id) => faecherDomain.remove(dbPort, kernDeps, id))
+  ipcMain.handle('faecher:rename', (_, id, name) => faecherDomain.rename(dbPort, kernDeps, id, name))
+  ipcMain.handle('faecher:setFarbe', (_, id, farbe) => faecherDomain.setFarbe(dbPort, id, farbe))
+  ipcMain.handle('faecher:updateGewichtung', (_, id, data) => faecherDomain.updateGewichtung(dbPort, kernDeps, id, data))
+  ipcMain.handle('faecher:resetGewichtung', (_, id) => faecherDomain.resetGewichtung(dbPort, kernDeps, id))
+  ipcMain.handle('faecher:setBenotungssystem', (_, id, system) => faecherDomain.setBenotungssystem(dbPort, kernDeps, id, system))
+  ipcMain.handle('faecher:getSchuelerIds', (_, fachId) => faecherDomain.getSchuelerIds(dbPort, kernDeps, fachId))
+  ipcMain.handle('faecher:setSchueler', (_, fachId, data) => faecherDomain.setSchueler(dbPort, kernDeps, fachId, data))
 
   // Niveau (AHS/ST-Differenzierung)
-  ipcMain.handle('niveau:get', (_, fachId) => niveauDomain.get(db, fachId))
-  ipcMain.handle('niveau:getHistorie', (_, fachId) => niveauDomain.getHistorie(db, fachId))
-  ipcMain.handle('niveau:set', (_, fachId, schuelerId, niveau, datum) => niveauDomain.set(db, kernDeps, fachId, schuelerId, niveau, datum))
-  ipcMain.handle('niveau:deleteHistorie', (_, fachId, schuelerId, gueltigAb) => niveauDomain.deleteHistorie(db, kernDeps, fachId, schuelerId, gueltigAb))
+  ipcMain.handle('niveau:get', (_, fachId) => niveauDomain.get(dbPort, fachId))
+  ipcMain.handle('niveau:getHistorie', (_, fachId) => niveauDomain.getHistorie(dbPort, fachId))
+  ipcMain.handle('niveau:set', (_, fachId, schuelerId, niveau, datum) => niveauDomain.set(dbPort, kernDeps, fachId, schuelerId, niveau, datum))
+  ipcMain.handle('niveau:deleteHistorie', (_, fachId, schuelerId, gueltigAb) => niveauDomain.deleteHistorie(dbPort, kernDeps, fachId, schuelerId, gueltigAb))
 
   // ─── Kompetenzbereiche ──────────────────────────────────────────────────────
-  ipcMain.handle('kompetenzbereiche:getAll', (_, fachId) => kompetenzenDomain.bereicheGetAll(db, fachId))
-  ipcMain.handle('kompetenzbereiche:create', (_, fachId, titel, beschreibung) => kompetenzenDomain.bereichCreate(db, fachId, titel, beschreibung))
-  ipcMain.handle('kompetenzbereiche:update', (_, id, data) => kompetenzenDomain.bereichUpdate(db, id, data))
-  ipcMain.handle('kompetenzbereiche:delete', (_, id) => kompetenzenDomain.bereichDelete(db, id))
-  ipcMain.handle('kompetenzbereiche:reorder', (_, ids) => kompetenzenDomain.bereichReorder(db, ids))
-  ipcMain.handle('kompetenzbereiche:initVorlagen', (_, fachId, fachName) => kompetenzenDomain.initVorlagen(db, kernDeps, fachId, fachName))
+  ipcMain.handle('kompetenzbereiche:getAll', (_, fachId) => kompetenzenDomain.bereicheGetAll(dbPort, fachId))
+  ipcMain.handle('kompetenzbereiche:create', (_, fachId, titel, beschreibung) => kompetenzenDomain.bereichCreate(dbPort, fachId, titel, beschreibung))
+  ipcMain.handle('kompetenzbereiche:update', (_, id, data) => kompetenzenDomain.bereichUpdate(dbPort, id, data))
+  ipcMain.handle('kompetenzbereiche:delete', (_, id) => kompetenzenDomain.bereichDelete(dbPort, id))
+  ipcMain.handle('kompetenzbereiche:reorder', (_, ids) => kompetenzenDomain.bereichReorder(dbPort, ids))
+  ipcMain.handle('kompetenzbereiche:initVorlagen', (_, fachId, fachName) => kompetenzenDomain.initVorlagen(dbPort, kernDeps, fachId, fachName))
 
   // ─── Schüler:innen-Kompetenzen ─────────────────────────────────────────────
-  ipcMain.handle('schuelerKompetenzen:getAll', (_, fachId) => kompetenzenDomain.schuelerGetAll(db, fachId))
-  ipcMain.handle('schuelerKompetenzen:set', (_, kompetenzbereichId, schuelerId, niveau, notiz) => kompetenzenDomain.schuelerSet(db, kompetenzbereichId, schuelerId, niveau, notiz))
+  ipcMain.handle('schuelerKompetenzen:getAll', (_, fachId) => kompetenzenDomain.schuelerGetAll(dbPort, fachId))
+  ipcMain.handle('schuelerKompetenzen:set', (_, kompetenzbereichId, schuelerId, niveau, notiz) => kompetenzenDomain.schuelerSet(dbPort, kompetenzbereichId, schuelerId, niveau, notiz))
 
   // Schüler:innen. Reihenfolge richtet sich nach der pro Klasse gewählten Sortierung.
-  ipcMain.handle('schueler:getAll', (_, klasseId) => schuelerDomain.getAll(db, klasseId))
-  ipcMain.handle('schueler:create', (_, data) => schuelerDomain.create(db, data))
-  ipcMain.handle('schueler:delete', (_, id) => schuelerDomain.remove(db, id))
-  ipcMain.handle('schueler:update', (_, id, data) => schuelerDomain.update(db, id, data))
-  ipcMain.handle('schueler:setAvatar', (_, id, avatar) => schuelerDomain.setAvatar(db, id, avatar))
-  ipcMain.handle('schueler:reorder', (_, updates) => schuelerDomain.reorder(db, updates))
-  ipcMain.handle('schueler:importBatch', (_, klasseId, list, fachIds = []) => schuelerDomain.importBatch(db, klasseId, list, fachIds))
-  ipcMain.handle('schueler:getLeistungsProfil', (_, schuelerId) => schuelerDomain.getLeistungsProfil(db, kernDeps, schuelerId))
+  ipcMain.handle('schueler:getAll', (_, klasseId) => schuelerDomain.getAll(dbPort, klasseId))
+  ipcMain.handle('schueler:create', (_, data) => schuelerDomain.create(dbPort, data))
+  ipcMain.handle('schueler:delete', (_, id) => schuelerDomain.remove(dbPort, id))
+  ipcMain.handle('schueler:update', (_, id, data) => schuelerDomain.update(dbPort, id, data))
+  ipcMain.handle('schueler:setAvatar', (_, id, avatar) => schuelerDomain.setAvatar(dbPort, id, avatar))
+  ipcMain.handle('schueler:reorder', (_, updates) => schuelerDomain.reorder(dbPort, updates))
+  ipcMain.handle('schueler:importBatch', (_, klasseId, list, fachIds = []) => schuelerDomain.importBatch(dbPort, klasseId, list, fachIds))
+  ipcMain.handle('schueler:getLeistungsProfil', (_, schuelerId) => schuelerDomain.getLeistungsProfil(dbPort, kernDeps, schuelerId))
 
   ipcMain.handle('schueler:exportProfilPDF', async (_, { profil, klassenname }) => {
     const { filePath, canceled } = await dialog.showSaveDialog({
@@ -624,68 +631,68 @@ function registerIPC() {
   })
 
   // Spalten
-  ipcMain.handle('spalten:getAll', (_, fachId) => spaltenDomain.getAll(db, fachId))
-  ipcMain.handle('spalten:create', (_, data) => spaltenDomain.create(db, data))
-  ipcMain.handle('spalten:delete', (_, id) => spaltenDomain.remove(db, id))
-  ipcMain.handle('spalten:update', (_, id, data) => spaltenDomain.update(db, kernDeps, id, data))
-  ipcMain.handle('spalten:toggleEingeklappt', (_, id) => spaltenDomain.toggleEingeklappt(db, id))
-  ipcMain.handle('spalten:setEingeklappt', (_, ids, wert) => spaltenDomain.setEingeklappt(db, ids, wert))
-  ipcMain.handle('spalten:sortByKategorie', (_, fachId, semester) => spaltenDomain.sortByKategorie(db, fachId, semester))
-  ipcMain.handle('spalten:sortChronologisch', (_, fachId, semester) => spaltenDomain.sortChronologisch(db, fachId, semester))
+  ipcMain.handle('spalten:getAll', (_, fachId) => spaltenDomain.getAll(dbPort, fachId))
+  ipcMain.handle('spalten:create', (_, data) => spaltenDomain.create(dbPort, data))
+  ipcMain.handle('spalten:delete', (_, id) => spaltenDomain.remove(dbPort, id))
+  ipcMain.handle('spalten:update', (_, id, data) => spaltenDomain.update(dbPort, kernDeps, id, data))
+  ipcMain.handle('spalten:toggleEingeklappt', (_, id) => spaltenDomain.toggleEingeklappt(dbPort, id))
+  ipcMain.handle('spalten:setEingeklappt', (_, ids, wert) => spaltenDomain.setEingeklappt(dbPort, ids, wert))
+  ipcMain.handle('spalten:sortByKategorie', (_, fachId, semester) => spaltenDomain.sortByKategorie(dbPort, fachId, semester))
+  ipcMain.handle('spalten:sortChronologisch', (_, fachId, semester) => spaltenDomain.sortChronologisch(dbPort, fachId, semester))
 
   // Einträge
-  ipcMain.handle('eintraege:getAll', (_, fachId) => eintraegeDomain.getAll(db, fachId))
-  ipcMain.handle('eintraege:set', (_, spalteId, schuelerId, wert) => eintraegeDomain.set(db, kernDeps, spalteId, schuelerId, wert))
-  ipcMain.handle('eintraege:setKommentar', (_, spalteId, schuelerId, kommentar) => eintraegeDomain.setKommentar(db, spalteId, schuelerId, kommentar))
-  ipcMain.handle('verlauf:get', (_, schuelerId, fachId) => eintraegeDomain.verlaufGet(db, schuelerId, fachId))
+  ipcMain.handle('eintraege:getAll', (_, fachId) => eintraegeDomain.getAll(dbPort, fachId))
+  ipcMain.handle('eintraege:set', (_, spalteId, schuelerId, wert) => eintraegeDomain.set(dbPort, kernDeps, spalteId, schuelerId, wert))
+  ipcMain.handle('eintraege:setKommentar', (_, spalteId, schuelerId, kommentar) => eintraegeDomain.setKommentar(dbPort, spalteId, schuelerId, kommentar))
+  ipcMain.handle('verlauf:get', (_, schuelerId, fachId) => eintraegeDomain.verlaufGet(dbPort, schuelerId, fachId))
 
   // Zeugnisnoten
-  ipcMain.handle('zeugnisnoten:getAll', (_, fachId) => zeugnisnotenDomain.getAll(db, fachId))
-  ipcMain.handle('zeugnisnoten:berechne', (_, fachId, schuelerId, semester) => zeugnisnotenDomain.berechne(db, kernDeps, fachId, schuelerId, semester))
-  ipcMain.handle('zeugnisnoten:setManuell', (_, fachId, schuelerId, semester, note) => zeugnisnotenDomain.setManuell(db, kernDeps, fachId, schuelerId, semester, note))
-  ipcMain.handle('zeugnisnoten:clearManuell', (_, fachId, schuelerId, semester) => zeugnisnotenDomain.clearManuell(db, kernDeps, fachId, schuelerId, semester))
-  ipcMain.handle('zeugnisnoten:berechneFach', (_, fachId) => zeugnisnotenDomain.berechneFach(db, kernDeps, fachId))
+  ipcMain.handle('zeugnisnoten:getAll', (_, fachId) => zeugnisnotenDomain.getAll(dbPort, fachId))
+  ipcMain.handle('zeugnisnoten:berechne', (_, fachId, schuelerId, semester) => zeugnisnotenDomain.berechne(dbPort, kernDeps, fachId, schuelerId, semester))
+  ipcMain.handle('zeugnisnoten:setManuell', (_, fachId, schuelerId, semester, note) => zeugnisnotenDomain.setManuell(dbPort, kernDeps, fachId, schuelerId, semester, note))
+  ipcMain.handle('zeugnisnoten:clearManuell', (_, fachId, schuelerId, semester) => zeugnisnotenDomain.clearManuell(dbPort, kernDeps, fachId, schuelerId, semester))
+  ipcMain.handle('zeugnisnoten:berechneFach', (_, fachId) => zeugnisnotenDomain.berechneFach(dbPort, kernDeps, fachId))
 
   // Notizen
-  ipcMain.handle('notizen:get', (_, schuelerId, fachId) => notizenDomain.get(db, schuelerId, fachId))
-  ipcMain.handle('notizen:set', (_, schuelerId, fachId, text) => notizenDomain.set(db, kernDeps, schuelerId, fachId, text))
+  ipcMain.handle('notizen:get', (_, schuelerId, fachId) => notizenDomain.get(dbPort, schuelerId, fachId))
+  ipcMain.handle('notizen:set', (_, schuelerId, fachId, text) => notizenDomain.set(dbPort, kernDeps, schuelerId, fachId, text))
 
   // Gewichtung global
-  ipcMain.handle('gewichtungGlobal:getAll', () => gewichtungDomain.getAll(db))
-  ipcMain.handle('gewichtungGlobal:update', (_, kategorie, gewichtung) => gewichtungDomain.update(db, kernDeps, kategorie, gewichtung))
+  ipcMain.handle('gewichtungGlobal:getAll', () => gewichtungDomain.getAll(dbPort))
+  ipcMain.handle('gewichtungGlobal:update', (_, kategorie, gewichtung) => gewichtungDomain.update(dbPort, kernDeps, kategorie, gewichtung))
 
   // Alle Zeugnisnoten im aktuellen Schuljahr neu berechnen
   // (z.B. nach Änderung von s1_gewichtung, ma_plus_wert, ma_minus_wert)
-  ipcMain.handle('noten:rechneAllesNeu', () => {
-    const aktuellesSchuljahr = db.prepare('SELECT id FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1').get()
-    berechneAlleFuerSchuljahr(aktuellesSchuljahr?.id)
+  ipcMain.handle('noten:rechneAllesNeu', async () => {
+    const aktuellesSchuljahr = await dbPort.selectOne('SELECT id FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1')
+    await berechneAlleFuerSchuljahr(aktuellesSchuljahr?.id)
     return true
   })
 
   // Stundenzeiten
-  ipcMain.handle('stundenzeiten:getAll', () => stundenzeitenDomain.getAll(db))
-  ipcMain.handle('stundenzeiten:update', (_, id, data) => stundenzeitenDomain.update(db, id, data))
-  ipcMain.handle('stundenzeiten:create', () => stundenzeitenDomain.create(db))
-  ipcMain.handle('stundenzeiten:delete', (_, id) => stundenzeitenDomain.remove(db, id))
-  ipcMain.handle('stundenzeiten:saveAll', (_, rows) => stundenzeitenDomain.saveAll(db, kernDeps, rows))
+  ipcMain.handle('stundenzeiten:getAll', () => stundenzeitenDomain.getAll(dbPort))
+  ipcMain.handle('stundenzeiten:update', (_, id, data) => stundenzeitenDomain.update(dbPort, id, data))
+  ipcMain.handle('stundenzeiten:create', () => stundenzeitenDomain.create(dbPort))
+  ipcMain.handle('stundenzeiten:delete', (_, id) => stundenzeitenDomain.remove(dbPort, id))
+  ipcMain.handle('stundenzeiten:saveAll', (_, rows) => stundenzeitenDomain.saveAll(dbPort, kernDeps, rows))
 
   // Stundenplan
-  ipcMain.handle('stundenplan:getAll', () => stundenplanDomain.getAll(db))
-  ipcMain.handle('stundenplan:create', (_, data) => stundenplanDomain.create(db, data))
-  ipcMain.handle('stundenplan:delete', (_, id) => stundenplanDomain.remove(db, id))
-  ipcMain.handle('stundenplan:update', (_, id, data) => stundenplanDomain.update(db, id, data))
-  ipcMain.handle('stundenplan:verschieben', (_, id, wochentag, stundeId) => stundenplanDomain.verschieben(db, id, wochentag, stundeId))
-  ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => stundenplanDomain.getByKlasse(db, klasseId))
-  ipcMain.handle('stundenplan:getParallelFach', (_, aktuelleKlasseId, fachName) => stundenplanDomain.getParallelFach(db, aktuelleKlasseId, fachName))
+  ipcMain.handle('stundenplan:getAll', () => stundenplanDomain.getAll(dbPort))
+  ipcMain.handle('stundenplan:create', (_, data) => stundenplanDomain.create(dbPort, data))
+  ipcMain.handle('stundenplan:delete', (_, id) => stundenplanDomain.remove(dbPort, id))
+  ipcMain.handle('stundenplan:update', (_, id, data) => stundenplanDomain.update(dbPort, id, data))
+  ipcMain.handle('stundenplan:verschieben', (_, id, wochentag, stundeId) => stundenplanDomain.verschieben(dbPort, id, wochentag, stundeId))
+  ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => stundenplanDomain.getByKlasse(dbPort, klasseId))
+  ipcMain.handle('stundenplan:getParallelFach', (_, aktuelleKlasseId, fachName) => stundenplanDomain.getParallelFach(dbPort, aktuelleKlasseId, fachName))
 
   // Stunden-Planung
-  ipcMain.handle('stundenPlanung:get', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.get(db, stundenplanId, wocheDatum))
+  ipcMain.handle('stundenPlanung:get', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.get(dbPort, stundenplanId, wocheDatum))
 
   // ─── Supplierstunden ─────────────────────────────────────────────────────────
-  ipcMain.handle('supplierstunden:getWoche', (_, wocheDatum) => supplierstundenDomain.getWoche(db, wocheDatum))
-  ipcMain.handle('supplierstunden:create', (_, data) => supplierstundenDomain.create(db, data))
-  ipcMain.handle('supplierstunden:delete', (_, id) => supplierstundenDomain.remove(db, id))
-  ipcMain.handle('supplierstunden:update', (_, id, data) => supplierstundenDomain.update(db, id, data))
+  ipcMain.handle('supplierstunden:getWoche', (_, wocheDatum) => supplierstundenDomain.getWoche(dbPort, wocheDatum))
+  ipcMain.handle('supplierstunden:create', (_, data) => supplierstundenDomain.create(dbPort, data))
+  ipcMain.handle('supplierstunden:delete', (_, id) => supplierstundenDomain.remove(dbPort, id))
+  ipcMain.handle('supplierstunden:update', (_, id, data) => supplierstundenDomain.update(dbPort, id, data))
 
   ipcMain.handle('shell:open', (_, url) => {
     return oeffneExternSicher(url)
@@ -695,21 +702,21 @@ function registerIPC() {
     try { clipboard.writeText(String(text ?? '')); return true } catch (e) { logError('app:clipboard', e); return false }
   })
 
-  ipcMain.handle('stundenPlanung:getWoche', (_, wocheDatum) => stundenPlanungDomain.getWoche(db, wocheDatum))
-  ipcMain.handle('stundenPlanung:save', (_, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link) => stundenPlanungDomain.save(db, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link))
-  ipcMain.handle('stundenPlanung:getHueWoche', (_, wocheDatum) => stundenPlanungDomain.getHueWoche(db, wocheDatum))
-  ipcMain.handle('stundenPlanung:checkMusizieren', (_, wocheDatum, klasseId, excludeStundenplanId) => stundenPlanungDomain.checkMusizieren(db, wocheDatum, klasseId, excludeStundenplanId))
+  ipcMain.handle('stundenPlanung:getWoche', (_, wocheDatum) => stundenPlanungDomain.getWoche(dbPort, wocheDatum))
+  ipcMain.handle('stundenPlanung:save', (_, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link) => stundenPlanungDomain.save(dbPort, stundenplanId, wocheDatum, titel, inhalt, musizieren, hueText, hueFristDatum, link))
+  ipcMain.handle('stundenPlanung:getHueWoche', (_, wocheDatum) => stundenPlanungDomain.getHueWoche(dbPort, wocheDatum))
+  ipcMain.handle('stundenPlanung:checkMusizieren', (_, wocheDatum, klasseId, excludeStundenplanId) => stundenPlanungDomain.checkMusizieren(dbPort, wocheDatum, klasseId, excludeStundenplanId))
 
-  ipcMain.handle('stundenPlanung:setEntfall', (_, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume) => stundenPlanungDomain.setEntfall(db, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume))
-  ipcMain.handle('stundenPlanung:removeEntfall', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.removeEntfall(db, stundenplanId, wocheDatum))
-  ipcMain.handle('stundenPlanung:delete', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.remove(db, stundenplanId, wocheDatum))
+  ipcMain.handle('stundenPlanung:setEntfall', (_, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume) => stundenPlanungDomain.setEntfall(dbPort, stundenplanId, wocheDatum, vorruecken, ferienZeitraeume))
+  ipcMain.handle('stundenPlanung:removeEntfall', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.removeEntfall(dbPort, stundenplanId, wocheDatum))
+  ipcMain.handle('stundenPlanung:delete', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.remove(dbPort, stundenplanId, wocheDatum))
 
   // Todos
-  ipcMain.handle('todos:getAll', (_, schuljahrId) => todosDomain.getAll(db, schuljahrId))
-  ipcMain.handle('todos:create', (_, data) => todosDomain.create(db, data))
-  ipcMain.handle('todos:update', (_, id, data) => todosDomain.update(db, id, data))
-  ipcMain.handle('todos:delete', (_, id) => todosDomain.remove(db, id))
-  ipcMain.handle('todos:toggleErledigt', (_, id) => todosDomain.toggleErledigt(db, id))
+  ipcMain.handle('todos:getAll', (_, schuljahrId) => todosDomain.getAll(dbPort, schuljahrId))
+  ipcMain.handle('todos:create', (_, data) => todosDomain.create(dbPort, data))
+  ipcMain.handle('todos:update', (_, id, data) => todosDomain.update(dbPort, id, data))
+  ipcMain.handle('todos:delete', (_, id) => todosDomain.remove(dbPort, id))
+  ipcMain.handle('todos:toggleErledigt', (_, id) => todosDomain.toggleErledigt(dbPort, id))
 
   // Backup
   ipcMain.handle('backup:create', () => doBackupCreate())
@@ -922,61 +929,61 @@ function registerIPC() {
   })
 
   // ─── Export (Logik in core/services/export.js; exDeps = Ports + Helfer) ──────
-  ipcMain.handle('export:toJson', () => exportService.toJson(db, exDeps))
-  ipcMain.handle('export:fachOds', (_, fachId) => exportService.fachOds(db, exDeps, fachId))
+  ipcMain.handle('export:toJson', () => exportService.toJson(dbPort, exDeps))
+  ipcMain.handle('export:fachOds', (_, fachId) => exportService.fachOds(dbPort, exDeps, fachId))
 
   // Import: CSV/Excel Schüler:innen (Logik in core/services/import.js)
   ipcMain.handle('import:schuelerFromFile', (_, filePath) => importService.schuelerFromFile({ fs: fsPort }, filePath))
 
   // Jahresabschluss (Logik in core/domain/jahresabschluss.js)
-  ipcMain.handle('jahresabschluss:neuesSchuljahr', (_, payload) => jahresabschlussDomain.neuesSchuljahr(db, payload))
+  ipcMain.handle('jahresabschluss:neuesSchuljahr', (_, payload) => jahresabschlussDomain.neuesSchuljahr(dbPort, payload))
 
   // ─── Planung: verfügbare Wochen ────────────────────────────────────────────
-  ipcMain.handle('planung:getVorhandeneWochen', () => stundenPlanungDomain.getVorhandeneWochen(db))
+  ipcMain.handle('planung:getVorhandeneWochen', () => stundenPlanungDomain.getVorhandeneWochen(dbPort))
 
   // ─── Export: Planungs-PDF ──────────────────────────────────────────────────
-  ipcMain.handle('export:planungPdf', (_, wochen, einzeln) => exportService.planungPdf(db, exDeps, wochen, einzeln))
+  ipcMain.handle('export:planungPdf', (_, wochen, einzeln) => exportService.planungPdf(dbPort, exDeps, wochen, einzeln))
 
   // ─── Export: Stundenplan als ansprechendes PDF (Querformat, zum Aufhängen) ──
-  ipcMain.handle('export:stundenplanPdf', (_, titelZusatz) => exportService.stundenplanPdf(db, exDeps, titelZusatz))
+  ipcMain.handle('export:stundenplanPdf', (_, titelZusatz) => exportService.stundenplanPdf(dbPort, exDeps, titelZusatz))
 
   // ─── Export: Jahresplanung als ODT (tabellarisch, Querformat) ─────────────
-  ipcMain.handle('export:jahresplanungOdt', (_, fachId) => exportService.jahresplanungOdt(db, exDeps, fachId))
-  ipcMain.handle('export:fachPlanungDocx', (_, fachId, fachName, klasseName, wochenDaten) => exportService.fachPlanungDocx(db, exDeps, fachId, fachName, klasseName, wochenDaten))
-  ipcMain.handle('export:allSchuelerOds', () => exportService.allSchuelerOds(db, exDeps))
-  ipcMain.handle('export:allSchuelerPdf', () => exportService.allSchuelerPdf(db, exDeps))
-  ipcMain.handle('export:archivPdf', (_, schuljahrId) => exportService.archivPdf(db, exDeps, schuljahrId))
-  ipcMain.handle('export:archivOds', (_, schuljahrId) => exportService.archivOds(db, exDeps, schuljahrId))
+  ipcMain.handle('export:jahresplanungOdt', (_, fachId) => exportService.jahresplanungOdt(dbPort, exDeps, fachId))
+  ipcMain.handle('export:fachPlanungDocx', (_, fachId, fachName, klasseName, wochenDaten) => exportService.fachPlanungDocx(dbPort, exDeps, fachId, fachName, klasseName, wochenDaten))
+  ipcMain.handle('export:allSchuelerOds', () => exportService.allSchuelerOds(dbPort, exDeps))
+  ipcMain.handle('export:allSchuelerPdf', () => exportService.allSchuelerPdf(dbPort, exDeps))
+  ipcMain.handle('export:archivPdf', (_, schuljahrId) => exportService.archivPdf(dbPort, exDeps, schuljahrId))
+  ipcMain.handle('export:archivOds', (_, schuljahrId) => exportService.archivOds(dbPort, exDeps, schuljahrId))
 
   // ─── Sitzplan ───────────────────────────────────────────────────────────────
-  ipcMain.handle('sitzplan:getTische', (_, fachId) => sitzplanDomain.getTische(db, fachId))
-  ipcMain.handle('sitzplan:createTisch', (_, fachId, typ, x, y) => sitzplanDomain.createTisch(db, fachId, typ, x, y))
-  ipcMain.handle('sitzplan:deleteTisch', (_, tischId) => sitzplanDomain.deleteTisch(db, tischId))
-  ipcMain.handle('sitzplan:moveTisch', (_, tischId, x, y) => sitzplanDomain.moveTisch(db, tischId, x, y))
-  ipcMain.handle('sitzplan:setRotation', (_, tischId, rotation) => sitzplanDomain.setRotation(db, tischId, rotation))
-  ipcMain.handle('sitzplan:assignSchueler', (_, sitzplatzId, schuelerId) => sitzplanDomain.assignSchueler(db, sitzplatzId, schuelerId))
-  ipcMain.handle('sitzplan:duplicateTisch', (_, fachId, sourceTischId, x, y) => sitzplanDomain.duplicateTisch(db, fachId, sourceTischId, x, y))
+  ipcMain.handle('sitzplan:getTische', (_, fachId) => sitzplanDomain.getTische(dbPort, fachId))
+  ipcMain.handle('sitzplan:createTisch', (_, fachId, typ, x, y) => sitzplanDomain.createTisch(dbPort, fachId, typ, x, y))
+  ipcMain.handle('sitzplan:deleteTisch', (_, tischId) => sitzplanDomain.deleteTisch(dbPort, tischId))
+  ipcMain.handle('sitzplan:moveTisch', (_, tischId, x, y) => sitzplanDomain.moveTisch(dbPort, tischId, x, y))
+  ipcMain.handle('sitzplan:setRotation', (_, tischId, rotation) => sitzplanDomain.setRotation(dbPort, tischId, rotation))
+  ipcMain.handle('sitzplan:assignSchueler', (_, sitzplatzId, schuelerId) => sitzplanDomain.assignSchueler(dbPort, sitzplatzId, schuelerId))
+  ipcMain.handle('sitzplan:duplicateTisch', (_, fachId, sourceTischId, x, y) => sitzplanDomain.duplicateTisch(dbPort, fachId, sourceTischId, x, y))
 
   // ─── Custom Ferien ───────────────────────────────────────────────────────────
-  ipcMain.handle('customFerien:getAll', (_, schuljahrId) => customFerienDomain.getAll(db, schuljahrId))
-  ipcMain.handle('customFerien:save', (_, schuljahrId, ferien) => customFerienDomain.save(db, schuljahrId, ferien))
+  ipcMain.handle('customFerien:getAll', (_, schuljahrId) => customFerienDomain.getAll(dbPort, schuljahrId))
+  ipcMain.handle('customFerien:save', (_, schuljahrId, ferien) => customFerienDomain.save(dbPort, schuljahrId, ferien))
 
   // ─── Termine ─────────────────────────────────────────────────────────────────
-  ipcMain.handle('termine:getAll', (_, schuljahrId) => termineDomain.getAll(db, schuljahrId))
-  ipcMain.handle('termine:create', (_, data) => termineDomain.create(db, data))
-  ipcMain.handle('termine:update', (_, id, data) => termineDomain.update(db, id, data))
-  ipcMain.handle('termine:delete', (_, id) => termineDomain.remove(db, id))
+  ipcMain.handle('termine:getAll', (_, schuljahrId) => termineDomain.getAll(dbPort, schuljahrId))
+  ipcMain.handle('termine:create', (_, data) => termineDomain.create(dbPort, data))
+  ipcMain.handle('termine:update', (_, id, data) => termineDomain.update(dbPort, id, data))
+  ipcMain.handle('termine:delete', (_, id) => termineDomain.remove(dbPort, id))
 
   // ─── Jahresplanung ────────────────────────────────────────────────────────────
-  ipcMain.handle('jahresplanung:getAll', (_, fachId) => jahresplanungDomain.getAll(db, fachId))
-  ipcMain.handle('jahresplanung:create', (_, d) => jahresplanungDomain.create(db, jpDeps, d))
-  ipcMain.handle('jahresplanung:update', (_, id, d) => jahresplanungDomain.update(db, jpDeps, id, d))
-  ipcMain.handle('jahresplanung:delete', (_, id) => jahresplanungDomain.remove(db, id))
-  ipcMain.handle('jahresplanung:getFaecherMitPlan', () => jahresplanungDomain.getFaecherMitPlan(db))
-  ipcMain.handle('jahresplanung:importVonFach', (_, quellFachId, zielFachId, options = {}) => jahresplanungDomain.importVonFach(db, quellFachId, zielFachId, options))
-  ipcMain.handle('jahresplanung:anwendenAufFaecher', (_, quellFachId, zielFachIds, options = {}) => jahresplanungDomain.anwendenAufFaecher(db, jpDeps, quellFachId, zielFachIds, options))
-  ipcMain.handle('jahresplanung:importVonDatei', (_, fachId, filePath, options = {}) => jahresplanungDomain.importVonDatei(db, jpDeps, fachId, filePath, options))
-  ipcMain.handle('jahresplanung:swap', (_, idA, idB) => jahresplanungDomain.swap(db, idA, idB))
+  ipcMain.handle('jahresplanung:getAll', (_, fachId) => jahresplanungDomain.getAll(dbPort, fachId))
+  ipcMain.handle('jahresplanung:create', (_, d) => jahresplanungDomain.create(dbPort, jpDeps, d))
+  ipcMain.handle('jahresplanung:update', (_, id, d) => jahresplanungDomain.update(dbPort, jpDeps, id, d))
+  ipcMain.handle('jahresplanung:delete', (_, id) => jahresplanungDomain.remove(dbPort, id))
+  ipcMain.handle('jahresplanung:getFaecherMitPlan', () => jahresplanungDomain.getFaecherMitPlan(dbPort))
+  ipcMain.handle('jahresplanung:importVonFach', (_, quellFachId, zielFachId, options = {}) => jahresplanungDomain.importVonFach(dbPort, quellFachId, zielFachId, options))
+  ipcMain.handle('jahresplanung:anwendenAufFaecher', (_, quellFachId, zielFachIds, options = {}) => jahresplanungDomain.anwendenAufFaecher(dbPort, jpDeps, quellFachId, zielFachIds, options))
+  ipcMain.handle('jahresplanung:importVonDatei', (_, fachId, filePath, options = {}) => jahresplanungDomain.importVonDatei(dbPort, jpDeps, fachId, filePath, options))
+  ipcMain.handle('jahresplanung:swap', (_, idA, idB) => jahresplanungDomain.swap(dbPort, idA, idB))
 
   // ─── Materialien (Abschnitts-Ordner) ─────────────────────────────────────────
   // Handler-Logik in core/domain/materialien.js; lokale Bindungen (materialRoot,
@@ -993,126 +1000,123 @@ function registerIPC() {
     return s
   }
 
-  ipcMain.handle('materialien:waehleRoot', () => materialienDomain.waehleRoot(db, matDeps))
-  ipcMain.handle('materialien:getRoot', () => materialienDomain.getRoot(db))
-  ipcMain.handle('materialien:list', (_, abschnittId) => materialienDomain.list(db, matDeps, abschnittId))
-  ipcMain.handle('materialien:dateienHinzufuegen', (_, abschnittId) => materialienDomain.dateienHinzufuegen(db, matDeps, abschnittId))
-  ipcMain.handle('materialien:linkHinzufuegen', (_, abschnittId, data) => materialienDomain.linkHinzufuegen(db, matDeps, abschnittId, data))
-  ipcMain.handle('materialien:metaSetzen', (_, data) => materialienDomain.metaSetzen(db, matDeps, data))
-  ipcMain.handle('materialien:entfernen', (_, data) => materialienDomain.entfernen(db, matDeps, data))
-  ipcMain.handle('materialien:oeffnen', (_, data) => materialienDomain.oeffnen(db, matDeps, data))
-  ipcMain.handle('materialien:ordnerOeffnen', (_, abschnittId) => materialienDomain.ordnerOeffnen(db, matDeps, abschnittId))
+  ipcMain.handle('materialien:waehleRoot', () => materialienDomain.waehleRoot(dbPort, matDeps))
+  ipcMain.handle('materialien:getRoot', () => materialienDomain.getRoot(dbPort))
+  ipcMain.handle('materialien:list', (_, abschnittId) => materialienDomain.list(dbPort, matDeps, abschnittId))
+  ipcMain.handle('materialien:dateienHinzufuegen', (_, abschnittId) => materialienDomain.dateienHinzufuegen(dbPort, matDeps, abschnittId))
+  ipcMain.handle('materialien:linkHinzufuegen', (_, abschnittId, data) => materialienDomain.linkHinzufuegen(dbPort, matDeps, abschnittId, data))
+  ipcMain.handle('materialien:metaSetzen', (_, data) => materialienDomain.metaSetzen(dbPort, matDeps, data))
+  ipcMain.handle('materialien:entfernen', (_, data) => materialienDomain.entfernen(dbPort, matDeps, data))
+  ipcMain.handle('materialien:oeffnen', (_, data) => materialienDomain.oeffnen(dbPort, matDeps, data))
+  ipcMain.handle('materialien:ordnerOeffnen', (_, abschnittId) => materialienDomain.ordnerOeffnen(dbPort, matDeps, abschnittId))
 
   // Eine echte Klasse duplizieren: Fächer immer; optional Jahresplanung+Materialien und/oder Schüler:innen (ohne Noten).
   ipcMain.handle('klassen:duplizieren', (_, { klasseId, neuerName, mitPlanung, mitSchueler }) => {
-    const tx = db.transaction(() => {
-      const orig = db.prepare('SELECT * FROM klassen WHERE id=?').get(klasseId)
+    return dbPort.transaction(async (tx) => {
+      const orig = await tx.selectOne('SELECT * FROM klassen WHERE id=?', [klasseId])
       if (!orig) return null
-      const maxReihen = db.prepare('SELECT MAX(reihenfolge) as m FROM klassen WHERE schuljahr_id=?').get(orig.schuljahr_id)?.m ?? 0
-      const nk = db.prepare('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link, ist_vorlage, ist_kv) VALUES (?,?,?,?,?,0,?)')
-        .run(orig.schuljahr_id, (neuerName && neuerName.trim()) || (orig.name + ' (Kopie)'), orig.farbe ?? null, maxReihen + 1, orig.teams_link ?? null, orig.ist_kv ?? 0)
+      const maxReihen = (await tx.selectOne('SELECT MAX(reihenfolge) as m FROM klassen WHERE schuljahr_id=?', [orig.schuljahr_id]))?.m ?? 0
+      const nk = await tx.execute('INSERT INTO klassen (schuljahr_id, name, farbe, reihenfolge, teams_link, ist_vorlage, ist_kv, uuid) VALUES (?,?,?,?,?,0,?,?)',
+        [orig.schuljahr_id, (neuerName && neuerName.trim()) || (orig.name + ' (Kopie)'), orig.farbe ?? null, maxReihen + 1, orig.teams_link ?? null, orig.ist_kv ?? 0, neueUuid()])
       const neueKlasseId = nk.lastInsertRowid
 
       // Schüler:innen kopieren (ohne Noten)
       const schuelerMap = {}
       if (mitSchueler) {
-        const schueler = db.prepare('SELECT * FROM schueler WHERE klasse_id=? AND aktiv=1 ORDER BY reihenfolge, id').all(klasseId)
-        const insS = db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge, aktiv, avatar, lernschwaeche, legasthenie, spf) VALUES (?,?,?,?,1,?,?,?,?)')
+        const schueler = await tx.select('SELECT * FROM schueler WHERE klasse_id=? AND aktiv=1 ORDER BY reihenfolge, id', [klasseId])
         for (const s of schueler) {
-          const r = insS.run(neueKlasseId, s.vorname, s.nachname, s.reihenfolge, s.avatar ?? null, s.lernschwaeche ?? 0, s.legasthenie ?? 0, s.spf ?? 0)
+          const r = await tx.execute('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge, aktiv, avatar, lernschwaeche, legasthenie, spf, uuid) VALUES (?,?,?,?,1,?,?,?,?,?)',
+            [neueKlasseId, s.vorname, s.nachname, s.reihenfolge, s.avatar ?? null, s.lernschwaeche ?? 0, s.legasthenie ?? 0, s.spf ?? 0, neueUuid()])
           schuelerMap[s.id] = r.lastInsertRowid
         }
       }
 
       // Fächer kopieren (mit Einstellungen)
-      const faecher = db.prepare('SELECT * FROM faecher WHERE klasse_id=? ORDER BY reihenfolge, id').all(klasseId)
+      const faecher = await tx.select('SELECT * FROM faecher WHERE klasse_id=? ORDER BY reihenfolge, id', [klasseId])
       for (const f of faecher) {
-        const nf = db.prepare(`INSERT INTO faecher
+        const nf = await tx.execute(`INSERT INTO faecher
           (klasse_id, name, farbe, reihenfolge, benotungssystem, alle_schueler,
-           gewichtung_sa, gewichtung_t, gewichtung_custom, ma_max_einfluss, hue_max_einfluss)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(
-          neueKlasseId, f.name, f.farbe ?? null, f.reihenfolge, f.benotungssystem ?? 'standard', f.alle_schueler ?? 1,
-          f.gewichtung_sa, f.gewichtung_t, f.gewichtung_custom, f.ma_max_einfluss, f.hue_max_einfluss)
+           gewichtung_sa, gewichtung_t, gewichtung_custom, ma_max_einfluss, hue_max_einfluss, uuid)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [neueKlasseId, f.name, f.farbe ?? null, f.reihenfolge, f.benotungssystem ?? 'standard', f.alle_schueler ?? 1,
+          f.gewichtung_sa, f.gewichtung_t, f.gewichtung_custom, f.ma_max_einfluss, f.hue_max_einfluss, neueUuid()])
         const neuFachId = nf.lastInsertRowid
-        initKompetenzVorlagen(neuFachId, f.name)
+        await initKompetenzVorlagen(neuFachId, f.name)
 
         if (mitSchueler) {
           // Gruppenfächer: Mitgliedschaften auf die neuen Schüler:innen remappen
           if (!(f.alle_schueler ?? 1)) {
-            const rows = db.prepare('SELECT schueler_id FROM fach_schueler WHERE fach_id=?').all(f.id)
-            const insFS = db.prepare('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)')
-            for (const r of rows) { const ns = schuelerMap[r.schueler_id]; if (ns) insFS.run(neuFachId, ns) }
+            const rows = await tx.select('SELECT schueler_id FROM fach_schueler WHERE fach_id=?', [f.id])
+            for (const r of rows) { const ns = schuelerMap[r.schueler_id]; if (ns) await tx.execute('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)', [neuFachId, ns]) }
           }
           // Differenziert: Niveau-Default (AHS) für die Roster-Schüler:innen
           if (f.benotungssystem === 'differenziert') {
-            const insN = db.prepare("INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, 'AHS')")
-            for (const sid of rosterIdsFuerFach(neuFachId)) insN.run(neuFachId, sid)
+            for (const sid of await rosterIdsFuerFach(neuFachId)) await tx.execute("INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, 'AHS')", [neuFachId, sid])
           }
         }
 
         // Jahresplanung + Materialien (Termine bleiben erhalten)
         if (mitPlanung) {
-          const abschnitte = db.prepare('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id').all(f.id)
+          const abschnitte = await tx.select('SELECT * FROM jahresplanung_abschnitte WHERE fach_id=? ORDER BY reihenfolge, id', [f.id])
           for (const a of abschnitte) {
-            const na = db.prepare('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)')
-              .run(neuFachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen, a.datum_von, a.datum_bis, a.farbe, a.reihenfolge)
-            kopiereMaterialien(a.id, na.lastInsertRowid)
+            const na = await tx.execute('INSERT INTO jahresplanung_abschnitte (fach_id, titel, inhalt, lernziele, kompetenzen, datum_von, datum_bis, farbe, reihenfolge) VALUES (?,?,?,?,?,?,?,?,?)',
+              [neuFachId, a.titel, a.inhalt, a.lernziele, a.kompetenzen, a.datum_von, a.datum_bis, a.farbe, a.reihenfolge])
+            await kopiereMaterialien(a.id, na.lastInsertRowid)
           }
         }
       }
       return neueKlasseId
     })
-    return tx()
   })
 
   // ─── KV-Modul (Klassenvorstand) ──────────────────────────────────────────────
 
   // Jahresaufgaben: Template + Status per Klasse + Schuljahr (LEFT JOIN)
   // Liefert auch parent_id (NULL = Top-Level, sonst Sub-Aufgabe)
-  ipcMain.handle('kv:jahresaufgaben:getAlle', (_, klasseId, schuljahrId) => kvJahresaufgaben.getAlle(db, klasseId, schuljahrId))
-  ipcMain.handle('kv:jahresaufgaben:createTemplate', (_, data) => kvJahresaufgaben.createTemplate(db, data))
-  ipcMain.handle('kv:jahresaufgaben:updateTemplate', (_, id, data) => kvJahresaufgaben.updateTemplate(db, id, data))
-  ipcMain.handle('kv:jahresaufgaben:deleteTemplate', (_, id) => kvJahresaufgaben.deleteTemplate(db, id))
-  ipcMain.handle('kv:jahresaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, erledigtAm, notiz) => kvJahresaufgaben.setStatus(db, aufgabeId, klasseId, schuljahrId, erledigtAm, notiz))
+  ipcMain.handle('kv:jahresaufgaben:getAlle', (_, klasseId, schuljahrId) => kvJahresaufgaben.getAlle(dbPort, klasseId, schuljahrId))
+  ipcMain.handle('kv:jahresaufgaben:createTemplate', (_, data) => kvJahresaufgaben.createTemplate(dbPort, data))
+  ipcMain.handle('kv:jahresaufgaben:updateTemplate', (_, id, data) => kvJahresaufgaben.updateTemplate(dbPort, id, data))
+  ipcMain.handle('kv:jahresaufgaben:deleteTemplate', (_, id) => kvJahresaufgaben.deleteTemplate(dbPort, id))
+  ipcMain.handle('kv:jahresaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, erledigtAm, notiz) => kvJahresaufgaben.setStatus(dbPort, aufgabeId, klasseId, schuljahrId, erledigtAm, notiz))
 
   // Wochenaufgaben
-  ipcMain.handle('kv:wochenaufgaben:getAlle', () => kvWochenaufgaben.getAlle(db))
-  ipcMain.handle('kv:wochenaufgaben:createTemplate', (_, data) => kvWochenaufgaben.createTemplate(db, data))
-  ipcMain.handle('kv:wochenaufgaben:updateTemplate', (_, id, data) => kvWochenaufgaben.updateTemplate(db, id, data))
-  ipcMain.handle('kv:wochenaufgaben:deleteTemplate', (_, id) => kvWochenaufgaben.deleteTemplate(db, id))
-  ipcMain.handle('kv:wochenaufgaben:getStatusFuerWochen', (_, klasseId, schuljahrId, wochen) => kvWochenaufgaben.getStatusFuerWochen(db, klasseId, schuljahrId, wochen))
-  ipcMain.handle('kv:wochenaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz) => kvWochenaufgaben.setStatus(db, aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz))
+  ipcMain.handle('kv:wochenaufgaben:getAlle', () => kvWochenaufgaben.getAlle(dbPort))
+  ipcMain.handle('kv:wochenaufgaben:createTemplate', (_, data) => kvWochenaufgaben.createTemplate(dbPort, data))
+  ipcMain.handle('kv:wochenaufgaben:updateTemplate', (_, id, data) => kvWochenaufgaben.updateTemplate(dbPort, id, data))
+  ipcMain.handle('kv:wochenaufgaben:deleteTemplate', (_, id) => kvWochenaufgaben.deleteTemplate(dbPort, id))
+  ipcMain.handle('kv:wochenaufgaben:getStatusFuerWochen', (_, klasseId, schuljahrId, wochen) => kvWochenaufgaben.getStatusFuerWochen(dbPort, klasseId, schuljahrId, wochen))
+  ipcMain.handle('kv:wochenaufgaben:setStatus', (_, aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz) => kvWochenaufgaben.setStatus(dbPort, aufgabeId, klasseId, schuljahrId, kw, jahr, erledigtAm, notiz))
 
   // Trigger — gefiltert (offene / archivierte / nach Schweregrad)
-  ipcMain.handle('kv:trigger:getAlle', (_, klasseId, opts = {}) => kvTrigger.getAlle(db, klasseId, opts))
-  ipcMain.handle('kv:trigger:getAlleFuerSchueler', (_, schuelerId) => kvTrigger.getAlleFuerSchueler(db, schuelerId))
-  ipcMain.handle('kv:trigger:reagieren', (_, id, reaktion) => kvTrigger.reagieren(db, id, reaktion))
-  ipcMain.handle('kv:trigger:create', (_, data) => kvTrigger.create(db, kernDeps, data))
-  ipcMain.handle('kv:trigger:delete', (_, id) => kvTrigger.remove(db, id))
+  ipcMain.handle('kv:trigger:getAlle', (_, klasseId, opts = {}) => kvTrigger.getAlle(dbPort, klasseId, opts))
+  ipcMain.handle('kv:trigger:getAlleFuerSchueler', (_, schuelerId) => kvTrigger.getAlleFuerSchueler(dbPort, schuelerId))
+  ipcMain.handle('kv:trigger:reagieren', (_, id, reaktion) => kvTrigger.reagieren(dbPort, id, reaktion))
+  ipcMain.handle('kv:trigger:create', (_, data) => kvTrigger.create(dbPort, kernDeps, data))
+  ipcMain.handle('kv:trigger:delete', (_, id) => kvTrigger.remove(dbPort, id))
 
   // Aktenvermerke
-  ipcMain.handle('kv:aktenvermerke:getAlleFuerKlasse', (_, klasseId) => kvDoku.aktenGetAlleFuerKlasse(db, klasseId))
-  ipcMain.handle('kv:aktenvermerke:getAlleFuerSchueler', (_, schuelerId) => kvDoku.aktenGetAlleFuerSchueler(db, schuelerId))
-  ipcMain.handle('kv:aktenvermerke:create', (_, data) => kvDoku.aktenCreate(db, kernDeps, data))
-  ipcMain.handle('kv:aktenvermerke:update', (_, id, data) => kvDoku.aktenUpdate(db, id, data))
-  ipcMain.handle('kv:aktenvermerke:delete', (_, id) => kvDoku.aktenDelete(db, id))
+  ipcMain.handle('kv:aktenvermerke:getAlleFuerKlasse', (_, klasseId) => kvDoku.aktenGetAlleFuerKlasse(dbPort, klasseId))
+  ipcMain.handle('kv:aktenvermerke:getAlleFuerSchueler', (_, schuelerId) => kvDoku.aktenGetAlleFuerSchueler(dbPort, schuelerId))
+  ipcMain.handle('kv:aktenvermerke:create', (_, data) => kvDoku.aktenCreate(dbPort, kernDeps, data))
+  ipcMain.handle('kv:aktenvermerke:update', (_, id, data) => kvDoku.aktenUpdate(dbPort, id, data))
+  ipcMain.handle('kv:aktenvermerke:delete', (_, id) => kvDoku.aktenDelete(dbPort, id))
 
   // Elternkontakte
-  ipcMain.handle('kv:elternkontakte:getAlleFuerSchueler', (_, schuelerId) => kvDoku.elternGetAlleFuerSchueler(db, schuelerId))
-  ipcMain.handle('kv:elternkontakte:getOffeneFuerKlasse', (_, klasseId) => kvDoku.elternGetOffeneFuerKlasse(db, klasseId))
-  ipcMain.handle('kv:elternkontakte:create', (_, data) => kvDoku.elternCreate(db, data))
-  ipcMain.handle('kv:elternkontakte:update', (_, id, data) => kvDoku.elternUpdate(db, id, data))
-  ipcMain.handle('kv:elternkontakte:setErledigt', (_, id, erledigt) => kvDoku.elternSetErledigt(db, id, erledigt))
-  ipcMain.handle('kv:elternkontakte:delete', (_, id) => kvDoku.elternDelete(db, id))
+  ipcMain.handle('kv:elternkontakte:getAlleFuerSchueler', (_, schuelerId) => kvDoku.elternGetAlleFuerSchueler(dbPort, schuelerId))
+  ipcMain.handle('kv:elternkontakte:getOffeneFuerKlasse', (_, klasseId) => kvDoku.elternGetOffeneFuerKlasse(dbPort, klasseId))
+  ipcMain.handle('kv:elternkontakte:create', (_, data) => kvDoku.elternCreate(dbPort, data))
+  ipcMain.handle('kv:elternkontakte:update', (_, id, data) => kvDoku.elternUpdate(dbPort, id, data))
+  ipcMain.handle('kv:elternkontakte:setErledigt', (_, id, erledigt) => kvDoku.elternSetErledigt(dbPort, id, erledigt))
+  ipcMain.handle('kv:elternkontakte:delete', (_, id) => kvDoku.elternDelete(dbPort, id))
 
   // Fehlstunden
-  ipcMain.handle('kv:fehlstunden:getAlleFuerSchueler', (_, schuelerId) => kvDoku.fehlGetAlleFuerSchueler(db, schuelerId))
-  ipcMain.handle('kv:fehlstunden:create', (_, data) => kvDoku.fehlCreate(db, kernDeps, data))
-  ipcMain.handle('kv:fehlstunden:update', (_, id, data) => kvDoku.fehlUpdate(db, kernDeps, id, data))
-  ipcMain.handle('kv:fehlstunden:delete', (_, id) => kvDoku.fehlDelete(db, kernDeps, id))
+  ipcMain.handle('kv:fehlstunden:getAlleFuerSchueler', (_, schuelerId) => kvDoku.fehlGetAlleFuerSchueler(dbPort, schuelerId))
+  ipcMain.handle('kv:fehlstunden:create', (_, data) => kvDoku.fehlCreate(dbPort, kernDeps, data))
+  ipcMain.handle('kv:fehlstunden:update', (_, id, data) => kvDoku.fehlUpdate(dbPort, kernDeps, id, data))
+  ipcMain.handle('kv:fehlstunden:delete', (_, id) => kvDoku.fehlDelete(dbPort, kernDeps, id))
 
   // Periodische Prüfung: offene Eltern-Rückrufe älter als 3 Tage → Trigger
-  ipcMain.handle('kv:pruefeOffeneRueckrufe', () => kvRoutine.pruefeOffeneRueckrufe(db, kernDeps))
+  ipcMain.handle('kv:pruefeOffeneRueckrufe', () => kvRoutine.pruefeOffeneRueckrufe(dbPort, kernDeps))
 }
 
 // ─── Fenster erstellen ────────────────────────────────────────────────────────
