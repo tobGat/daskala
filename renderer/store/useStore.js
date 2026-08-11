@@ -485,6 +485,12 @@ const useStore = create((set, get) => ({
   openModal: (modal, data = null) => set({ activeModal: modal, modalData: data }),
   closeModal: () => set({ activeModal: null, modalData: null }),
 
+  // Mobile Vollbild-Liste (ToDos/Termine) – geöffnet über die Header-Symbole oder
+  // die Badges im Stundenplan. { typ: 'todos'|'termine', highlightId? } | null
+  mobilListe: null,
+  oeffneMobilListe: (typ, highlightId = null) => set({ mobilListe: { typ, highlightId } }),
+  schliesseMobilListe: () => set({ mobilListe: null }),
+
   setContextMenu: (menu) => set({ contextMenu: menu }),
   closeContextMenu: () => set({ contextMenu: null }),
 

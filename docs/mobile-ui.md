@@ -71,11 +71,15 @@ cd android && ./gradlew assembleDebug
   Dashboard · Noten · Mehr; darüber eine **Kontextzeile für Klassen-/Fachwechsel**
   (Klasse immer, Fach in fach-abhängigen Ansichten → Auswahl-Sheet). „Mehr"-Sheet mit
   Sitzplan/KV/Jahresplan/Planung/Einstellungen/Export/Vorlagen (gleich gegatet wie Desktop).
+- **Header-Symbole ToDos/Termine** [MobileHeader.jsx](../renderer/components/MobileHeader.jsx):
+  rechts oben zwei Symbole (✏️/📅) mit Anzahl-Badge; Tap öffnet ein fast bildschirmfüllendes
+  Vollbild-Modal mit der jeweiligen Liste. Zustand im Store (`mobilListe`), damit auch die
+  Stundenplan-Badges die passende Liste öffnen.
 - **Dashboard mobil** [UebersichtView.jsx](../renderer/components/UebersichtView.jsx):
-  Zähler-Pills (ToDos/Termine) ausgeblendet; Stundenplan/ToDos/Termine als Akkordeon.
-  Genau EIN Abschnitt offen (füllt den Restplatz, eingeklappte Kopfzeilen bleiben sichtbar);
-  Öffnen eines anderen schließt den vorherigen; Einblenden animiert (`.acc-body-in`).
-  Standardmäßig offen: Stundenplan.
+  zeigt NUR den Stundenplan (Tagesansicht); keine Begrüßung, kein Akkordeon. ToDos/Termine
+  laufen über die Header-Symbole.
+- **Klassenwechsel** in der Bottom-Nav wird im Dashboard ausgeblendet (der Stundenplan zeigt
+  alle Klassen); in fach-abhängigen Ansichten weiterhin Klasse+Fach-Dropdown.
 - **Stundenplan mobil** [Stundenplan.jsx](../renderer/components/Stundenplan.jsx): zeigt nur
   den aktuellen Tag; Navigation per Pfeilen (‹/›, tageweise, über Wochengrenzen), Tippen auf
   den Tag springt zu „heute". Desktop bleibt die Wochenansicht (Umschaltung über `tage`-Array).

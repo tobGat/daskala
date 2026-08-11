@@ -65,7 +65,8 @@ export default function MobileBottomNav() {
 
   // Kontextzeile: Klasse immer (echte Klassen), Fach nur in fach-abhängigen Ansichten.
   const fachRelevant = ['notentabelle', 'kompetenzen', 'sitzplan'].includes(currentView) || (planungAktiv && currentView === 'jahresplanung')
-  const zeigeKlasse = !vorlagenModus && Array.isArray(klassen) && klassen.length > 0
+  // Im Dashboard (Stundenplan zeigt alle Klassen) ist der Klassenwechsel nicht relevant.
+  const zeigeKlasse = !vorlagenModus && currentView !== 'stundenplan' && Array.isArray(klassen) && klassen.length > 0
   const zeigeFach = fachRelevant && !!aktiveKlasse && Array.isArray(faecher) && faecher.length > 0
   const zeigeKontext = zeigeKlasse || zeigeFach
 
