@@ -496,9 +496,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Toolbar */}
       {mobil ? (
-        <div className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-ink-950 border-b border-paper-100 dark:border-ink-800/60">
-          {/* Spacer, damit die Tag-Anzeige trotz Bearbeiten-Icon rechts mittig bleibt */}
-          <span className="w-9 flex-shrink-0" aria-hidden />
+        <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white dark:bg-ink-950 border-b border-paper-100 dark:border-ink-800/60">
           <button onClick={zeigeTagDavor} title="Vorheriger Tag"
             className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-xl text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 transition-colors">‹</button>
           <button onClick={zeigeHeuteTag} title="Zu heute" className="flex-1 flex flex-col items-center leading-tight">
@@ -509,17 +507,6 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           </button>
           <button onClick={zeigeTagDanach} title="Nächster Tag"
             className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-xl text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 transition-colors">›</button>
-          <button onClick={() => setBearbeitungsModus(v => !v)}
-            aria-label={bearbeitungsModus ? 'Bearbeiten beenden' : 'Stundenplan bearbeiten'}
-            title={bearbeitungsModus ? 'Bearbeiten beenden' : 'Stundenplan bearbeiten'}
-            className={`w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full transition-colors
-              ${bearbeitungsModus
-                ? 'text-coral-600 dark:text-coral-300 bg-coral-50 dark:bg-coral-950/40'
-                : 'text-ink-400 dark:text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800'}`}>
-            <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
         </div>
       ) : (
       <div className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-ink-950 border-b border-paper-100 dark:border-ink-800/60">
@@ -578,7 +565,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
       </div>
       )}
 
-      {/* Mobiler Bearbeiten-Hinweis + Zugriff auf Zeiten (nur im Bearbeitungsmodus) */}
+      {/* Mobiler Bearbeiten-Hinweis + Zugriff auf Zeiten / Fertig (nur im Bearbeitungsmodus) */}
       {mobil && bearbeitungsModus && (
         <div className="flex items-center gap-2 px-3 py-2 bg-coral-50 dark:bg-coral-950/30 border-b border-coral-100 dark:border-coral-900/40">
           <span className="text-xs text-coral-700 dark:text-coral-300 flex-1 leading-tight">
@@ -590,6 +577,12 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
             title="Stunden- und Pausenzeiten bearbeiten"
           >
             🕐 Zeiten
+          </button>
+          <button
+            className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg font-semibold bg-coral-600 text-white active:scale-95 transition-transform"
+            onClick={() => setBearbeitungsModus(false)}
+          >
+            ✓ Fertig
           </button>
         </div>
       )}
@@ -882,6 +875,21 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
             ) : (
               <button type="button" className={MOB_KONTEXT_ITEM} onClick={() => handleKontextAktion('supplier-erstellen')}>
                 <span className="w-6 text-center text-orange-400">↔</span> Supplierstunde eintragen
+              </button>
+            )}
+
+            <div className="context-menu-separator" />
+            {/* Stundenplan-Bearbeitungsmodus (statt Toolbar-Icon in den Kontextmenüs) */}
+            <button
+              type="button"
+              className={`${MOB_KONTEXT_ITEM} ${bearbeitungsModus ? 'text-coral-600 dark:text-coral-300' : ''}`}
+              onClick={() => { setKontextMenu(null); setBearbeitungsModus(v => !v) }}
+            >
+              <span className="w-6 text-center">✎</span> {bearbeitungsModus ? 'Bearbeiten beenden' : 'Stundenplan bearbeiten'}
+            </button>
+            {bearbeitungsModus && (
+              <button type="button" className={MOB_KONTEXT_ITEM} onClick={() => { setKontextMenu(null); setZeitenModalOffen(true) }}>
+                <span className="w-6 text-center">🕐</span> Stundenzeiten bearbeiten
               </button>
             )}
 

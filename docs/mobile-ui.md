@@ -93,12 +93,13 @@ cd android && ./gradlew assembleDebug
   statt per Hover (Hover gibt es am Touch nicht); zusätzlich „Abbrechen" und ein Griff oben. Long-Tap
   auf leere Zellen zeigt „Supplierstunde eintragen" bzw. „Stunde belegen". Zellen mobil `select-none`
   + `-webkit-touch-callout:none`, damit der Long-Press keine Textauswahl auslöst.
-- **Stundenplan bearbeiten mobil** [Stundenplan.jsx](../renderer/components/Stundenplan.jsx): ein
-  **kleines, dezentes Stift-Icon** rechts in der Tages-Navigationsleiste schaltet den Bearbeitungsmodus
-  um (aktiv koralle hinterlegt) – bewusst zurückhaltend, da selten gebraucht. Im Bearbeitungsmodus
-  erscheint oben ein Hinweis-Band mit Zugriff auf „🕐 Zeiten"; leere Zellen zeigen „+", ein Tap öffnet
-  „Stunde belegen", ein Tap auf eine belegte Stunde öffnet „Stunde bearbeiten". (Drag-&-Drop zum
-  Verschieben bleibt Desktop-only – am Touch stattdessen über das Belegen/Ändern.)
+- **Stundenplan bearbeiten mobil** [Stundenplan.jsx](../renderer/components/Stundenplan.jsx): der
+  Bearbeitungsmodus wird über das **Long-Tap-Kontextmenü** ein-/ausgeschaltet („Stundenplan bearbeiten"
+  / „Bearbeiten beenden"), nicht über ein Toolbar-Icon (das lag zu nah an der Tages-Navigation). Im
+  Modus erscheint oben ein Hinweis-Band mit „🕐 Zeiten" und „✓ Fertig"; leere Zellen zeigen „+", ein Tap
+  öffnet „Stunde belegen", ein Tap auf eine belegte Stunde „Stunde bearbeiten". Im Kontextmenü ist im
+  Modus zusätzlich „Stundenzeiten bearbeiten" erreichbar. (Drag-&-Drop zum Verschieben bleibt
+  Desktop-only – am Touch stattdessen über Belegen/Ändern.)
 - **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
   (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
 
