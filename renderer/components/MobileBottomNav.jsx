@@ -11,16 +11,46 @@
 import React, { useState } from 'react'
 import useStore from '../store/useStore'
 
-// Ein Haupt-Tab (Icon + Label, großes Tap-Ziel).
+// Abstrakte Linien-Icons für die Haupt-Tabs (erben die Textfarbe).
+const NAV_ICONS = {
+  // Stundenplan: Raster/Kalender
+  stundenplan: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+      <path d="M3 9.5h18M8.5 3v3M15.5 3v3" strokeLinecap="round" />
+    </svg>
+  ),
+  // Noten: Balken-Diagramm
+  noten: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M5 20V13M12 20V5M19 20v-9" />
+    </svg>
+  ),
+  // Mehr: drei Punkte
+  mehr: (
+    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+      <circle cx="5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="19" cy="12" r="1.9" />
+    </svg>
+  ),
+}
+
+// Ein Haupt-Tab (Icon + Label, großes Tap-Ziel). Aktiv = koralle Pille hinter
+// dem Icon + koralle, fette Beschriftung (deutlich hervorgehoben).
 function NavTab({ icon, label, active, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-[11px] font-medium transition-colors
-        ${active ? 'text-coral-600 dark:text-coral-300' : 'text-ink-500 dark:text-ink-400'}`}
+      className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 min-h-[56px] text-[11px] transition-colors
+        ${active ? 'text-coral-600 dark:text-coral-300 font-semibold' : 'text-ink-400 dark:text-ink-500 font-medium'}`}
     >
-      <span className="text-xl leading-none" aria-hidden>{icon}</span>
+      <span
+        className={`flex items-center justify-center w-14 h-8 rounded-full transition-colors
+          ${active ? 'bg-coral-100 dark:bg-coral-900/40' : ''}`}
+        aria-hidden
+      >
+        {icon}
+      </span>
       <span>{label}</span>
     </button>
   )
@@ -137,9 +167,9 @@ export default function MobileBottomNav() {
 
         {/* Haupt-Tabs */}
         <nav className="flex items-stretch">
-          <NavTab icon="🗓️" label="Dashboard" active={dashboardAktiv} onClick={() => geheZu('stundenplan')} />
-          <NavTab icon="📊" label="Noten" active={notenAktiv} onClick={() => geheZu('notentabelle')} />
-          <NavTab icon="⋯" label="Mehr" active={mehrAktiv || sheet === 'mehr'} onClick={() => setSheet(s => s === 'mehr' ? null : 'mehr')} />
+          <NavTab icon={NAV_ICONS.stundenplan} label="Stundenplan" active={dashboardAktiv} onClick={() => geheZu('stundenplan')} />
+          <NavTab icon={NAV_ICONS.noten} label="Noten" active={notenAktiv} onClick={() => geheZu('notentabelle')} />
+          <NavTab icon={NAV_ICONS.mehr} label="Mehr" active={mehrAktiv || sheet === 'mehr'} onClick={() => setSheet(s => s === 'mehr' ? null : 'mehr')} />
         </nav>
       </div>
     </>

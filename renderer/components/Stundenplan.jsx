@@ -591,7 +591,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
       <div className="flex-1 overflow-auto p-4 bg-paper-50 dark:bg-ink-950">
         <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: 72 }} />
+            <col style={{ width: mobil ? 64 : 72 }} />
             {tage.map(i => <col key={i} />)}
           </colgroup>
           <thead>
@@ -687,9 +687,11 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
               const istAktuelleStunde = aktuelleWoche === 0 && aktStunde?.id === stunde.id
               return (
                 <tr key={stunde.id} className="border-t border-paper-200 dark:border-ink-800">
-                  {/* Zeit-Spalte (read-only; Bearbeitung über den „Zeiten"-Dialog) */}
-                  <td className="px-2 py-1 align-top">
-                    <div className="text-right">
+                  {/* Zeit-Spalte (read-only; Bearbeitung über den „Zeiten"-Dialog).
+                      Mobil linksbündig + schmales Padding, damit die Tabelle optisch
+                      mittig wirkt (der rechtsbündige Text erzeugte sonst links eine Lücke). */}
+                  <td className={`${mobil ? 'pl-1 pr-0.5' : 'px-2'} py-1 align-top`}>
+                    <div className={mobil ? 'text-left' : 'text-right'}>
                       <div className={`text-xs font-medium ${istAktuelleStunde ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-500'}`}>
                         {stunde.stunde}. Std
                       </div>

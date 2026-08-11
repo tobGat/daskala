@@ -68,7 +68,9 @@ cd android && ./gradlew assembleDebug
   (Logo + „Daskala") die Desktop-`KlassenTabs`/`FachTabs`. In `App.jsx` per
   `{mobil ? <MobileHeader/> : <KlassenTabs/>}` (Desktop unverändert).
 - **Bottom-Navigation** [MobileBottomNav.jsx](../renderer/components/MobileBottomNav.jsx):
-  Dashboard · Noten · Mehr; darüber eine **Kontextzeile für Klassen-/Fachwechsel**
+  Stundenplan · Noten · Mehr (abstrakte Linien-Icons; aktiver Tab deutlich hervorgehoben
+  durch koralle Pille hinter dem Icon + fette koralle Beschriftung); darüber eine
+  **Kontextzeile für Klassen-/Fachwechsel**
   (Klasse immer, Fach in fach-abhängigen Ansichten → Auswahl-Sheet). „Mehr"-Sheet mit
   Sitzplan/KV/Jahresplan/Planung/Einstellungen/Export/Vorlagen (gleich gegatet wie Desktop).
 - **Header-Symbole ToDos/Termine** [MobileHeader.jsx](../renderer/components/MobileHeader.jsx):
