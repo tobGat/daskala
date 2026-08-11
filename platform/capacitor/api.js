@@ -26,7 +26,9 @@ import { createMobileKernDeps } from './kern-deps'
 
 export function createMobileApi(dbPort) {
   const deps = createMobileKernDeps(dbPort)
-  const stub = (label) => async (...args) => { console.warn('[mobile-api:stub]', label, args); return null }
+  // Nicht abgebildete Methode → leeres Array (array-sicher: .find/.map/.forEach laufen
+  // ins Leere statt zu crashen; Property-Zugriff ergibt undefined statt Absturz).
+  const stub = (label) => async (...args) => { console.warn('[mobile-api:stub]', label, args); return [] }
   // Domänen-Proxy: unbekannte Methode → protokollierender No-op statt Absturz.
   const dp = (name, impl) => new Proxy(impl, {
     get: (t, k) => (typeof k === 'string' && !(k in t)) ? stub(`${name}.${k}`) : t[k],

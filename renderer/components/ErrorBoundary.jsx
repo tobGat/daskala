@@ -16,7 +16,9 @@ export default class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('Unerwarteter Fehler in der Oberfläche:', error, info)
+    console.error('Unerwarteter Fehler in der Oberfläche:', error?.message)
+    console.error('STACK:', error?.stack)
+    console.error('COMPONENT-STACK:', info?.componentStack)
   }
 
   render() {

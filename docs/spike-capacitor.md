@@ -30,12 +30,26 @@ Node-Builtins des Kerns (`path`, `crypto`) werden für den WebView-Build über
 Vite-Aliasse ersetzt (`vite.config.js`): `path` → `path-browserify`,
 `crypto` → `platform/capacitor/shims/crypto.js` (nur `randomUUID`).
 
-## Einmalige Voraussetzungen
+## Einmalige Voraussetzungen (auf diesem Rechner verifiziert)
 
-- **Android Studio** inkl. Android SDK (Platform-Tools, ein Platform-SDK) und ein JDK 17.
-- Auf dem **Nothing Phone 3a**: Entwickleroptionen aktivieren → **USB-Debugging** an.
-- Per USB verbinden und die Debugging-Anfrage am Telefon bestätigen.
-- Prüfen, dass das Gerät erkannt wird: `adb devices` (muss das Gerät „device" listen).
+- **Android Studio** inkl. Android SDK. Konkret nötig (per SDK-Manager, falls nicht vorhanden):
+  **Platform android-36** und **Build-Tools 36** (AGP 8.13/compileSdk 36). AGP lädt fehlende
+  Pakete automatisch nach, wenn die Lizenzen akzeptiert sind.
+- **JDK 21** (Pflicht!). Fallstricke, die hier auftraten:
+  - JDK **25/26** (z. B. Android-Studio-JBR 25) → Gradle 8.14.3 bricht mit *"Unsupported
+    class file major version 69"* ab (Groovy zu alt für JDK 25).
+  - JDK **17** → Capacitor-8-Android-Module verlangen *source release 21* → Fehler
+    *"invalid source release: 21"*.
+  - → **JDK 21** ist der Sweet Spot. Portable Variante (ohne Admin) z. B. Temurin 21 entpacken
+    und `JAVA_HOME` daraufsetzen.
+- Umgebung für den Build (Beispielpfade dieses Rechners):
+  ```bash
+  export JAVA_HOME="$LOCALAPPDATA/Programs/daskala-jdk21/jdk-21.0.12+8"
+  export ANDROID_HOME="$LOCALAPPDATA/Android/Sdk"
+  ```
+- Auf dem **Nothing Phone 3a**: Entwickleroptionen → **USB-Debugging** an; per USB verbinden;
+  am Telefon **„USB-Debugging zulassen"** bestätigen (Telefon dabei entsperrt).
+- Prüfen: `adb devices` muss das Gerät als **`device`** (nicht `unauthorized`) listen.
 
 ## Build & Start auf dem Gerät
 
@@ -77,6 +91,19 @@ Notenspalten (SA1, T1) und die berechnete Semesternote (Demo-Daten aus
   `@capacitor-community/sqlite` unter „Found N Capacitor plugins" auftaucht.
 - DB neu seeden: App-Daten löschen (Android → Einstellungen → Apps → Daskala →
   Speicher leeren) oder App deinstallieren; beim nächsten Start greift der Demo-Seed erneut.
+
+## Ergebnis des ersten Gerätelaufs (Nothing Phone 3a, Android 15)
+
+- Build (JDK 21 + SDK 36) ✅, Installation ✅, Start ✅ – kein nativer Absturz.
+- **Datenzugriff funktioniert vollständig:** logcat zeigt den Capacitor-SQLite-Bridge, wie er
+  die echten Kern-Queries ausführt und Daten liefert (Klassen, Fächer, Schüler:innen samt Noten,
+  Zeugnisnoten-Transaktionen). Schema aus `MIGRATIONS` + Demo-Seed greifen; keine `no such table`-Fehler.
+- **Ein Render-Fehler war zu fixen:** Das Dashboard-Widget `Stundenplan` (`aktuelleStunde`) rief
+  `.find` auf `null` (nicht abgebildete `stundenzeiten.getAll`). Fix: der mobile-api-Fallback liefert
+  jetzt `[]` statt `null` (array-sicher). Danach rendert die App ohne Fehler; nur erwartete
+  `[mobile-api:stub]`-Warnungen für nicht abgebildete Bereiche (Stundenplan, Backup, Update, Undo).
+- Offen: rein visuelle Bestätigung der Notentabelle auf dem entsperrten Gerät (Screenshot war durch
+  die Geräte-Sperre blockiert; App lief dahinter fehlerfrei).
 
 ## Grenzen des Spikes (bewusst offen)
 
