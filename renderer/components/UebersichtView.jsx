@@ -30,7 +30,7 @@ function StatPill({ label, value, accent, emoji }) {
 
 export default function UebersichtView() {
   const {
-    aktuellesSchuljahr, todos, termine, oeffneMobilListe,
+    aktuellesSchuljahr, todos, termine, zeigePlaner,
   } = useStore()
   const [highlightedTodoId, setHighlightedTodoId] = useState(null)
   const [highlightedTerminId, setHighlightedTerminId] = useState(null)
@@ -105,8 +105,8 @@ export default function UebersichtView() {
     return (
       <div className="flex-1 flex flex-col overflow-hidden bg-paper-50 dark:bg-ink-950">
         <Stundenplan
-          onTodoBadgeClick={(id) => oeffneMobilListe('todos', id)}
-          onTerminBadgeClick={(id) => oeffneMobilListe('termine', id)}
+          onTodoBadgeClick={(id) => zeigePlaner('todos', id)}
+          onTerminBadgeClick={(id) => zeigePlaner('termine', id)}
         />
       </div>
     )

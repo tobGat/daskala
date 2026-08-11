@@ -26,6 +26,15 @@ const NAV_ICONS = {
       <path d="M5 20V13M12 20V5M19 20v-9" />
     </svg>
   ),
+  // Planer: zweigeteiltes Panel – oben Häkchen (ToDo), unten Linie (Termin)
+  planer: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3.5" y="4" width="17" height="16" rx="2.5" />
+      <path d="M3.5 12h17" />
+      <path d="M6.5 8.1l1.3 1.3 2.4-2.4" />
+      <path d="M7 16h6.5" />
+    </svg>
+  ),
   // Mehr: drei Punkte
   mehr: (
     <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -88,6 +97,7 @@ export default function MobileBottomNav() {
 
   const dashboardAktiv = currentView === 'stundenplan'
   const notenAktiv = ['notentabelle', 'sitzplan', 'kompetenzen'].includes(currentView)
+  const planerAktiv = currentView === 'planer'
   const mehrAktiv = ['kv', 'jahresplanung', 'klassenplanung'].includes(currentView)
 
   const geheZu = (view) => { setCurrentView(view); setSheet(null) }
@@ -95,8 +105,9 @@ export default function MobileBottomNav() {
 
   // Kontextzeile: Klasse immer (echte Klassen), Fach nur in fach-abhängigen Ansichten.
   const fachRelevant = ['notentabelle', 'kompetenzen', 'sitzplan'].includes(currentView) || (planungAktiv && currentView === 'jahresplanung')
-  // Im Dashboard (Stundenplan zeigt alle Klassen) ist der Klassenwechsel nicht relevant.
-  const zeigeKlasse = !vorlagenModus && currentView !== 'stundenplan' && Array.isArray(klassen) && klassen.length > 0
+  // Im Dashboard (Stundenplan zeigt alle Klassen) und im Planer (klassenübergreifend)
+  // ist der Klassenwechsel nicht relevant.
+  const zeigeKlasse = !vorlagenModus && currentView !== 'stundenplan' && currentView !== 'planer' && Array.isArray(klassen) && klassen.length > 0
   const zeigeFach = fachRelevant && !!aktiveKlasse && Array.isArray(faecher) && faecher.length > 0
   const zeigeKontext = zeigeKlasse || zeigeFach
 
@@ -169,6 +180,7 @@ export default function MobileBottomNav() {
         <nav className="flex items-stretch">
           <NavTab icon={NAV_ICONS.stundenplan} label="Stundenplan" active={dashboardAktiv} onClick={() => geheZu('stundenplan')} />
           <NavTab icon={NAV_ICONS.noten} label="Noten" active={notenAktiv} onClick={() => geheZu('notentabelle')} />
+          <NavTab icon={NAV_ICONS.planer} label="Planer" active={planerAktiv} onClick={() => geheZu('planer')} />
           <NavTab icon={NAV_ICONS.mehr} label="Mehr" active={mehrAktiv || sheet === 'mehr'} onClick={() => setSheet(s => s === 'mehr' ? null : 'mehr')} />
         </nav>
       </div>

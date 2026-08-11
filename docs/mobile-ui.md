@@ -68,17 +68,18 @@ cd android && ./gradlew assembleDebug
   (Logo + „Daskala") die Desktop-`KlassenTabs`/`FachTabs`. In `App.jsx` per
   `{mobil ? <MobileHeader/> : <KlassenTabs/>}` (Desktop unverändert).
 - **Bottom-Navigation** [MobileBottomNav.jsx](../renderer/components/MobileBottomNav.jsx):
-  Stundenplan · Noten · Mehr (abstrakte Linien-Icons; aktiver Tab deutlich hervorgehoben
+  Stundenplan · Noten · Planer · Mehr (abstrakte Linien-Icons; aktiver Tab deutlich hervorgehoben
   durch koralle Pille hinter dem Icon + fette koralle Beschriftung); darüber eine
-  **Kontextzeile für Klassen-/Fachwechsel**
+  **Kontextzeile für Klassen-/Fachwechsel** (im Stundenplan und Planer ausgeblendet)
   (Klasse immer, Fach in fach-abhängigen Ansichten → Auswahl-Sheet). „Mehr"-Sheet mit
   Sitzplan/KV/Jahresplan/Planung/Einstellungen/Export/Vorlagen (gleich gegatet wie Desktop).
-- **Header-Symbole ToDos/Termine** [MobileHeader.jsx](../renderer/components/MobileHeader.jsx):
-  rechts oben zwei Symbole (✏️/📅) mit Anzahl-Badge; Tap öffnet ein fast bildschirmfüllendes
-  Vollbild-Modal mit der jeweiligen Liste. Zustand im Store (`mobilListe`), damit auch die
-  Stundenplan-Badges die passende Liste öffnen. Im Sheet blenden [TodoBoard.jsx](../renderer/components/TodoBoard.jsx)
-  und [TerminePanel.jsx](../renderer/components/TerminePanel.jsx) via Prop `imSheet` ihren eigenen Panel-Kopf aus
-  (der Modal-Titel genügt) und zeigen das „+" stattdessen als Floating-Action-Button unten rechts.
+- **Planer-Bereich (ToDos oben / Termine unten)** [MobilePlaner.jsx](../renderer/components/MobilePlaner.jsx):
+  ein eigener Bottom-Nav-Tab „Planer" zeigt als zweigeteilte Ansicht oben die ToDos, unten die Termine
+  (beide `TodoBoard`/`TerminePanel` im Normal-Modus mit eigenem Kopf + „+"). Die früheren Header-Symbole
+  (✏️/📅) und die Vollbild-Modals gibt es nicht mehr. Store: `zeigePlaner(typ, id)` wechselt in den Bereich,
+  `planerFokus` markiert/scrollt zum Eintrag (z. B. aus einem Stundenplan-Badge), `planerFokusLoeschen`
+  räumt ihn nach dem Flash weg. Die mobile Kopfzeile [MobileHeader.jsx](../renderer/components/MobileHeader.jsx)
+  trägt nur noch Logo + „Daskala".
 - **Dashboard mobil** [UebersichtView.jsx](../renderer/components/UebersichtView.jsx):
   zeigt NUR den Stundenplan (Tagesansicht); keine Begrüßung, kein Akkordeon. ToDos/Termine
   laufen über die Header-Symbole.

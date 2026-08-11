@@ -31,6 +31,7 @@ import {
 } from './components/Modals'
 import MobileBottomNav from './components/MobileBottomNav'
 import MobileHeader from './components/MobileHeader'
+import MobilePlaner from './components/MobilePlaner'
 import { useIsMobile } from './hooks/useIsMobile'
 
 function LoadingScreen() {
@@ -166,6 +167,7 @@ export default function App() {
       {/* Haupt-Inhalt. Im Vorlagen-Modus nur die Jahresplanung. */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {!vorlagenModus && currentView === 'stundenplan' && <UebersichtView />}
+        {!vorlagenModus && mobil && currentView === 'planer' && <MobilePlaner />}
         {!vorlagenModus && currentView === 'kv' && <KVView />}
         {!vorlagenModus && currentView === 'notentabelle' && <NotenTabelle />}
         {!vorlagenModus && currentView === 'kompetenzen' && <KompetenzrasterView />}

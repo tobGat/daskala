@@ -485,11 +485,12 @@ const useStore = create((set, get) => ({
   openModal: (modal, data = null) => set({ activeModal: modal, modalData: data }),
   closeModal: () => set({ activeModal: null, modalData: null }),
 
-  // Mobile Vollbild-Liste (ToDos/Termine) – geöffnet über die Header-Symbole oder
-  // die Badges im Stundenplan. { typ: 'todos'|'termine', highlightId? } | null
-  mobilListe: null,
-  oeffneMobilListe: (typ, highlightId = null) => set({ mobilListe: { typ, highlightId } }),
-  schliesseMobilListe: () => set({ mobilListe: null }),
+  // Mobiler „Planer"-Bereich (ToDos oben / Termine unten, eigener Bottom-Nav-Tab).
+  // planerFokus steuert das „Hinspringen" zu einem Eintrag (z. B. aus einem Stundenplan-
+  // Badge): { typ: 'todos'|'termine', id } | null. zeigePlaner wechselt in den Bereich.
+  planerFokus: null,
+  zeigePlaner: (typ = null, id = null) => set({ currentView: 'planer', planerFokus: id ? { typ, id } : null }),
+  planerFokusLoeschen: () => set({ planerFokus: null }),
 
   setContextMenu: (menu) => set({ contextMenu: menu }),
   closeContextMenu: () => set({ contextMenu: null }),
