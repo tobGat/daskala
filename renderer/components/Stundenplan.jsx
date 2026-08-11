@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react'
 import useStore from '../store/useStore'
 import PlanungModal, { toLocalDateStr, berechneFristDatum } from './PlanungModal'
 import { berechneSchulferien, ferienFuerTag, mergeFerien } from '../utils/schulferien'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 function getMontag(wochenOffset) {
   const now = new Date()
@@ -211,6 +212,9 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const [exportModal, setExportModal] = useState(null) // null | 'wahl' | 'planung'
   const [alleFaecher, setAlleFaecher] = useState([])
   const [aktuelleWoche, setAktuelleWoche] = useState(0)
+  // Mobil: nur ein Tag sichtbar, per Pfeilen navigierbar. Start = heutiger Wochentag (Mo–Fr), sonst Montag.
+  const mobil = useIsMobile()
+  const [mobilTag, setMobilTag] = useState(() => { const d = new Date().getDay(); return d >= 1 && d <= 5 ? d - 1 : 0 })
   const [kontextMenu, setKontextMenu] = useState(null)
   const [planungen, setPlanungen] = useState([])
   const [supplierstunden, setSupplierstunden] = useState([])
@@ -477,9 +481,31 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const aktStunde = aktuelleStunde(stundenzeiten)
   const aktTag = aktuellerWochentag()
 
+  // Mobil nur den gewählten Tag rendern; Desktop alle fünf. Pfeile navigieren
+  // tageweise und springen über Wochengrenzen (Fr → nächster Mo).
+  const tage = mobil ? [mobilTag] : WOCHENTAGE.map((_, i) => i)
+  const zeigeTagDavor = () => { if (mobilTag > 0) setMobilTag(mobilTag - 1); else { setAktuelleWoche(w => w - 1); setMobilTag(4) } }
+  const zeigeTagDanach = () => { if (mobilTag < 4) setMobilTag(mobilTag + 1); else { setAktuelleWoche(w => w + 1); setMobilTag(0) } }
+  const zeigeHeuteTag = () => { const d = new Date().getDay(); setAktuelleWoche(0); setMobilTag(d >= 1 && d <= 5 ? d - 1 : 0) }
+  const istHeuteTag = aktuelleWoche === 0 && aktTag === mobilTag + 1
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Toolbar */}
+      {mobil ? (
+        <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white dark:bg-ink-950 border-b border-paper-100 dark:border-ink-800/60">
+          <button onClick={zeigeTagDavor} title="Vorheriger Tag"
+            className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-xl text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 transition-colors">‹</button>
+          <button onClick={zeigeHeuteTag} title="Zu heute" className="flex-1 flex flex-col items-center leading-tight">
+            <span className={`text-sm font-bold ${istHeuteTag ? 'text-coral-600 dark:text-coral-400' : 'text-ink-800 dark:text-paper-100'}`}>{WOCHENTAGE[mobilTag]}</span>
+            <span className="text-[11px] text-ink-500 dark:text-ink-400">
+              {new Date(wochenDaten[mobilTag] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' })}{istHeuteTag ? ' · heute' : ''}
+            </span>
+          </button>
+          <button onClick={zeigeTagDanach} title="Nächster Tag"
+            className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-xl text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 transition-colors">›</button>
+        </div>
+      ) : (
       <div className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-ink-950 border-b border-paper-100 dark:border-ink-800/60">
         <div className="flex items-center gap-1">
           <button
@@ -534,23 +560,26 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           </button>
         </div>
       </div>
+      )}
 
       {/* Stundenplan-Raster */}
       <div className="flex-1 overflow-auto p-4 bg-paper-50 dark:bg-ink-950">
         <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: 72 }} />
-            {WOCHENTAGE.map((_, i) => <col key={i} />)}
+            {tage.map(i => <col key={i} />)}
           </colgroup>
           <thead>
-            {/* Zeile 1: Wochentag + Datum */}
+            {/* Zeile 1: Wochentag + Datum (mobil ausgeblendet – Tag steht in der Toolbar) */}
+            {!mobil && (
             <tr>
               <th className="text-left px-2 py-2 text-xs font-medium text-ink-400 dark:text-ink-600">
                 {bearbeitungsModus && (
                   <span className="text-xs text-ink-400 dark:text-ink-600">Zeiten</span>
                 )}
               </th>
-              {WOCHENTAGE.map((tag, i) => {
+              {tage.map((i) => {
+                const tag = WOCHENTAGE[i]
                 const istHeute = aktuelleWoche === 0 && aktTag === i + 1
                 const headerFerien = schulferien ? ferienFuerTag(wochenDaten[i], schulferien) : null
                 return (
@@ -576,10 +605,12 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                 )
               })}
             </tr>
+            )}
             {/* Zeile 2: Todo-Badges */}
             <tr>
               <td />
-              {wochenDaten.map((tagDatum, i) => {
+              {tage.map((i) => {
+                const tagDatum = wochenDaten[i]
                 const faelligHier    = todos.filter(t => !t.erledigt && t.faelligkeit === tagDatum)
                 const erinnerungHier = todos.filter(t => !t.erledigt && t.erinnerung  === tagDatum)
                 const termineHier    = termine.filter(t => t.datum === tagDatum)
@@ -642,7 +673,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                   </td>
 
                   {/* Wochentage */}
-                  {WOCHENTAGE.map((_, tagIdx) => {
+                  {tage.map((tagIdx) => {
                     const wochentag = tagIdx + 1
                     const eintragRaw = eintragFuerSlot(wochentag, stunde.id)
                     const eintragAktiv = eintragRaw ? aktivInWoche(eintragRaw) : false

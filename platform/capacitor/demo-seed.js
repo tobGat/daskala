@@ -42,5 +42,19 @@ export async function seedDemoWennLeer(dbPort) {
     await dbPort.execute('INSERT INTO eintraege (spalte_id, schueler_id, wert) VALUES (?, ?, ?)', [sa, sIds[j], notenSa[j]])
     await dbPort.execute('INSERT INTO eintraege (spalte_id, schueler_id, wert) VALUES (?, ?, ?)', [t1, sIds[j], notenT[j]])
   }
+
+  // Stundenzeiten (Standard) + ein paar Stunden im Stundenplan, damit die
+  // (mobile) Tagesansicht etwas anzeigt.
+  const stunden = [['07:55', '08:40'], ['08:45', '09:30'], ['09:45', '10:30'], ['10:35', '11:20'], ['11:25', '12:10'], ['12:15', '13:00']]
+  const stundeIds = []
+  for (let s = 0; s < stunden.length; s++) {
+    const r = await dbPort.execute('INSERT INTO stundenzeiten (stunde, beginn, ende) VALUES (?, ?, ?)', [s + 1, stunden[s][0], stunden[s][1]])
+    stundeIds.push(r.lastInsertRowid)
+  }
+  // Deutsch (fach f) verteilt über die Woche: Mo 1., Di 2., Mi 1., Do 3., Fr 2. Stunde.
+  const slots = [[1, 0], [2, 1], [3, 0], [4, 2], [5, 1]] // [wochentag, stundeIndex]
+  for (const [wt, si] of slots) {
+    await dbPort.execute('INSERT INTO stundenplan (wochentag, stunde_id, fach_id, wochen_intervall) VALUES (?, ?, ?, 1)', [wt, stundeIds[si], f])
+  }
   return true
 }

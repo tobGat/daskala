@@ -72,8 +72,15 @@ cd android && ./gradlew assembleDebug
   (Klasse immer, Fach in fach-abhängigen Ansichten → Auswahl-Sheet). „Mehr"-Sheet mit
   Sitzplan/KV/Jahresplan/Planung/Einstellungen/Export/Vorlagen (gleich gegatet wie Desktop).
 - **Dashboard mobil** [UebersichtView.jsx](../renderer/components/UebersichtView.jsx):
-  Zähler-Pills (ToDos/Termine) ausgeblendet; Stundenplan/ToDos/Termine als Akkordeon,
-  Stundenplan standardmäßig offen.
+  Zähler-Pills (ToDos/Termine) ausgeblendet; Stundenplan/ToDos/Termine als Akkordeon.
+  Genau EIN Abschnitt offen (füllt den Restplatz, eingeklappte Kopfzeilen bleiben sichtbar);
+  Öffnen eines anderen schließt den vorherigen; Einblenden animiert (`.acc-body-in`).
+  Standardmäßig offen: Stundenplan.
+- **Stundenplan mobil** [Stundenplan.jsx](../renderer/components/Stundenplan.jsx): zeigt nur
+  den aktuellen Tag; Navigation per Pfeilen (‹/›, tageweise, über Wochengrenzen), Tippen auf
+  den Tag springt zu „heute". Desktop bleibt die Wochenansicht (Umschaltung über `tage`-Array).
+- Die Stundenplan-Datenkanäle (stundenzeiten/stundenplan/stundenPlanung/supplierstunden) sind
+  im mobilen `window.api` nun angebunden; Demo-Seed legt Beispiel-Stunden an.
 - **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
   (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
 

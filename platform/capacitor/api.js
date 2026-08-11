@@ -21,6 +21,10 @@ import gewichtungDomain from '../../core/domain/gewichtung'
 import todosDomain from '../../core/domain/todos'
 import termineDomain from '../../core/domain/termine'
 import customFerienDomain from '../../core/domain/customFerien'
+import stundenzeitenDomain from '../../core/domain/stundenzeiten'
+import stundenplanDomain from '../../core/domain/stundenplan'
+import stundenPlanungDomain from '../../core/domain/stundenplanung'
+import supplierstundenDomain from '../../core/domain/supplierstunden'
 import kvRoutine from '../../core/domain/kv/routine'
 import { createMobileKernDeps } from './kern-deps'
 
@@ -126,6 +130,39 @@ export function createMobileApi(dbPort) {
     customFerien: dp('customFerien', {
       getAll: (sjId) => customFerienDomain.getAll(dbPort, sjId),
       save: (sjId, f) => customFerienDomain.save(dbPort, sjId, f),
+    }),
+    stundenzeiten: dp('stundenzeiten', {
+      getAll: () => stundenzeitenDomain.getAll(dbPort),
+      update: (id, d) => stundenzeitenDomain.update(dbPort, id, d),
+      create: () => stundenzeitenDomain.create(dbPort),
+      delete: (id) => stundenzeitenDomain.remove(dbPort, id),
+      saveAll: (rows) => stundenzeitenDomain.saveAll(dbPort, deps, rows),
+    }),
+    stundenplan: dp('stundenplan', {
+      getAll: () => stundenplanDomain.getAll(dbPort),
+      getByKlasse: (kId) => stundenplanDomain.getByKlasse(dbPort, kId),
+      getParallelFach: (kId, fachName) => stundenplanDomain.getParallelFach(dbPort, kId, fachName),
+      create: (d) => stundenplanDomain.create(dbPort, d),
+      update: (id, d) => stundenplanDomain.update(dbPort, id, d),
+      delete: (id) => stundenplanDomain.remove(dbPort, id),
+      verschieben: (id, wt, sid) => stundenplanDomain.verschieben(dbPort, id, wt, sid),
+    }),
+    stundenPlanung: dp('stundenPlanung', {
+      get: (spId, wd) => stundenPlanungDomain.get(dbPort, spId, wd),
+      getWoche: (wd) => stundenPlanungDomain.getWoche(dbPort, wd),
+      getHueWoche: (wd) => stundenPlanungDomain.getHueWoche(dbPort, wd),
+      getVorhandeneWochen: () => stundenPlanungDomain.getVorhandeneWochen(dbPort),
+      checkMusizieren: (wd, kId, exSpId) => stundenPlanungDomain.checkMusizieren(dbPort, wd, kId, exSpId),
+      save: (spId, wd, titel, inhalt, musizieren, hueText, hueFrist, link) => stundenPlanungDomain.save(dbPort, spId, wd, titel, inhalt, musizieren, hueText, hueFrist, link),
+      setEntfall: (spId, wd, vor, ferien) => stundenPlanungDomain.setEntfall(dbPort, spId, wd, vor, ferien),
+      removeEntfall: (spId, wd) => stundenPlanungDomain.removeEntfall(dbPort, spId, wd),
+      delete: (spId, wd) => stundenPlanungDomain.remove(dbPort, spId, wd),
+    }),
+    supplierstunden: dp('supplierstunden', {
+      getWoche: (wd) => supplierstundenDomain.getWoche(dbPort, wd),
+      create: (d) => supplierstundenDomain.create(dbPort, d),
+      update: (id, d) => supplierstundenDomain.update(dbPort, id, d),
+      delete: (id) => supplierstundenDomain.remove(dbPort, id),
     }),
     kv: dp('kv', {
       pruefeOffeneRueckrufe: () => kvRoutine.pruefeOffeneRueckrufe(dbPort, deps),
