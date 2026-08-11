@@ -10,6 +10,7 @@ module.exports = [
     ignores: [
       'dist/**', 'dist-electron/**', 'node_modules/**',
       'web/**', 'test/**',
+      'android/**', // generiertes Capacitor-Projekt inkl. kopierter Web-Bundles
       'tailwind.config.js', 'postcss.config.js', 'eslint.config.js', 'vite.config.js',
     ],
   },
@@ -52,6 +53,23 @@ module.exports = [
       'no-empty': 'off',
       // Dateinamen-Sanitizer entfernt bewusst Steuerzeichen per Regex.
       'no-control-regex': 'off',
+    },
+  },
+
+  // Capacitor-Kernbrücke: ES-Module, laufen im WebView (Browser-Globals).
+  // Überschreibt für diese Dateien den CommonJS-Block oben. Der crypto-Shim
+  // (shims/) bleibt bewusst CommonJS und daher hier ausgenommen.
+  {
+    files: ['platform/capacitor/**/*.js'],
+    ignores: ['platform/capacitor/shims/**'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'module',
+      globals: { ...globals.browser },
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-empty': 'off',
     },
   },
 ]

@@ -29,6 +29,8 @@ import {
   ExportierenModal,
   FerienModal,
 } from './components/Modals'
+import MobileBottomNav from './components/MobileBottomNav'
+import { useIsMobile } from './hooks/useIsMobile'
 
 function LoadingScreen() {
   return (
@@ -53,6 +55,7 @@ export default function App() {
   } = useStore()
 
   const planungAktiv = einstellungen?.planung_aktiv === '1'
+  const mobil = useIsMobile()
   const [updateInfo, setUpdateInfo] = useState(null) // { status, version }
   const [backupErinnerung, setBackupErinnerung] = useState(false)
   const [changelogVersionen, setChangelogVersionen] = useState(null) // Einträge fürs „Was ist neu"-Modal
@@ -147,7 +150,7 @@ export default function App() {
 
   return (
     <>
-    <div className={`flex flex-col h-screen bg-paper-50 dark:bg-ink-950${gesperrt ? ' blur-lg pointer-events-none select-none' : ''}`}>
+    <div className={`app-shell flex flex-col h-screen bg-paper-50 dark:bg-ink-950${gesperrt ? ' blur-lg pointer-events-none select-none' : ''}`}>
 
       {/* Grün leuchtender Rahmen als deutliches Signal für den Vorlagen-Modus */}
       {vorlagenModus && (
@@ -238,6 +241,9 @@ export default function App() {
           </button>
         </div>
       )}
+
+      {/* Mobile Bottom-Navigation (nur am Gerät; Desktop unberührt) */}
+      {mobil && <MobileBottomNav />}
     </div>
 
     {/* App-Sperre: Overlay mit PIN-Eingabe (Inhalt dahinter ist geblurt) */}

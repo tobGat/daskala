@@ -62,12 +62,25 @@ cd android && ./gradlew assembleDebug
   erster Spalte (bereits vorhanden); mobil eher Spaltenbreiten/Abstände justieren.
 - Änderungen laufen auf `spike/capacitor` (nicht `master`), bis die mobile UI reif ist.
 
+## Bereits umgesetzt
+
+- **Bottom-Navigation** [renderer/components/MobileBottomNav.jsx](../renderer/components/MobileBottomNav.jsx):
+  Dashboard · Noten · Mehr (Sheet mit Sitzplan/KV/Jahresplan/Planung/Einstellungen/
+  Export/Vorlagen, gleich gegatet wie die Desktop-Kopfleiste). In `App.jsx` nur bei
+  `useIsMobile()` gerendert; `KlassenTabs`/`FachTabs` unverändert.
+- **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
+  (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
+
 ## Naheliegende nächste Schritte (Vorschläge)
 
-1. **Navigation**: `KlassenTabs`/`FachTabs` + Ansichtswechsel mobil in eine kompakte
-   Kopf-/Bottom-Leiste bringen (`useIsMobile()`-Zweig).
-2. **Touch-Ziele**: Zellen/Buttons der Notentabelle mobil höher (≥ 44px) – unter `.cap`.
-3. **Modals** (`SpalteHinzufuegen`, `Einstellungen` …) mobil als Vollbild-Sheet.
-4. **Safe-Area** auf oberste/unterste Leisten anwenden (`safe-top`/`safe-bottom`).
-5. **Erststart/Einrichtung** mobil testen (aktuell per Demo-Seed übersprungen, siehe
+1. **Touch-Ziele**: Zellen/Buttons der Notentabelle + der Kopf-Tabs mobil höher
+   (≥ 44px) – unter `.cap`. Klassenschnitt-Chips ggf. mobil ausblenden.
+2. **Touch-Ersatz** für Rechtsklick/Doppelklick/Drag in `KlassenTabs`/`FachTabs`
+   (Kontextmenüs, Umbenennen, Reorder) – z. B. Long-Press oder „⋯"-Button.
+3. **Erststart/Einrichtung** mobil testen (aktuell per Demo-Seed übersprungen, siehe
    platform/capacitor/demo-seed.js).
+
+## Bekannte (harmlose) Meldung
+Capacitor loggt beim Start „Error injecting safe area CSS: … reading 'style'" aus der
+nativen Bridge. Unkritisch – die Safe-Areas werden ohnehin per CSS `env(safe-area-inset-*)`
+gehandhabt (nicht über die Capacitor-Injektion).
