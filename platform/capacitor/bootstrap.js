@@ -28,7 +28,17 @@ async function oeffneVerbindung() {
   return conn
 }
 
+// Mobile Plattform-Markierung: <html class="cap"> + viewport-fit für Safe-Areas
+// (Notch/Gestenleiste). Nur hier gesetzt → Desktop bleibt unberührt. Alle mobilen
+// UI-Anpassungen hängen an `.cap` (CSS) bzw. useIsMobile() (JS).
+function markiereMobil() {
+  document.documentElement.classList.add('cap')
+  const vp = document.querySelector('meta[name="viewport"]')
+  if (vp) vp.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover')
+}
+
 export async function bootstrapMobile() {
+  markiereMobil()
   const conn = await oeffneVerbindung()
   // Schema anwenden – alle Statements sind idempotent (IF NOT EXISTS), daher bei
   // jedem Start unbedenklich; ein separates Versions-Tracking spart sich der Spike.

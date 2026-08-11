@@ -318,3 +318,40 @@
 .slide-in-right {
   animation: slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBIL (Capacitor)
+   Alles hier ist unter `html.cap` bzw. `.cap` eingezäunt. Die Markierung setzt
+   NUR der Capacitor-Bootstrap (platform/capacitor/bootstrap.js) am Gerät – die
+   Desktop-App (Electron) hat sie nie, ihre Darstellung bleibt unverändert.
+
+   So iterierst du die mobile UI:
+   1) Regeln hier unter `.cap …` ergänzen/ändern, ODER
+   2) in Komponenten `useIsMobile()` (renderer/hooks/useIsMobile.js) für andere
+      Layouts/Struktur nutzen: `const mobil = useIsMobile()`.
+   Live-Vorschau am Gerät: `npx cap run android -l --external` (Hot-Reload, s. docs).
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer base {
+  html.cap {
+    /* Safe-Area-Insets als Variablen (Notch, Statusleiste, Gestenleiste). */
+    --sat: env(safe-area-inset-top);
+    --sar: env(safe-area-inset-right);
+    --sab: env(safe-area-inset-bottom);
+    --sal: env(safe-area-inset-left);
+  }
+
+  /* Safe-Area-Helfer – auf Leisten/Container anwenden, z. B. <div class="safe-bottom"> */
+  .cap .safe-top    { padding-top: env(safe-area-inset-top); }
+  .cap .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .cap .safe-x      { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+
+  /* Beispiel-Anpassung (bewusst klein & sicher, gern als Vorlage nehmen):
+     Auf schmalen Schirmen ist die fixierte Namensspalte der Notentabelle schmaler,
+     damit mehr Noten-Spalten sichtbar sind. Horizontales Scrollen + Sticky-Spalte
+     funktionieren bereits (siehe .noten-tabelle-container / :first-child oben). */
+  .cap .noten-tabelle th:first-child,
+  .cap .noten-tabelle td:first-child {
+    min-width: 108px;
+    max-width: 132px;
+  }
+}

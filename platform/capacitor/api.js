@@ -26,12 +26,17 @@ import { createMobileKernDeps } from './kern-deps'
 
 export function createMobileApi(dbPort) {
   const deps = createMobileKernDeps(dbPort)
-  // Nicht abgebildete Methode → leeres Array (array-sicher: .find/.map/.forEach laufen
-  // ins Leere statt zu crashen; Property-Zugriff ergibt undefined statt Absturz).
+  // Nicht abgebildete Lese-/Schreib-Methode → leeres Array (array-sicher: .find/.map/
+  // .forEach laufen ins Leere; Property-Zugriff ergibt undefined statt Absturz).
   const stub = (label) => async (...args) => { console.warn('[mobile-api:stub]', label, args); return [] }
-  // Domänen-Proxy: unbekannte Methode → protokollierender No-op statt Absturz.
+  // Event-Abos (onX(cb)) müssen SYNCHRON eine Abmelde-Funktion liefern, kein Promise.
+  const onStub = (label) => (...args) => { console.warn('[mobile-api:stub]', label, args); return () => {} }
+  // Domänen-Proxy: unbekannte Methode → passender No-op statt Absturz.
   const dp = (name, impl) => new Proxy(impl, {
-    get: (t, k) => (typeof k === 'string' && !(k in t)) ? stub(`${name}.${k}`) : t[k],
+    get: (t, k) => {
+      if (typeof k !== 'string' || k in t) return t[k]
+      return k.startsWith('on') ? onStub(`${name}.${k}`) : stub(`${name}.${k}`)
+    },
   })
 
   const api = {
@@ -127,6 +132,11 @@ export function createMobileApi(dbPort) {
     }),
     sperre: dp('sperre', {
       status: async () => ({ aktiv: false, gesperrt: false }),
+    }),
+    // App-Version: skalarer Wert – der []-Fallback würde beim Changelog-Vergleich in
+    // einstellungen.set(...) als Parameter landen (SQLite kann [] nicht binden).
+    app: dp('app', {
+      version: async () => '1.2.1',
     }),
   }
 
