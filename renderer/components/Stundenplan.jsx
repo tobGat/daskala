@@ -493,10 +493,12 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const istHeuteTag = aktuelleWoche === 0 && aktTag === mobilTag + 1
 
   return (
-    <div className={`flex-1 flex flex-col overflow-hidden ${mobil ? 'relative' : ''}`}>
+    <div className="flex-1 flex flex-col overflow-hidden">
       {/* Toolbar */}
       {mobil ? (
-        <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white dark:bg-ink-950 border-b border-paper-100 dark:border-ink-800/60">
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-ink-950 border-b border-paper-100 dark:border-ink-800/60">
+          {/* Spacer, damit die Tag-Anzeige trotz Bearbeiten-Icon rechts mittig bleibt */}
+          <span className="w-9 flex-shrink-0" aria-hidden />
           <button onClick={zeigeTagDavor} title="Vorheriger Tag"
             className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-xl text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 transition-colors">‹</button>
           <button onClick={zeigeHeuteTag} title="Zu heute" className="flex-1 flex flex-col items-center leading-tight">
@@ -507,6 +509,17 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           </button>
           <button onClick={zeigeTagDanach} title="Nächster Tag"
             className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-xl text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 transition-colors">›</button>
+          <button onClick={() => setBearbeitungsModus(v => !v)}
+            aria-label={bearbeitungsModus ? 'Bearbeiten beenden' : 'Stundenplan bearbeiten'}
+            title={bearbeitungsModus ? 'Bearbeiten beenden' : 'Stundenplan bearbeiten'}
+            className={`w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full transition-colors
+              ${bearbeitungsModus
+                ? 'text-coral-600 dark:text-coral-300 bg-coral-50 dark:bg-coral-950/40'
+                : 'text-ink-400 dark:text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800'}`}>
+            <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
         </div>
       ) : (
       <div className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-ink-950 border-b border-paper-100 dark:border-ink-800/60">
@@ -797,30 +810,6 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           </tbody>
         </table>
       </div>
-
-      {/* Bearbeiten-FAB (nur mobil): schaltet den Bearbeitungsmodus um. */}
-      {mobil && (
-        <button
-          type="button"
-          onClick={() => setBearbeitungsModus(v => !v)}
-          aria-label={bearbeitungsModus ? 'Bearbeiten beenden' : 'Stundenplan bearbeiten'}
-          title={bearbeitungsModus ? 'Fertig' : 'Stundenplan bearbeiten'}
-          className={`absolute right-5 bottom-5 z-20 w-14 h-14 flex items-center justify-center rounded-full shadow-pop active:scale-95 transition-transform
-            ${bearbeitungsModus
-              ? 'bg-coral-600 text-white'
-              : 'bg-white dark:bg-ink-900 text-ink-700 dark:text-paper-200 border border-paper-200 dark:border-ink-700'}`}
-        >
-          {bearbeitungsModus ? (
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          )}
-        </button>
-      )}
 
       {/* Kontextmenü – mobil als Bottom-Sheet mit großen Tap-Zielen; Untermenüs
           (Entfall) sind ausgeklappt statt per Hover, da Hover am Touch nicht geht. */}
