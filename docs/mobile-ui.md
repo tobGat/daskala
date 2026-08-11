@@ -103,6 +103,12 @@ cd android && ./gradlew assembleDebug
   öffnet „Stunde belegen", ein Tap auf eine belegte Stunde „Stunde bearbeiten". Im Kontextmenü ist im
   Modus zusätzlich „Stundenzeiten bearbeiten" erreichbar. (Drag-&-Drop zum Verschieben bleibt
   Desktop-only – am Touch stattdessen über Belegen/Ändern.)
+- **Notenansicht mobil** [NotenTabelle.jsx](../renderer/components/NotenTabelle.jsx): die
+  `NotenToolbar` hat einen eigenen Mobil-Zweig – der Fach-Identifikator (Farbquadrat/Fachname/
+  Schüler:innen-Zahl) entfällt (Fach steht in der Bottom-Nav-Kontextzeile), und Semester (1/2,
+  inkl. „S1 einklappen") sowie Sortierung (Vorname/Nachname/Manuell + Reihenfolge) wandern in ein
+  Bottom-Sheet-Menü „Ansicht" (kleiner Regler-Button links). Schüler:innen/Export/Ø-Klasse bleiben
+  in der Leiste. Desktop-Toolbar unverändert.
 - **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
   (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
 

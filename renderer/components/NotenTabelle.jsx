@@ -7,6 +7,7 @@ import Zelle from './Zelle'
 import ZeugnisnoteZelle from './ZeugnisnoteZelle'
 import SchuelerAvatar from './SchuelerAvatar'
 import { niveauOffset } from '../utils/niveau'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 const KAT_FARBE = {
@@ -232,12 +233,16 @@ function StatChip({ label, value, accent, emoji }) {
   )
 }
 
+const SORT_LABELS = { vorname: 'Vorname', nachname: 'Nachname', manuell: 'Manuell' }
+
 function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt }) {
   const aktiveKlasse = useStore(s => s.aktiveKlasse)
   const setSchuelerSortierung = useStore(s => s.setSchuelerSortierung)
   const openModal = useStore(s => s.openModal)
   const niveaus = useStore(s => s.niveaus)
   const sortierung = aktiveKlasse?.sortierung || 'nachname'
+  const mobil = useIsMobile()
+  const [optionenOffen, setOptionenOffen] = useState(false)
 
   const handleExport = async () => {
     if (aktivesFach) await window.api.export.fachOds(aktivesFach.id)
@@ -266,6 +271,121 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
       ? { diff: true, ahs: mittel(gruppen.AHS), st: mittel(gruppen.ST) }
       : { diff: false, gesamt: mittel(alle) }
   }, [schueler, zeugnisnoten, aktiveSemester, aktivesFach, niveaus])
+
+  // Klassenschnitt-Chips (in beiden Layouts identisch)
+  const schnittChips = schnitt.diff ? (
+    <>
+      {schnitt.ahs != null && (
+        <StatChip label="Ø AHS" value={schnitt.ahs.toFixed(2)} emoji="⭐" accent="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" />
+      )}
+      {schnitt.st != null && (
+        <StatChip label="Ø ST" value={schnitt.st.toFixed(2)} emoji="⭐" accent="bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" />
+      )}
+    </>
+  ) : (
+    schnitt.gesamt != null && (
+      <StatChip label="Ø Klasse" value={schnitt.gesamt.toFixed(2)} emoji="⭐" accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300" />
+    )
+  )
+
+  // ── Mobil: schlanke Leiste ohne Fach-Identifikator; Semester- & Sortier-
+  //    Optionen wandern in ein Bottom-Sheet-Menü („Ansicht"). ──
+  if (mobil) {
+    const segBtn = (aktiv) => `flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${aktiv
+      ? 'bg-white dark:bg-ink-700 text-coral-600 dark:text-coral-300 shadow-soft'
+      : 'text-ink-500 dark:text-ink-400'}`
+    return (
+      <>
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-paper-200 dark:border-ink-800/60 flex-shrink-0 flex-wrap">
+          <button
+            onClick={() => setOptionenOffen(true)}
+            aria-label={`Ansicht: Semester ${aktiveSemester}, Sortierung ${SORT_LABELS[sortierung]}`}
+            title="Semester & Sortierung"
+            className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-xl bg-paper-100 dark:bg-ink-800 text-ink-600 dark:text-ink-300 active:scale-95 transition-transform"
+          >
+            <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M4 6h10M4 12h7M4 18h13" />
+              <circle cx="18" cy="6" r="2" /><circle cx="15" cy="12" r="2" />
+            </svg>
+          </button>
+          <div className="ml-auto flex items-center gap-1.5 flex-wrap justify-end">
+            {aktiveKlasse && (
+              <button
+                className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 active:scale-95 transition-transform"
+                onClick={() => openModal('schuelerVerwalten')}
+              >
+                Schüler:innen
+              </button>
+            )}
+            {aktivesFach && (
+              <button
+                className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 active:scale-95 transition-transform"
+                onClick={handleExport}
+                title="Als ODS-Tabelle exportieren"
+              >
+                Export
+              </button>
+            )}
+            {schnittChips}
+          </div>
+        </div>
+
+        {optionenOffen && (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setOptionenOffen(false)}>
+            <div className="modal-box">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-ink-900 dark:text-white">Ansicht</h2>
+                <button type="button" className="text-ink-400 hover:text-ink-600 text-xl px-2" onClick={() => setOptionenOffen(false)}>✕</button>
+              </div>
+
+              {/* Semester */}
+              <div className="mb-4">
+                <div className="text-[11px] uppercase tracking-wide text-ink-400 dark:text-ink-500 mb-1.5">Semester</div>
+                <div className="flex gap-1 bg-paper-100 dark:bg-ink-800 rounded-xl p-1">
+                  {[1, 2].map(s => (
+                    <button key={s} className={segBtn(aktiveSemester === s)} onClick={() => useStore.setState({ aktiveSemester: s })}>
+                      Semester {s}
+                    </button>
+                  ))}
+                </div>
+                {aktiveSemester === 2 && (
+                  <button
+                    className="mt-2 w-full flex items-center justify-between px-3 py-2 rounded-xl border border-paper-200 dark:border-ink-700 text-sm text-ink-700 dark:text-paper-200"
+                    onClick={() => setSemester1Eingeklappt(!semester1Eingeklappt)}
+                  >
+                    <span>Semester 1 einklappen</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${semester1Eingeklappt
+                      ? 'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300'
+                      : 'bg-paper-200 text-ink-500 dark:bg-ink-700 dark:text-ink-400'}`}>{semester1Eingeklappt ? 'an' : 'aus'}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Sortierung */}
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-ink-400 dark:text-ink-500 mb-1.5">Sortierung</div>
+                <div className="flex gap-1 bg-paper-100 dark:bg-ink-800 rounded-xl p-1">
+                  {[['vorname', 'Vorname'], ['nachname', 'Nachname'], ['manuell', 'Manuell']].map(([wert, label]) => (
+                    <button key={wert} className={segBtn(sortierung === wert)} onClick={() => setSchuelerSortierung(wert)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {sortierung === 'manuell' && (
+                  <button
+                    className="mt-2 w-full py-2 rounded-xl border border-paper-200 dark:border-ink-700 text-sm font-medium text-ink-600 dark:text-paper-200 active:scale-95 transition-transform"
+                    onClick={() => { setOptionenOffen(false); openModal('schuelerVerwalten', { reorder: true }) }}
+                  >
+                    ↕ Reihenfolge bearbeiten
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    )
+  }
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-paper-200 dark:border-ink-800/60 flex-shrink-0 flex-wrap">
@@ -374,35 +494,7 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
         )}
 
         {/* Klassenschnitt ganz rechts, neben Export – differenziert getrennt nach AHS/ST */}
-        {schnitt.diff ? (
-          <>
-            {schnitt.ahs != null && (
-              <StatChip
-                label="Ø AHS"
-                value={schnitt.ahs.toFixed(2)}
-                emoji="⭐"
-                accent="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-              />
-            )}
-            {schnitt.st != null && (
-              <StatChip
-                label="Ø ST"
-                value={schnitt.st.toFixed(2)}
-                emoji="⭐"
-                accent="bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
-              />
-            )}
-          </>
-        ) : (
-          schnitt.gesamt != null && (
-            <StatChip
-              label="Ø Klasse"
-              value={schnitt.gesamt.toFixed(2)}
-              emoji="⭐"
-              accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300"
-            />
-          )
-        )}
+        {schnittChips}
       </div>
     </div>
   )
