@@ -6,6 +6,25 @@ import useStore from '../store/useStore'
 import TodoBoard from './TodoBoard'
 import TerminePanel from './TerminePanel'
 import Stundenplan from './Stundenplan'
+import { useIsMobile } from '../hooks/useIsMobile'
+
+// Aufklappbarer Abschnitt für die mobile Dashboard-Ansicht.
+function AccSection({ emoji, titel, offen, onToggle, children }) {
+  return (
+    <div className="border-b border-paper-200 dark:border-ink-800">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center gap-2 px-4 py-3 min-h-[52px] bg-white dark:bg-ink-900 text-ink-800 dark:text-paper-100"
+      >
+        <span className="text-lg leading-none" aria-hidden>{emoji}</span>
+        <span className="flex-1 text-left text-sm font-semibold">{titel}</span>
+        <span className={`text-ink-400 transition-transform ${offen ? 'rotate-180' : ''}`} aria-hidden>▾</span>
+      </button>
+      {offen && <div className="flex flex-col overflow-hidden">{children}</div>}
+    </div>
+  )
+}
 
 function Begruessung() {
   const h = new Date().getHours()
@@ -33,6 +52,11 @@ export default function UebersichtView() {
   } = useStore()
   const [highlightedTodoId, setHighlightedTodoId] = useState(null)
   const [highlightedTerminId, setHighlightedTerminId] = useState(null)
+  const mobil = useIsMobile()
+  // Mobiles Akkordeon: standardmäßig ist der Stundenplan geöffnet.
+  const [accOffen, setAccOffen] = useState({ stundenplan: true, todos: false, termine: false })
+  const toggleAcc = (id) => setAccOffen(o => ({ ...o, [id]: !o[id] }))
+  const oeffneAcc = (id) => setAccOffen(o => ({ ...o, [id]: true }))
 
   // Resizable Sidebar — wie früher in App.jsx
   const [todoBreite, setTodoBreite]   = useState(() => parseInt(localStorage.getItem('todo-panel-breite') ?? '288'))
@@ -96,6 +120,42 @@ export default function UebersichtView() {
   const heute = new Date().toISOString().slice(0, 10)
   const inSiebenTagen = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
   const naechsteTermine = (termine ?? []).filter(t => t.datum >= heute && t.datum <= inSiebenTagen).length
+
+  // ── Mobile Ansicht: Begrüßung ohne Zähler-Pills + Akkordeon ──────────────────
+  if (mobil) {
+    return (
+      <div className="flex-1 overflow-y-auto bg-paper-50 dark:bg-ink-950">
+        <div className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-ink-900 border-b border-paper-200 dark:border-ink-800">
+          <span className="text-xl leading-none">{begruessung.emoji}</span>
+          <div className="leading-tight">
+            <div className="text-sm font-bold text-ink-800 dark:text-paper-100 font-display">{begruessung.text}</div>
+            <div className="text-[11px] text-ink-500 dark:text-ink-400">{aktuellesSchuljahr?.bezeichnung ?? '—'}</div>
+          </div>
+        </div>
+
+        <AccSection emoji="🗓️" titel="Stundenplan" offen={accOffen.stundenplan} onToggle={() => toggleAcc('stundenplan')}>
+          <div className="h-[68vh] flex flex-col overflow-hidden">
+            <Stundenplan
+              onTodoBadgeClick={(id) => { setHighlightedTodoId(id); oeffneAcc('todos') }}
+              onTerminBadgeClick={(id) => { setHighlightedTerminId(id); oeffneAcc('termine') }}
+            />
+          </div>
+        </AccSection>
+
+        <AccSection emoji="✏️" titel="ToDos" offen={accOffen.todos} onToggle={() => toggleAcc('todos')}>
+          <div className="h-[62vh] flex flex-col overflow-hidden">
+            <TodoBoard highlightedTodoId={highlightedTodoId} onHighlightCleared={() => setHighlightedTodoId(null)} />
+          </div>
+        </AccSection>
+
+        <AccSection emoji="📅" titel="Termine" offen={accOffen.termine} onToggle={() => toggleAcc('termine')}>
+          <div className="h-[62vh] flex flex-col overflow-hidden">
+            <TerminePanel hoehe={null} highlightedTerminId={highlightedTerminId} onHighlightCleared={() => setHighlightedTerminId(null)} />
+          </div>
+        </AccSection>
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col bg-paper-50 dark:bg-ink-950">

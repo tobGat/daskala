@@ -30,6 +30,7 @@ import {
   FerienModal,
 } from './components/Modals'
 import MobileBottomNav from './components/MobileBottomNav'
+import MobileHeader from './components/MobileHeader'
 import { useIsMobile } from './hooks/useIsMobile'
 
 function LoadingScreen() {
@@ -157,9 +158,10 @@ export default function App() {
         <div className="pointer-events-none fixed inset-0 z-[100] border-4 border-green-400 animate-glow-frame" />
       )}
 
-      {/* Immer sichtbare Navigation */}
-      <KlassenTabs />
-      {(vorlagenModus || ['notentabelle', 'kompetenzen', 'sitzplan', ...(planungAktiv ? ['jahresplanung'] : [])].includes(currentView)) && <FachTabs />}
+      {/* Navigation: Desktop = KlassenTabs (+ FachTabs); Mobil = schlanker Logo-Header
+          (Klassen-/Fachwechsel läuft mobil über die Bottom-Navigation). */}
+      {mobil ? <MobileHeader /> : <KlassenTabs />}
+      {!mobil && (vorlagenModus || ['notentabelle', 'kompetenzen', 'sitzplan', ...(planungAktiv ? ['jahresplanung'] : [])].includes(currentView)) && <FachTabs />}
 
       {/* Haupt-Inhalt. Im Vorlagen-Modus nur die Jahresplanung. */}
       <div className="flex-1 overflow-hidden flex flex-col">

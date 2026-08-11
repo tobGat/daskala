@@ -64,10 +64,16 @@ cd android && ./gradlew assembleDebug
 
 ## Bereits umgesetzt
 
-- **Bottom-Navigation** [renderer/components/MobileBottomNav.jsx](../renderer/components/MobileBottomNav.jsx):
-  Dashboard · Noten · Mehr (Sheet mit Sitzplan/KV/Jahresplan/Planung/Einstellungen/
-  Export/Vorlagen, gleich gegatet wie die Desktop-Kopfleiste). In `App.jsx` nur bei
-  `useIsMobile()` gerendert; `KlassenTabs`/`FachTabs` unverändert.
+- **Logo-Header** statt Kopfleisten: mobil ersetzt [MobileHeader.jsx](../renderer/components/MobileHeader.jsx)
+  (Logo + „Daskala") die Desktop-`KlassenTabs`/`FachTabs`. In `App.jsx` per
+  `{mobil ? <MobileHeader/> : <KlassenTabs/>}` (Desktop unverändert).
+- **Bottom-Navigation** [MobileBottomNav.jsx](../renderer/components/MobileBottomNav.jsx):
+  Dashboard · Noten · Mehr; darüber eine **Kontextzeile für Klassen-/Fachwechsel**
+  (Klasse immer, Fach in fach-abhängigen Ansichten → Auswahl-Sheet). „Mehr"-Sheet mit
+  Sitzplan/KV/Jahresplan/Planung/Einstellungen/Export/Vorlagen (gleich gegatet wie Desktop).
+- **Dashboard mobil** [UebersichtView.jsx](../renderer/components/UebersichtView.jsx):
+  Zähler-Pills (ToDos/Termine) ausgeblendet; Stundenplan/ToDos/Termine als Akkordeon,
+  Stundenplan standardmäßig offen.
 - **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
   (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
 
