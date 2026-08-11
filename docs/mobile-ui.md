@@ -87,6 +87,12 @@ cd android && ./gradlew assembleDebug
   den Tag springt zu „heute". Desktop bleibt die Wochenansicht (Umschaltung über `tage`-Array).
 - Die Stundenplan-Datenkanäle (stundenzeiten/stundenplan/stundenPlanung/supplierstunden) sind
   im mobilen `window.api` nun angebunden; Demo-Seed legt Beispiel-Stunden an.
+- **Kontextmenü mobil** [Stundenplan.jsx](../renderer/components/Stundenplan.jsx): der Long-Tap
+  auf eine Stunde öffnet mobil ein **Bottom-Sheet** mit großen Tap-Zielen statt des Desktop-Menüs
+  an der Mausposition. Das Entfall-Untermenü (ersatzlos / durch Supplierung) ist dabei **ausgeklappt**
+  statt per Hover (Hover gibt es am Touch nicht); zusätzlich „Abbrechen" und ein Griff oben. Long-Tap
+  auf leere Zellen zeigt „Supplierstunde eintragen" bzw. „Stunde belegen". Zellen mobil `select-none`
+  + `-webkit-touch-callout:none`, damit der Long-Press keine Textauswahl auslöst.
 - **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
   (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
 

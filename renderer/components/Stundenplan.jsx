@@ -18,6 +18,9 @@ function getMontag(wochenOffset) {
 
 const WOCHENTAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
 
+// Große Tap-Zeile für das mobile Kontextmenü (Bottom-Sheet).
+const MOB_KONTEXT_ITEM = 'w-full flex items-center gap-3 px-5 py-4 min-h-[56px] text-left text-[15px] text-ink-800 dark:text-paper-100 active:bg-paper-100 dark:active:bg-ink-800 transition-colors'
+
 // WMO-Wettercode → Emoji (Open-Meteo)
 function wetterSymbol(code) {
   if (code == null) return ''
@@ -714,7 +717,9 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                           ${istDragOver ? 'ring-2 ring-coral-500 ring-inset bg-coral-50/60 dark:bg-coral-900/40' : ''}
                           ${istGezogen ? 'opacity-50' : ''}
                           ${!istFerien && bearbeitungsModus ? (eintrag ? 'cursor-move' : 'cursor-pointer') + ' hover:bg-coral-50/50 dark:hover:bg-coral-900/30' : ''}
-                          ${!istFerien && !bearbeitungsModus && (eintrag || supplier) ? 'cursor-pointer hover:opacity-80' : ''}`}
+                          ${!istFerien && !bearbeitungsModus && (eintrag || supplier) ? 'cursor-pointer hover:opacity-80' : ''}
+                          ${mobil ? 'select-none' : ''}`}
+                        style={mobil ? { WebkitTouchCallout: 'none' } : undefined}
                         draggable={bearbeitungsModus && !!eintrag}
                         onDragStart={eintrag ? (e => handleSlotDragStart(e, eintrag)) : undefined}
                         onDragOver={e => handleSlotDragOver(e, wochentag, stunde.id)}
@@ -777,8 +782,90 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
         </table>
       </div>
 
-      {/* Kontextmenü */}
-      {kontextMenu && (
+      {/* Kontextmenü – mobil als Bottom-Sheet mit großen Tap-Zielen; Untermenüs
+          (Entfall) sind ausgeklappt statt per Hover, da Hover am Touch nicht geht. */}
+      {kontextMenu && mobil && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col"
+          style={{ background: 'rgba(46,42,38,0.32)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+          onClick={() => setKontextMenu(null)}
+        >
+          <div
+            className="mt-auto w-full bg-paper-50 dark:bg-ink-950 rounded-t-3xl shadow-pop animate-pop-in overflow-hidden"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-2.5 pb-1">
+              <div className="w-10 h-1 rounded-full bg-paper-300 dark:bg-ink-700" />
+            </div>
+
+            {kontextMenu.eintrag ? (
+              <>
+                <div className="px-5 py-3 border-b border-paper-200 dark:border-ink-800">
+                  <div className="text-base font-semibold text-ink-900 dark:text-paper-100 truncate">{kontextMenu.eintrag.fach_name}</div>
+                  <div className="text-sm text-ink-400">{kontextMenu.eintrag.klasse_name}</div>
+                </div>
+                {(() => {
+                  const pl = planungFuerEintrag(kontextMenu.eintrag.id)
+                  return pl?.entfall ? (
+                    <button type="button" className={MOB_KONTEXT_ITEM} onClick={() => handleKontextAktion('entfall-aufheben')}>
+                      <span className="w-6 text-center text-green-500">↩</span> Entfall aufheben
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" className={`${MOB_KONTEXT_ITEM} text-red-600 dark:text-red-400`} onClick={() => handleKontextAktion('entfall')}>
+                        <span className="w-6 text-center">⊘</span> Entfall – ersatzlos
+                      </button>
+                      <button type="button" className={`${MOB_KONTEXT_ITEM} text-red-600 dark:text-red-400`} onClick={() => handleKontextAktion('entfall-supplier')}>
+                        <span className="w-6 text-center">↔</span> Entfall – durch Supplierung
+                      </button>
+                    </>
+                  )
+                })()}
+                <button type="button" className={MOB_KONTEXT_ITEM} onClick={() => handleKontextAktion('planen')}>
+                  <span className="w-6 text-center">{planungAktiv ? '📋' : '📝'}</span> {planungAktiv ? 'Stunde planen' : 'Notiz hinzufügen'}
+                </button>
+                <button type="button" className={MOB_KONTEXT_ITEM} onClick={() => handleKontextAktion('oeffnen')}>
+                  <span className="w-6 text-center">→</span> Zur Notentabelle
+                </button>
+                <button type="button" className={MOB_KONTEXT_ITEM} onClick={() => handleKontextAktion('bearbeiten')}>
+                  <span className="w-6 text-center">✎</span> Fach ändern
+                </button>
+                <div className="context-menu-separator" />
+                <button type="button" className={`${MOB_KONTEXT_ITEM} text-red-500 dark:text-red-400`} onClick={() => handleKontextAktion('entfernen')}>
+                  <span className="w-6 text-center">✕</span> Eintrag entfernen
+                </button>
+              </>
+            ) : kontextMenu.supplier ? (
+              <>
+                <div className="px-5 py-3 border-b border-paper-200 dark:border-ink-800">
+                  <div className="text-base font-semibold text-orange-700 dark:text-orange-300 truncate">{kontextMenu.supplier.fach_text || '—'}</div>
+                  <div className="text-sm text-ink-400">{kontextMenu.supplier.klasse_text || 'Supplierstunde'}</div>
+                </div>
+                <button type="button" className={`${MOB_KONTEXT_ITEM} text-red-500 dark:text-red-400`} onClick={() => handleKontextAktion('supplier-loeschen')}>
+                  <span className="w-6 text-center">✕</span> Supplierstunde entfernen
+                </button>
+              </>
+            ) : bearbeitungsModus ? (
+              <button type="button" className={MOB_KONTEXT_ITEM} onClick={() => handleKontextAktion('bearbeiten')}>
+                <span className="w-6 text-center">+</span> Stunde belegen
+              </button>
+            ) : (
+              <button type="button" className={MOB_KONTEXT_ITEM} onClick={() => handleKontextAktion('supplier-erstellen')}>
+                <span className="w-6 text-center text-orange-400">↔</span> Supplierstunde eintragen
+              </button>
+            )}
+
+            <div className="context-menu-separator" />
+            <button type="button" className={`${MOB_KONTEXT_ITEM} justify-center text-ink-500 dark:text-ink-400`} onClick={() => setKontextMenu(null)}>
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Kontextmenü – Desktop (an der Mausposition) */}
+      {kontextMenu && !mobil && (
         <div
           ref={kontextRef}
           className="context-menu fixed"
