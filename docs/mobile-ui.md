@@ -74,7 +74,9 @@ cd android && ./gradlew assembleDebug
 - **Header-Symbole ToDos/Termine** [MobileHeader.jsx](../renderer/components/MobileHeader.jsx):
   rechts oben zwei Symbole (✏️/📅) mit Anzahl-Badge; Tap öffnet ein fast bildschirmfüllendes
   Vollbild-Modal mit der jeweiligen Liste. Zustand im Store (`mobilListe`), damit auch die
-  Stundenplan-Badges die passende Liste öffnen.
+  Stundenplan-Badges die passende Liste öffnen. Im Sheet blenden [TodoBoard.jsx](../renderer/components/TodoBoard.jsx)
+  und [TerminePanel.jsx](../renderer/components/TerminePanel.jsx) via Prop `imSheet` ihren eigenen Panel-Kopf aus
+  (der Modal-Titel genügt) und zeigen das „+" stattdessen als Floating-Action-Button unten rechts.
 - **Dashboard mobil** [UebersichtView.jsx](../renderer/components/UebersichtView.jsx):
   zeigt NUR den Stundenplan (Tagesansicht); keine Begrüßung, kein Akkordeon. ToDos/Termine
   laufen über die Header-Symbole.

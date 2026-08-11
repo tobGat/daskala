@@ -68,8 +68,8 @@ export default function MobileHeader() {
             </div>
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               {mobilListe.typ === 'todos'
-                ? <TodoBoard highlightedTodoId={mobilListe.highlightId} onHighlightCleared={() => {}} />
-                : <TerminePanel hoehe={null} highlightedTerminId={mobilListe.highlightId} onHighlightCleared={() => {}} />}
+                ? <TodoBoard imSheet highlightedTodoId={mobilListe.highlightId} onHighlightCleared={() => {}} />
+                : <TerminePanel imSheet hoehe={null} highlightedTerminId={mobilListe.highlightId} onHighlightCleared={() => {}} />}
             </div>
           </div>
         </div>

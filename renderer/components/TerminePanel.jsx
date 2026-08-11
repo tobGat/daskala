@@ -187,7 +187,7 @@ function TerminKarte({ termin, klassen, stundenzeiten, onDelete, onEdit, flashRe
   )
 }
 
-export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighlightCleared }) {
+export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighlightCleared, imSheet = false }) {
   const { termine, ladeTermine, klassen, aktuellesSchuljahr } = useStore()
   const [formModal, setFormModal] = useState(null) // null | { initial: null|termin }
   const [vergangeneOffen, setVergangeneOffen] = useState(false)
@@ -249,24 +249,27 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
 
   return (
     <div
-      className={`flex flex-col bg-white dark:bg-ink-900 ${hoehe == null ? 'flex-1' : 'flex-shrink-0 border-t border-paper-200 dark:border-ink-800'}`}
+      className={`relative flex flex-col bg-white dark:bg-ink-900 ${hoehe == null ? 'flex-1' : 'flex-shrink-0 border-t border-paper-200 dark:border-ink-800'}`}
       style={hoehe == null ? undefined : { height: hoehe }}
     >
-      {/* Header */}
-      <div className="px-4 py-3 flex items-center justify-between flex-shrink-0 border-b border-paper-200 dark:border-ink-800">
-        <span className="text-sm font-bold text-ink-800 dark:text-paper-100 flex items-center gap-2">
-          <span aria-hidden>📅</span> Termine
-        </span>
-        <button
-          className="text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 w-7 h-7 flex items-center justify-center rounded-xl hover:bg-coral-50 dark:hover:bg-coral-900/30 transition-all active:scale-95"
-          onClick={() => setFormModal({ initial: null })}
-          title="Termin hinzufügen"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
-      </div>
+      {/* Header — im mobilen Vollbild-Sheet entfällt er (das Modal führt bereits
+          einen Titel); das „+" wird dort zum Floating-Button. */}
+      {!imSheet && (
+        <div className="px-4 py-3 flex items-center justify-between flex-shrink-0 border-b border-paper-200 dark:border-ink-800">
+          <span className="text-sm font-bold text-ink-800 dark:text-paper-100 flex items-center gap-2">
+            <span aria-hidden>📅</span> Termine
+          </span>
+          <button
+            className="text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 w-7 h-7 flex items-center justify-center rounded-xl hover:bg-coral-50 dark:hover:bg-coral-900/30 transition-all active:scale-95"
+            onClick={() => setFormModal({ initial: null })}
+            title="Termin hinzufügen"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Liste */}
       <div className="overflow-y-auto flex-1">
@@ -320,6 +323,20 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
           )}
         </div>
       </div>
+
+      {/* Floating-Action-Button (nur im mobilen Vollbild-Sheet) */}
+      {imSheet && (
+        <button
+          type="button"
+          onClick={() => setFormModal({ initial: null })}
+          aria-label="Termin hinzufügen"
+          className="absolute right-5 bottom-5 z-10 w-14 h-14 flex items-center justify-center rounded-full bg-coral-600 text-white shadow-pop active:scale-95 transition-transform"
+        >
+          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      )}
 
       {formModal && (
         <TerminForm
