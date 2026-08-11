@@ -493,7 +493,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const istHeuteTag = aktuelleWoche === 0 && aktTag === mobilTag + 1
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className={`flex-1 flex flex-col overflow-hidden ${mobil ? 'relative' : ''}`}>
       {/* Toolbar */}
       {mobil ? (
         <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white dark:bg-ink-950 border-b border-paper-100 dark:border-ink-800/60">
@@ -563,6 +563,22 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           </button>
         </div>
       </div>
+      )}
+
+      {/* Mobiler Bearbeiten-Hinweis + Zugriff auf Zeiten (nur im Bearbeitungsmodus) */}
+      {mobil && bearbeitungsModus && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-coral-50 dark:bg-coral-950/30 border-b border-coral-100 dark:border-coral-900/40">
+          <span className="text-xs text-coral-700 dark:text-coral-300 flex-1 leading-tight">
+            Bearbeiten: Stunde antippen zum Belegen oder Ändern.
+          </span>
+          <button
+            className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg font-medium bg-white dark:bg-ink-900 border border-coral-200 dark:border-coral-900/50 text-coral-700 dark:text-coral-300 active:scale-95 transition-transform"
+            onClick={() => setZeitenModalOffen(true)}
+            title="Stunden- und Pausenzeiten bearbeiten"
+          >
+            🕐 Zeiten
+          </button>
+        </div>
       )}
 
       {/* Stundenplan-Raster */}
@@ -781,6 +797,30 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           </tbody>
         </table>
       </div>
+
+      {/* Bearbeiten-FAB (nur mobil): schaltet den Bearbeitungsmodus um. */}
+      {mobil && (
+        <button
+          type="button"
+          onClick={() => setBearbeitungsModus(v => !v)}
+          aria-label={bearbeitungsModus ? 'Bearbeiten beenden' : 'Stundenplan bearbeiten'}
+          title={bearbeitungsModus ? 'Fertig' : 'Stundenplan bearbeiten'}
+          className={`absolute right-5 bottom-5 z-20 w-14 h-14 flex items-center justify-center rounded-full shadow-pop active:scale-95 transition-transform
+            ${bearbeitungsModus
+              ? 'bg-coral-600 text-white'
+              : 'bg-white dark:bg-ink-900 text-ink-700 dark:text-paper-200 border border-paper-200 dark:border-ink-700'}`}
+        >
+          {bearbeitungsModus ? (
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          )}
+        </button>
+      )}
 
       {/* Kontextmenü – mobil als Bottom-Sheet mit großen Tap-Zielen; Untermenüs
           (Entfall) sind ausgeklappt statt per Hover, da Hover am Touch nicht geht. */}
