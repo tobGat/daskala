@@ -70,7 +70,11 @@ cd android && ./gradlew assembleDebug
 - **Bottom-Navigation** [MobileBottomNav.jsx](../renderer/components/MobileBottomNav.jsx):
   Stundenplan · Noten · Planer · Mehr (abstrakte Linien-Icons; aktiver Tab deutlich hervorgehoben
   durch koralle Pille hinter dem Icon + fette koralle Beschriftung); darüber eine
-  **Kontextzeile für Klassen-/Fachwechsel** (im Stundenplan und Planer ausgeblendet)
+  **Kontextzeile für Klassen-/Fachwechsel** (im Stundenplan und Planer ausgeblendet).
+  **Klasse/Fach anlegen** läuft mobil ebenfalls über die Bottom-Nav: im „Mehr"-Sheet „Neue Klasse"
+  (immer, deckt 0-Klassen ab) und „Neues Fach" (bei aktiver Klasse); zusätzlich je ein „➕"-Eintrag
+  unten in den Klasse-/Fach-Auswahl-Sheets. Beide öffnen die bestehenden `KlasseHinzufuegenModal`/
+  `FachHinzufuegenModal` (`openModal('klasseHinzufuegen'|'fachHinzufuegen')`) – kein eigener Modal-Code
   (Klasse immer, Fach in fach-abhängigen Ansichten → Auswahl-Sheet). „Mehr"-Sheet mit
   Sitzplan/KV/Jahresplan/Planung/Einstellungen/Export/Vorlagen (gleich gegatet wie Desktop).
 - **Planer-Bereich (ToDos oben / Termine unten)** [MobilePlaner.jsx](../renderer/components/MobilePlaner.jsx):

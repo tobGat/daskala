@@ -113,6 +113,10 @@ export default function MobileBottomNav() {
 
   // Ziele fürs „Mehr"-Sheet – gleiche Gating-Regeln wie die Desktop-Kopfleiste.
   const mehrZiele = [
+    // Anlegen von Klasse/Fach: immer erreichbar (deckt auch 0-Klassen / Klasse-ohne-Fächer ab,
+    // wo die Umschalter-Sheets fehlen). „Neues Fach" nur bei aktiver Klasse.
+    { icon: '🏫', label: vorlagenModus ? 'Neue Vorlagenklasse' : 'Neue Klasse', onClick: () => modal('klasseHinzufuegen') },
+    aktiveKlasse && { icon: '📚', label: 'Neues Fach', onClick: () => modal('fachHinzufuegen') },
     { icon: '🪑', label: 'Sitzplan', active: currentView === 'sitzplan', onClick: () => geheZu('sitzplan') },
     hatKv && { icon: '📜', label: 'Klassenvorstand', active: currentView === 'kv', onClick: () => geheZu('kv') },
     planungAktiv && { icon: '📅', label: 'Jahresplan', active: currentView === 'jahresplanung', onClick: () => geheZu('jahresplanung') },
@@ -147,9 +151,15 @@ export default function MobileBottomNav() {
               {sheet === 'klasse' && (klassen ?? []).map((k) => (
                 <SheetItem key={k.id} icon="🏫" label={k.name} active={aktiveKlasse?.id === k.id} onClick={() => waehleKlasse(k)} />
               ))}
+              {sheet === 'klasse' && (
+                <SheetItem icon="➕" label={vorlagenModus ? 'Neue Vorlagenklasse' : 'Neue Klasse'} onClick={() => modal('klasseHinzufuegen')} />
+              )}
               {sheet === 'fach' && (faecher ?? []).map((f) => (
                 <SheetItem key={f.id} icon="📚" label={f.name} active={aktivesFach?.id === f.id} onClick={() => waehleFach(f)} />
               ))}
+              {sheet === 'fach' && (
+                <SheetItem icon="➕" label="Neues Fach" onClick={() => modal('fachHinzufuegen')} />
+              )}
             </div>
           </div>
         </div>
