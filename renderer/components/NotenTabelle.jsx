@@ -163,10 +163,11 @@ function SpacerZelle() {
 
 // ─── Schüler-Avatar + Namens-Zelle ────────────────────────────────────────────
 function SchuelerNameZelle({ schueler, isDifferenziert, niveau, onClick, onNiveauKlick }) {
+  const mobil = useIsMobile()
   return (
     <td
       className="sticky left-0 z-10 bg-white dark:bg-ink-950 px-2 py-0 cursor-pointer hover:bg-coral-50/60 dark:hover:bg-coral-900/30 border-r border-paper-100 dark:border-ink-800/60 transition-colors relative"
-      style={{ minWidth: 184, width: 184, height: 36 }}
+      style={mobil ? { width: 1, height: 36 } : { minWidth: 184, width: 184, height: 36 }}
       onClick={onClick}
       title={`${schueler.vorname} ${schueler.nachname} — Detailansicht öffnen`}
     >
@@ -174,8 +175,8 @@ function SchuelerNameZelle({ schueler, isDifferenziert, niveau, onClick, onNivea
         {/* Avatar */}
         <SchuelerAvatar schueler={schueler} size={28} className="shadow-softer" />
 
-        {/* Name */}
-        <div className="flex-1 min-w-0 leading-tight">
+        {/* Name — mobil auf Inhaltsbreite (max. 128px, dann Ellipsis); Desktop füllt die feste Spalte */}
+        <div className={mobil ? 'min-w-0 max-w-[128px] leading-tight' : 'flex-1 min-w-0 leading-tight'}>
           <div className="text-[13px] font-semibold text-ink-800 dark:text-paper-100 truncate">
             {schueler.nachname}
           </div>
@@ -210,13 +211,15 @@ function SchuelerNameZelle({ schueler, isDifferenziert, niveau, onClick, onNivea
           )}
         </div>
 
-        {/* Hover-Indikator */}
-        <svg
-          className="w-3 h-3 text-coral-400 opacity-0 group-hover/row:opacity-100 flex-shrink-0 -ml-1 transition-opacity"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
+        {/* Hover-Indikator (nur Desktop – am Touch gibt es kein Hover, spart Breite) */}
+        {!mobil && (
+          <svg
+            className="w-3 h-3 text-coral-400 opacity-0 group-hover/row:opacity-100 flex-shrink-0 -ml-1 transition-opacity"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        )}
       </div>
     </td>
   )
@@ -234,6 +237,9 @@ function StatChip({ label, value, accent, emoji }) {
 }
 
 const SORT_LABELS = { vorname: 'Vorname', nachname: 'Nachname', manuell: 'Manuell' }
+
+// Große Tap-Zeile für mobile Bottom-Sheet-Menüs (Spalten-Kontextmenü).
+const MOB_MENU_ITEM = 'w-full flex items-center gap-3 px-5 py-3.5 min-h-[52px] text-left text-[15px] text-ink-800 dark:text-paper-100 active:bg-paper-100 dark:active:bg-ink-800 transition-colors'
 
 function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt }) {
   const aktiveKlasse = useStore(s => s.aktiveKlasse)
@@ -521,6 +527,7 @@ export default function NotenTabelle() {
   const [spalteBearbeitenModal, setSpalteBearbeitenModal] = useState(null)
   const [niveauPopup, setNiveauPopup] = useState(null)
   const tableRef = useRef(null)
+  const mobil = useIsMobile()
 
   const spaltenS1 = spalten.filter(s => s.semester === 1)
   const spaltenS2 = spalten.filter(s => s.semester === 2)
@@ -634,7 +641,7 @@ export default function NotenTabelle() {
             <thead>
               <tr>
                 <th className="name-header bg-white dark:bg-ink-950 text-left px-3 py-2 text-[10px] font-bold text-ink-400 dark:text-ink-500 uppercase tracking-wider"
-                  style={{ minWidth: 184, width: 184 }}>
+                  style={mobil ? { width: 1, whiteSpace: 'nowrap' } : { minWidth: 184, width: 184 }}>
                   Name
                 </th>
 
@@ -725,8 +732,59 @@ export default function NotenTabelle() {
         />
       )}
 
-      {/* Spalten-Kontext-Menü */}
-      {spaltenContextMenu && (
+      {/* Spalten-Kontextmenü – mobil als Bottom-Sheet mit großen Tap-Zielen */}
+      {spaltenContextMenu && mobil && (() => {
+        const sp = spaltenContextMenu.spalte
+        const datum = sp.datum ? new Date(sp.datum).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''
+        return (
+          <div
+            className="fixed inset-0 z-50 flex flex-col"
+            style={{ background: 'rgba(46,42,38,0.32)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+            onClick={() => setSpaltenContextMenu(null)}
+          >
+            <div
+              className="mt-auto w-full bg-paper-50 dark:bg-ink-950 rounded-t-3xl shadow-pop animate-pop-in overflow-hidden"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-center pt-2.5 pb-1"><div className="w-10 h-1 rounded-full bg-paper-300 dark:bg-ink-700" /></div>
+              <div className="px-5 py-3 border-b border-paper-200 dark:border-ink-800">
+                <div className="text-base font-semibold text-ink-900 dark:text-paper-100">{sp.kuerzel}{datum ? ` · ${datum}` : ''}</div>
+                <div className="text-sm text-ink-400">{sp.kategorie}-Spalte · Semester {sp.semester}</div>
+              </div>
+              <button type="button" className={MOB_MENU_ITEM} onClick={() => { window.api.spalten.toggleEingeklappt(sp.id).then(() => { ladeSpalten(); setSpaltenContextMenu(null) }) }}>
+                <span className="w-6 text-center">{sp.eingeklappt ? '▸' : '▾'}</span> {sp.eingeklappt ? 'Ausklappen' : 'Einklappen'}
+              </button>
+              <button type="button" className={MOB_MENU_ITEM} onClick={() => handleKategorieEinklappen(sp.kategorie, true)}>
+                <span className="w-6 text-center">⊟</span> Alle {sp.kategorie}-Spalten einklappen
+              </button>
+              <button type="button" className={MOB_MENU_ITEM} onClick={() => handleKategorieEinklappen(sp.kategorie, false)}>
+                <span className="w-6 text-center">⊞</span> Alle {sp.kategorie}-Spalten ausklappen
+              </button>
+              <div className="context-menu-separator" />
+              <button type="button" className={MOB_MENU_ITEM} onClick={() => handleSortieren(sp.semester)}>
+                <span className="w-6 text-center">🏷️</span> Nach Kategorie sortieren (S{sp.semester})
+              </button>
+              <button type="button" className={MOB_MENU_ITEM} onClick={() => handleSortierenChrono(sp.semester)}>
+                <span className="w-6 text-center">🗓️</span> Chronologisch sortieren (S{sp.semester})
+              </button>
+              <div className="context-menu-separator" />
+              <button type="button" className={MOB_MENU_ITEM} onClick={() => handleSpalteBearbeiten(sp)}>
+                <span className="w-6 text-center">✎</span> Spalte bearbeiten
+              </button>
+              <div className="context-menu-separator" />
+              <button type="button" className={`${MOB_MENU_ITEM} text-red-500 dark:text-red-400`} onClick={() => handleSpalteLoeschen(sp.id)}>
+                <span className="w-6 text-center">✕</span> Spalte löschen
+              </button>
+              <div className="context-menu-separator" />
+              <button type="button" className={`${MOB_MENU_ITEM} justify-center text-ink-500 dark:text-ink-400`} onClick={() => setSpaltenContextMenu(null)}>Abbrechen</button>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Spalten-Kontextmenü – Desktop (an der Mausposition) */}
+      {spaltenContextMenu && !mobil && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setSpaltenContextMenu(null)} />
           <div className="context-menu" style={{ left: spaltenContextMenu.x, top: spaltenContextMenu.y, position: 'fixed' }}>

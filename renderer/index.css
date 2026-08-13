@@ -368,13 +368,19 @@
     padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
   }
 
-  /* Beispiel-Anpassung (bewusst klein & sicher, gern als Vorlage nehmen):
-     Auf schmalen Schirmen ist die fixierte Namensspalte der Notentabelle schmaler,
-     damit mehr Noten-Spalten sichtbar sind. Horizontales Scrollen + Sticky-Spalte
-     funktionieren bereits (siehe .noten-tabelle-container / :first-child oben). */
+  /* Notentabelle mobil: die fixierte Namensspalte nur so breit wie ihr Inhalt
+     (Inline width:1 + white-space:nowrap in NotenTabelle.jsx erzwingt Inhaltsbreite;
+     der Name selbst ist auf max. 128px begrenzt). So bleibt mehr Platz für die
+     Noten-Spalten. Kein festes min/max hier – das würde die Inhaltsbreite überstimmen. */
   .cap .noten-tabelle th:first-child,
   .cap .noten-tabelle td:first-child {
-    min-width: 108px;
-    max-width: 132px;
+    min-width: 0;
+    max-width: none;
+  }
+
+  /* Long-Press auf Spaltenköpfe soll das Kontextmenü öffnen, ohne Textauswahl. */
+  .cap .noten-tabelle th {
+    -webkit-touch-callout: none;
+    user-select: none;
   }
 }

@@ -108,7 +108,11 @@ cd android && ./gradlew assembleDebug
   Schüler:innen-Zahl) entfällt (Fach steht in der Bottom-Nav-Kontextzeile), und Semester (1/2,
   inkl. „S1 einklappen") sowie Sortierung (Vorname/Nachname/Manuell + Reihenfolge) wandern in ein
   Bottom-Sheet-Menü „Ansicht" (kleiner Regler-Button links). Schüler:innen/Export/Ø-Klasse bleiben
-  in der Leiste. Desktop-Toolbar unverändert.
+  in der Leiste. Desktop-Toolbar unverändert. Das **Spalten-Kontextmenü** (Long-Tap auf einen
+  Spaltenkopf) erscheint mobil ebenfalls als **Bottom-Sheet** mit großen Tap-Zielen (statt des
+  positionierten Desktop-Menüs). Die **Namensspalte** ist mobil nur so breit wie ihr Inhalt
+  (Inline `width:1` + `white-space:nowrap`, Name auf max. 128px begrenzt, Hover-Chevron entfällt) –
+  so bleibt mehr Platz für die Noten-Spalten.
 - **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
   (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
 
