@@ -7,7 +7,7 @@ import Zelle from './Zelle'
 import ZeugnisnoteZelle from './ZeugnisnoteZelle'
 import SchuelerAvatar from './SchuelerAvatar'
 import { niveauOffset } from '../utils/niveau'
-import { useIsMobile } from '../hooks/useIsMobile'
+import { useIsMobile, useIsLandscape } from '../hooks/useIsMobile'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 const KAT_FARBE = {
@@ -540,6 +540,9 @@ export default function NotenTabelle() {
   const [spaltenMenuOffen, setSpaltenMenuOffen] = useState(false)
   const tableRef = useRef(null)
   const mobil = useIsMobile()
+  const landscape = useIsLandscape()
+  // Querformat am Gerät: nur die Tabelle zeigen (Toolbar/FAB/Rahmen aus, kein Padding).
+  const vollbild = mobil && landscape
 
   const spaltenS1 = spalten.filter(s => s.semester === 1)
   const spaltenS2 = spalten.filter(s => s.semester === 2)
@@ -635,17 +638,19 @@ export default function NotenTabelle() {
   }
 
   return (
-    <div className={`flex-1 flex flex-col overflow-hidden bg-paper-50 dark:bg-ink-950 p-3 ${mobil ? 'relative' : ''}`}>
-      <div className="flex-1 flex flex-col overflow-hidden daskala-card">
+    <div className={`flex-1 flex flex-col overflow-hidden bg-paper-50 dark:bg-ink-950 ${vollbild ? '' : 'p-3'} ${mobil ? 'relative' : ''}`}>
+      <div className={`flex-1 flex flex-col overflow-hidden ${vollbild ? '' : 'daskala-card'}`}>
 
-        <NotenToolbar
-          aktivesFach={aktivesFach}
-          schueler={sichtbareSchueler}
-          zeugnisnoten={zeugnisnoten}
-          aktiveSemester={aktiveSemester}
-          semester1Eingeklappt={semester1Eingeklappt}
-          setSemester1Eingeklappt={setSemester1Eingeklappt}
-        />
+        {!vollbild && (
+          <NotenToolbar
+            aktivesFach={aktivesFach}
+            schueler={sichtbareSchueler}
+            zeugnisnoten={zeugnisnoten}
+            aktiveSemester={aktiveSemester}
+            semester1Eingeklappt={semester1Eingeklappt}
+            setSemester1Eingeklappt={setSemester1Eingeklappt}
+          />
+        )}
 
         {/* Tabelle */}
         <div className="noten-tabelle-container" ref={tableRef}>
@@ -855,9 +860,10 @@ export default function NotenTabelle() {
         />
       )}
 
-      {/* Neue-Spalte-Speed-Dial (nur mobil): Tap zeigt die Kategorien; Auswahl öffnet
-          das „Spalte hinzufügen"-Modal vorbelegt mit der Kategorie. */}
-      {mobil && (
+      {/* Neue-Spalte-Speed-Dial (nur mobil, im Hochformat): Tap zeigt die Kategorien;
+          Auswahl öffnet das „Spalte hinzufügen"-Modal vorbelegt mit der Kategorie.
+          Im Vollbild-Querformat ausgeblendet (max. Tabellenfläche). */}
+      {mobil && !vollbild && (
         <>
           {spaltenMenuOffen && (
             <div className="fixed inset-0 z-10" onClick={() => setSpaltenMenuOffen(false)} />

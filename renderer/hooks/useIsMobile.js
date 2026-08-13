@@ -8,6 +8,8 @@
 // Die Desktop-App (Electron) setzt die Klasse nie → hier ist es immer false, die
 // Desktop-Oberfläche bleibt damit garantiert unverändert.
 
+import { useState, useEffect } from 'react'
+
 export function istMobil() {
   if (typeof document === 'undefined') return false
   return document.documentElement.classList.contains('cap')
@@ -17,4 +19,25 @@ export function istMobil() {
 // beim Start gesetzt), daher genügt die synchrone Abfrage – kein Listener nötig.
 export function useIsMobile() {
   return istMobil()
+}
+
+// Querformat-Erkennung (reagiert auf Drehung des Geräts). Für den Vollbild-Modus der
+// Notentabelle: im Querformat wird alles außer der Tabelle ausgeblendet.
+export function useIsLandscape() {
+  const getMatch = () =>
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(orientation: landscape)').matches
+
+  const [landscape, setLandscape] = useState(getMatch)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia('(orientation: landscape)')
+    const onChange = () => setLandscape(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  return landscape
 }

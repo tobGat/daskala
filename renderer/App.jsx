@@ -32,7 +32,7 @@ import {
 import MobileBottomNav from './components/MobileBottomNav'
 import MobileHeader from './components/MobileHeader'
 import MobilePlaner from './components/MobilePlaner'
-import { useIsMobile } from './hooks/useIsMobile'
+import { useIsMobile, useIsLandscape } from './hooks/useIsMobile'
 
 function LoadingScreen() {
   return (
@@ -58,6 +58,9 @@ export default function App() {
 
   const planungAktiv = einstellungen?.planung_aktiv === '1'
   const mobil = useIsMobile()
+  const landscape = useIsLandscape()
+  // Vollbild-Notentabelle: mobil im Querformat auf der Notenansicht nur die Tabelle zeigen.
+  const notenVollbild = mobil && landscape && !vorlagenModus && currentView === 'notentabelle'
   const [updateInfo, setUpdateInfo] = useState(null) // { status, version }
   const [backupErinnerung, setBackupErinnerung] = useState(false)
   const [changelogVersionen, setChangelogVersionen] = useState(null) // Einträge fürs „Was ist neu"-Modal
@@ -161,7 +164,7 @@ export default function App() {
 
       {/* Navigation: Desktop = KlassenTabs (+ FachTabs); Mobil = schlanker Logo-Header
           (Klassen-/Fachwechsel läuft mobil über die Bottom-Navigation). */}
-      {mobil ? <MobileHeader /> : <KlassenTabs />}
+      {mobil ? (!notenVollbild && <MobileHeader />) : <KlassenTabs />}
       {!mobil && (vorlagenModus || ['notentabelle', 'kompetenzen', 'sitzplan', ...(planungAktiv ? ['jahresplanung'] : [])].includes(currentView)) && <FachTabs />}
 
       {/* Haupt-Inhalt. Im Vorlagen-Modus nur die Jahresplanung. */}
@@ -246,8 +249,9 @@ export default function App() {
         </div>
       )}
 
-      {/* Mobile Bottom-Navigation (nur am Gerät; Desktop unberührt) */}
-      {mobil && <MobileBottomNav />}
+      {/* Mobile Bottom-Navigation (nur am Gerät; Desktop unberührt).
+          Im Noten-Vollbild (Querformat) ausgeblendet für maximale Tabellenfläche. */}
+      {mobil && !notenVollbild && <MobileBottomNav />}
     </div>
 
     {/* App-Sperre: Overlay mit PIN-Eingabe (Inhalt dahinter ist geblurt) */}

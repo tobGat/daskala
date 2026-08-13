@@ -124,6 +124,12 @@ cd android && ./gradlew assembleDebug
   `window.api` `schueler.getLeistungsProfil`, `notizen` (get/set) und `verlauf.get` angebunden (vorher
   Stub → `getLeistungsProfil` crashte). Nebenbei: `{ist_kv && …}`-Render-Bug behoben (integer 0 wurde
   als „0" gerendert).
+- **Noten-Vollbild im Querformat** [useIsMobile.js](../renderer/hooks/useIsMobile.js) (`useIsLandscape`):
+  dreht man das Gerät auf der Notenansicht ins Querformat, werden Kopfzeile, Bottom-Navigation,
+  Toolbar, Rahmen/Padding und der FAB ausgeblendet – nur die Tabelle bleibt (maximale Fläche für die
+  Noten-Spalten). In `App.jsx` blendet `notenVollbild = mobil && landscape && currentView==='notentabelle'`
+  Header/Bottom-Nav aus; in `NotenTabelle.jsx` entfallen Toolbar/FAB/Card. Zurück ins Hochformat →
+  alles wieder da, Ansicht bleibt erhalten (Activity `configChanges` inkl. `orientation`).
 - **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
   (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
 
