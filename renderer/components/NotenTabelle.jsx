@@ -522,7 +522,7 @@ export default function NotenTabelle() {
   const {
     schueler, spalten, aktivesFach, zeugnisnoten,
     aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt,
-    setDetailSchueler, openModal,
+    setDetailSchueler, openModal, aktiveKlasse,
     ladeSpalten, refreshZeugnisnoten,
     niveaus, niveauHistorie, setNiveau, deleteNiveauHistorie,
     fachSchuelerIds,
@@ -605,6 +605,11 @@ export default function NotenTabelle() {
           <div className="text-5xl mb-3">📚</div>
           <p className="text-base mb-1 text-ink-700 dark:text-paper-200 font-semibold">Kein Fach ausgewählt</p>
           <p className="text-sm text-ink-500">Wähle oben ein Fach oder lege ein neues an.</p>
+          {mobil && aktiveKlasse && (
+            <button className="btn-primary mt-4" onClick={() => openModal('fachHinzufuegen')}>
+              Neues Fach anlegen
+            </button>
+          )}
         </div>
       </div>
     )

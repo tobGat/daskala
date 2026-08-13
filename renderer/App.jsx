@@ -32,6 +32,7 @@ import {
 import MobileBottomNav from './components/MobileBottomNav'
 import MobileHeader from './components/MobileHeader'
 import MobilePlaner from './components/MobilePlaner'
+import MobilePlanung from './components/MobilePlanung'
 import { useIsMobile, useIsLandscape } from './hooks/useIsMobile'
 
 function LoadingScreen() {
@@ -171,12 +172,14 @@ export default function App() {
       <div className="flex-1 overflow-hidden flex flex-col">
         {!vorlagenModus && currentView === 'stundenplan' && <UebersichtView />}
         {!vorlagenModus && mobil && currentView === 'planer' && <MobilePlaner />}
+        {/* Mobil: klassenbezogene Planung im eigenen „Planung"-Tab (Wrapper mit Umschalter). */}
+        {!vorlagenModus && mobil && planungAktiv && ['jahresplanung', 'klassenplanung'].includes(currentView) && <MobilePlanung />}
         {!vorlagenModus && currentView === 'kv' && <KVView />}
         {!vorlagenModus && currentView === 'notentabelle' && <NotenTabelle />}
         {!vorlagenModus && currentView === 'kompetenzen' && <KompetenzrasterView />}
         {!vorlagenModus && currentView === 'sitzplan' && <SitzplanView />}
-        {(planungAktiv || vorlagenModus) && currentView === 'jahresplanung' && <JahresplanungView />}
-        {!vorlagenModus && planungAktiv && currentView === 'klassenplanung' && <KlassenplanungView />}
+        {(planungAktiv || vorlagenModus) && !mobil && currentView === 'jahresplanung' && <JahresplanungView />}
+        {!vorlagenModus && planungAktiv && !mobil && currentView === 'klassenplanung' && <KlassenplanungView />}
       </div>
 
       {/* Schüler:innen Slide-over */}

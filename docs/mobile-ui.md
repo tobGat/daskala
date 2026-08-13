@@ -68,15 +68,19 @@ cd android && ./gradlew assembleDebug
   (Logo + „Daskala") die Desktop-`KlassenTabs`/`FachTabs`. In `App.jsx` per
   `{mobil ? <MobileHeader/> : <KlassenTabs/>}` (Desktop unverändert).
 - **Bottom-Navigation** [MobileBottomNav.jsx](../renderer/components/MobileBottomNav.jsx):
-  Stundenplan · Noten · Planer · Mehr (abstrakte Linien-Icons; aktiver Tab deutlich hervorgehoben
-  durch koralle Pille hinter dem Icon + fette koralle Beschriftung); darüber eine
-  **Kontextzeile für Klassen-/Fachwechsel** (im Stundenplan und Planer ausgeblendet).
-  **Klasse/Fach anlegen** läuft mobil ebenfalls über die Bottom-Nav: im „Mehr"-Sheet „Neue Klasse"
-  (immer, deckt 0-Klassen ab) und „Neues Fach" (bei aktiver Klasse); zusätzlich je ein „➕"-Eintrag
-  unten in den Klasse-/Fach-Auswahl-Sheets. Beide öffnen die bestehenden `KlasseHinzufuegenModal`/
-  `FachHinzufuegenModal` (`openModal('klasseHinzufuegen'|'fachHinzufuegen')`) – kein eigener Modal-Code
-  (Klasse immer, Fach in fach-abhängigen Ansichten → Auswahl-Sheet). „Mehr"-Sheet mit
-  Sitzplan/KV/Jahresplan/Planung/Einstellungen/Export/Vorlagen (gleich gegatet wie Desktop).
+  `Stundenplan · Noten · Agenda · [Planung] · Mehr` (abstrakte Linien-Icons; aktiver Tab deutlich
+  hervorgehoben durch koralle Pille hinter dem Icon + fette koralle Beschriftung); darüber eine
+  **Kontextzeile für Klassen-/Fachwechsel** (im Stundenplan und in der Agenda ausgeblendet).
+  **„Mehr" nur noch App-Ebene:** Einstellungen · Exportieren · Vorlagen-Modus. Klassenbezogene
+  Funktionen liegen NICHT unter „Mehr":
+  - **Agenda** = ToDos/Termine (früher „Planer", nur umbenannt; `currentView='planer'`).
+  - **Planung** (nur bei `planung_aktiv`) = eigener Tab [MobilePlanung.jsx](../renderer/components/MobilePlanung.jsx)
+    mit Segment-Umschalter Jahresplan/Klassenplanung (bettet `JahresplanungView`/`KlassenplanungView` ein).
+  - **Sitzplan** und **Klassenvorstand (KV)** werden mobil vorerst gar nicht angezeigt (Views bleiben
+    für den Desktop; keine mobile Route).
+  **Klasse/Fach anlegen:** je ein „➕"-Eintrag unten in den Klasse-/Fach-Auswahl-Sheets; das erste Fach
+  einer Klasse zusätzlich über „Neues Fach anlegen" im Noten-Leerzustand („Kein Fach"). Alle öffnen die
+  bestehenden `KlasseHinzufuegen`/`FachHinzufuegen`-Modals (`openModal(...)`) – kein eigener Modal-Code.
 - **Planer-Bereich (ToDos oben / Termine unten)** [MobilePlaner.jsx](../renderer/components/MobilePlaner.jsx):
   ein eigener Bottom-Nav-Tab „Planer" zeigt als zweigeteilte Ansicht oben die ToDos, unten die Termine
   (beide `TodoBoard`/`TerminePanel` im Normal-Modus mit eigenem Kopf + „+"). Die früheren Header-Symbole
