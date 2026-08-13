@@ -26,6 +26,7 @@ import stundenzeitenDomain from '../../core/domain/stundenzeiten'
 import stundenplanDomain from '../../core/domain/stundenplan'
 import stundenPlanungDomain from '../../core/domain/stundenplanung'
 import supplierstundenDomain from '../../core/domain/supplierstunden'
+import jahresplanungDomain from '../../core/domain/jahresplanung'
 import kvRoutine from '../../core/domain/kv/routine'
 import { createMobileKernDeps } from './kern-deps'
 import { fachOdsMobil } from './export-mobile'
@@ -178,6 +179,13 @@ export function createMobileApi(dbPort) {
       create: (d) => supplierstundenDomain.create(dbPort, d),
       update: (id, d) => supplierstundenDomain.update(dbPort, id, d),
       delete: (id) => supplierstundenDomain.remove(dbPort, id),
+    }),
+    jahresplanung: dp('jahresplanung', {
+      getAll: (fId) => jahresplanungDomain.getAll(dbPort, fId),
+      create: (d) => jahresplanungDomain.create(dbPort, deps, d),
+      update: (id, d) => jahresplanungDomain.update(dbPort, deps, id, d),
+      delete: (id) => jahresplanungDomain.remove(dbPort, id),
+      swap: (a, b) => jahresplanungDomain.swap(dbPort, a, b),
     }),
     kv: dp('kv', {
       pruefeOffeneRueckrufe: () => kvRoutine.pruefeOffeneRueckrufe(dbPort, deps),
