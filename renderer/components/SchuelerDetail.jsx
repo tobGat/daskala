@@ -8,6 +8,7 @@ import SchuelerAvatar from './SchuelerAvatar'
 import AvatarEditorModal from './AvatarEditorModal'
 import { avatarSvg } from '../utils/avatar'
 import { niveauZurZeit, niveauOffset } from '../utils/niveau'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function noteZuFarbe(note) {
@@ -532,6 +533,7 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
 // ─── Haupt-Modal ──────────────────────────────────────────────────────────────
 export default function SchuelerDetail() {
   const { detailSchueler, closeDetail, aktivesFach, aktiveKlasse, ladeSchueler } = useStore()
+  const mobil = useIsMobile()
 
   const [profil, setProfil] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -576,7 +578,7 @@ export default function SchuelerDetail() {
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && closeDetail()}>
-      <div className="modal-box max-w-6xl w-[92vw] h-[88vh] p-0 flex flex-col overflow-hidden">
+      <div className={`modal-box p-0 flex flex-col overflow-hidden ${mobil ? 'w-full h-[92vh] max-w-full' : 'max-w-6xl w-[92vw] h-[88vh]'}`}>
 
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-3.5 border-b border-paper-200 dark:border-ink-800 flex-shrink-0">
@@ -633,12 +635,65 @@ export default function SchuelerDetail() {
             <div className="flex-1 flex items-center justify-center">
               <span className="text-sm text-ink-400">Profil konnte nicht geladen werden.</span>
             </div>
+          ) : mobil ? (
+            /* Mobil: Fächer als horizontale Chips oben, darunter das Detail (eine Spalte) */
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+              <div className="flex-shrink-0 flex gap-2 overflow-x-auto px-3 py-2 border-b border-paper-200 dark:border-ink-800">
+                {!!aktiveKlasse?.ist_kv && (
+                  <button
+                    type="button"
+                    onClick={() => setKvAktiv(true)}
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${
+                      kvAktiv ? 'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300' : 'bg-paper-100 dark:bg-ink-800 text-ink-600 dark:text-paper-200'}`}
+                  >
+                    <span aria-hidden>📜</span> KV
+                  </button>
+                )}
+                {profil.faecher.map(fach => {
+                  const selected = !kvAktiv && selectedFachId === fach.id
+                  return (
+                    <button
+                      key={fach.id}
+                      type="button"
+                      onClick={() => { setKvAktiv(false); setSelectedFachId(fach.id) }}
+                      className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${
+                        selected ? 'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300' : 'bg-paper-100 dark:bg-ink-800 text-ink-600 dark:text-paper-200'}`}
+                    >
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: fach.farbe || '#cfc9c2' }} />
+                      {fach.name}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                {kvAktiv && aktiveKlasse?.ist_kv ? (
+                  <SchuelerKVSection schueler={detailSchueler} klasseId={aktiveKlasse.id} />
+                ) : selectedFach ? (
+                  <FachDetail
+                    key={selectedFach.id}
+                    fach={selectedFach}
+                    eintraege={profil.eintraege}
+                    zeugnisnoten={profil.zeugnisnoten}
+                    notizen={profil.notizen}
+                    niveauHistorie={profil.niveauHistorie}
+                    niveaus={profil.niveaus}
+                    klassenname={aktiveKlasse?.name ?? ''}
+                    schueler={detailSchueler}
+                  />
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-2">📚</div>
+                    <p className="text-sm text-ink-500">Wähle oben ein Fach.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           ) : (
             <>
               {/* Sidebar: Fach-Liste + KV (wenn KV-Klasse) */}
               <div className="w-60 border-r border-paper-200 dark:border-ink-800 overflow-y-auto flex-shrink-0 bg-paper-50 dark:bg-ink-900/30">
                 <div className="p-2 space-y-1">
-                  {aktiveKlasse?.ist_kv && (
+                  {!!aktiveKlasse?.ist_kv && (
                     <>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-ink-400 px-2 py-1.5">Klassenvorstand</p>
                       <button

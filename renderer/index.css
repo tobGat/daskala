@@ -378,8 +378,10 @@
     max-width: none;
   }
 
-  /* Long-Press auf Spaltenköpfe soll das Kontextmenü öffnen, ohne Textauswahl. */
-  .cap .noten-tabelle th {
+  /* Long-Press auf Spaltenköpfe (Kontextmenü) bzw. die Namensspalte (Profil öffnen)
+     soll ohne Textauswahl/Callout funktionieren, damit der Tap sicher feuert. */
+  .cap .noten-tabelle th,
+  .cap .noten-tabelle td:first-child {
     -webkit-touch-callout: none;
     user-select: none;
   }

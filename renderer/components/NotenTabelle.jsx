@@ -169,6 +169,8 @@ function SchuelerNameZelle({ schueler, isDifferenziert, niveau, onClick, onNivea
       className="sticky left-0 z-10 bg-white dark:bg-ink-950 px-2 py-0 cursor-pointer hover:bg-coral-50/60 dark:hover:bg-coral-900/30 border-r border-paper-100 dark:border-ink-800/60 transition-colors relative"
       style={mobil ? { width: 1, height: 36 } : { minWidth: 184, width: 184, height: 36 }}
       onClick={onClick}
+      // Am Touch feuert ein langer Tap ein contextmenu statt eines Klicks – ebenfalls das Profil öffnen.
+      onContextMenu={mobil ? (e => { e.preventDefault(); onClick?.() }) : undefined}
       title={`${schueler.vorname} ${schueler.nachname} — Detailansicht öffnen`}
     >
       <div className="flex items-center gap-2 h-full">
@@ -240,6 +242,15 @@ const SORT_LABELS = { vorname: 'Vorname', nachname: 'Nachname', manuell: 'Manuel
 
 // Große Tap-Zeile für mobile Bottom-Sheet-Menüs (Spalten-Kontextmenü).
 const MOB_MENU_ITEM = 'w-full flex items-center gap-3 px-5 py-3.5 min-h-[52px] text-left text-[15px] text-ink-800 dark:text-paper-100 active:bg-paper-100 dark:active:bg-ink-800 transition-colors'
+
+// Kategorien für das mobile „Neue Spalte"-Speed-Dial (öffnet das Modal je Kategorie).
+const SPALTEN_KATEGORIEN = [
+  { id: 'MA', kuerzel: 'MA', label: 'Mitarbeit' },
+  { id: 'HÜ', kuerzel: 'HÜ', label: 'Hausübung' },
+  { id: 'T', kuerzel: 'T', label: 'Test' },
+  { id: 'SA', kuerzel: 'SA', label: 'Schularbeit' },
+  { id: 'CUSTOM', kuerzel: 'IND', label: 'Individuell' },
+]
 
 function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt }) {
   const aktiveKlasse = useStore(s => s.aktiveKlasse)
@@ -526,6 +537,7 @@ export default function NotenTabelle() {
   const [spaltenContextMenu, setSpaltenContextMenu] = useState(null)
   const [spalteBearbeitenModal, setSpalteBearbeitenModal] = useState(null)
   const [niveauPopup, setNiveauPopup] = useState(null)
+  const [spaltenMenuOffen, setSpaltenMenuOffen] = useState(false)
   const tableRef = useRef(null)
   const mobil = useIsMobile()
 
@@ -671,7 +683,7 @@ export default function NotenTabelle() {
 
                 {aktiveSemester === 2 && <ZNHeader semester={2} />}
 
-                <GhostSpalteHeader onClick={openSpalteModal} />
+                {!mobil && <GhostSpalteHeader onClick={openSpalteModal} />}
                 <SpacerHeader />
                 {aktiveSemester === 2 && <ENHeader />}
               </tr>
@@ -713,7 +725,7 @@ export default function NotenTabelle() {
 
                   {aktiveSemester === 2 && <ZeugnisnoteZelle schueler={s} semester={2} />}
 
-                  <GhostZelle onClick={openSpalteModal} />
+                  {!mobil && <GhostZelle onClick={openSpalteModal} />}
                   <SpacerZelle />
                   {aktiveSemester === 2 && <ZeugnisnoteZelle schueler={s} semester={3} />}
                 </tr>
@@ -843,18 +855,37 @@ export default function NotenTabelle() {
         />
       )}
 
-      {/* Neue-Spalte-FAB (nur mobil): das „+" im Tabellenkopf ist am Touch zu klein/versteckt */}
+      {/* Neue-Spalte-Speed-Dial (nur mobil): Tap zeigt die Kategorien; Auswahl öffnet
+          das „Spalte hinzufügen"-Modal vorbelegt mit der Kategorie. */}
       {mobil && (
-        <button
-          type="button"
-          onClick={openSpalteModal}
-          aria-label="Neue Spalte hinzufügen"
-          className="absolute right-5 bottom-5 z-20 w-14 h-14 flex items-center justify-center rounded-full bg-coral-600 text-white shadow-pop active:scale-95 transition-transform"
-        >
-          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
+        <>
+          {spaltenMenuOffen && (
+            <div className="fixed inset-0 z-10" onClick={() => setSpaltenMenuOffen(false)} />
+          )}
+          <div className="absolute right-5 bottom-5 z-20 flex flex-col items-end gap-2">
+            {spaltenMenuOffen && SPALTEN_KATEGORIEN.map(kat => (
+              <button
+                key={kat.id}
+                type="button"
+                onClick={() => { setSpaltenMenuOffen(false); openModal('spalteHinzufuegen', { kategorie: kat.id }) }}
+                className="flex items-center gap-2 pl-3.5 pr-1.5 py-1.5 rounded-full bg-white dark:bg-ink-900 shadow-pop animate-pop-in active:scale-95 transition-transform"
+              >
+                <span className="text-sm font-medium text-ink-700 dark:text-paper-200 whitespace-nowrap">{kat.label}</span>
+                <span className={`w-9 h-9 flex-shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold ${KAT_FARBE[kat.id] ?? KAT_FARBE.CUSTOM}`}>{kat.kuerzel}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setSpaltenMenuOffen(o => !o)}
+              aria-label={spaltenMenuOffen ? 'Menü schließen' : 'Neue Spalte hinzufügen'}
+              className="w-14 h-14 flex items-center justify-center rounded-full bg-coral-600 text-white shadow-pop active:scale-95 transition-transform"
+            >
+              <svg className={`w-7 h-7 transition-transform ${spaltenMenuOffen ? 'rotate-45' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+        </>
       )}
     </div>
   )

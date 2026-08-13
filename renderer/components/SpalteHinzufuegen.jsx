@@ -13,9 +13,11 @@ const KATEGORIEN = [
 ]
 
 export default function SpalteHinzufuegen({ onClose }) {
-  const { aktivesFach, aktiveSemester, spalten, ladeSpalten, refreshZeugnisnoten, gewichtungGlobal, openModal } = useStore()
-  const [kategorie, setKategorie] = useState('MA')
-  const [kuerzel, setKuerzel] = useState('MA')
+  const { aktivesFach, aktiveSemester, spalten, ladeSpalten, refreshZeugnisnoten, gewichtungGlobal, openModal, modalData } = useStore()
+  // Vorauswahl der Kategorie (z. B. aus dem mobilen Speed-Dial); Fallback MA.
+  const initialKat = KATEGORIEN.some(k => k.id === modalData?.kategorie) ? modalData.kategorie : 'MA'
+  const [kategorie, setKategorie] = useState(initialKat)
+  const [kuerzel, setKuerzel] = useState(KATEGORIEN.find(k => k.id === initialKat)?.kuerzel ?? '')
   // Variante der Mitarbeits-Skala: 'pm' (+ / −), 'pfeil' (↗ / ↘), 'smiley' (vierstufig).
   // Vorauswahl = zuletzt in einer MA-Spalte gewählte Variante.
   const letzteMaVariante = (() => {

@@ -112,11 +112,16 @@ cd android && ./gradlew assembleDebug
   Spaltenkopf) erscheint mobil ebenfalls als **Bottom-Sheet** mit großen Tap-Zielen (statt des
   positionierten Desktop-Menüs). Die **Namensspalte** ist mobil nur so breit wie ihr Inhalt
   (Inline `width:1` + `white-space:nowrap`, Name auf max. 128px begrenzt, Hover-Chevron entfällt) –
-  so bleibt mehr Platz für die Noten-Spalten. Neue Spalten legt mobil ein **Floating-Action-Button**
-  unten rechts an (`openModal('spalteHinzufuegen')`; das kleine „+" im Tabellenkopf ist am Touch zu
-  versteckt). Die **Schüler-Detailansicht** (Tap auf einen Namen) funktioniert jetzt am Gerät –
-  dafür sind im mobilen `window.api` `schueler.getLeistungsProfil`, `notizen` (get/set) und
-  `verlauf.get` angebunden (vorher stubten sie und `getLeistungsProfil` crashte die Oberfläche).
+  so bleibt mehr Platz für die Noten-Spalten. Das „+"-Ghost-Spaltenfeld entfällt mobil; neue Spalten
+  legt ein **Speed-Dial-FAB** unten rechts an: Tap zeigt die Kategorien (Mitarbeit/Hausübung/Test/
+  Schularbeit/Individuell), die Auswahl öffnet das „Spalte hinzufügen"-Modal vorbelegt
+  (`openModal('spalteHinzufuegen', { kategorie })`). Die **Schüler-Detailansicht** (Tap **oder Long-Tap**
+  auf einen Namen – Long-Tap feuert am Touch ein `contextmenu`, das ebenfalls das Profil öffnet;
+  Namenszelle `select-none`) öffnet mobil ein **Vollbild-Sheet in einer Spalte**: Fächer als horizontale
+  Chips oben, darunter das Fach-Detail (Diagramm/Mitarbeit/Aufzeichnungen). Dafür sind im mobilen
+  `window.api` `schueler.getLeistungsProfil`, `notizen` (get/set) und `verlauf.get` angebunden (vorher
+  Stub → `getLeistungsProfil` crashte). Nebenbei: `{ist_kv && …}`-Render-Bug behoben (integer 0 wurde
+  als „0" gerendert).
 - **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
   (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
 
