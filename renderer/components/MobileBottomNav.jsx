@@ -132,8 +132,9 @@ export default function MobileBottomNav() {
   const geheZu = (view) => { setCurrentView(view); setSheet(null) }
   const modal = (name) => { openModal(name); setSheet(null) }
 
-  // Kontextzeile: Klasse immer (echte Klassen), Fach nur in fach-abhängigen Ansichten.
-  const fachRelevant = ['notentabelle', 'kompetenzen', 'sitzplan'].includes(currentView) || (planungAktiv && currentView === 'jahresplanung')
+  // Kontextzeile: Klasse immer (echte Klassen), Fach in fach-abhängigen Ansichten –
+  // im Planungsbereich (Jahres-/Detailplanung) analog zur Notenansicht Klasse + Fach.
+  const fachRelevant = ['notentabelle', 'kompetenzen', 'sitzplan'].includes(currentView) || (planungAktiv && ['jahresplanung', 'klassenplanung'].includes(currentView))
   // Im Dashboard (Stundenplan zeigt alle Klassen) und im Planer (klassenübergreifend)
   // ist der Klassenwechsel nicht relevant.
   const zeigeKlasse = !vorlagenModus && currentView !== 'stundenplan' && currentView !== 'planer' && Array.isArray(klassen) && klassen.length > 0
