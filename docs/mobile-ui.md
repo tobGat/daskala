@@ -142,6 +142,13 @@ cd android && ./gradlew assembleDebug
   mit `xlsx` erzeugt (Zeilenaufbau wie Desktop, `notenberechnung.rosterFuerFach`/`znInternZuAnzeige`),
   via `@capacitor/filesystem` in den Cache geschrieben und über `@capacitor/share` geteilt (System-
   Teilen-Ansicht). Angebunden als `window.api.export.fachOds` in `platform/capacitor/api.js`.
+- **Schüler:innen-Import mobil** (CSV/Excel): der Desktop-Import nutzt Node-Dialog + FS-Port – mobil
+  gestubbt. Neu: in `SchuelerVerwaltenModal` öffnet mobil ein WebView-`<input type="file">` den
+  Android-Picker; die Datei wird im Renderer geparst ([schuelerImport.js](../renderer/utils/schuelerImport.js),
+  xlsx dynamisch, Zeilenlogik wie `core/services/import.js`) und über das nun gemappte
+  `window.api.schueler.importBatch` gespeichert. Nebenbei einen Header-Erkennungs-Bug behoben (CSV:
+  „vorname" matchte fälschlich als Nachname-Spalte wegen `includes('name')`) – Fix in mobiler Util
+  **und** `core/services/import.js` (wirkt auch am Desktop korrekt).
 - **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
   (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
 

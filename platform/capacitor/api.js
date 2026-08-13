@@ -83,6 +83,7 @@ export function createMobileApi(dbPort) {
       getAll: (kId) => schuelerDomain.getAll(dbPort, kId),
       create: (d) => schuelerDomain.create(dbPort, d),
       update: (id, d) => schuelerDomain.update(dbPort, id, d),
+      importBatch: (kId, list, fachIds) => schuelerDomain.importBatch(dbPort, kId, list, fachIds),
       getLeistungsProfil: (id) => schuelerDomain.getLeistungsProfil(dbPort, deps, id),
     }),
     notizen: dp('notizen', {

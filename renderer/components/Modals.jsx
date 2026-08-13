@@ -4,6 +4,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import useStore from '../store/useStore'
 import { berechneSchulferien } from '../utils/schulferien'
+import { parseSchuelerDatei } from '../utils/schuelerImport'
+import { useIsMobile } from '../hooks/useIsMobile'
 import SchuelerAvatar from './SchuelerAvatar'
 import AvatarEditorModal from './AvatarEditorModal'
 
@@ -318,6 +320,8 @@ export function SchuelerVerwaltenModal() {
   const [ausgewaehlteFaecher, setAusgewaehlteFaecher] = useState(() => new Set())
   const vornameRef = useRef(null)
   const nachnameRef = useRef(null)
+  const dateiInputRef = useRef(null)
+  const mobil = useIsMobile()
 
   // ── Manuelle Reihenfolge (Drag-and-Drop) ──────────────────────────────────
   const istManuell = aktiveKlasse?.sortierung === 'manuell'
@@ -430,12 +434,31 @@ export function SchuelerVerwaltenModal() {
   }
 
   const handleDateiImport = async () => {
+    // Mobil: WebView-Datei-Picker + Parsing im Renderer (kein Node-Dialog/-FS).
+    if (mobil) { dateiInputRef.current?.click(); return }
     const filePath = await window.api.dialog.openFile([
       { name: 'Tabellen', extensions: ['csv', 'xlsx', 'xls'] }
     ])
     if (!filePath) return
     const liste = await window.api.import.schuelerFromFile(filePath)
     setImportListe(liste)
+  }
+
+  const handleDateiGewaehlt = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // gleiche Datei erneut wählbar
+    if (!file) return
+    try {
+      const liste = await parseSchuelerDatei(file)
+      if (!liste.length) {
+        alert('Keine Schüler:innen gefunden. Erwartet werden Spalten „Vorname" und „Nachname".')
+        return
+      }
+      setImportListe(liste)
+    } catch (err) {
+      console.error('[import] Datei konnte nicht gelesen werden:', err)
+      alert('Die Datei konnte nicht gelesen werden. Bitte CSV/Excel mit Spalten „Vorname" und „Nachname".')
+    }
   }
 
   const handleImportSpeichern = async () => {
@@ -663,6 +686,14 @@ export function SchuelerVerwaltenModal() {
         {/* Import */}
         {tab === 'import' && (
           <div className="space-y-3">
+            {/* Verstecktes Datei-Feld für den mobilen Picker (Desktop nutzt den Node-Dialog). */}
+            <input
+              ref={dateiInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={handleDateiGewaehlt}
+            />
             {importListe.length === 0 ? (
               <div>
                 <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">

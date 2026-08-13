@@ -16,7 +16,10 @@ function schuelerFromFile(deps, filePath) {
     const lines = content.split('\n').filter(l => l.trim())
     const header = lines[0].split(/[,;]/).map(h => h.trim().toLowerCase())
     const vornameIdx = header.findIndex(h => h.includes('vorname'))
-    const nachnameIdx = header.findIndex(h => h.includes('nachname') || h.includes('name'))
+    // Zuerst „nachname" suchen; erst als Fallback eine „name"-Spalte, die NICHT die
+    // Vorname-Spalte ist (sonst matcht „vorname" wegen „…name" fälschlich).
+    let nachnameIdx = header.findIndex(h => h.includes('nachname'))
+    if (nachnameIdx === -1) nachnameIdx = header.findIndex((h, i) => i !== vornameIdx && h.includes('name'))
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(/[,;]/).map(c => c.trim().replace(/^["']|["']$/g, ''))
       if (cols.length < 2) continue
