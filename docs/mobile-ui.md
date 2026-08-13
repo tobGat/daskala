@@ -68,8 +68,11 @@ cd android && ./gradlew assembleDebug
   (Logo + „Daskala") die Desktop-`KlassenTabs`/`FachTabs`. In `App.jsx` per
   `{mobil ? <MobileHeader/> : <KlassenTabs/>}` (Desktop unverändert).
 - **Bottom-Navigation** [MobileBottomNav.jsx](../renderer/components/MobileBottomNav.jsx):
-  `Stundenplan · Noten · Agenda · [Planung] · Mehr` (abstrakte Linien-Icons; aktiver Tab deutlich
-  hervorgehoben durch koralle Pille hinter dem Icon + fette koralle Beschriftung); darüber eine
+  Reihenfolge `[Planung] · Noten · Stundenplan · Agenda · Mehr` – **Stundenplan mittig als
+  hervorgehobener, angehobener Kreis** (`CenterTab`: koralle gefüllt wenn aktiv, sonst hell-koralle;
+  `ring` in Nav-Farbe). Links/rechts je eine gleich breite `flex-1`-Gruppe, damit die Mitte zentriert
+  bleibt (auch wenn „Planung" fehlt). Abstrakte Linien-Icons; aktiver Seiten-Tab durch koralle Pille +
+  fette Beschriftung; darüber eine
   **Kontextzeile für Klassen-/Fachwechsel** (im Stundenplan und in der Agenda ausgeblendet).
   **„Mehr" nur noch App-Ebene:** Einstellungen · Exportieren · Vorlagen-Modus. Klassenbezogene
   Funktionen liegen NICHT unter „Mehr":
@@ -79,6 +82,9 @@ cd android && ./gradlew assembleDebug
     Standard-Segment beim Öffnen ist **Klassenplanung**. Die **Jahresplanung** hat mobil **keinen Kalender**:
     Abschnitten wird im Modal ein **Zeitraum (Beginn–Ende)** zugewiesen (`type=date`), die Liste ist danach
     sortiert (undatierte ans Ende); Inhalt/Lernziele/Kompetenzen liegen im Modal untereinander (statt zweispaltig).
+    Abschnitt-Karten sind mobil **ganz im Abschnittsfarbton (hell) hinterlegt**, ohne Drag-&-Drop (kurzer
+    Tap öffnet die Bearbeitung); rechts zeigen sie Beginn/Ende + Dauer in Wochen/Tagen. Der Materialien-Block
+    entfällt mobil (dateibasiert). Domäne `jahresplanung` ist im mobilen `window.api` angebunden.
   - **Sitzplan** und **Klassenvorstand (KV)** werden mobil vorerst gar nicht angezeigt (Views bleiben
     für den Desktop; keine mobile Route).
   **Klasse/Fach anlegen:** je ein „➕"-Eintrag unten in den Klasse-/Fach-Auswahl-Sheets; das erste Fach

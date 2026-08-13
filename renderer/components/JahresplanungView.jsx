@@ -371,10 +371,11 @@ function AbschnittKarte({ abschnitt, aktivesFach, istSelektiert, onClick, onCale
     return (
       <div
         onClick={() => onClick(abschnitt)}
-        className={`rounded-lg border px-3 py-2.5 cursor-pointer transition-colors flex items-center gap-2.5
-          ${istSelektiert
-            ? 'border-coral-400 dark:border-coral-500 bg-coral-50/50 dark:bg-coral-900/20'
-            : 'border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-900 active:bg-paper-50 dark:active:bg-ink-800'}`}
+        style={{
+          backgroundColor: `${farbe}${istSelektiert ? '3a' : '22'}`,
+          borderColor: istSelektiert ? farbe : `${farbe}55`,
+        }}
+        className="rounded-lg border px-3 py-2.5 cursor-pointer transition-[filter] active:brightness-95 flex items-center gap-2.5"
       >
         <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: farbe }} />
         <div className="flex-1 min-w-0">

@@ -74,6 +74,27 @@ function NavTab({ icon, label, active, onClick }) {
   )
 }
 
+// Mittiger, hervorgehobener Tab (Stundenplan) – als angehobener Kreis.
+function CenterTab({ icon, label, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="flex-none w-20 flex flex-col items-center justify-end gap-1 pb-1.5"
+    >
+      <span
+        className={`-mt-6 w-14 h-14 rounded-full flex items-center justify-center shadow-pop ring-4 ring-white dark:ring-ink-900 transition-colors
+          ${active ? 'bg-coral-600 text-white' : 'bg-coral-100 dark:bg-coral-900/50 text-coral-600 dark:text-coral-300'}`}
+        aria-hidden
+      >
+        {icon}
+      </span>
+      <span className={`text-[10px] ${active ? 'text-coral-600 dark:text-coral-300 font-semibold' : 'text-ink-500 dark:text-ink-400 font-medium'}`}>{label}</span>
+    </button>
+  )
+}
+
 // Zeile im „Mehr"-Sheet.
 function SheetItem({ icon, label, active, onClick, extra }) {
   return (
@@ -187,15 +208,21 @@ export default function MobileBottomNav() {
           </div>
         )}
 
-        {/* Haupt-Tabs. „Planung" nur bei aktivierter Planung (sonst gibt es nichts zu planen). */}
-        <nav className="flex items-stretch">
-          <NavTab icon={NAV_ICONS.stundenplan} label="Stundenplan" active={dashboardAktiv} onClick={() => geheZu('stundenplan')} />
-          <NavTab icon={NAV_ICONS.noten} label="Noten" active={notenAktiv} onClick={() => geheZu('notentabelle')} />
-          <NavTab icon={NAV_ICONS.planer} label="Agenda" active={agendaAktiv} onClick={() => geheZu('planer')} />
-          {planungAktiv && (
-            <NavTab icon={NAV_ICONS.planung} label="Planung" active={planungTabAktiv} onClick={() => geheZu('klassenplanung')} />
-          )}
-          <NavTab icon={NAV_ICONS.mehr} label="Mehr" active={sheet === 'mehr'} onClick={() => setSheet(s => s === 'mehr' ? null : 'mehr')} />
+        {/* Haupt-Tabs: Stundenplan mittig als hervorgehobener Kreis. Links/rechts je eine
+            gleich breite Gruppe (flex-1), damit die Mitte immer zentriert bleibt.
+            „Planung" nur bei aktivierter Planung (sonst gibt es nichts zu planen). */}
+        <nav className="flex items-end">
+          <div className="flex-1 flex items-end">
+            {planungAktiv && (
+              <NavTab icon={NAV_ICONS.planung} label="Planung" active={planungTabAktiv} onClick={() => geheZu('klassenplanung')} />
+            )}
+            <NavTab icon={NAV_ICONS.noten} label="Noten" active={notenAktiv} onClick={() => geheZu('notentabelle')} />
+          </div>
+          <CenterTab icon={NAV_ICONS.stundenplan} label="Stundenplan" active={dashboardAktiv} onClick={() => geheZu('stundenplan')} />
+          <div className="flex-1 flex items-end">
+            <NavTab icon={NAV_ICONS.planer} label="Agenda" active={agendaAktiv} onClick={() => geheZu('planer')} />
+            <NavTab icon={NAV_ICONS.mehr} label="Mehr" active={sheet === 'mehr'} onClick={() => setSheet(s => s === 'mehr' ? null : 'mehr')} />
+          </div>
         </nav>
       </div>
     </>
