@@ -167,6 +167,15 @@ export default function Einstellungen({ onClose }) {
   })
   const [semester2Monat, setSemester2Monat] = useState(einstellungen['semester2_monat'] ?? '2')
   const [s1Gewichtung, setS1Gewichtung] = useState(Math.round((parseFloat(einstellungen['s1_gewichtung'] ?? '0.5')) * 100))
+  // Rezenz-Faktor (§ 20 LBVO): neuere Leistungen je Kategorie stärker gewichten. 1.0 = aus.
+  const [rezenzFaktor, setRezenzFaktor] = useState(parseFloat(einstellungen['rezenz_faktor'] ?? '1'))
+  // Mitarbeit-Warnung (§ 3 LBVO): Default an, nur bei explizitem '0' aus.
+  const [maWarnung, setMaWarnung] = useState(einstellungen['ma_pflicht_warnung'] !== '0')
+  const handleMaWarnung = async (an) => {
+    setMaWarnung(an)
+    await window.api.einstellungen.set('ma_pflicht_warnung', an ? '1' : '0')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
   const [loading, setLoading] = useState(false)
   const [fehler, setFehler] = useState('')
   const [erfolg, setErfolg] = useState(false)
@@ -424,6 +433,7 @@ export default function Einstellungen({ onClose }) {
       await window.api.einstellungen.set('ma_w_smiley_vneg', maGew.vneg)
       await window.api.einstellungen.set('semester2_monat', semester2Monat)
       await window.api.einstellungen.set('s1_gewichtung', String(s1Gewichtung / 100))
+      await window.api.einstellungen.set('rezenz_faktor', String(rezenzFaktor))
       await window.api.einstellungen.set('bundesland', bundesland)
       await window.api.einstellungen.set('planung_aktiv', planungAktiv ? '1' : '0')
 
@@ -631,6 +641,50 @@ export default function Einstellungen({ onClose }) {
                   <span>SN 2 {100 - s1Gewichtung}% + SN 1 {s1Gewichtung}%</span>
                   <span>nur SN 1</span>
                 </div>
+              </div>
+
+              {/* Rezenz-Gewichtung (§ 20 LBVO) */}
+              <div className="border-t border-paper-200 dark:border-ink-700 pt-5">
+                <h4 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Neuere Leistungen stärker gewichten</h4>
+                <p className="text-xs text-ink-400 dark:text-ink-500 mb-3">
+                  Nach § 20 LBVO zählt der zuletzt erreichte Leistungsstand stärker. Der Faktor legt fest, wie viel
+                  stärker die neueste Note innerhalb einer Kategorie (SA, Test, Individuell) zählt. 1,0 = alle
+                  Leistungen gleich (wie bisher).
+                </p>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-ink-600 dark:text-ink-400 w-24">Rezenz-Faktor</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    className="flex-1"
+                    value={rezenzFaktor}
+                    onChange={e => setRezenzFaktor(parseFloat(e.target.value))}
+                  />
+                  <span className="text-sm font-medium w-10 text-right text-ink-900 dark:text-white">
+                    {rezenzFaktor.toFixed(1).replace('.', ',')}×
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs text-ink-400 mt-1">
+                  <span>1,0 – gleich</span>
+                  <span>3,0 – stark</span>
+                </div>
+              </div>
+
+              {/* Mitarbeit-Warnung (§ 3 LBVO) */}
+              <div className="border-t border-paper-200 dark:border-ink-700 pt-5">
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={maWarnung} onChange={e => handleMaWarnung(e.target.checked)} className="mt-0.5" />
+                  <div>
+                    <span className="text-sm font-semibold text-ink-700 dark:text-paper-300">Hinweis bei fehlender Mitarbeit</span>
+                    <p className="text-xs text-ink-400 dark:text-ink-500 leading-snug">
+                      Zeigt einen Hinweis (⚠), wenn ein Semester Noten (SA/Test/Individuell), aber keinerlei
+                      Mitarbeit oder Hausübung enthält. Laut § 3 LBVO dürfen schriftliche Leistungen nicht die
+                      alleinige Grundlage der Beurteilung sein.
+                    </p>
+                  </div>
+                </label>
               </div>
             </div>
           </Akkordeon>

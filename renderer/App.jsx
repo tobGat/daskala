@@ -19,6 +19,7 @@ import UebersichtView from './components/UebersichtView'
 import KVView from './components/KVView'
 import DokumentationModal from './components/DokumentationModal'
 import SperreOverlay from './components/SperreOverlay'
+import RezenzSetupModal from './components/RezenzSetupModal'
 import ChangelogModal, { CHANGELOG, cmpVersion } from './components/ChangelogModal'
 import {
   KlasseHinzufuegenModal,
@@ -242,6 +243,9 @@ export default function App() {
 
     {/* App-Sperre: Overlay mit PIN-Eingabe (Inhalt dahinter ist geblurt) */}
     {gesperrt && <SperreOverlay onUnlock={entsperren} />}
+
+    {/* Verpflichtende Festlegung des Rezenz-Faktors (§ 20 LBVO) – Erststart & einmalig nach Update */}
+    {initialized && !erststart && einstellungen && einstellungen.rezenz_faktor == null && <RezenzSetupModal />}
     </>
   )
 }

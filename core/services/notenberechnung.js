@@ -60,6 +60,30 @@ function maBewertung(spalte, wert, g) {
   return null
 }
 
+// Rezenz-gewichteter Durchschnitt einer Kategorie (§ 20 LBVO: zuletzt erreichter
+// Leistungsstand zählt stärker). `werte` = [{ n, datum, reihenfolge }], `faktor` =
+// Gewicht der neuesten Leistung relativ zur ältesten (1 = kein Effekt = reiner
+// Durchschnitt). Chronologisch nach Datum sortiert (undatiert gilt als am ältesten,
+// Tie-Break reihenfolge); linear ansteigende Gewichte 1 … faktor nach Rang.
+function gewichteterSchnitt(werte, faktor) {
+  const m = werte.length
+  if (m === 0) return 0
+  const f = Number(faktor)
+  if (!(f > 1) || m < 2) return werte.reduce((a, w) => a + w.n, 0) / m
+  const sortiert = [...werte].sort((a, b) => {
+    const da = a.datum || '', db2 = b.datum || ''
+    if (da !== db2) return da < db2 ? -1 : 1
+    return (a.reihenfolge ?? 0) - (b.reihenfolge ?? 0)
+  })
+  let summe = 0, gew = 0
+  sortiert.forEach((w, i) => {
+    const g = 1 + (f - 1) * (i / (m - 1))
+    summe += w.n * g
+    gew += g
+  })
+  return summe / gew
+}
+
 async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
   const fach = await db.selectOne('SELECT * FROM faecher WHERE id = ?', [fachId])
   if (!fach) return { note: null }
@@ -105,6 +129,10 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
   const einflussSchritt = parseFloat(
     (await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'ma_hue_schritt'"))?.wert ?? '0.1'
   )
+  // Rezenz-Gewichtung innerhalb einer Kategorie (§ 20 LBVO). 1 = reiner Durchschnitt.
+  const rezenzFaktor = parseFloat(
+    (await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'rezenz_faktor'"))?.wert ?? '1'
+  )
 
   const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ? AND semester = ?', [fachId, semester])
 
@@ -127,10 +155,10 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
       // '—' = "nicht gewertet / entfällt": ohne Noteneinfluss.
     } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
       const n = parseInt(wert)
-      if (n >= 1 && n <= 5) basisWerte[spalte.kategorie].push(n + offsetFor(spalte.datum))
+      if (n >= 1 && n <= 5) basisWerte[spalte.kategorie].push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, reihenfolge: spalte.reihenfolge })
     } else if (spalte.kategorie === 'CUSTOM') {
       const n = parseInt(wert)
-      if (!isNaN(n) && n >= 1 && n <= 5) basisWerte.CUSTOM.push(n + offsetFor(spalte.datum))
+      if (!isNaN(n) && n <= 5 && n >= 1) basisWerte.CUSTOM.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, reihenfolge: spalte.reihenfolge })
     }
   }
 
@@ -140,7 +168,7 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
     if (werte.length === 0) continue
     const w = gew[kat] ?? 0
     if (w === 0) continue
-    const avg = werte.reduce((a, b) => a + b, 0) / werte.length
+    const avg = gewichteterSchnitt(werte, rezenzFaktor)
     summe += avg * w
     gesamtGewichtung += w
   }
@@ -326,7 +354,7 @@ async function pruefeNotenTrigger(db, spalteId, schuelerId, wertNeu, wertAlt) {
 }
 
 module.exports = {
-  niveauZurZeit, niveauOffset, znInternZuAnzeige,
+  niveauZurZeit, niveauOffset, znInternZuAnzeige, gewichteterSchnitt,
   berechneZeugnisnote, berechneEndnote, berechneAlleFuerSchuljahr,
   rosterFuerFach, rosterIdsFuerFach, berechneAlleFuerFach,
   erzeugeTrigger, pruefeFehlstundenSchwellen, pruefeNotenTrigger,

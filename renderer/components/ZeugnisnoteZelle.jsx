@@ -16,6 +16,27 @@ function noteKlasse(n) {
   return ''
 }
 
+// Spiegelt core/services/notenberechnung.js:gewichteterSchnitt (§ 20 LBVO), damit die
+// Tooltip-Vorschau exakt der berechneten Note entspricht. werte = [{ n, datum, reihenfolge }].
+function gewichteterSchnitt(werte, faktor) {
+  const m = werte.length
+  if (m === 0) return 0
+  const f = Number(faktor)
+  if (!(f > 1) || m < 2) return werte.reduce((a, w) => a + w.n, 0) / m
+  const sortiert = [...werte].sort((a, b) => {
+    const da = a.datum || '', db2 = b.datum || ''
+    if (da !== db2) return da < db2 ? -1 : 1
+    return (a.reihenfolge ?? 0) - (b.reihenfolge ?? 0)
+  })
+  let summe = 0, gew = 0
+  sortiert.forEach((w, i) => {
+    const g = 1 + (f - 1) * (i / (m - 1))
+    summe += w.n * g
+    gew += g
+  })
+  return summe / gew
+}
+
 function TooltipPortal({ anchorRef, children }) {
   const rect = anchorRef.current?.getBoundingClientRect()
   if (!rect) return null
@@ -60,6 +81,7 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
       ? aktivesFach.hue_max_einfluss
       : parseFloat(einstellungen?.hue_max_einfluss ?? globalAltEinfluss ?? '0.5')
     const einflussSchritt = parseFloat(einstellungen?.ma_hue_schritt ?? '0.1')
+    const rezenzFaktor = parseFloat(einstellungen?.rezenz_faktor ?? '1')
 
     // Nur SA/Test/Individuell bilden die Basisnote. MA/HÜ verschieben sie nur (niveau-frei).
     const gew = {
@@ -84,10 +106,10 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
         // '—' = "nicht gewertet / entfällt": bewusst ohne Noteneinfluss, zählt nicht mit.
       } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
         const n = parseInt(wert)
-        if (n >= 1 && n <= 5) { basis[spalte.kategorie].werte.push(n + offsetFor(spalte.datum)); basis[spalte.kategorie].eingaben.push(n) }
+        if (n >= 1 && n <= 5) { basis[spalte.kategorie].werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, reihenfolge: spalte.reihenfolge }); basis[spalte.kategorie].eingaben.push(n) }
       } else if (spalte.kategorie === 'CUSTOM') {
         const n = parseInt(wert)
-        if (!isNaN(n) && n >= 1 && n <= 5) { basis.CUSTOM.werte.push(n + offsetFor(spalte.datum)); basis.CUSTOM.eingaben.push(n) }
+        if (!isNaN(n) && n >= 1 && n <= 5) { basis.CUSTOM.werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, reihenfolge: spalte.reihenfolge }); basis.CUSTOM.eingaben.push(n) }
       }
     }
 
@@ -97,7 +119,7 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
     for (const kat of ['SA', 'T', 'CUSTOM']) {
       const werte = basis[kat].werte
       if (!werte.length || gew[kat] <= 0) continue
-      const avg = werte.reduce((a, b) => a + b, 0) / werte.length
+      const avg = gewichteterSchnitt(werte, rezenzFaktor)
       beitraege.push({ kat: KAT_LABEL[kat], detail: basis[kat].eingaben.join(', '), avg, w: gew[kat] })
       summe += avg * gew[kat]
       gesamtGewichtung += gew[kat]
@@ -185,6 +207,11 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
   const tieLabel = istTie ? rohAnzeige.toFixed(1).replace('.', ',') : null
 
   const znBreakdown = useZNBreakdown(semester, schueler.id, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus)
+
+  // § 3 LBVO: schriftliche Leistungen dürfen nicht alleinige Beurteilungsgrundlage sein.
+  // Warnung, wenn SA/T/Ind. vorhanden, aber keinerlei Mitarbeit/Hausübung erfasst wurde.
+  const maWarnung = einstellungen?.ma_pflicht_warnung !== '0'
+    && !!znBreakdown && znBreakdown.hatBasis && !znBreakdown.hatMAHUE && !istManuell
 
   const handleClick         = () => setManuellPopup(true)
   const handleContextMenu   = (e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY }) }
@@ -319,6 +346,14 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
             </div>
           )}
 
+          {/* § 3 LBVO – keine Mitarbeit erfasst */}
+          {maWarnung && (
+            <div className="border-t border-paper-100 dark:border-ink-700 pt-2 mb-2 flex items-start gap-1.5 text-[10px] text-amber-700 dark:text-amber-400">
+              <span className="shrink-0">⚠</span>
+              <span>Keine Mitarbeit erfasst – laut § 3 LBVO dürfen schriftliche Leistungen nicht alleinige Beurteilungsgrundlage sein.</span>
+            </div>
+          )}
+
           {/* Ergebnis */}
           <div className="border-t border-paper-100 dark:border-ink-700 pt-2 flex items-center justify-between gap-3">
             <span className="font-semibold text-ink-700 dark:text-paper-200">
@@ -379,6 +414,16 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
           anzeigeNote != null ? anzeigeNote : '–'
         )}
       </div>
+
+      {/* § 3 LBVO – Hinweis-Badge: keine Mitarbeit erfasst */}
+      {maWarnung && (
+        <span
+          className="absolute top-0 right-0 text-[9px] leading-none text-amber-500 dark:text-amber-400 pointer-events-none"
+          title="Keine Mitarbeit erfasst (§ 3 LBVO)"
+        >
+          ⚠
+        </span>
+      )}
 
       {/* Hover-Tooltip via Portal */}
       {hovered && (

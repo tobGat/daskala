@@ -265,6 +265,7 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
   const istDifferenziert = fach.benotungssystem === 'differenziert'
   const fachHistorie = niveauHistorie?.[fach.id] ?? []
   const aktNiveau = niveaus?.[fach.id] ?? 'AHS'
+  const einstellungen = useStore(s => s.einstellungen)
 
   // Notizen sind 1:1 pro Fach in der DB; wir nutzen sie als Free-Text-Editor
   const initialNotiz = fachNotizen[0]?.text ?? ''
@@ -338,6 +339,9 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
   }, [verlaufOffen, fach.id, schueler.id])
 
   const hatSaT = fachEintraege.some(e => (e.kategorie === 'SA' || e.kategorie === 'T') && istGueltigeNote(e.wert))
+  // § 3 LBVO: schriftliche Leistungen dürfen nicht alleinige Beurteilungsgrundlage sein.
+  const maWarnung = einstellungen?.ma_pflicht_warnung !== '0'
+    && hatSaT && maEintr.length === 0 && hueEintr.length === 0
 
   return (
     <div className="space-y-6">
@@ -378,6 +382,14 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
           })}
         </div>
       </div>
+
+      {/* § 3 LBVO – keine Mitarbeit erfasst */}
+      {maWarnung && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+          <span className="shrink-0 text-sm leading-none mt-0.5">⚠</span>
+          <span>Keine Mitarbeit oder Hausübung erfasst. Laut § 3 LBVO dürfen schriftliche Leistungen nicht die alleinige Grundlage der Beurteilung sein – die berechnete Note ist daher nur ein Vorschlag.</span>
+        </div>
+      )}
 
       {/* Leistungsentwicklung — Chart */}
       {hatSaT && (
