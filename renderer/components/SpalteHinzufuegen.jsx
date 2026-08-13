@@ -15,7 +15,9 @@ const KATEGORIEN = [
 export default function SpalteHinzufuegen({ onClose }) {
   const { aktivesFach, aktiveSemester, spalten, ladeSpalten, refreshZeugnisnoten, gewichtungGlobal, openModal, modalData } = useStore()
   // Vorauswahl der Kategorie (z. B. aus dem mobilen Speed-Dial); Fallback MA.
-  const initialKat = KATEGORIEN.some(k => k.id === modalData?.kategorie) ? modalData.kategorie : 'MA'
+  // Bei Vorauswahl entfällt die Kategorie-Auswahl im Modal – nur die Überschrift zeigt die Kategorie.
+  const vorgewaehlt = KATEGORIEN.some(k => k.id === modalData?.kategorie)
+  const initialKat = vorgewaehlt ? modalData.kategorie : 'MA'
   const [kategorie, setKategorie] = useState(initialKat)
   const [kuerzel, setKuerzel] = useState(KATEGORIEN.find(k => k.id === initialKat)?.kuerzel ?? '')
   // Variante der Mitarbeits-Skala: 'pm' (+ / −), 'pfeil' (↗ / ↘), 'smiley' (vierstufig).
@@ -71,27 +73,38 @@ export default function SpalteHinzufuegen({ onClose }) {
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box">
-        <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-5">Spalte hinzufügen</h2>
+        <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-5 flex items-center gap-2">
+          {vorgewaehlt ? (
+            <>
+              <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${KATEGORIEN.find(k => k.id === kategorie)?.farbe}`}>
+                {KATEGORIEN.find(k => k.id === kategorie)?.kuerzel || 'IND'}
+              </span>
+              {KATEGORIEN.find(k => k.id === kategorie)?.label} hinzufügen
+            </>
+          ) : 'Spalte hinzufügen'}
+        </h2>
 
-        {/* Kategorie-Auswahl */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Kategorie</label>
-          <div className="grid grid-cols-2 gap-2">
-            {KATEGORIEN.map(kat => (
-              <button
-                key={kat.id}
-                className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-colors border-2
-                  ${kategorie === kat.id
-                    ? 'border-coral-500 bg-coral-50 dark:bg-coral-900 text-coral-700 dark:text-coral-300'
-                    : 'border-transparent bg-paper-100 dark:bg-ink-700 text-ink-700 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-600'}`}
-                onClick={() => setKategorie(kat.id)}
-              >
-                <span className={`inline-block px-1.5 py-0.5 rounded text-xs mr-2 ${kat.farbe}`}>{kat.kuerzel || 'IND'}</span>
-                {kat.label}
-              </button>
-            ))}
+        {/* Kategorie-Auswahl – nur ohne Vorauswahl (Desktop / generisches „+") */}
+        {!vorgewaehlt && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Kategorie</label>
+            <div className="grid grid-cols-2 gap-2">
+              {KATEGORIEN.map(kat => (
+                <button
+                  key={kat.id}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-colors border-2
+                    ${kategorie === kat.id
+                      ? 'border-coral-500 bg-coral-50 dark:bg-coral-900 text-coral-700 dark:text-coral-300'
+                      : 'border-transparent bg-paper-100 dark:bg-ink-700 text-ink-700 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-600'}`}
+                  onClick={() => setKategorie(kat.id)}
+                >
+                  <span className={`inline-block px-1.5 py-0.5 rounded text-xs mr-2 ${kat.farbe}`}>{kat.kuerzel || 'IND'}</span>
+                  {kat.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
 
         {/* Bewertungsskala – nur für Mitarbeit */}

@@ -115,7 +115,9 @@ cd android && ./gradlew assembleDebug
   so bleibt mehr Platz für die Noten-Spalten. Das „+"-Ghost-Spaltenfeld entfällt mobil; neue Spalten
   legt ein **Speed-Dial-FAB** unten rechts an: Tap zeigt die Kategorien (Mitarbeit/Hausübung/Test/
   Schularbeit/Individuell), die Auswahl öffnet das „Spalte hinzufügen"-Modal vorbelegt
-  (`openModal('spalteHinzufuegen', { kategorie })`). Die **Schüler-Detailansicht** (Tap **oder Long-Tap**
+  (`openModal('spalteHinzufuegen', { kategorie })`). Bei Vorauswahl entfällt im Modal die
+  Kategorie-Auswahl; die Überschrift zeigt stattdessen die Kategorie (z. B. „MA Mitarbeit hinzufügen") –
+  das Modal wird dadurch kompakter. Ohne Vorauswahl (Desktop-„+") bleibt die Kategorie-Auswahl. Die **Schüler-Detailansicht** (Tap **oder Long-Tap**
   auf einen Namen – Long-Tap feuert am Touch ein `contextmenu`, das ebenfalls das Profil öffnet;
   Namenszelle `select-none`) öffnet mobil ein **Vollbild-Sheet in einer Spalte**: Fächer als horizontale
   Chips oben, darunter das Fach-Detail (Diagramm/Mitarbeit/Aufzeichnungen). Dafür sind im mobilen
