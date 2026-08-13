@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import useStore from '../store/useStore'
 import { berechneSchulferien, ferienFuerTag } from '../utils/schulferien'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 const MONATS_NAMEN = ['Jänner', 'Februar', 'März', 'April', 'Mai', 'Juni',
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
@@ -418,6 +419,7 @@ function AbschnittKarte({ abschnitt, aktivesFach, istSelektiert, onClick, onCale
 // ─── Hauptkomponente ─────────────────────────────────────────────────────────
 export default function JahresplanungView() {
   const { aktivesFach, einstellungen, aktuellesSchuljahr, pushToast, vorlagenModus, aktiveKlasse } = useStore()
+  const mobil = useIsMobile()
   const [abschnitte, setAbschnitte] = useState([])
   const [hoverAbschnitt, setHoverAbschnitt] = useState(null)   // für den zentralen Detail-Tooltip über dem Kalender
   const [selektiert, setSelektiert] = useState(null)
@@ -442,6 +444,9 @@ export default function JahresplanungView() {
   const [formInhalt, setFormInhalt] = useState('')
   const [formLernziele, setFormLernziele] = useState('')
   const [formKompetenzen, setFormKompetenzen] = useState('')
+  // Mobil: Datum wird direkt im Modal gesetzt (kein Kalender zum Ziehen).
+  const [formDatumVon, setFormDatumVon] = useState('')
+  const [formDatumBis, setFormDatumBis] = useState('')
 
   // Materialien
   const [materialien, setMaterialien] = useState({ root: false, ordner: null, dateien: [], links: [] })
@@ -601,6 +606,8 @@ export default function JahresplanungView() {
     setFormInhalt(abschnitt.inhalt ?? '')
     setFormLernziele(abschnitt.lernziele ?? '')
     setFormKompetenzen(abschnitt.kompetenzen ?? '')
+    setFormDatumVon(abschnitt.datum_von ?? '')
+    setFormDatumBis(abschnitt.datum_bis ?? '')
   }
 
   const neuOeffnen = () => {
@@ -612,6 +619,8 @@ export default function JahresplanungView() {
     setFormInhalt('')
     setFormLernziele('')
     setFormKompetenzen('')
+    setFormDatumVon('')
+    setFormDatumBis('')
   }
 
   const panelSchliessen = () => {
@@ -620,28 +629,39 @@ export default function JahresplanungView() {
     setLoeschenBestaetigung(false)
   }
 
+  // Mobil kommt das Datum aus den Modal-Feldern; Desktop weiterhin per Drag/Kalender.
+  const mobilDatum = () => {
+    const dv = formDatumVon || null
+    let db = formDatumBis || null
+    if (dv && !db) db = dv
+    if (dv && db && db < dv) db = dv
+    return { datumVon: dv, datumBis: db }
+  }
+
   const handleSpeichern = async () => {
     if (!aktivesFach) return
     if (istNeu) {
-      // Nur Titel, Farbe, Inhalt – ohne Datum (wird per Drag gesetzt)
+      // Desktop: ohne Datum (per Drag gesetzt); Mobil: Datum aus den Modal-Feldern.
+      const { datumVon, datumBis } = mobil ? mobilDatum() : { datumVon: null, datumBis: null }
       await window.api.jahresplanung.create({
         fachId: aktivesFach.id,
         titel: formTitel.trim(),
         inhalt: formInhalt,
         lernziele: formLernziele,
         kompetenzen: formKompetenzen,
-        datumVon: null,
-        datumBis: null,
+        datumVon,
+        datumBis,
         farbe: formFarbe,
       })
     } else if (selektiert) {
+      const { datumVon, datumBis } = mobil ? mobilDatum() : { datumVon: selektiert.datum_von, datumBis: selektiert.datum_bis }
       const res = await window.api.jahresplanung.update(selektiert.id, {
         titel: formTitel.trim(),
         inhalt: formInhalt,
         lernziele: formLernziele,
         kompetenzen: formKompetenzen,
-        datumVon: selektiert.datum_von,
-        datumBis: selektiert.datum_bis,
+        datumVon,
+        datumBis,
         farbe: formFarbe,
       })
       if (res?.ordnerWarnung) pushToast(res.ordnerWarnung, 'error')
@@ -814,6 +834,16 @@ export default function JahresplanungView() {
 
   const panelOffen = istNeu || selektiert !== null
 
+  // Mobil ohne Kalender: nach Datum sortieren (geplante zuerst, undatierte ans Ende).
+  const sichtbareAbschnitte = mobil
+    ? [...abschnitte].sort((a, b) => {
+        if (!a.datum_von && !b.datum_von) return 0
+        if (!a.datum_von) return 1
+        if (!b.datum_von) return -1
+        return a.datum_von.localeCompare(b.datum_von)
+      })
+    : abschnitte
+
   if (!aktivesFach) {
     return (
       <div className="flex-1 flex items-center justify-center text-ink-400 text-sm">
@@ -864,11 +894,11 @@ export default function JahresplanungView() {
         )}
       </div>
 
-      {/* Haupt-Layout: Links Abschnitte, Rechts Kalender */}
+      {/* Haupt-Layout: Links Abschnitte, Rechts Kalender (mobil ohne Kalender) */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ─── Linke Seite: Abschnitt-Liste ─────────────────────────────── */}
-        <div className="w-96 flex-shrink-0 border-r border-paper-100 dark:border-ink-800 flex flex-col bg-white dark:bg-ink-900">
+        {/* ─── Linke Seite: Abschnitt-Liste (mobil volle Breite) ─────────── */}
+        <div className={`${mobil ? 'flex-1' : 'w-96 flex-shrink-0 border-r border-paper-100 dark:border-ink-800'} flex flex-col bg-white dark:bg-ink-900`}>
           {/* Neuer Abschnitt */}
           <div className="p-3 border-b border-paper-100 dark:border-ink-800">
             <button
@@ -881,7 +911,7 @@ export default function JahresplanungView() {
 
           {/* Liste */}
           <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-            {abschnitte.map(a => (
+            {sichtbareAbschnitte.map(a => (
               <AbschnittKarte
                 key={a.id}
                 abschnitt={a}
@@ -900,7 +930,7 @@ export default function JahresplanungView() {
               <div className="text-center text-ink-400 dark:text-ink-500 text-xs py-8">
                 Noch keine Abschnitte erstellt.
                 <br/>
-                <span className="text-ink-600 dark:text-paper-300 dark:text-ink-600">Erstelle einen neuen Abschnitt und ziehe ihn in den Kalender.</span>
+                <span className="text-ink-600 dark:text-paper-300 dark:text-ink-600">{mobil ? 'Erstelle einen neuen Abschnitt und weise ihm einen Zeitraum zu.' : 'Erstelle einen neuen Abschnitt und ziehe ihn in den Kalender.'}</span>
               </div>
             )}
           </div>
@@ -944,18 +974,45 @@ export default function JahresplanungView() {
                     />
                   </div>
 
-                  {/* Datum-Info (nur bei geplanten) */}
-                  {selektiert?.datum_von && (
-                    <div className="flex items-center justify-between gap-2 text-xs bg-coral-50/70 dark:bg-coral-900/20 border border-coral-100 dark:border-coral-900/40 rounded-lg px-3 py-2">
-                      <span className="text-ink-600 dark:text-paper-300">📅 {formatDatum(selektiert.datum_von)} – {formatDatum(selektiert.datum_bis)}</span>
-                      <button
-                        onClick={handleAusKalenderEntfernen}
-                        className="text-[11px] text-ink-400 hover:text-red-500 transition-colors flex-shrink-0"
-                        title="Aus dem Kalender entfernen"
-                      >
-                        Entfernen
-                      </button>
+                  {/* Zeitraum: mobil editierbar (Beginn–Ende), Desktop read-only aus dem Kalender */}
+                  {mobil ? (
+                    <div>
+                      <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Zeitraum</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={formDatumVon}
+                          onChange={e => setFormDatumVon(e.target.value)}
+                          className="flex-1 min-w-0 text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
+                        />
+                        <span className="text-ink-400 flex-shrink-0" aria-hidden>–</span>
+                        <input
+                          type="date"
+                          value={formDatumBis}
+                          min={formDatumVon || undefined}
+                          onChange={e => setFormDatumBis(e.target.value)}
+                          className="flex-1 min-w-0 text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
+                        />
+                      </div>
+                      {formDatumVon && (
+                        <button onClick={() => { setFormDatumVon(''); setFormDatumBis('') }} className="mt-1 text-[11px] text-ink-400 hover:text-red-500 transition-colors">
+                          Zeitraum entfernen
+                        </button>
+                      )}
                     </div>
+                  ) : (
+                    selektiert?.datum_von && (
+                      <div className="flex items-center justify-between gap-2 text-xs bg-coral-50/70 dark:bg-coral-900/20 border border-coral-100 dark:border-coral-900/40 rounded-lg px-3 py-2">
+                        <span className="text-ink-600 dark:text-paper-300">📅 {formatDatum(selektiert.datum_von)} – {formatDatum(selektiert.datum_bis)}</span>
+                        <button
+                          onClick={handleAusKalenderEntfernen}
+                          className="text-[11px] text-ink-400 hover:text-red-500 transition-colors flex-shrink-0"
+                          title="Aus dem Kalender entfernen"
+                        >
+                          Entfernen
+                        </button>
+                      </div>
+                    )
                   )}
 
                   {/* Farbe */}
@@ -977,8 +1034,8 @@ export default function JahresplanungView() {
                     </div>
                   </div>
 
-                  {/* Zwei Spalten: links Inhalt, rechts Lernziele + Kompetenzen */}
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Inhalt / Lernziele / Kompetenzen – Desktop zweispaltig, mobil untereinander */}
+                  <div className={mobil ? 'flex flex-col gap-4' : 'grid grid-cols-2 gap-4'}>
                   {/* Inhalt */}
                   <div>
                     <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Inhalt / Notizen</label>
@@ -1128,7 +1185,8 @@ export default function JahresplanungView() {
           )}
         </div>
 
-        {/* ─── Rechte Seite: Kalender ───────────────────────────────────── */}
+        {/* ─── Rechte Seite: Kalender (nur Desktop; mobil ohne Kalender) ── */}
+        {!mobil && (
         <div className="flex-1 relative overflow-hidden">
           <div className={`h-full overflow-auto p-4 transition-[filter] duration-150 ${hoverAbschnitt ? 'blur-sm pointer-events-none select-none' : ''}`}>
             <div className="grid grid-cols-3 gap-5 xl:grid-cols-4">
@@ -1158,6 +1216,7 @@ export default function JahresplanungView() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* ─── Import-Modal ──────────────────────────────────────────────── */}

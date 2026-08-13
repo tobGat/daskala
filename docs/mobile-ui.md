@@ -76,6 +76,9 @@ cd android && ./gradlew assembleDebug
   - **Agenda** = ToDos/Termine (früher „Planer", nur umbenannt; `currentView='planer'`).
   - **Planung** (nur bei `planung_aktiv`) = eigener Tab [MobilePlanung.jsx](../renderer/components/MobilePlanung.jsx)
     mit Segment-Umschalter Jahresplan/Klassenplanung (bettet `JahresplanungView`/`KlassenplanungView` ein).
+    Standard-Segment beim Öffnen ist **Klassenplanung**. Die **Jahresplanung** hat mobil **keinen Kalender**:
+    Abschnitten wird im Modal ein **Zeitraum (Beginn–Ende)** zugewiesen (`type=date`), die Liste ist danach
+    sortiert (undatierte ans Ende); Inhalt/Lernziele/Kompetenzen liegen im Modal untereinander (statt zweispaltig).
   - **Sitzplan** und **Klassenvorstand (KV)** werden mobil vorerst gar nicht angezeigt (Views bleiben
     für den Desktop; keine mobile Route).
   **Klasse/Fach anlegen:** je ein „➕"-Eintrag unten in den Klasse-/Fach-Auswahl-Sheets; das erste Fach

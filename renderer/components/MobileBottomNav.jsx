@@ -193,7 +193,7 @@ export default function MobileBottomNav() {
           <NavTab icon={NAV_ICONS.noten} label="Noten" active={notenAktiv} onClick={() => geheZu('notentabelle')} />
           <NavTab icon={NAV_ICONS.planer} label="Agenda" active={agendaAktiv} onClick={() => geheZu('planer')} />
           {planungAktiv && (
-            <NavTab icon={NAV_ICONS.planung} label="Planung" active={planungTabAktiv} onClick={() => geheZu('jahresplanung')} />
+            <NavTab icon={NAV_ICONS.planung} label="Planung" active={planungTabAktiv} onClick={() => geheZu('klassenplanung')} />
           )}
           <NavTab icon={NAV_ICONS.mehr} label="Mehr" active={sheet === 'mehr'} onClick={() => setSheet(s => s === 'mehr' ? null : 'mehr')} />
         </nav>
