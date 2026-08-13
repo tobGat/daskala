@@ -623,7 +623,7 @@ export default function NotenTabelle() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-paper-50 dark:bg-ink-950 p-3">
+    <div className={`flex-1 flex flex-col overflow-hidden bg-paper-50 dark:bg-ink-950 p-3 ${mobil ? 'relative' : ''}`}>
       <div className="flex-1 flex flex-col overflow-hidden daskala-card">
 
         <NotenToolbar
@@ -841,6 +841,20 @@ export default function NotenTabelle() {
           }}
           onClose={() => setNiveauPopup(null)}
         />
+      )}
+
+      {/* Neue-Spalte-FAB (nur mobil): das „+" im Tabellenkopf ist am Touch zu klein/versteckt */}
+      {mobil && (
+        <button
+          type="button"
+          onClick={openSpalteModal}
+          aria-label="Neue Spalte hinzufügen"
+          className="absolute right-5 bottom-5 z-20 w-14 h-14 flex items-center justify-center rounded-full bg-coral-600 text-white shadow-pop active:scale-95 transition-transform"
+        >
+          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
       )}
     </div>
   )

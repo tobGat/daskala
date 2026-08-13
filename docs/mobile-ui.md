@@ -112,7 +112,11 @@ cd android && ./gradlew assembleDebug
   Spaltenkopf) erscheint mobil ebenfalls als **Bottom-Sheet** mit großen Tap-Zielen (statt des
   positionierten Desktop-Menüs). Die **Namensspalte** ist mobil nur so breit wie ihr Inhalt
   (Inline `width:1` + `white-space:nowrap`, Name auf max. 128px begrenzt, Hover-Chevron entfällt) –
-  so bleibt mehr Platz für die Noten-Spalten.
+  so bleibt mehr Platz für die Noten-Spalten. Neue Spalten legt mobil ein **Floating-Action-Button**
+  unten rechts an (`openModal('spalteHinzufuegen')`; das kleine „+" im Tabellenkopf ist am Touch zu
+  versteckt). Die **Schüler-Detailansicht** (Tap auf einen Namen) funktioniert jetzt am Gerät –
+  dafür sind im mobilen `window.api` `schueler.getLeistungsProfil`, `notizen` (get/set) und
+  `verlauf.get` angebunden (vorher stubten sie und `getLeistungsProfil` crashte die Oberfläche).
 - **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
   (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
 

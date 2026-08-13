@@ -12,6 +12,7 @@ import schuljahreDomain from '../../core/domain/schuljahre'
 import klassenDomain from '../../core/domain/klassen'
 import faecherDomain from '../../core/domain/faecher'
 import schuelerDomain from '../../core/domain/schueler'
+import notizenDomain from '../../core/domain/notizen'
 import spaltenDomain from '../../core/domain/spalten'
 import eintraegeDomain from '../../core/domain/eintraege'
 import zeugnisnotenDomain from '../../core/domain/zeugnisnoten'
@@ -81,6 +82,14 @@ export function createMobileApi(dbPort) {
       getAll: (kId) => schuelerDomain.getAll(dbPort, kId),
       create: (d) => schuelerDomain.create(dbPort, d),
       update: (id, d) => schuelerDomain.update(dbPort, id, d),
+      getLeistungsProfil: (id) => schuelerDomain.getLeistungsProfil(dbPort, deps, id),
+    }),
+    notizen: dp('notizen', {
+      get: (sId, fId) => notizenDomain.get(dbPort, sId, fId),
+      set: (sId, fId, text) => notizenDomain.set(dbPort, deps, sId, fId, text),
+    }),
+    verlauf: dp('verlauf', {
+      get: (sId, fId) => eintraegeDomain.verlaufGet(dbPort, sId, fId),
     }),
     spalten: dp('spalten', {
       getAll: (fId) => spaltenDomain.getAll(dbPort, fId),
