@@ -28,6 +28,7 @@ import stundenPlanungDomain from '../../core/domain/stundenplanung'
 import supplierstundenDomain from '../../core/domain/supplierstunden'
 import kvRoutine from '../../core/domain/kv/routine'
 import { createMobileKernDeps } from './kern-deps'
+import { fachOdsMobil } from './export-mobile'
 
 export function createMobileApi(dbPort) {
   const deps = createMobileKernDeps(dbPort)
@@ -90,6 +91,10 @@ export function createMobileApi(dbPort) {
     }),
     verlauf: dp('verlauf', {
       get: (sId, fId) => eintraegeDomain.verlaufGet(dbPort, sId, fId),
+    }),
+    export: dp('export', {
+      // ODS-Noten-Export: im WebView erzeugt + per Web-Share geteilt (statt Node-FS).
+      fachOds: (fId) => fachOdsMobil(dbPort, fId),
     }),
     spalten: dp('spalten', {
       getAll: (fId) => spaltenDomain.getAll(dbPort, fId),

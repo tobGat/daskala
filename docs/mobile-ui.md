@@ -133,6 +133,11 @@ cd android && ./gradlew assembleDebug
   Die Bottom-Sheet-Kontextmenüs (Stundenplan- & Spalten-Menü) sind `overflow-y-auto max-h-[85vh]`
   (im Querformat sonst zu hoch/nicht scrollbar); im Noten-Querformat sind die Menüzeilen zusätzlich
   kompakter (`!py-2 !min-h-0`), damit alles inkl. „Abbrechen" erreichbar bleibt.
+- **Noten-Export mobil** [export-mobile.js](../platform/capacitor/export-mobile.js): der „Export"-Button
+  war mobil ein Stub (Desktop-Export nutzt Node-FS + Datei-Dialog). Jetzt wird die ODS-Datei im WebView
+  mit `xlsx` erzeugt (Zeilenaufbau wie Desktop, `notenberechnung.rosterFuerFach`/`znInternZuAnzeige`),
+  via `@capacitor/filesystem` in den Cache geschrieben und über `@capacitor/share` geteilt (System-
+  Teilen-Ansicht). Angebunden als `window.api.export.fachOds` in `platform/capacitor/api.js`.
 - **Modals als Bottom-Sheet** + **Safe-Area** oben (`.cap .app-shell`) und unten
   (`.safe-bottom` an der Nav) – siehe `.cap`-Block in `renderer/index.css`.
 
