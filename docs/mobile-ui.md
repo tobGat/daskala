@@ -78,9 +78,13 @@ cd android && ./gradlew assembleDebug
   Funktionen liegen NICHT unter „Mehr":
   - **Agenda** = ToDos/Termine (früher „Planer", nur umbenannt; `currentView='planer'`).
   - **Planung** (nur bei `planung_aktiv`) = eigener Tab [MobilePlanung.jsx](../renderer/components/MobilePlanung.jsx)
-    mit Segment-Umschalter **Detailplanung (Klassenplanung) | Jahresplanung** (per Tap **oder horizontalem
-    Swipe**); Standard-Segment beim Öffnen ist **Detailplanung**. Die Kontextzeile zeigt hier – wie in der
-    Notenansicht – **Klasse + Fach** (`fachRelevant` umfasst beide Planungsansichten). Die **Jahresplanung** hat mobil **keinen Kalender**:
+    mit Segment-Umschalter **Detailplanung (Klassenplanung) | Jahresplanung**. Beide Ansichten liegen
+    nebeneinander in einer 200%-breiten Bahn; ein horizontaler **Swipe folgt dem Finger** und rastet beim
+    Loslassen ein (Umschalten auch per Tap). Die Bahn wird über **`margin-left`** verschoben (nicht
+    `transform`), damit die `position:fixed`-Modals der Ansichten am Viewport bleiben. `touch-action: pan-y`
+    lässt vertikales Scrollen unberührt. Standard-Segment ist **Detailplanung**. Kontextzeile zeigt – wie in
+    der Notenansicht – **Klasse + Fach** (`fachRelevant` umfasst beide Planungsansichten); der interne
+    Fach-Umschalter der Detailplanung entfällt mobil. Die **Jahresplanung** hat mobil **keinen Kalender**:
     Abschnitten wird im Modal ein **Zeitraum (Beginn–Ende)** zugewiesen (`type=date`), die Liste ist danach
     sortiert (undatierte ans Ende); Inhalt/Lernziele/Kompetenzen liegen im Modal untereinander (statt zweispaltig).
     Abschnitt-Karten sind mobil **ganz im Abschnittsfarbton (hell) hinterlegt**, ohne Drag-&-Drop (kurzer

@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import useStore from '../store/useStore'
 import PlanungModal, { toLocalDateStr } from './PlanungModal'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 const WT_KURZ = ['Mo', 'Di', 'Mi', 'Do', 'Fr']
 
@@ -97,6 +98,7 @@ export default function KlassenplanungView() {
   const [sichtbareFaecher, setSichtbareFaecher] = useState(new Set())
   const [planungModal, setPlanungModal] = useState(null)
   const [laden, setLaden] = useState(true)
+  const mobil = useIsMobile()
 
   // Jahresplanung: { [fachId]: [{ id, titel, inhalt, farbe, datum_von, datum_bis }, ...] }
   const [jahresplanung, setJahresplanung] = useState({})
@@ -337,7 +339,8 @@ export default function KlassenplanungView() {
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col">
-      {/* Header: Fach-Toggles */}
+      {/* Header: Fach-Toggles – mobil ausgeblendet (Fach läuft über die Bottom-Nav-Kontextzeile) */}
+      {!mobil && (
       <div className="flex-shrink-0 px-5 pt-4 pb-3">
         <div className="flex items-center gap-2 flex-wrap">
           {faecher.map((f, i) => {
@@ -375,6 +378,7 @@ export default function KlassenplanungView() {
           )}
         </div>
       </div>
+      )}
 
       {/* Spalten-Layout */}
       <div className="flex-1 overflow-hidden flex">
