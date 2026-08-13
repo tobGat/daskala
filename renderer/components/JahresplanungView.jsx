@@ -32,6 +32,19 @@ function formatDatum(dateStr) {
   return `${parseInt(d)}.${parseInt(m)}.`
 }
 
+// Dauer eines Abschnitts als „X Wochen Y Tage" (Zeitraum inklusive beider Enden).
+function dauerText(von, bis) {
+  if (!von || !bis) return ''
+  const tage = Math.round((new Date(bis + 'T00:00:00') - new Date(von + 'T00:00:00')) / 86400000) + 1
+  if (tage <= 0) return ''
+  const wochen = Math.floor(tage / 7)
+  const rest = tage % 7
+  const teile = []
+  if (wochen > 0) teile.push(`${wochen} ${wochen === 1 ? 'Woche' : 'Wochen'}`)
+  if (rest > 0) teile.push(`${rest} ${rest === 1 ? 'Tag' : 'Tage'}`)
+  return teile.join(' ')
+}
+
 // ─── Monats-Kalender (rechte Seite) ──────────────────────────────────────────
 function MonatKalender({ year, month, abschnitte, aktivesFach, dragOverDate, onDrop, onDragOverDay, onDragLeaveDay, onAbschnittKlick, resizingId, onResizeStart, schulferien }) {
   const ersterTag = new Date(year, month, 1)
@@ -340,6 +353,7 @@ function AbschnittTooltip({ abschnitt, farbe }) {
 
 // ─── Abschnitt-Karte (linke Seite) ──────────────────────────────────────────
 function AbschnittKarte({ abschnitt, aktivesFach, istSelektiert, onClick, onCalendarDragStart, onListDragStart, onListDrop, listDragOverId, onHover, onHoverEnd }) {
+  const mobil = useIsMobile()
   const farbe = abschnitt.farbe ?? aktivesFach?.farbe ?? '#6366f1'
   const istGeplant = !!abschnitt.datum_von
   const istDropTarget = listDragOverId === abschnitt.id
@@ -350,6 +364,37 @@ function AbschnittKarte({ abschnitt, aktivesFach, istSelektiert, onClick, onCale
   }
   const hideTip = () => { clearTimeout(timerRef.current); onHoverEnd() }
   useEffect(() => () => clearTimeout(timerRef.current), [])
+
+  // ── Mobil: kein Drag-&-Drop, kurzer Tap öffnet die Bearbeitung; rechts
+  //    Beginn/Ende + Dauer (Wochen/Tage). ──
+  if (mobil) {
+    return (
+      <div
+        onClick={() => onClick(abschnitt)}
+        className={`rounded-lg border px-3 py-2.5 cursor-pointer transition-colors flex items-center gap-2.5
+          ${istSelektiert
+            ? 'border-coral-400 dark:border-coral-500 bg-coral-50/50 dark:bg-coral-900/20'
+            : 'border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-900 active:bg-paper-50 dark:active:bg-ink-800'}`}
+      >
+        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: farbe }} />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-ink-800 dark:text-paper-100 truncate">
+            {abschnitt.titel || 'Ohne Titel'}
+          </div>
+          {!istGeplant && (
+            <div className="text-[11px] text-ink-400 dark:text-ink-500 italic mt-0.5">Noch nicht eingeplant</div>
+          )}
+        </div>
+        {istGeplant && (
+          <div className="text-right flex-shrink-0 leading-tight tabular-nums">
+            <div className="text-[11px] font-medium text-ink-600 dark:text-paper-300">{formatDatum(abschnitt.datum_von)}</div>
+            <div className="text-[11px] text-ink-400 dark:text-ink-500">– {formatDatum(abschnitt.datum_bis)}</div>
+            <div className="text-[10px] text-coral-500 dark:text-coral-400 mt-0.5">{dauerText(abschnitt.datum_von, abschnitt.datum_bis)}</div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div
@@ -487,9 +532,10 @@ export default function JahresplanungView() {
 
   // ─── Materialien ─────────────────────────────────────────────────────────
   const ladeMaterialien = useCallback(async () => {
-    if (!selektiert?.id) { setMaterialien({ root: false, ordner: null, dateien: [], links: [] }); return }
+    // Mobil kein Materialordner (dateibasiert) – Stub würde zudem [] statt Objekt liefern.
+    if (mobil || !selektiert?.id) { setMaterialien({ root: false, ordner: null, dateien: [], links: [] }); return }
     setMaterialien(await window.api.materialien.list(selektiert.id))
-  }, [selektiert?.id])
+  }, [selektiert?.id, mobil])
 
   useEffect(() => { ladeMaterialien(); setLinkForm({ open: false, url: '', anzeigename: '', beschreibung: '' }); setMetaEdit(null) }, [selektiert?.id])
 
@@ -1075,8 +1121,8 @@ export default function JahresplanungView() {
                   </div>
                   </div>
 
-                  {/* Materialien (nur für gespeicherte Abschnitte) */}
-                  {selektiert && !istNeu && (
+                  {/* Materialien (nur Desktop – dateibasiert; mobil kein Materialordner) */}
+                  {!mobil && selektiert && !istNeu && (
                     <div className="pt-3 border-t border-paper-200 dark:border-ink-800">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
