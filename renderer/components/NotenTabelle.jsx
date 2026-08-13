@@ -543,6 +543,8 @@ export default function NotenTabelle() {
   const landscape = useIsLandscape()
   // Querformat am Gerät: nur die Tabelle zeigen (Toolbar/FAB/Rahmen aus, kein Padding).
   const vollbild = mobil && landscape
+  // Im Querformat ist wenig Höhe – kompaktere Kontextmenü-Zeilen (sonst zu groß).
+  const menuItem = vollbild ? `${MOB_MENU_ITEM} !py-2 !min-h-0` : MOB_MENU_ITEM
 
   const spaltenS1 = spalten.filter(s => s.semester === 1)
   const spaltenS2 = spalten.filter(s => s.semester === 2)
@@ -760,7 +762,7 @@ export default function NotenTabelle() {
             onClick={() => setSpaltenContextMenu(null)}
           >
             <div
-              className="mt-auto w-full bg-paper-50 dark:bg-ink-950 rounded-t-3xl shadow-pop animate-pop-in overflow-hidden"
+              className="mt-auto w-full bg-paper-50 dark:bg-ink-950 rounded-t-3xl shadow-pop animate-pop-in overflow-y-auto max-h-[85vh]"
               style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
               onClick={e => e.stopPropagation()}
             >
@@ -769,32 +771,32 @@ export default function NotenTabelle() {
                 <div className="text-base font-semibold text-ink-900 dark:text-paper-100">{sp.kuerzel}{datum ? ` · ${datum}` : ''}</div>
                 <div className="text-sm text-ink-400">{sp.kategorie}-Spalte · Semester {sp.semester}</div>
               </div>
-              <button type="button" className={MOB_MENU_ITEM} onClick={() => { window.api.spalten.toggleEingeklappt(sp.id).then(() => { ladeSpalten(); setSpaltenContextMenu(null) }) }}>
+              <button type="button" className={menuItem} onClick={() => { window.api.spalten.toggleEingeklappt(sp.id).then(() => { ladeSpalten(); setSpaltenContextMenu(null) }) }}>
                 <span className="w-6 text-center">{sp.eingeklappt ? '▸' : '▾'}</span> {sp.eingeklappt ? 'Ausklappen' : 'Einklappen'}
               </button>
-              <button type="button" className={MOB_MENU_ITEM} onClick={() => handleKategorieEinklappen(sp.kategorie, true)}>
+              <button type="button" className={menuItem} onClick={() => handleKategorieEinklappen(sp.kategorie, true)}>
                 <span className="w-6 text-center">⊟</span> Alle {sp.kategorie}-Spalten einklappen
               </button>
-              <button type="button" className={MOB_MENU_ITEM} onClick={() => handleKategorieEinklappen(sp.kategorie, false)}>
+              <button type="button" className={menuItem} onClick={() => handleKategorieEinklappen(sp.kategorie, false)}>
                 <span className="w-6 text-center">⊞</span> Alle {sp.kategorie}-Spalten ausklappen
               </button>
               <div className="context-menu-separator" />
-              <button type="button" className={MOB_MENU_ITEM} onClick={() => handleSortieren(sp.semester)}>
+              <button type="button" className={menuItem} onClick={() => handleSortieren(sp.semester)}>
                 <span className="w-6 text-center">🏷️</span> Nach Kategorie sortieren (S{sp.semester})
               </button>
-              <button type="button" className={MOB_MENU_ITEM} onClick={() => handleSortierenChrono(sp.semester)}>
+              <button type="button" className={menuItem} onClick={() => handleSortierenChrono(sp.semester)}>
                 <span className="w-6 text-center">🗓️</span> Chronologisch sortieren (S{sp.semester})
               </button>
               <div className="context-menu-separator" />
-              <button type="button" className={MOB_MENU_ITEM} onClick={() => handleSpalteBearbeiten(sp)}>
+              <button type="button" className={menuItem} onClick={() => handleSpalteBearbeiten(sp)}>
                 <span className="w-6 text-center">✎</span> Spalte bearbeiten
               </button>
               <div className="context-menu-separator" />
-              <button type="button" className={`${MOB_MENU_ITEM} text-red-500 dark:text-red-400`} onClick={() => handleSpalteLoeschen(sp.id)}>
+              <button type="button" className={`${menuItem} text-red-500 dark:text-red-400`} onClick={() => handleSpalteLoeschen(sp.id)}>
                 <span className="w-6 text-center">✕</span> Spalte löschen
               </button>
               <div className="context-menu-separator" />
-              <button type="button" className={`${MOB_MENU_ITEM} justify-center text-ink-500 dark:text-ink-400`} onClick={() => setSpaltenContextMenu(null)}>Abbrechen</button>
+              <button type="button" className={`${menuItem} justify-center text-ink-500 dark:text-ink-400`} onClick={() => setSpaltenContextMenu(null)}>Abbrechen</button>
             </div>
           </div>
         )

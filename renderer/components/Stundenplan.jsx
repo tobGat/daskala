@@ -815,7 +815,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           onClick={() => setKontextMenu(null)}
         >
           <div
-            className="mt-auto w-full bg-paper-50 dark:bg-ink-950 rounded-t-3xl shadow-pop animate-pop-in overflow-hidden"
+            className="mt-auto w-full bg-paper-50 dark:bg-ink-950 rounded-t-3xl shadow-pop animate-pop-in overflow-y-auto max-h-[85vh]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             onClick={e => e.stopPropagation()}
           >
