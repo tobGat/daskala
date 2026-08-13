@@ -84,7 +84,7 @@ function CenterTab({ icon, label, active, onClick }) {
       className="flex-none w-20 flex flex-col items-center justify-end gap-1 pb-1.5"
     >
       <span
-        className={`-mt-6 w-14 h-14 rounded-full flex items-center justify-center shadow-pop ring-4 ring-white dark:ring-ink-900 transition-colors
+        className={`-mt-5 w-14 h-14 rounded-full flex items-center justify-center shadow-pop ring-4 ring-white dark:ring-ink-900 transition-colors
           ${active ? 'bg-coral-600 text-white' : 'bg-coral-100 dark:bg-coral-900/50 text-coral-600 dark:text-coral-300'}`}
         aria-hidden
       >
@@ -188,9 +188,10 @@ export default function MobileBottomNav() {
       )}
 
       <div className="flex-shrink-0 safe-bottom bg-white dark:bg-ink-900 border-t border-paper-200 dark:border-ink-800">
-        {/* Kontextzeile: Klasse-/Fach-Wechsel */}
+        {/* Kontextzeile: Klasse-/Fach-Wechsel. pb-7 schafft Platz, damit der angehobene
+            Stundenplan-Kreis darunter schwebt und die Klassen-/Fachauswahl nicht verdeckt. */}
         {zeigeKontext && (
-          <div className="flex items-stretch gap-2 px-3 pt-2">
+          <div className="flex items-stretch gap-2 px-3 pt-2 pb-7">
             {zeigeKlasse && (
               <button type="button" onClick={() => setSheet('klasse')}
                 className="flex-1 min-w-0 flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-paper-100 dark:bg-ink-800 text-ink-700 dark:text-paper-200">
