@@ -7,7 +7,7 @@ Zeichenlimits: Kurzbeschreibung ≤ 200, Beschreibung ≤ 10.000, je Produktfeat
 
 ## Kurzbeschreibung (Short description)
 
-Das digitale Notenbuch für österreichische Schulen: Noten, Zeugnisberechnung, Stunden- und Jahresplanung – komplett offline, ohne Konto und mit vollem Datenschutz.
+Das digitale Notenbuch für österreichische Schulen: LBVO-konforme Zeugnisnote, Mitarbeit & Mitarbeitsnote, Stunden- und Jahresplanung – komplett offline, ohne Konto, voller Datenschutz.
 
 ---
 
@@ -20,13 +20,21 @@ deine Daten bleiben dabei ausschließlich auf deinem Gerät.
 
 NOTEN & BEURTEILUNG
 Lege pro Fach beliebige Spalten an – Schularbeiten, Tests, individuelle Bewertungen,
-Mitarbeit und Hausübungen (erledigt / nicht erledigt / nicht gewertet). Die Mitarbeit
-erfasst du wahlweise als + / −, als Pfeile ↗ / ↘ oder auf einer vierstufigen
-Smiley-Skala (😄 🙂 🙁 😞). Daskala berechnet daraus automatisch die Semester- und
-Zeugnisnoten. Gewichtung von Schularbeiten, Tests und Co. legst du global und pro Fach
-fest; Mitarbeit und Hausübung verschieben die Note als Bonus/Malus – wie stark jeder
-Eintrag zählt, bestimmst du je Stufe selbst, mit getrennt einstellbarer Deckelung.
-Liegt eine Note genau dazwischen (z. B. 2,5), entscheidest du per Klick.
+Mitarbeit und Hausübungen (erledigt / nicht erledigt / nicht gewertet). Daraus berechnet
+Daskala fortlaufend eine einzige Zeugnisnote aus allen Aufzeichnungen des ganzen Jahres;
+am Ende des ersten Semesters ist sie ein klar gekennzeichneter Zwischenstand. Nach § 20
+LBVO zählt der zuletzt erreichte Leistungsstand stärker: Über einen einstellbaren Faktor
+gewichtest du neuere Leistungen – durchgehend übers ganze Jahr – höher.
+
+Mitarbeit erfasst du wahlweise als Bonus/Malus (+ / −, Pfeile ↗ / ↘ oder eine vierstufige
+Skala, deren Smileys 😄 🙂 🙁 😞 du durch eigene Symbole ersetzen kannst) – oder als echte
+Mitarbeitsnote (1–5) mit eigener Gewichtung, sodass auch Fächer ohne Schularbeiten eine
+belastbare Zeugnisnote bekommen. Wie stark ein Bonus/Malus-Eintrag zählt, bestimmst du je
+Stufe selbst, mit getrennt einstellbarer Deckelung (bis ± 4 Noten). Gewichtungen von
+Schularbeiten, Tests, individuellen Bewertungen und Mitarbeitsnote legst du global und pro
+Fach fest. Fehlt jede Mitarbeit, obwohl Noten vorhanden sind, weist dich ein Hinweis auf
+§ 3 LBVO hin (schriftliche Leistungen dürfen nicht die alleinige Grundlage sein). Liegt
+eine Note genau dazwischen (z. B. 2,5), entscheidest du per Klick.
 
 DIFFERENZIERTE BEURTEILUNG (AHS/ST)
 Für differenzierte Fächer führt Daskala pro Schüler:in ein Niveau (AHS/Standard) und
@@ -72,24 +80,24 @@ Daskala ist freie Software (Open Source, GPL-3.0).
 
 ## Produktfeatures (Product features)
 
-- Automatische Berechnung von Semester- und Zeugnisnoten
+- Fortlaufende Zeugnisnote aus allen Aufzeichnungen des Jahres – am Semesterende als Zwischenstand
+- Neuere Leistungen stärker gewichten (§ 20 LBVO) über einen einstellbaren Rezenz-Faktor
 - Flexible Spalten: Schularbeiten, Tests, individuelle Bewertungen
-- Mitarbeit als + / −, Pfeile ↗ / ↘ oder vierstufige Smileys – Einfluss je Stufe einstellbar; Hausübung als Bonus/Malus mit Deckelung
+- Mitarbeit als Bonus/Malus: + / −, Pfeile ↗ / ↘ oder vierstufige Smileys – Symbole frei wählbar, Einfluss je Stufe einstellbar (Deckelung bis ± 4 Noten)
+- Mitarbeitsnote: benotete Mitarbeit als echte Note (1–5) mit eigener Gewichtung – auch für Fächer ohne Schularbeiten
+- Hinweis nach § 3 LBVO, wenn schriftliche Leistungen die alleinige Grundlage wären
 - Frei einstellbare Gewichtung – global und pro Fach
 - Differenzierte Beurteilung AHS/ST mit Niveauführung pro Schüler:in
-- Schüler:innen-Profile mit Leistungsdiagramm und PDF-Export
+- Schüler:innen-Profile mit Leistungsdiagramm, Avatar und PDF-Export
 - Klassenlisten per Einzel-, Text- oder CSV-/Excel-Import
-- Persönliche Avatare, offline erzeugt
 - Stundenplan mit Drag-&-Drop, Entfall und Supplierstunden
 - Stunden im 14-tägigen oder individuellen Wochenrhythmus
 - Stundenplan-PDF im Querformat zum Aufhängen
 - Österreichische Schulferien und Feiertage je Bundesland automatisch
 - Optionale Wettervorschau im Stundenplan
 - Jahresplanung mit Abschnitten, Lernzielen, Kompetenzen und Materialien
-- Planungs-Vorlagen auf mehrere Klassen anwenden
-- KI-Unterstützung für die Jahresplanung (über einen Chatbot deiner Wahl)
-- Kompetenzraster und Sitzplan je Klasse
-- Dashboard mit To-dos und Terminen
+- Planungs-Vorlagen auf mehrere Klassen anwenden; KI-Unterstützung über einen Chatbot deiner Wahl
+- Kompetenzraster, Sitzplan und Dashboard mit To-dos & Terminen
 - Export als PDF, ODS und ODT
 - Komplett offline, ohne Konto – Daten bleiben lokal, PIN-Sperre inklusive
 
