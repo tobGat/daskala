@@ -73,7 +73,7 @@ export default function SpalteHinzufuegen({ onClose }) {
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal-box">
+      <div className="modal-box max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-5">Spalte hinzufügen</h2>
 
         {/* Kategorie-Auswahl */}
@@ -101,7 +101,7 @@ export default function SpalteHinzufuegen({ onClose }) {
         {kategorie === 'MA' && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Bewertungsskala</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {[
                 { id: 'pm', label: '+ / −' },
                 { id: 'pfeil', label: '↗ / ↘' },
