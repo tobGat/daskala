@@ -16,6 +16,17 @@ function noteKlasse(n) {
   return ''
 }
 
+// Mitarbeitsnote-Symbol → Note 1–5 (eigene Symbole via spalten.ma_symbole) oder parseInt.
+function manNoteVon(spalte, wert) {
+  if (spalte.ma_symbole) {
+    try {
+      const arr = JSON.parse(spalte.ma_symbole)
+      if (Array.isArray(arr) && arr.length === 5) { const i = arr.indexOf(wert); return i >= 0 ? i + 1 : NaN }
+    } catch { /* Zahleneingabe */ }
+  }
+  return parseInt(wert)
+}
+
 // Spiegelt core/services/notenberechnung.js:gewichteterSchnitt (§ 20 LBVO), damit die
 // Tooltip-Vorschau exakt der berechneten Note entspricht. werte = [{ n, datum, semester, reihenfolge }].
 function gewichteterSchnitt(werte, faktor) {
@@ -113,7 +124,7 @@ function useZNBreakdown(schuelerId, spalten, eintraege, einstellungen, aktivesFa
         const n = parseInt(wert)
         if (!isNaN(n) && n >= 1 && n <= 5) { basis.CUSTOM.werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge }); basis.CUSTOM.eingaben.push(n) }
       } else if (spalte.kategorie === 'MAN') {
-        const n = parseInt(wert)
+        const n = manNoteVon(spalte, wert)
         if (n >= 1 && n <= 5) { basis.MAN.werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge }); basis.MAN.eingaben.push(n) }
       }
     }

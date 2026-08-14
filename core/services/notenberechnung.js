@@ -60,6 +60,28 @@ function maSymboleVon(spalte) {
   return MA_SMILEYS_DEFAULT
 }
 
+// Eigene 5 Symbole einer Mitarbeitsnote-Spalte (MAN) für die Noten 1…5, oder null
+// (dann normale Zahleneingabe 1–5). ma_symbole als JSON-Array [Note1, …, Note5].
+function manSymboleVon(spalte) {
+  if (spalte.ma_symbole) {
+    try {
+      const arr = JSON.parse(spalte.ma_symbole)
+      if (Array.isArray(arr) && arr.length === 5) return arr
+    } catch { /* keine eigenen Symbole */ }
+  }
+  return null
+}
+
+// Note (1–5) eines MAN-Eintrags: eigenes Symbol → Position+1, sonst parseInt. NaN = ungültig.
+function manNoteVon(spalte, wert) {
+  const syms = manSymboleVon(spalte)
+  if (syms) {
+    const idx = syms.indexOf(wert)
+    return idx >= 0 ? idx + 1 : NaN
+  }
+  return parseInt(wert)
+}
+
 // Bewertung eines MA-Eintrags: { w: vorzeichenbehaftetes Gewicht in Notenpunkten,
 // dir: Richtung ±1 (für die grobe Fallback-Note) }. null = kein gültiger Eintrag.
 function maBewertung(spalte, wert, g) {
@@ -183,8 +205,8 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
       const n = parseInt(wert)
       if (!isNaN(n) && n <= 5 && n >= 1) basisWerte.CUSTOM.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge })
     } else if (spalte.kategorie === 'MAN') {
-      // Benotete Mitarbeit: echte Note 1–5, niveau-fähig wie SA/T/Individuell.
-      const n = parseInt(wert)
+      // Benotete Mitarbeit: echte Note 1–5 (ggf. über eigene Symbole), niveau-fähig wie SA/T.
+      const n = manNoteVon(spalte, wert)
       if (n >= 1 && n <= 5) basisWerte.MAN.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge })
     }
   }

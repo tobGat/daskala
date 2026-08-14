@@ -70,3 +70,23 @@ test('Rezenz-Gewichtung wirkt auch auf Mitarbeitsnoten', async () => {
   assert.strictEqual(await note(sp), 3.0)                                  // Faktor 1 = Mittel
   assert.strictEqual(await note(sp, { einstellungen: { rezenz_faktor: 2 } }), 2.8) // neueste doppelt
 })
+
+test('Mitarbeitsnote mit eigenen Symbolen: Position = Note 1…5', async () => {
+  const db = new Database(':memory:')
+  applySchema(db, { logError: () => {} })
+  const sjId = db.prepare("INSERT INTO schuljahre (bezeichnung) VALUES ('T')").run().lastInsertRowid
+  const kId = db.prepare('INSERT INTO klassen (schuljahr_id, name) VALUES (?, ?)').run(sjId, '1A').lastInsertRowid
+  const fId = db.prepare('INSERT INTO faecher (klasse_id, name) VALUES (?, ?)').run(kId, 'M').lastInsertRowid
+  const sId = db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname) VALUES (?, ?, ?)').run(kId, 'A', 'B').lastInsertRowid
+  const symbole = JSON.stringify(['A', 'B', 'C', 'D', 'E']) // A=1 … E=5
+  const add = (wert) => {
+    const spId = db.prepare("INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, ma_symbole) VALUES (?, 1, 'MAN', 'MA', ?)").run(fId, symbole).lastInsertRowid
+    db.prepare('INSERT INTO eintraege (spalte_id, schueler_id, wert) VALUES (?, ?, ?)').run(spId, sId, wert)
+  }
+  add('B')  // Position 2 → Note 2
+  add('D')  // Position 4 → Note 4
+  const port = createDbAdapter(() => db)
+  const { note } = await noten.berechneZeugnisnote(port, fId, sId)
+  db.close()
+  assert.strictEqual(note, 3.0) // (2 + 4) / 2
+})

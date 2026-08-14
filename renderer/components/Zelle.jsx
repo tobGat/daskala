@@ -25,6 +25,17 @@ function maSymboleVon(spalte) {
   return MA_SMILEYS
 }
 
+// Eigene 5 Symbole einer Mitarbeitsnote (MAN) für die Noten 1…5, oder null (normale Zahleneingabe).
+function manSymboleVon(spalte) {
+  if (spalte?.ma_symbole) {
+    try {
+      const arr = JSON.parse(spalte.ma_symbole)
+      if (Array.isArray(arr) && arr.length === 5) return arr
+    } catch { /* Zahleneingabe */ }
+  }
+  return null
+}
+
 function naechsterWert(cycle, aktuell) {
   const idx = cycle.indexOf(aktuell)
   return cycle[(idx + 1) % cycle.length]
@@ -74,8 +85,8 @@ function ZahlenPopup({ wert, onSelect, onClose, anchorRef }) {
   )
 }
 
-// ─── Symbol-Popup für 4-stufige Mitarbeit (Smileys oder eigene Symbole) ────────
-function SmileyPopup({ wert, onSelect, onClose, anchorRef, symbole = MA_SMILEYS }) {
+// ─── Symbol-Popup für 4-stufige Mitarbeit bzw. Mitarbeitsnote (eigene Symbole) ────
+function SmileyPopup({ wert, onSelect, onClose, anchorRef, symbole = MA_SMILEYS, titel }) {
   const popupRef = useRef(null)
   useEffect(() => {
     const handler = (e) => {
@@ -99,7 +110,7 @@ function SmileyPopup({ wert, onSelect, onClose, anchorRef, symbole = MA_SMILEYS 
           key={i}
           className={`min-w-[2rem] h-8 px-1 rounded text-base leading-none transition-colors
             ${wert === sm ? 'bg-coral-600' : 'hover:bg-paper-100 dark:hover:bg-ink-700'}`}
-          title={MA_SMILEY_TITEL[sm] ?? MA_STUFEN_TITEL[i]}
+          title={titel ? titel(sm, i) : (MA_SMILEY_TITEL[sm] ?? MA_STUFEN_TITEL[i])}
           onClick={() => onSelect(sm)}
         >
           {sm}
@@ -144,6 +155,9 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
     : null
 
   const istMaVier = spalte.kategorie === 'MA' && spalte.ma_stufen === 4
+  // Mitarbeitsnote mit eigenen Symbolen (5 Stück für Note 1…5) statt Zahleneingabe.
+  const manSymbole = spalte.kategorie === 'MAN' ? manSymboleVon(spalte) : null
+  const istManSymbol = !!manSymbole
 
   const handleClick = () => {
     if (spalte.kategorie === 'MA') {
@@ -185,6 +199,9 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
     if (wert === '✓') anzeigeKlasse = 'zelle-haken'
     else if (wert === '✗') anzeigeKlasse = 'zelle-kreuz'
     else if (wert === '—') anzeigeKlasse = 'zelle-strich'
+  } else if (istManSymbol) {
+    // Mitarbeitsnote mit eigenem Symbol: anzeigen + Farbe nach Note (Position+1).
+    if (wert) { anzeigeText = wert; anzeigeKlasse = noteKlasse(manSymbole.indexOf(wert) + 1) }
   } else if (wert) {
     anzeigeKlasse = noteKlasse(wert)
   }
@@ -214,6 +231,15 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
           <SmileyPopup
             wert={wert}
             symbole={maSymboleVon(spalte)}
+            onSelect={handleZahlSelect}
+            onClose={() => setPopupOffen(false)}
+            anchorRef={cellRef}
+          />
+        ) : istManSymbol ? (
+          <SmileyPopup
+            wert={wert}
+            symbole={manSymbole}
+            titel={(sm, i) => `Note ${i + 1}`}
             onSelect={handleZahlSelect}
             onClose={() => setPopupOffen(false)}
             anchorRef={cellRef}
