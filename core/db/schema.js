@@ -8,7 +8,7 @@
 
 // Aktuelle Schema-Version. Erhoehen bei neuer EINMALIGER Migration (Daten-Umbau/Rebuild);
 // reine Spalten-Ergaenzungen laufen idempotent ueber spalteErgaenzen().
-const SCHEMA_VERSION = 2
+const SCHEMA_VERSION = 3
 
 // ─── Schema als Daten (Portierung Phase 2.3) ─────────────────────────────────
 //
@@ -1169,6 +1169,16 @@ function applySchema(db, deps) {
       db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${t}_uuid ON ${t} (uuid)`).run()
     }
   } catch (e) { deps.logError('migration:uuid-index', e) }
+
+  if (schemaVersion < 3) {
+    // Umstieg auf EINE durchgehende Jahresnote (Slot semester=3). Die getrennten
+    // Semesternoten (Slots 1 & 2) entfallen; ihre Zwischenwerte werden entfernt.
+    // Slot 3 (inkl. manueller Zeugnisnote) bleibt und wird beim ersten Update-Start
+    // einmalig neu berechnet (siehe App.jsx-Recompute-Hook).
+    try {
+      db.prepare('DELETE FROM zeugnisnoten WHERE semester IN (1, 2)').run()
+    } catch (e) { deps.logError('migration:zeugnisnoten-einzelnote', e) }
+  }
 
   // Alle einmaligen Migrationen dieser Version sind durchlaufen → Schema-Version festschreiben.
   if (schemaVersion < SCHEMA_VERSION) db.pragma(`user_version = ${SCHEMA_VERSION}`)

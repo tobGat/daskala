@@ -323,9 +323,7 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
   const huePos = hueEintr.filter(e => e.wert === '✓').length
   const hueNeg = hueEintr.filter(e => e.wert === '✗').length
 
-  // Zeugnisnoten (differenzierte Fächer speichern intern 1–7 → auf aktuelles Niveau umrechnen)
-  const znS1 = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 1)
-  const znS2 = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 2)
+  // Eine durchgehende Zeugnisnote (Slot 3); differenzierte Fächer speichern intern 1–7.
   const znEN = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 3)
   const znOffset = istDifferenziert ? niveauOffset(aktNiveau) : 0
   const anzeige = (zn) => znAnzeige(zn, znOffset)
@@ -358,13 +356,11 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
         <h3 className="text-lg font-bold text-ink-900 dark:text-paper-100 font-display">{fach.name}</h3>
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           {[
-            { label: 'SN 1', zn: znS1, highlight: false },
-            { label: 'SN 2', zn: znS2, highlight: false },
-            { label: 'ZN',   zn: znEN, highlight: true  },
+            { label: 'ZN', zn: znEN, highlight: true },
           ].map(({ label, zn, highlight }) => {
             const note = anzeige(zn)
             return (
-              <div key={label} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl ${highlight ? 'bg-coral-50 dark:bg-coral-900/30 border border-coral-200 dark:border-coral-800/60' : 'bg-paper-100 dark:bg-ink-800'}`}>
+              <div key={label} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl ${highlight ? 'bg-coral-50 dark:bg-coral-900/30 border border-coral-200 dark:border-coral-800/60' : 'bg-paper-100 dark:bg-ink-800'}`} title="Zeugnisnote – laufender Stand aus allen Aufzeichnungen des Jahres">
                 <span className={`text-[10px] font-bold ${highlight ? 'text-coral-700 dark:text-coral-300' : 'text-ink-500'}`}>{label}</span>
                 {note != null ? (
                   <span className="text-base font-bold tabular-nums" style={{ color: noteZuFarbe(note) }}>
@@ -677,11 +673,9 @@ export default function SchuelerDetail() {
                   )}
                   {profil.faecher.map(fach => {
                     const znEN = profil.zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 3)
-                    const znS2 = profil.zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 2)
-                    const znS1 = profil.zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 1)
                     // Differenzierte Fächer speichern intern (1–7) → auf aktuelles Niveau umrechnen.
                     const off = fach.benotungssystem === 'differenziert' ? niveauOffset(profil.niveaus?.[fach.id] ?? 'AHS') : 0
-                    const nEN = znAnzeige(znEN, off), nS2 = znAnzeige(znS2, off), nS1 = znAnzeige(znS1, off)
+                    const nEN = znAnzeige(znEN, off)
                     const selected = !kvAktiv && selectedFachId === fach.id
                     return (
                       <button
@@ -703,7 +697,7 @@ export default function SchuelerDetail() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2.5 pl-4">
-                          {[['SN 1', nS1], ['SN 2', nS2], ['ZN', nEN]].map(([label, n]) => (
+                          {[['ZN', nEN]].map(([label, n]) => (
                             <span key={label} className="inline-flex items-center gap-1">
                               <span className="text-[9px] font-medium text-ink-400 dark:text-ink-500">{label}</span>
                               <span

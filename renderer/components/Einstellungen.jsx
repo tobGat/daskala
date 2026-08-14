@@ -168,7 +168,6 @@ export default function Einstellungen({ onClose }) {
     vneg: einstellungen['ma_w_smiley_vneg'] ?? '0.1',
   })
   const [semester2Monat, setSemester2Monat] = useState(einstellungen['semester2_monat'] ?? '2')
-  const [s1Gewichtung, setS1Gewichtung] = useState(Math.round((parseFloat(einstellungen['s1_gewichtung'] ?? '0.5')) * 100))
   // Rezenz-Faktor (§ 20 LBVO): neuere Leistungen je Kategorie stärker gewichten. 1.0 = aus.
   const [rezenzFaktor, setRezenzFaktor] = useState(parseFloat(einstellungen['rezenz_faktor'] ?? '1'))
   // Mitarbeit-Warnung (§ 3 LBVO): Default an, nur bei explizitem '0' aus.
@@ -434,12 +433,11 @@ export default function Einstellungen({ onClose }) {
       await window.api.einstellungen.set('ma_w_smiley_neg', maGew.neg)
       await window.api.einstellungen.set('ma_w_smiley_vneg', maGew.vneg)
       await window.api.einstellungen.set('semester2_monat', semester2Monat)
-      await window.api.einstellungen.set('s1_gewichtung', String(s1Gewichtung / 100))
       await window.api.einstellungen.set('rezenz_faktor', String(rezenzFaktor))
       await window.api.einstellungen.set('bundesland', bundesland)
       await window.api.einstellungen.set('planung_aktiv', planungAktiv ? '1' : '0')
 
-      // Notenrelevante Einstellungen (MA+/-, s1_gewichtung) wirken sich auf gespeicherte ZN aus
+      // Notenrelevante Einstellungen (MA+/-, Rezenz, Kategorie-Gewichtung) wirken sich auf gespeicherte ZN aus
       // → alle Zeugnisnoten im aktuellen Schuljahr neu berechnen
       await window.api.zeugnisnoten.rechneAllesNeu()
 
@@ -614,35 +612,6 @@ export default function Einstellungen({ onClose }) {
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* Zeugnisnote */}
-              <div>
-                <h4 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Zeugnisnote</h4>
-                <p className="text-xs text-ink-400 dark:text-ink-500 mb-3">
-                  Gewichtung der SN 1 in der Zeugnisnote (ZN).
-                  50% = SN 1 und SN 2 gleichwertig. Ist nur SN 1 vorhanden, wird SN 1 direkt als Zeugnisnote übernommen.
-                </p>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-ink-600 dark:text-ink-400 w-24">SN 1-Gewichtung</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="5"
-                    className="flex-1"
-                    value={s1Gewichtung}
-                    onChange={e => setS1Gewichtung(parseInt(e.target.value))}
-                  />
-                  <span className="text-sm font-medium w-10 text-right text-ink-900 dark:text-white">
-                    {s1Gewichtung}%
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs text-ink-400 mt-1">
-                  <span>nur SN 2</span>
-                  <span>SN 2 {100 - s1Gewichtung}% + SN 1 {s1Gewichtung}%</span>
-                  <span>nur SN 1</span>
-                </div>
               </div>
 
               {/* Rezenz-Gewichtung (§ 20 LBVO) */}

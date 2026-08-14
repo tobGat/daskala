@@ -17,7 +17,7 @@ function noteKlasse(n) {
 }
 
 // Spiegelt core/services/notenberechnung.js:gewichteterSchnitt (§ 20 LBVO), damit die
-// Tooltip-Vorschau exakt der berechneten Note entspricht. werte = [{ n, datum, reihenfolge }].
+// Tooltip-Vorschau exakt der berechneten Note entspricht. werte = [{ n, datum, semester, reihenfolge }].
 function gewichteterSchnitt(werte, faktor) {
   const m = werte.length
   if (m === 0) return 0
@@ -26,6 +26,7 @@ function gewichteterSchnitt(werte, faktor) {
   const sortiert = [...werte].sort((a, b) => {
     const da = a.datum || '', db2 = b.datum || ''
     if (da !== db2) return da < db2 ? -1 : 1
+    if ((a.semester ?? 0) !== (b.semester ?? 0)) return (a.semester ?? 0) - (b.semester ?? 0)
     return (a.reihenfolge ?? 0) - (b.reihenfolge ?? 0)
   })
   let summe = 0, gew = 0
@@ -59,10 +60,10 @@ function TooltipPortal({ anchorRef, children }) {
   )
 }
 
-function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus) {
+function useZNBreakdown(schuelerId, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus) {
   return useMemo(() => {
-    if (semester === 3) return null
-    const fachSpalten = spalten.filter(s => s.semester === semester)
+    // Die eine durchgehende Note läuft über ALLE Aufzeichnungen beider Semester.
+    const fachSpalten = spalten
     if (!fachSpalten.length) return null
 
     const istDifferenziert = aktivesFach?.benotungssystem === 'differenziert'
@@ -107,13 +108,13 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
         // '—' = "nicht gewertet / entfällt": bewusst ohne Noteneinfluss, zählt nicht mit.
       } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
         const n = parseInt(wert)
-        if (n >= 1 && n <= 5) { basis[spalte.kategorie].werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, reihenfolge: spalte.reihenfolge }); basis[spalte.kategorie].eingaben.push(n) }
+        if (n >= 1 && n <= 5) { basis[spalte.kategorie].werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge }); basis[spalte.kategorie].eingaben.push(n) }
       } else if (spalte.kategorie === 'CUSTOM') {
         const n = parseInt(wert)
-        if (!isNaN(n) && n >= 1 && n <= 5) { basis.CUSTOM.werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, reihenfolge: spalte.reihenfolge }); basis.CUSTOM.eingaben.push(n) }
+        if (!isNaN(n) && n >= 1 && n <= 5) { basis.CUSTOM.werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge }); basis.CUSTOM.eingaben.push(n) }
       } else if (spalte.kategorie === 'MAN') {
         const n = parseInt(wert)
-        if (n >= 1 && n <= 5) { basis.MAN.werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, reihenfolge: spalte.reihenfolge }); basis.MAN.eingaben.push(n) }
+        if (n >= 1 && n <= 5) { basis.MAN.werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge }); basis.MAN.eingaben.push(n) }
       }
     }
 
@@ -147,10 +148,10 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
       hatMAHUE, einflussPunkte,
       hatMAN: basis.MAN.werte.length > 0,
     }
-  }, [semester, schuelerId, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus])
+  }, [schuelerId, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus])
 }
 
-export default function ZeugnisnoteZelle({ schueler, semester }) {
+export default function ZeugnisnoteZelle({ schueler }) {
   const {
     zeugnisnoten, aktivesFach, refreshZeugnisnoten,
     einstellungen, spalten, eintraege, gewichtungGlobal,
@@ -177,7 +178,8 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
   const [hovered, setHovered] = useState(false)
   const cellRef = useRef(null)
 
-  const key = `${schueler.id}_${semester}`
+  // Die eine durchgehende Note (laufender Jahresstand) – Slot 3.
+  const key = `${schueler.id}_3`
   const zn = zeugnisnoten[key]
   const noteBerechnet = zn?.note_berechnet          // intern 1-7 bei differenziert
   const noteManuell   = zn?.note_manuell            // intern 1-7 bei differenziert
@@ -186,17 +188,6 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
   // Angezeigte Werte (auf aktuellem Niveau)
   const noteBerechnetAnzeige = noteBerechnet != null ? noteBerechnet - offset : null
   const noteManuellAnzeige = istManuell ? internZuAnzeige(noteManuell) : null
-
-  const s1Zn = zeugnisnoten[`${schueler.id}_1`]
-  const s2Zn = zeugnisnoten[`${schueler.id}_2`]
-  // S1/S2-Werte für die Endnote-Anzeige im Tooltip: aufs aktuelle Niveau gemappt
-  const s1NoteExakt   = s1Zn?.note_manuell ?? s1Zn?.note_berechnet ?? null
-  const s2NoteExakt   = s2Zn?.note_manuell ?? s2Zn?.note_berechnet ?? null
-  const s1NoteExaktAnz = s1NoteExakt != null ? s1NoteExakt - offset : null
-  const s2NoteExaktAnz = s2NoteExakt != null ? s2NoteExakt - offset : null
-  const s1NoteAnzeige = s1Zn?.note_manuell != null ? internZuAnzeige(s1Zn.note_manuell) : (s1Zn?.note_berechnet != null ? Math.max(1, Math.min(5, Math.round(s1Zn.note_berechnet - offset))) : null)
-  const s2NoteAnzeige = s2Zn?.note_manuell != null ? internZuAnzeige(s2Zn.note_manuell) : (s2Zn?.note_berechnet != null ? Math.max(1, Math.min(5, Math.round(s2Zn.note_berechnet - offset))) : null)
-  const s1Gewichtung  = parseFloat(einstellungen?.s1_gewichtung ?? '0.5')
 
   // Endgültig in der Zelle angezeigte (sichtbare) Note: gerundet & gedeckelt 1-5
   const anzeigeNote = istManuell
@@ -211,7 +202,7 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
   const tieSchlechter = istTie ? Math.min(5, Math.ceil(rohAnzeige)) : null
   const tieLabel = istTie ? rohAnzeige.toFixed(1).replace('.', ',') : null
 
-  const znBreakdown = useZNBreakdown(semester, schueler.id, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus)
+  const znBreakdown = useZNBreakdown(schueler.id, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus)
 
   // § 3 LBVO: schriftliche Leistungen dürfen nicht alleinige Beurteilungsgrundlage sein.
   // Warnung, wenn SA/T/Ind. vorhanden, aber keinerlei Mitarbeit/Hausübung erfasst wurde.
@@ -227,10 +218,10 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
   const handleManuellSelect = async (note) => {
     if (!aktivesFach) return
     if (note === '') {
-      await window.api.zeugnisnoten.setManuell(aktivesFach.id, schueler.id, semester, null)
+      await window.api.zeugnisnoten.setManuell(aktivesFach.id, schueler.id, null)
     } else {
       const intern = parseInt(note) + offset
-      await window.api.zeugnisnoten.setManuell(aktivesFach.id, schueler.id, semester, intern)
+      await window.api.zeugnisnoten.setManuell(aktivesFach.id, schueler.id, intern)
     }
     await refreshZeugnisnoten()
     setManuellPopup(false)
@@ -238,68 +229,18 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
 
   const handleReset = async () => {
     if (!aktivesFach) return
-    await window.api.zeugnisnoten.clearManuell(aktivesFach.id, schueler.id, semester)
+    await window.api.zeugnisnoten.clearManuell(aktivesFach.id, schueler.id)
     await refreshZeugnisnoten()
     setContextMenu(null)
   }
 
   // ── Tooltip-Inhalt ─────────────────────────────────────────────────────────
-  const tooltipContent = semester === 3 ? (
-    // Zeugnisnote (Jahresnote)
-    <div className="bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg shadow-2xl p-3 text-xs">
-      <p className="font-semibold text-ink-700 dark:text-paper-200 mb-2.5">Zeugnisnote – Berechnung</p>
-
-      {/* SN 1 / SN 2 Zeilen — angezeigte Werte sind aufs aktuelle Niveau gemappt */}
-      <div className="space-y-1 mb-2.5">
-        {[{ label: 'SN 1', exakt: s1NoteExaktAnz, anzeige: s1NoteAnzeige, manuell: s1Zn?.note_manuell != null },
-          { label: 'SN 2', exakt: s2NoteExaktAnz, anzeige: s2NoteAnzeige, manuell: s2Zn?.note_manuell != null }
-        ].map(({ label, exakt, anzeige, manuell }) => (
-          <div key={label} className="flex items-center justify-between gap-3">
-            <span className="text-ink-500 dark:text-ink-400">
-              {label}{manuell ? <span className="ml-1 text-yellow-500">M</span> : null}
-            </span>
-            <span className={`font-medium tabular-nums ${anzeige ? noteKlasse(anzeige) : 'text-ink-400'}`}>
-              {exakt != null ? exakt.toFixed(2) : '–'}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Formel */}
-      <div className="border-t border-paper-100 dark:border-ink-700 pt-2 mb-2.5">
-        {s1NoteExaktAnz != null && s2NoteExaktAnz != null ? (
-          <p className="font-mono text-[10px] text-ink-400 dark:text-ink-500 leading-relaxed">
-            {s1NoteExaktAnz.toFixed(2)} × {Math.round(s1Gewichtung * 100)}%
-            {' + '}
-            {s2NoteExaktAnz.toFixed(2)} × {Math.round((1 - s1Gewichtung) * 100)}%
-          </p>
-        ) : s1NoteExaktAnz != null ? (
-          <p className="text-[10px] text-ink-400">Nur SN 1 vorhanden → direkt übernommen</p>
-        ) : s2NoteExaktAnz != null ? (
-          <p className="text-[10px] text-ink-400">Nur SN 2 vorhanden → direkt übernommen</p>
-        ) : (
-          <p className="text-[10px] text-ink-400">Keine Semesternoten vorhanden</p>
-        )}
-      </div>
-
-      {/* Ergebnis */}
-      <div className="border-t border-paper-100 dark:border-ink-700 pt-2 flex items-center justify-between gap-3">
-        <span className="font-semibold text-ink-700 dark:text-paper-200">
-          Zeugnisnote{isDifferenziert && <span className="text-ink-400 ml-1 font-normal">({niveau})</span>}{istManuell ? <span className="text-yellow-500 ml-1 font-normal">(manuell)</span> : null}
-        </span>
-        <span className="tabular-nums">
-          {noteBerechnetAnzeige != null
-            ? <span className={`font-bold ${anzeigeNote ? noteKlasse(anzeigeNote) : ''}`}>{noteBerechnetAnzeige.toFixed(2)}</span>
-            : <span className="text-ink-400">–</span>}
-          {istManuell && <span className="text-yellow-500 font-bold ml-1.5">→ {noteManuellAnzeige}</span>}
-        </span>
-      </div>
-    </div>
-  ) : (
-    // ZN S1 / S2 – Basisnote (SA/Test/Individuell) + Einfluss von Mitarbeit/Hausübung
+  // Eine durchgehende Note: Basis (SA/Test/Individuell/MA-Note, rezenz-gewichtet übers
+  // ganze Jahr) + Einfluss von Mitarbeit/Hausübung.
+  const tooltipContent = (
     <div className="bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg shadow-2xl p-3 text-xs">
       <p className="font-semibold text-ink-700 dark:text-paper-200 mb-2.5">
-        ZN Semester {semester} – Berechnung{isDifferenziert && <span className="text-ink-400 font-normal ml-1">({niveau})</span>}
+        Zeugnisnote <span className="text-ink-400 font-normal">(laufender Stand)</span>{isDifferenziert && <span className="text-ink-400 font-normal ml-1">({niveau})</span>}
       </p>
 
       {znBreakdown && (znBreakdown.hatBasis || znBreakdown.hatMAHUE) ? (
@@ -383,19 +324,14 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
   // Bei differenziert: Niveau-Hintergrund nutzt das AKTUELLE Niveau (ZN ist Aggregat → "jetzt"-Sicht)
   const niveauKlasse = isDifferenziert && !istManuell ? niveauBgKlasse(niveau) : ''
 
-  // EN (semester=3) ist sticky-right, damit sie beim horizontalen Scrollen sichtbar bleibt.
+  // Die ZN-Spalte ist sticky-right, damit sie beim horizontalen Scrollen sichtbar bleibt.
   // Eigener BG ist nötig, damit beim Vorbeiscrollen keine Inhalte durchscheinen.
-  const istEN = semester === 3
-  const tdClassName = istEN
-    ? 'p-0 relative bg-white dark:bg-ink-900 border-l-2 border-coral-300 dark:border-coral-700/60'
-    : 'p-0 relative'
-  const tdStyle = istEN
-    ? {
-        width: 46, minWidth: 46,
-        position: 'sticky', right: 0, zIndex: 4,
-        boxShadow: '-3px 0 8px -2px rgba(46, 42, 38, 0.08)',
-      }
-    : { width: 46, minWidth: 46 }
+  const tdClassName = 'p-0 relative bg-white dark:bg-ink-900 border-l-2 border-coral-300 dark:border-coral-700/60'
+  const tdStyle = {
+    width: 46, minWidth: 46,
+    position: 'sticky', right: 0, zIndex: 4,
+    boxShadow: '-3px 0 8px -2px rgba(46, 42, 38, 0.08)',
+  }
 
   return (
     <td className={tdClassName} style={tdStyle}>
@@ -455,7 +391,7 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
           <div className="fixed bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg shadow-xl p-2"
             style={{ left, top, zIndex: 9999, minWidth: 140, width: popupW }}>
             <p className="text-xs text-ink-500 dark:text-ink-400 mb-2 px-1">
-              {semester === 3 ? 'Zeugnisnote' : `Semesternote ${semester}`}
+              Zeugnisnote
             </p>
             {noteBerechnetAnzeige != null && (
               <p className="text-xs text-ink-400 mb-2 px-1">
