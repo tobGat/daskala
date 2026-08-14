@@ -554,12 +554,12 @@ export default function Einstellungen({ onClose }) {
                     ['Hausübung', hueEinfluss, setHueEinfluss],
                   ].map(([label, wert, setter]) => (
                     <div key={label}>
-                      <label className="block text-xs text-ink-500 mb-1">{label} – max. Verschiebung</label>
+                      <label className="block text-xs text-ink-500 mb-1">{label} – max. Verschiebung (Noten)</label>
                       <div className="flex items-center gap-3">
                         <input
                           type="range"
                           min="0"
-                          max="1.5"
+                          max="4"
                           step="0.05"
                           className="flex-1"
                           value={wert}
@@ -573,7 +573,7 @@ export default function Einstellungen({ onClose }) {
                   ))}
                 </div>
                 <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1">
-                  0 = kein Einfluss · 0,5 = empfohlen · höhere Werte wirken stärker
+                  0 = kein Einfluss · 0,5 = empfohlen · bis zu ± 4 Noten möglich (stärkerer Einfluss)
                 </p>
 
                 {/* Erweitert: Einfluss je Mitarbeits-Stufe */}

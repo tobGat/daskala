@@ -819,7 +819,7 @@ export function GewichtungModal() {
               <div key={label} className="flex items-center gap-3">
                 <span className="text-sm text-ink-600 dark:text-ink-400 w-28">{label}</span>
                 <input
-                  type="range" min="0" max="1.5" step="0.05"
+                  type="range" min="0" max="4" step="0.05"
                   className="flex-1"
                   value={wert}
                   onChange={e => setter(e.target.value)}
@@ -831,7 +831,7 @@ export function GewichtungModal() {
             ))}
           </div>
           <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1.5">
-            0 = kein Einfluss · 0,5 = Standard · höhere Werte wirken stärker
+            0 = kein Einfluss · 0,5 = Standard · bis zu ± 4 Noten möglich
           </p>
         </div>
 
