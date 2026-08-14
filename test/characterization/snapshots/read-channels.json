@@ -664,6 +664,7 @@
       "notiz": null,
       "ma_stufen": 2,
       "ma_symbol": "pm",
+      "ma_symbole": null,
       "uuid": null
     },
     {
@@ -678,6 +679,7 @@
       "notiz": null,
       "ma_stufen": 2,
       "ma_symbol": "pm",
+      "ma_symbole": null,
       "uuid": null
     }
   ],

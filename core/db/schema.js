@@ -95,6 +95,7 @@ const TABLE_DDL = [
       notiz TEXT,
       ma_stufen INTEGER DEFAULT 2,
       ma_symbol TEXT DEFAULT 'pm',
+      ma_symbole TEXT,
       uuid TEXT,
       FOREIGN KEY (fach_id) REFERENCES faecher(id)
     )`,
@@ -643,6 +644,9 @@ function applySchema(db, deps) {
   // Symboldarstellung der 2-stufigen Mitarbeit: 'pm' = + / −, 'pfeil' = ↗ / ↘.
   // Rein optisch – gespeichert werden weiterhin '+' / '−', die Bewertung ist identisch.
   spalteErgaenzen('spalten', 'ma_symbol', "TEXT DEFAULT 'pm'")
+  // Eigene Symbole der 4-stufigen Mitarbeit (JSON-Array [sehr+, +, −, sehr−]).
+  // NULL = Default-Smileys 😄🙂🙁😞. Wertung positionsbasiert wie bei den Smileys.
+  spalteErgaenzen('spalten', 'ma_symbole', 'TEXT')
   spalteErgaenzen('eintraege', 'kommentar', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_text', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_frist_datum', 'TEXT')

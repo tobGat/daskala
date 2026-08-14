@@ -11,6 +11,19 @@ const HUE_CYCLE = ['✓', '✗', '—', '']
 // 4-stufige Mitarbeit: sehr fröhlich … sehr traurig (Gewichte in notenberechnung.js).
 const MA_SMILEYS = ['😄', '🙂', '🙁', '😞']
 const MA_SMILEY_TITEL = { '😄': 'sehr fröhlich (+0,1)', '🙂': 'mäßig fröhlich (+0,05)', '🙁': 'mäßig traurig (−0,05)', '😞': 'sehr traurig (−0,1)' }
+// Stufen-Labels für eigene Symbole (Reihenfolge sehr+ … sehr−).
+const MA_STUFEN_TITEL = ['sehr positiv (+0,1)', 'positiv (+0,05)', 'negativ (−0,05)', 'sehr negativ (−0,1)']
+
+// Symbolliste einer 4-stufigen MA-Spalte: eigene Symbole (spalten.ma_symbole als JSON) oder Default-Smileys.
+function maSymboleVon(spalte) {
+  if (spalte?.ma_symbole) {
+    try {
+      const arr = JSON.parse(spalte.ma_symbole)
+      if (Array.isArray(arr) && arr.length === 4) return arr
+    } catch { /* Default */ }
+  }
+  return MA_SMILEYS
+}
 
 function naechsterWert(cycle, aktuell) {
   const idx = cycle.indexOf(aktuell)
@@ -61,8 +74,8 @@ function ZahlenPopup({ wert, onSelect, onClose, anchorRef }) {
   )
 }
 
-// ─── Smiley-Popup für 4-stufige Mitarbeit ─────────────────────────────────────
-function SmileyPopup({ wert, onSelect, onClose, anchorRef }) {
+// ─── Symbol-Popup für 4-stufige Mitarbeit (Smileys oder eigene Symbole) ────────
+function SmileyPopup({ wert, onSelect, onClose, anchorRef, symbole = MA_SMILEYS }) {
   const popupRef = useRef(null)
   useEffect(() => {
     const handler = (e) => {
@@ -81,12 +94,12 @@ function SmileyPopup({ wert, onSelect, onClose, anchorRef }) {
       className="absolute z-50 bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg shadow-xl p-1 flex gap-1"
       style={{ top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 2 }}
     >
-      {MA_SMILEYS.map(sm => (
+      {symbole.map((sm, i) => (
         <button
-          key={sm}
-          className={`w-8 h-8 rounded text-lg leading-none transition-colors
+          key={i}
+          className={`min-w-[2rem] h-8 px-1 rounded text-base leading-none transition-colors
             ${wert === sm ? 'bg-coral-600' : 'hover:bg-paper-100 dark:hover:bg-ink-700'}`}
-          title={MA_SMILEY_TITEL[sm]}
+          title={MA_SMILEY_TITEL[sm] ?? MA_STUFEN_TITEL[i]}
           onClick={() => onSelect(sm)}
         >
           {sm}
@@ -156,7 +169,12 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
 
   if (spalte.kategorie === 'MA') {
     if (istMaVier) {
-      if (wert) { anzeigeText = wert; anzeigeKlasse = (wert === '😄' || wert === '🙂') ? 'zelle-plus' : 'zelle-minus' }
+      if (wert) {
+        anzeigeText = wert
+        // Farbe positionsbasiert: Stufe 0/1 positiv, 2/3 negativ (unabhängig vom Symbol).
+        const idx = maSymboleVon(spalte).indexOf(wert)
+        anzeigeKlasse = (idx === 0 || idx === 1) ? 'zelle-plus' : (idx === 2 || idx === 3) ? 'zelle-minus' : ''
+      }
     } else {
       // Pfeil-Darstellung ist rein optisch – gespeichert bleibt +/−.
       const pfeil = spalte.ma_symbol === 'pfeil'
@@ -195,6 +213,7 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
         ? (
           <SmileyPopup
             wert={wert}
+            symbole={maSymboleVon(spalte)}
             onSelect={handleZahlSelect}
             onClose={() => setPopupOffen(false)}
             anchorRef={cellRef}

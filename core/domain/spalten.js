@@ -12,10 +12,15 @@ async function getAll(db, fachId) {
 
 async function create(db, data) {
   const maxReihenfolge = (await db.selectOne('SELECT MAX(reihenfolge) as m FROM spalten WHERE fach_id = ? AND semester = ?', [data.fachId, data.semester]))?.m ?? 0
+  // Eigene 4-stufige Symbole nur speichern, wenn es ein gültiges 4er-Array ist.
+  let maSymbole = null
+  if (data.maStufen === 4 && Array.isArray(data.maSymbole) && data.maSymbole.length === 4) {
+    maSymbole = JSON.stringify(data.maSymbole.map((s) => String(s)))
+  }
   const info = await db.execute(`
-      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen, ma_symbol, uuid)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, data.maStufen === 4 ? 4 : 2, data.maSymbol === 'pfeil' ? 'pfeil' : 'pm', neueUuid()])
+      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen, ma_symbol, ma_symbole, uuid)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, data.maStufen === 4 ? 4 : 2, data.maSymbol === 'pfeil' ? 'pfeil' : 'pm', maSymbole, neueUuid()])
   return info.lastInsertRowid
 }
 

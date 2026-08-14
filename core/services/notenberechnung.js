@@ -45,14 +45,31 @@ async function ladeMaGewichte(db) {
   }
 }
 
+// Default-Symbole der 4-stufigen Mitarbeit (sehr positiv … sehr negativ).
+const MA_SMILEYS_DEFAULT = ['😄', '🙂', '🙁', '😞']
+
+// Symbolliste einer 4-stufigen MA-Spalte: eigene Symbole (spalten.ma_symbole als JSON)
+// oder Default-Smileys. Reihenfolge = Stufen [sehr+, +, −, sehr−].
+function maSymboleVon(spalte) {
+  if (spalte.ma_symbole) {
+    try {
+      const arr = JSON.parse(spalte.ma_symbole)
+      if (Array.isArray(arr) && arr.length === 4) return arr
+    } catch { /* fällt auf Default zurück */ }
+  }
+  return MA_SMILEYS_DEFAULT
+}
+
 // Bewertung eines MA-Eintrags: { w: vorzeichenbehaftetes Gewicht in Notenpunkten,
 // dir: Richtung ±1 (für die grobe Fallback-Note) }. null = kein gültiger Eintrag.
 function maBewertung(spalte, wert, g) {
   if (spalte.ma_stufen === 4) {
-    if (wert === '😄') return { w: g.vpos, dir: 1 }
-    if (wert === '🙂') return { w: g.pos, dir: 1 }
-    if (wert === '🙁') return { w: -g.neg, dir: -1 }
-    if (wert === '😞') return { w: -g.vneg, dir: -1 }
+    // Positionsbasiert: Stufe 0/1 positiv, 2/3 negativ – unabhängig vom konkreten Symbol.
+    const idx = maSymboleVon(spalte).indexOf(wert)
+    if (idx === 0) return { w: g.vpos, dir: 1 }
+    if (idx === 1) return { w: g.pos, dir: 1 }
+    if (idx === 2) return { w: -g.neg, dir: -1 }
+    if (idx === 3) return { w: -g.vneg, dir: -1 }
     return null
   }
   if (wert === '+') return { w: g.plus, dir: 1 }
