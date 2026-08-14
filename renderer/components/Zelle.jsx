@@ -140,7 +140,7 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
     } else if (spalte.kategorie === 'HÜ') {
       const naechster = naechsterWert(HUE_CYCLE, wert)
       setEintrag(spalte.id, schueler.id, naechster)
-    } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T' || spalte.kategorie === 'CUSTOM') {
+    } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T' || spalte.kategorie === 'CUSTOM' || spalte.kategorie === 'MAN') {
       setPopupOffen(true)
     }
   }

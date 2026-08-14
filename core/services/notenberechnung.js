@@ -109,7 +109,7 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
     : 0
   const aktuellerOffset = istDifferenziert ? niveauOffset(niveauFallback) : 0
 
-  // Gewichte der NOTE-BILDENDEN Kategorien (nur SA, Test, Individuell).
+  // Gewichte der NOTE-BILDENDEN Kategorien (SA, Test, Individuell, Mitarbeitsnote).
   const globaleGewichtung = {}
   ;(await db.select('SELECT * FROM gewichtung_global'))
     .forEach((r) => { globaleGewichtung[r.kategorie] = r.gewichtung })
@@ -117,6 +117,8 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
     SA: fach.gewichtung_sa ?? globaleGewichtung['SA'] ?? 0.4,
     T: fach.gewichtung_t ?? globaleGewichtung['T'] ?? 0.3,
     CUSTOM: fach.gewichtung_custom ?? globaleGewichtung['CUSTOM'] ?? 0.0,
+    // Benotete Mitarbeit (MAN): Default > 0, damit reine MAN-Fächer eine Note bilden.
+    MAN: fach.gewichtung_man ?? globaleGewichtung['MAN'] ?? 0.3,
   }
 
   // Maximaler Einfluss von Mitarbeit bzw. Hausübung (niveau-frei), getrennt steuerbar.
@@ -136,8 +138,8 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
 
   const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ? AND semester = ?', [fachId, semester])
 
-  // Basisnote aus echten Noten (SA/T/Individuell, intern inkl. Niveau-Offset).
-  const basisWerte = { SA: [], T: [], CUSTOM: [] }
+  // Basisnote aus echten Noten (SA/T/Individuell/Mitarbeitsnote, intern inkl. Niveau-Offset).
+  const basisWerte = { SA: [], T: [], CUSTOM: [], MAN: [] }
   // Mitarbeit: gewichtete Summe (maScore) + Richtungssumme (maDir). Hausübung: Zähler.
   const maGew = await ladeMaGewichte(db)
   let maScore = 0, maCount = 0, maDir = 0, huePos = 0, hueNeg = 0
@@ -159,6 +161,10 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
     } else if (spalte.kategorie === 'CUSTOM') {
       const n = parseInt(wert)
       if (!isNaN(n) && n <= 5 && n >= 1) basisWerte.CUSTOM.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, reihenfolge: spalte.reihenfolge })
+    } else if (spalte.kategorie === 'MAN') {
+      // Benotete Mitarbeit: echte Note 1–5, niveau-fähig wie SA/T/Individuell.
+      const n = parseInt(wert)
+      if (n >= 1 && n <= 5) basisWerte.MAN.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, reihenfolge: spalte.reihenfolge })
     }
   }
 
@@ -335,7 +341,7 @@ async function pruefeNotenTrigger(db, spalteId, schuelerId, wertNeu, wertAlt) {
   if (!(n >= 1 && n <= 5)) return
   const spalte = await db.selectOne('SELECT s.kategorie, s.fach_id, f.klasse_id, f.name AS fach_name FROM spalten s JOIN faecher f ON f.id = s.fach_id WHERE s.id = ?', [spalteId])
   if (!spalte) return
-  if (!['SA', 'T', 'CUSTOM'].includes(spalte.kategorie)) return
+  if (!['SA', 'T', 'CUSTOM', 'MAN'].includes(spalte.kategorie)) return
   const klasse = await db.selectOne('SELECT ist_kv FROM klassen WHERE id = ?', [spalte.klasse_id])
   if (!klasse?.ist_kv) return
 

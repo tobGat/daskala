@@ -36,11 +36,16 @@ export default function SpalteHinzufuegen({ onClose }) {
     }
   }, [kategorie])
 
-  // MA & HÜ zählen als Einfluss (keine Gewichtung) → keine 0%-Warnung.
-  // Nur SA/Test/Individuell bilden die Note und haben ein effektives Gewicht.
-  const istEinfluss = kategorie === 'MA' || kategorie === 'HÜ'
-  const fachKey = { SA: 'gewichtung_sa', T: 'gewichtung_t', CUSTOM: 'gewichtung_custom' }[kategorie]
-  const effektivesGewicht = istEinfluss ? null : (aktivesFach?.[fachKey] ?? gewichtungGlobal?.[kategorie] ?? 0)
+  // Mitarbeit mit Skala „Note (1–5)" ist eine echte Note (Kategorie MAN), kein Einfluss.
+  const istNoteMA = kategorie === 'MA' && maVariante === 'note'
+  const effektiveKategorie = istNoteMA ? 'MAN' : kategorie
+  const kategorieLabel = istNoteMA ? 'Mitarbeitsnote' : KATEGORIEN.find(k => k.id === kategorie)?.label
+
+  // MA (+/−, Smileys) & HÜ zählen als Einfluss (keine Gewichtung) → keine 0%-Warnung.
+  // SA/Test/Individuell/Mitarbeitsnote bilden die Note und haben ein effektives Gewicht.
+  const istEinfluss = (kategorie === 'MA' && !istNoteMA) || kategorie === 'HÜ'
+  const fachKey = { SA: 'gewichtung_sa', T: 'gewichtung_t', CUSTOM: 'gewichtung_custom', MAN: 'gewichtung_man' }[effektiveKategorie]
+  const effektivesGewicht = istEinfluss ? null : (aktivesFach?.[fachKey] ?? gewichtungGlobal?.[effektiveKategorie] ?? 0)
   const zeigeNullGewichtHinweis = !istEinfluss && effektivesGewicht === 0
 
   const handleSpeichern = async () => {
@@ -51,7 +56,7 @@ export default function SpalteHinzufuegen({ onClose }) {
       await window.api.spalten.create({
         fachId: aktivesFach.id,
         semester: aktiveSemester,
-        kategorie,
+        kategorie: effektiveKategorie,
         kuerzel: kuerzel.trim(),
         datum: datum || null,
         notiz: notiz.trim() || null,
@@ -101,6 +106,7 @@ export default function SpalteHinzufuegen({ onClose }) {
                 { id: 'pm', label: '+ / −' },
                 { id: 'pfeil', label: '↗ / ↘' },
                 { id: 'smiley', label: '😄 🙂 🙁 😞' },
+                { id: 'note', label: 'Note (1–5)' },
               ].map(v => (
                 <button
                   key={v.id}
@@ -118,7 +124,9 @@ export default function SpalteHinzufuegen({ onClose }) {
             <p className="mt-2 text-xs text-ink-500 dark:text-ink-400 leading-snug">
               {maVariante === 'smiley'
                 ? '😄 sehr fröhlich · 🙂 mäßig · 🙁 mäßig · 😞 sehr traurig. Einfluss je Stufe in den Einstellungen (Erweitert).'
-                : '↗ / ↘ ist nur eine andere Darstellung von + / − – die Bewertung ist identisch.'}
+                : maVariante === 'note'
+                  ? 'Benotete Mitarbeit: echte Note 1–5 mit eigener Gewichtung – niveau-fähig (AHS/ST). Ermöglicht eine Zeugnisnote auch in Fächern ohne Schularbeiten/Tests.'
+                  : '↗ / ↘ ist nur eine andere Darstellung von + / − – die Bewertung ist identisch.'}
             </p>
           </div>
         )}
@@ -126,7 +134,7 @@ export default function SpalteHinzufuegen({ onClose }) {
         {/* Hinweis bei 0%-Gewicht */}
         {zeigeNullGewichtHinweis && (
           <div className="mb-4 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-300 text-xs leading-snug">
-            ⚠ Die Kategorie <strong>{KATEGORIEN.find(k => k.id === kategorie)?.label}</strong> hat aktuell 0 % Gewichtung — Einträge fliessen nicht in die ZN ein.{' '}
+            ⚠ Die Kategorie <strong>{kategorieLabel}</strong> hat aktuell 0 % Gewichtung — Einträge fliessen nicht in die ZN ein.{' '}
             <button
               type="button"
               className="underline hover:text-amber-900 dark:hover:text-amber-200"

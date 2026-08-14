@@ -141,16 +141,18 @@ export default function Einstellungen({ onClose }) {
       SA: gewichtungGlobal['SA'] ?? 0.4,
       T: gewichtungGlobal['T'] ?? 0.3,
       CUSTOM: gewichtungGlobal['CUSTOM'] ?? 0.1,
+      MAN: gewichtungGlobal['MAN'] ?? 0.3,
     }
-    const summe = roh.SA + roh.T + roh.CUSTOM || 1
+    const summe = roh.SA + roh.T + roh.CUSTOM + roh.MAN || 1
     const pct = {
       SA: Math.round(roh.SA / summe * 100),
       T: Math.round(roh.T / summe * 100),
       CUSTOM: Math.round(roh.CUSTOM / summe * 100),
+      MAN: Math.round(roh.MAN / summe * 100),
     }
     // Rundungsdifferenz der größten Kategorie zuschlagen, damit die Summe exakt 100 ergibt
-    const groesste = pct.SA >= pct.T && pct.SA >= pct.CUSTOM ? 'SA' : (pct.T >= pct.CUSTOM ? 'T' : 'CUSTOM')
-    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM)
+    const groesste = Object.keys(pct).reduce((a, b) => (pct[b] > pct[a] ? b : a))
+    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM + pct.MAN)
     return pct
   })
   const [maEinfluss, setMaEinfluss] = useState(einstellungen['ma_max_einfluss'] ?? einstellungen['ma_hue_max_einfluss'] ?? '0.5')
@@ -479,7 +481,7 @@ export default function Einstellungen({ onClose }) {
     if (ok === null) pushToast('Öffnen fehlgeschlagen.', 'error')
   }
 
-  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell' }
+  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell', MAN: 'Mitarbeitsnote' }
 
   return (
     <>
@@ -536,7 +538,7 @@ export default function Einstellungen({ onClose }) {
                   Gesamt: {gesamt.toFixed(0)}% {Math.abs(gesamt - 100) <= 0.5 ? '✓' : '(muss 100% ergeben)'}
                 </div>
                 <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1.5 leading-snug">
-                  Mitarbeit und Hausübungen bilden keine Note, sondern wirken nur als Einfluss (siehe unten).
+                  „Mitarbeitsnote" ist eine echte Note (benotete Mitarbeit, Skala 1–5) und ermöglicht eine Zeugnisnote auch in Fächern ohne Schularbeiten/Tests. Die symbolische Mitarbeit (+/−, ↗/↘, Smileys) und Hausübungen bilden dagegen keine Note, sondern wirken nur als Einfluss (siehe unten).
                 </p>
               </div>
 

@@ -59,6 +59,7 @@ const TABLE_DDL = [
       gewichtung_ma REAL,
       gewichtung_hue REAL,
       gewichtung_custom REAL,
+      gewichtung_man REAL,
       ma_max_einfluss REAL,
       hue_max_einfluss REAL,
       farbe TEXT,
@@ -602,6 +603,9 @@ function applySchema(db, deps) {
   spalteErgaenzen('faecher', 'ma_hue_max_einfluss', 'REAL')
   spalteErgaenzen('faecher', 'ma_max_einfluss', 'REAL')
   spalteErgaenzen('faecher', 'hue_max_einfluss', 'REAL')
+  // Eigene Gewichtung der benoteten Mitarbeit (Kategorie MAN). NICHT verwechseln mit
+  // dem alten, hart-genullten 'gewichtung_ma' (MA = Bonus/Malus, keine Note).
+  spalteErgaenzen('faecher', 'gewichtung_man', 'REAL')
 
   // Einmalige Daten-Migrationen – dürfen NICHT bei jedem Start laufen (siehe user_version).
   if (schemaVersion < 1) {
@@ -1078,6 +1082,8 @@ function applySchema(db, deps) {
   insertGewichtung.run('MA', 0.20)
   insertGewichtung.run('HÜ', 0.10)
   insertGewichtung.run('CUSTOM', 0.10)
+  // Benotete Mitarbeit (MAN). INSERT OR IGNORE = idempotent, back-fillt Bestands-DBs.
+  insertGewichtung.run('MAN', 0.30)
 
   // Duplikate in stundenzeiten bereinigen (fehlerhafter INSERT OR IGNORE ohne UNIQUE)
   db.prepare(`

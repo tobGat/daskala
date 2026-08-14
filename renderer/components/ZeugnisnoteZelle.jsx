@@ -83,15 +83,16 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
     const einflussSchritt = parseFloat(einstellungen?.ma_hue_schritt ?? '0.1')
     const rezenzFaktor = parseFloat(einstellungen?.rezenz_faktor ?? '1')
 
-    // Nur SA/Test/Individuell bilden die Basisnote. MA/HÜ verschieben sie nur (niveau-frei).
+    // SA/Test/Individuell/Mitarbeitsnote bilden die Basisnote. Symbolische MA/HÜ verschieben sie nur (niveau-frei).
     const gew = {
       SA:     aktivesFach?.gewichtung_sa     ?? gewichtungGlobal?.SA     ?? 0.4,
       T:      aktivesFach?.gewichtung_t      ?? gewichtungGlobal?.T      ?? 0.3,
       CUSTOM: aktivesFach?.gewichtung_custom ?? gewichtungGlobal?.CUSTOM ?? 0.0,
+      MAN:    aktivesFach?.gewichtung_man    ?? gewichtungGlobal?.MAN    ?? 0.3,
     }
-    const KAT_LABEL = { SA: 'SA', T: 'T', CUSTOM: 'Ind.' }
+    const KAT_LABEL = { SA: 'SA', T: 'T', CUSTOM: 'Ind.', MAN: 'MA-Note' }
 
-    const basis = { SA: { werte: [], eingaben: [] }, T: { werte: [], eingaben: [] }, CUSTOM: { werte: [], eingaben: [] } }
+    const basis = { SA: { werte: [], eingaben: [] }, T: { werte: [], eingaben: [] }, CUSTOM: { werte: [], eingaben: [] }, MAN: { werte: [], eingaben: [] } }
     let maPlus = 0, maMinus = 0, huePos = 0, hueNeg = 0
 
     for (const spalte of fachSpalten) {
@@ -110,13 +111,16 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
       } else if (spalte.kategorie === 'CUSTOM') {
         const n = parseInt(wert)
         if (!isNaN(n) && n >= 1 && n <= 5) { basis.CUSTOM.werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, reihenfolge: spalte.reihenfolge }); basis.CUSTOM.eingaben.push(n) }
+      } else if (spalte.kategorie === 'MAN') {
+        const n = parseInt(wert)
+        if (n >= 1 && n <= 5) { basis.MAN.werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, reihenfolge: spalte.reihenfolge }); basis.MAN.eingaben.push(n) }
       }
     }
 
     // Basisnote (gewichtet, nur vorhandene Kategorien)
     const beitraege = []
     let gesamtGewichtung = 0, summe = 0
-    for (const kat of ['SA', 'T', 'CUSTOM']) {
+    for (const kat of ['SA', 'T', 'CUSTOM', 'MAN']) {
       const werte = basis[kat].werte
       if (!werte.length || gew[kat] <= 0) continue
       const avg = gewichteterSchnitt(werte, rezenzFaktor)
@@ -141,6 +145,7 @@ function useZNBreakdown(semester, schuelerId, spalten, eintraege, einstellungen,
       beitraege, gesamtGewichtung, maxNote, basisIntern, hatBasis,
       ma: { plus: maPlus, minus: maMinus }, hue: { pos: huePos, neg: hueNeg },
       hatMAHUE, einflussPunkte,
+      hatMAN: basis.MAN.werte.length > 0,
     }
   }, [semester, schuelerId, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus])
 }
@@ -210,8 +215,10 @@ export default function ZeugnisnoteZelle({ schueler, semester }) {
 
   // § 3 LBVO: schriftliche Leistungen dürfen nicht alleinige Beurteilungsgrundlage sein.
   // Warnung, wenn SA/T/Ind. vorhanden, aber keinerlei Mitarbeit/Hausübung erfasst wurde.
+  // § 3 LBVO: Warnung nur, wenn Noten (SA/Test/Individuell) vorliegen, aber KEINERLEI Mitarbeit –
+  // eine benotete Mitarbeit (MA-Note) ist Mitarbeit und unterdrückt die Warnung.
   const maWarnung = einstellungen?.ma_pflicht_warnung !== '0'
-    && !!znBreakdown && znBreakdown.hatBasis && !znBreakdown.hatMAHUE && !istManuell
+    && !!znBreakdown && znBreakdown.hatBasis && !znBreakdown.hatMAHUE && !znBreakdown.hatMAN && !istManuell
 
   const handleClick         = () => setManuellPopup(true)
   const handleContextMenu   = (e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY }) }

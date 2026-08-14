@@ -339,9 +339,11 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
   }, [verlaufOffen, fach.id, schueler.id])
 
   const hatSaT = fachEintraege.some(e => (e.kategorie === 'SA' || e.kategorie === 'T') && istGueltigeNote(e.wert))
+  // Benotete Mitarbeit (MA-Note) ist Mitarbeit → unterdrückt den § 3-Hinweis.
+  const manEintr = fachEintraege.filter(e => e.kategorie === 'MAN' && istGueltigeNote(e.wert))
   // § 3 LBVO: schriftliche Leistungen dürfen nicht alleinige Beurteilungsgrundlage sein.
   const maWarnung = einstellungen?.ma_pflicht_warnung !== '0'
-    && hatSaT && maEintr.length === 0 && hueEintr.length === 0
+    && hatSaT && maEintr.length === 0 && hueEintr.length === 0 && manEintr.length === 0
 
   return (
     <div className="space-y-6">

@@ -467,6 +467,7 @@
       "hue_max_einfluss": null,
       "farbe": null,
       "ma_hue_max_einfluss": null,
+      "gewichtung_man": null,
       "benotungssystem": "standard",
       "alle_schueler": 1,
       "uuid": null
@@ -485,6 +486,7 @@
       "hue_max_einfluss": null,
       "farbe": null,
       "ma_hue_max_einfluss": null,
+      "gewichtung_man": null,
       "benotungssystem": "standard",
       "alle_schueler": 1,
       "uuid": null
@@ -555,6 +557,7 @@
         "hue_max_einfluss": null,
         "farbe": null,
         "ma_hue_max_einfluss": null,
+        "gewichtung_man": null,
         "benotungssystem": "standard",
         "alle_schueler": 1,
         "uuid": null
@@ -573,6 +576,7 @@
         "hue_max_einfluss": null,
         "farbe": null,
         "ma_hue_max_einfluss": null,
+        "gewichtung_man": null,
         "benotungssystem": "standard",
         "alle_schueler": 1,
         "uuid": null
