@@ -8,7 +8,7 @@
 
 // Aktuelle Schema-Version. Erhoehen bei neuer EINMALIGER Migration (Daten-Umbau/Rebuild);
 // reine Spalten-Ergaenzungen laufen idempotent ueber spalteErgaenzen().
-const SCHEMA_VERSION = 2
+const SCHEMA_VERSION = 3
 
 // ─── Schema als Daten (Portierung Phase 2.3) ─────────────────────────────────
 //
@@ -59,6 +59,7 @@ const TABLE_DDL = [
       gewichtung_ma REAL,
       gewichtung_hue REAL,
       gewichtung_custom REAL,
+      gewichtung_man REAL,
       ma_max_einfluss REAL,
       hue_max_einfluss REAL,
       farbe TEXT,
@@ -94,6 +95,7 @@ const TABLE_DDL = [
       notiz TEXT,
       ma_stufen INTEGER DEFAULT 2,
       ma_symbol TEXT DEFAULT 'pm',
+      ma_symbole TEXT,
       uuid TEXT,
       FOREIGN KEY (fach_id) REFERENCES faecher(id)
     )`,
@@ -602,6 +604,9 @@ function applySchema(db, deps) {
   spalteErgaenzen('faecher', 'ma_hue_max_einfluss', 'REAL')
   spalteErgaenzen('faecher', 'ma_max_einfluss', 'REAL')
   spalteErgaenzen('faecher', 'hue_max_einfluss', 'REAL')
+  // Eigene Gewichtung der benoteten Mitarbeit (Kategorie MAN). NICHT verwechseln mit
+  // dem alten, hart-genullten 'gewichtung_ma' (MA = Bonus/Malus, keine Note).
+  spalteErgaenzen('faecher', 'gewichtung_man', 'REAL')
 
   // Einmalige Daten-Migrationen – dürfen NICHT bei jedem Start laufen (siehe user_version).
   if (schemaVersion < 1) {
@@ -639,6 +644,9 @@ function applySchema(db, deps) {
   // Symboldarstellung der 2-stufigen Mitarbeit: 'pm' = + / −, 'pfeil' = ↗ / ↘.
   // Rein optisch – gespeichert werden weiterhin '+' / '−', die Bewertung ist identisch.
   spalteErgaenzen('spalten', 'ma_symbol', "TEXT DEFAULT 'pm'")
+  // Eigene Symbole der 4-stufigen Mitarbeit (JSON-Array [sehr+, +, −, sehr−]).
+  // NULL = Default-Smileys 😄🙂🙁😞. Wertung positionsbasiert wie bei den Smileys.
+  spalteErgaenzen('spalten', 'ma_symbole', 'TEXT')
   spalteErgaenzen('eintraege', 'kommentar', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_text', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_frist_datum', 'TEXT')
@@ -1078,6 +1086,8 @@ function applySchema(db, deps) {
   insertGewichtung.run('MA', 0.20)
   insertGewichtung.run('HÜ', 0.10)
   insertGewichtung.run('CUSTOM', 0.10)
+  // Benotete Mitarbeit (MAN). INSERT OR IGNORE = idempotent, back-fillt Bestands-DBs.
+  insertGewichtung.run('MAN', 0.30)
 
   // Duplikate in stundenzeiten bereinigen (fehlerhafter INSERT OR IGNORE ohne UNIQUE)
   db.prepare(`
@@ -1159,6 +1169,16 @@ function applySchema(db, deps) {
       db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${t}_uuid ON ${t} (uuid)`).run()
     }
   } catch (e) { deps.logError('migration:uuid-index', e) }
+
+  if (schemaVersion < 3) {
+    // Umstieg auf EINE durchgehende Jahresnote (Slot semester=3). Die getrennten
+    // Semesternoten (Slots 1 & 2) entfallen; ihre Zwischenwerte werden entfernt.
+    // Slot 3 (inkl. manueller Zeugnisnote) bleibt und wird beim ersten Update-Start
+    // einmalig neu berechnet (siehe App.jsx-Recompute-Hook).
+    try {
+      db.prepare('DELETE FROM zeugnisnoten WHERE semester IN (1, 2)').run()
+    } catch (e) { deps.logError('migration:zeugnisnoten-einzelnote', e) }
+  }
 
   // Alle einmaligen Migrationen dieser Version sind durchlaufen → Schema-Version festschreiben.
   if (schemaVersion < SCHEMA_VERSION) db.pragma(`user_version = ${SCHEMA_VERSION}`)

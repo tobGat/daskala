@@ -37,7 +37,7 @@ export default function FachTabs() {
 
   const fachHatCustomGewichtung = (fach) =>
     fach.gewichtung_sa !== null || fach.gewichtung_t !== null ||
-    fach.gewichtung_custom !== null ||
+    fach.gewichtung_custom !== null || fach.gewichtung_man != null ||
     fach.ma_max_einfluss !== null || fach.hue_max_einfluss !== null
 
   const renameStarten = (fach) => {

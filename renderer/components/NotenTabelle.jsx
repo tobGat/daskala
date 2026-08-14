@@ -15,6 +15,7 @@ const KAT_FARBE = {
   T:      'bg-lavender-100 text-lavender-700 dark:bg-lavender-900/40 dark:text-lavender-300',
   SA:     'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300',
   CUSTOM: 'bg-paper-200 text-ink-700 dark:bg-ink-800 dark:text-ink-300',
+  MAN:    'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
 }
 
 const KAT_DOT = {
@@ -23,9 +24,10 @@ const KAT_DOT = {
   T:      'bg-lavender-500',
   SA:     'bg-coral-500',
   CUSTOM: 'bg-ink-400',
+  MAN:    'bg-teal-500',
 }
 
-const KATEGORIEN_LABEL = { MA: 'Mitarbeit', 'HÜ': 'Hausübung', T: 'Test', SA: 'Schularbeit', CUSTOM: 'Individuell' }
+const KATEGORIEN_LABEL = { MA: 'Mitarbeit', 'HÜ': 'Hausübung', T: 'Test', SA: 'Schularbeit', CUSTOM: 'Individuell', MAN: 'Mitarbeitsnote' }
 
 // ─── Spalten-Header ───────────────────────────────────────────────────────────
 const SpalteHeader = memo(function SpalteHeader({ spalte, onContextMenu }) {
@@ -79,24 +81,9 @@ const EingeklappteZelle = memo(function EingeklappteZelle() {
   return <td style={{ width: 22, minWidth: 22 }} className="bg-paper-50/70 dark:bg-ink-900/50" />
 })
 
-// ─── SN/ZN-Headers ────────────────────────────────────────────────────────────
-// SN = Semesternote (je Semester), ZN = Zeugnisnote (Jahresnote).
+// ─── ZN-Header ────────────────────────────────────────────────────────────────
+// ZN = eine durchgehende Zeugnisnote (laufender Jahresstand aus allen Aufzeichnungen).
 // Layout passt zur Zellen-Breite (46px). Klare visuelle Hierarchie ohne Quetschung.
-function ZNHeader({ semester }) {
-  return (
-    <th
-      className="bg-paper-100 dark:bg-ink-800/60 text-center border-l-2 border-paper-300 dark:border-ink-700"
-      style={{ width: 46, minWidth: 46 }}
-      title={`Semesternote ${semester}`}
-    >
-      <div className="h-14 flex flex-col items-center justify-center gap-0.5">
-        <span className="font-bold text-[11px] text-ink-600 dark:text-ink-300 tracking-wider leading-none">SN</span>
-        <span className="font-bold text-base text-ink-700 dark:text-paper-200 leading-none">{semester}</span>
-      </div>
-    </th>
-  )
-}
-
 function ENHeader() {
   return (
     <th
@@ -109,11 +96,11 @@ function ENHeader() {
         zIndex: 10,
         boxShadow: '-3px 0 8px -2px rgba(46, 42, 38, 0.08), 0 1px 0 0 rgb(230 227 223)',
       }}
-      title="Zeugnisnote"
+      title="Zeugnisnote – vorläufiger Stand aus allen Aufzeichnungen des Jahres (wird bis Schuljahresende fortgeschrieben)"
     >
       <div className="h-14 flex flex-col items-center justify-center gap-0.5">
         <span aria-hidden className="text-sm leading-none">⭐</span>
-        <span className="font-bold text-[11px] text-coral-700 dark:text-coral-200 tracking-wider leading-none">ZN</span>
+        <span className="font-bold text-[11px] text-coral-700 dark:text-coral-200 tracking-wider leading-none">ZN<span className="text-coral-400" title="vorläufiger Stand">*</span></span>
       </div>
     </th>
   )
@@ -243,7 +230,7 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
     if (aktivesFach) await window.api.export.fachOds(aktivesFach.id)
   }
 
-  // Klassen-ZN-Durchschnitt für das aktive Semester.
+  // Klassen-ZN-Durchschnitt (die eine durchgehende Note, Slot 3).
   // Bei differenzierten Fächern getrennt nach AHS/ST, da die angezeigten Noten
   // auf unterschiedlichen Skalen liegen (intern − Offset je Niveau).
   const schnitt = useMemo(() => {
@@ -252,7 +239,7 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
     const gruppen = { AHS: [], ST: [] }
     const alle = []
     for (const s of schueler) {
-      const zn = zeugnisnoten[`${s.id}_${aktiveSemester}`]
+      const zn = zeugnisnoten[`${s.id}_3`]
       const intern = zn?.note_manuell ?? zn?.note_berechnet
       if (intern == null) continue
       if (istDiff) {
@@ -265,7 +252,7 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
     return istDiff
       ? { diff: true, ahs: mittel(gruppen.AHS), st: mittel(gruppen.ST) }
       : { diff: false, gesamt: mittel(alle) }
-  }, [schueler, zeugnisnoten, aktiveSemester, aktivesFach, niveaus])
+  }, [schueler, zeugnisnoten, aktivesFach, niveaus])
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-paper-200 dark:border-ink-800/60 flex-shrink-0 flex-wrap">
@@ -564,17 +551,13 @@ export default function NotenTabelle() {
                   ))
                 )}
 
-                <ZNHeader semester={1} />
-
                 {aktiveSemester === 2 && spaltenS2.map(sp => (
                   <SpalteHeader key={sp.id} spalte={sp} onContextMenu={handleSpalteContextMenu} />
                 ))}
 
-                {aktiveSemester === 2 && <ZNHeader semester={2} />}
-
                 <GhostSpalteHeader onClick={openSpalteModal} />
                 <SpacerHeader />
-                {aktiveSemester === 2 && <ENHeader />}
+                <ENHeader />
               </tr>
             </thead>
 
@@ -604,19 +587,15 @@ export default function NotenTabelle() {
                     )
                   )}
 
-                  <ZeugnisnoteZelle schueler={s} semester={1} />
-
                   {aktiveSemester === 2 && spaltenS2.map(sp =>
                     sp.eingeklappt
                       ? <EingeklappteZelle key={sp.id} />
                       : <Zelle key={sp.id} spalte={sp} schueler={s} />
                   )}
 
-                  {aktiveSemester === 2 && <ZeugnisnoteZelle schueler={s} semester={2} />}
-
                   <GhostZelle onClick={openSpalteModal} />
                   <SpacerZelle />
-                  {aktiveSemester === 2 && <ZeugnisnoteZelle schueler={s} semester={3} />}
+                  <ZeugnisnoteZelle schueler={s} />
                 </tr>
               ))}
             </tbody>

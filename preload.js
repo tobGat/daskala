@@ -144,11 +144,11 @@ const api = {
 
   zeugnisnoten: {
     getAll: (fachId) => invoke('zeugnisnoten:getAll', fachId),
-    berechne: (fachId, schuelerId, semester) => invoke('zeugnisnoten:berechne', fachId, schuelerId, semester),
+    berechne: (fachId, schuelerId) => invoke('zeugnisnoten:berechne', fachId, schuelerId),
     berechneFach: (fachId) => invoke('zeugnisnoten:berechneFach', fachId),
     rechneAllesNeu: () => invoke('noten:rechneAllesNeu'),
-    setManuell: (fachId, schuelerId, semester, note) => invoke('zeugnisnoten:setManuell', fachId, schuelerId, semester, note),
-    clearManuell: (fachId, schuelerId, semester) => invoke('zeugnisnoten:clearManuell', fachId, schuelerId, semester),
+    setManuell: (fachId, schuelerId, note) => invoke('zeugnisnoten:setManuell', fachId, schuelerId, note),
+    clearManuell: (fachId, schuelerId) => invoke('zeugnisnoten:clearManuell', fachId, schuelerId),
   },
 
   notizen: {

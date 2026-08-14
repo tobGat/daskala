@@ -147,12 +147,10 @@ function bauePdfHtml(profil, klassenname) {
   let sectionsHtml = ''
   for (const fach of faecher) {
     const fachEintr = eintraege.filter(e => e.fach_id === fach.id)
-    const znS1 = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 1)
-    const znS2 = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 2)
+    const znEN = zeugnisnoten.find(z => z.fach_id === fach.id && z.semester === 3)
     const istDiff = fach.benotungssystem === 'differenziert'
     const niveau = niveaus[fach.id] ?? 'AHS'
-    const n1 = znInternZuAnzeige(znS1?.note_manuell ?? znS1?.note_berechnet, niveau, istDiff)
-    const n2 = znInternZuAnzeige(znS2?.note_manuell ?? znS2?.note_berechnet, niveau, istDiff)
+    const nZN = znInternZuAnzeige(znEN?.note_manuell ?? znEN?.note_berechnet, niveau, istDiff)
     // Positiv: + / 😄 / 🙂 ; negativ: − / 🙁 / 😞 (2- und 4-stufige Mitarbeit zusammengefasst).
     const maEintr = fachEintr.filter(e => e.kategorie === 'MA' && e.wert)
     const maPos = maEintr.filter(e => e.wert === '+' || e.wert === '😄' || e.wert === '🙂').length
@@ -187,7 +185,7 @@ function bauePdfHtml(profil, klassenname) {
       content += `</div>`
     }
     if (!hasDaten) content += `<p style="font-size:9px;color:#d1d5db;font-style:italic;margin-top:4px">Keine Daten vorhanden</p>`
-    sectionsHtml += `<div style="margin-bottom:14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:6px;page-break-inside:avoid"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:700;color:#4f46e5">${esc(fach.name)}</span><span style="display:flex;align-items:center;gap:5px"><span style="color:#9ca3af;font-size:9px">SN 1</span>${znBadge(n1)}<span style="color:#9ca3af;font-size:9px;margin-left:4px">SN 2</span>${znBadge(n2)}</span></div>${content}</div>`
+    sectionsHtml += `<div style="margin-bottom:14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:6px;page-break-inside:avoid"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:700;color:#4f46e5">${esc(fach.name)}</span><span style="display:flex;align-items:center;gap:5px"><span style="color:#9ca3af;font-size:9px">ZN</span>${znBadge(nZN)}</span></div>${content}</div>`
   }
 
   const datum = new Date().toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -473,8 +471,7 @@ async function initKompetenzVorlagen(fachId, fachName) {
 // Dünne, gehoistete Wrapper reichen die aktuelle db-Verbindung durch; alle
 // Aufrufstellen (kernDeps, exDeps, Handler) bleiben unverändert.
 function znInternZuAnzeige(intern, niveau, istDifferenziert) { return noten.znInternZuAnzeige(intern, niveau, istDifferenziert) }
-function berechneZeugnisnote(fachId, schuelerId, semester) { return noten.berechneZeugnisnote(dbPort, fachId, schuelerId, semester) }
-function berechneEndnote(fachId, schuelerId) { return noten.berechneEndnote(dbPort, fachId, schuelerId) }
+function berechneZeugnisnote(fachId, schuelerId) { return noten.berechneZeugnisnote(dbPort, fachId, schuelerId) }
 function berechneAlleFuerSchuljahr(schuljahrId) { return noten.berechneAlleFuerSchuljahr(dbPort, schuljahrId) }
 function rosterFuerFach(fachId, opts) { return noten.rosterFuerFach(dbPort, fachId, opts) }
 function rosterIdsFuerFach(fachId) { return noten.rosterIdsFuerFach(dbPort, fachId) }
@@ -536,7 +533,7 @@ function registerIPC() {
   const exDeps = { dialog: dialogPort, fs: fsPort, pdf: pdfPort, dateiTeil, exportDatum, rosterFuerFach, znInternZuAnzeige, abschnittHierarchie, sammleMaterialien, sanitizeSegment }
 
   // main.js-Helfer, die extrahierte Kern-Domänen injiziert bekommen.
-  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, berechneAlleFuerFach, berechneZeugnisnote, berechneEndnote, pruefeNotenTrigger, pruefeFehlstundenSchwellen, erzeugeTrigger, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment, rosterIdsFuerFach, initKompetenzVorlagen }
+  const kernDeps = { pushUndo, berechneAlleFuerSchuljahr, berechneAlleFuerFach, berechneZeugnisnote, pruefeNotenTrigger, pruefeFehlstundenSchwellen, erzeugeTrigger, logError, raeumeFachDatenAuf, materialRoot, verschiebeDir, sanitizeSegment, rosterIdsFuerFach, initKompetenzVorlagen }
 
   // Zentraler Fehler-Wrapper: fängt Ausnahmen aus ALLEN nachfolgend registrierten
   // Handlern ab, protokolliert sie mit Kanalnamen und reicht sie als abgelehntes
@@ -648,9 +645,9 @@ function registerIPC() {
 
   // Zeugnisnoten
   ipcMain.handle('zeugnisnoten:getAll', (_, fachId) => zeugnisnotenDomain.getAll(dbPort, fachId))
-  ipcMain.handle('zeugnisnoten:berechne', (_, fachId, schuelerId, semester) => zeugnisnotenDomain.berechne(dbPort, kernDeps, fachId, schuelerId, semester))
-  ipcMain.handle('zeugnisnoten:setManuell', (_, fachId, schuelerId, semester, note) => zeugnisnotenDomain.setManuell(dbPort, kernDeps, fachId, schuelerId, semester, note))
-  ipcMain.handle('zeugnisnoten:clearManuell', (_, fachId, schuelerId, semester) => zeugnisnotenDomain.clearManuell(dbPort, kernDeps, fachId, schuelerId, semester))
+  ipcMain.handle('zeugnisnoten:berechne', (_, fachId, schuelerId) => zeugnisnotenDomain.berechne(dbPort, kernDeps, fachId, schuelerId))
+  ipcMain.handle('zeugnisnoten:setManuell', (_, fachId, schuelerId, note) => zeugnisnotenDomain.setManuell(dbPort, kernDeps, fachId, schuelerId, note))
+  ipcMain.handle('zeugnisnoten:clearManuell', (_, fachId, schuelerId) => zeugnisnotenDomain.clearManuell(dbPort, kernDeps, fachId, schuelerId))
   ipcMain.handle('zeugnisnoten:berechneFach', (_, fachId) => zeugnisnotenDomain.berechneFach(dbPort, kernDeps, fachId))
 
   // Notizen
@@ -662,7 +659,7 @@ function registerIPC() {
   ipcMain.handle('gewichtungGlobal:update', (_, kategorie, gewichtung) => gewichtungDomain.update(dbPort, kernDeps, kategorie, gewichtung))
 
   // Alle Zeugnisnoten im aktuellen Schuljahr neu berechnen
-  // (z.B. nach Änderung von s1_gewichtung, ma_plus_wert, ma_minus_wert)
+  // (z.B. nach Änderung von Rezenz-Faktor, MA-Gewichten, Kategorie-Gewichtung)
   ipcMain.handle('noten:rechneAllesNeu', async () => {
     const aktuellesSchuljahr = await dbPort.selectOne('SELECT id FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1')
     await berechneAlleFuerSchuljahr(aktuellesSchuljahr?.id)
@@ -1036,10 +1033,10 @@ function registerIPC() {
       for (const f of faecher) {
         const nf = await tx.execute(`INSERT INTO faecher
           (klasse_id, name, farbe, reihenfolge, benotungssystem, alle_schueler,
-           gewichtung_sa, gewichtung_t, gewichtung_custom, ma_max_einfluss, hue_max_einfluss, uuid)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+           gewichtung_sa, gewichtung_t, gewichtung_custom, gewichtung_man, ma_max_einfluss, hue_max_einfluss, uuid)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [neueKlasseId, f.name, f.farbe ?? null, f.reihenfolge, f.benotungssystem ?? 'standard', f.alle_schueler ?? 1,
-          f.gewichtung_sa, f.gewichtung_t, f.gewichtung_custom, f.ma_max_einfluss, f.hue_max_einfluss, neueUuid()])
+          f.gewichtung_sa, f.gewichtung_t, f.gewichtung_custom, f.gewichtung_man, f.ma_max_einfluss, f.hue_max_einfluss, neueUuid()])
         const neuFachId = nf.lastInsertRowid
         await initKompetenzVorlagen(neuFachId, f.name)
 

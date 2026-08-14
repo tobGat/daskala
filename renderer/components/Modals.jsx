@@ -731,15 +731,17 @@ export function GewichtungModal() {
       SA: fach?.gewichtung_sa ?? gewichtungGlobal['SA'] ?? 0.4,
       T: fach?.gewichtung_t ?? gewichtungGlobal['T'] ?? 0.3,
       CUSTOM: fach?.gewichtung_custom ?? gewichtungGlobal['CUSTOM'] ?? 0.1,
+      MAN: fach?.gewichtung_man ?? gewichtungGlobal['MAN'] ?? 0.3,
     }
-    const summe = roh.SA + roh.T + roh.CUSTOM || 1
+    const summe = roh.SA + roh.T + roh.CUSTOM + roh.MAN || 1
     const pct = {
       SA: Math.round(roh.SA / summe * 100),
       T: Math.round(roh.T / summe * 100),
       CUSTOM: Math.round(roh.CUSTOM / summe * 100),
+      MAN: Math.round(roh.MAN / summe * 100),
     }
-    const groesste = pct.SA >= pct.T && pct.SA >= pct.CUSTOM ? 'SA' : (pct.T >= pct.CUSTOM ? 'T' : 'CUSTOM')
-    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM)
+    const groesste = Object.keys(pct).reduce((a, b) => (pct[b] > pct[a] ? b : a))
+    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM + pct.MAN)
     return pct
   })
   // Deckelung des MA- bzw. HÜ-Einflusses: Fach-Wert oder globaler Standard (0,5), unabhängig.
@@ -750,7 +752,7 @@ export function GewichtungModal() {
   const [loading, setLoading] = useState(false)
 
   const gesamt = Object.values(gew).reduce((a, b) => a + b, 0)
-  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell' }
+  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell', MAN: 'Mitarbeitsnote' }
 
   const handleSpeichern = async () => {
     if (Math.abs(gesamt - 100) > 0.5) return
@@ -760,6 +762,7 @@ export function GewichtungModal() {
       sa: gew.SA / 100,
       t: gew.T / 100,
       custom: gew.CUSTOM / 100,
+      man: gew.MAN / 100,
       maEinfluss: parseFloat(maEinfluss),
       hueEinfluss: parseFloat(hueEinfluss),
     })
@@ -816,7 +819,7 @@ export function GewichtungModal() {
               <div key={label} className="flex items-center gap-3">
                 <span className="text-sm text-ink-600 dark:text-ink-400 w-28">{label}</span>
                 <input
-                  type="range" min="0" max="1.5" step="0.05"
+                  type="range" min="0" max="4" step="0.05"
                   className="flex-1"
                   value={wert}
                   onChange={e => setter(e.target.value)}
@@ -828,7 +831,7 @@ export function GewichtungModal() {
             ))}
           </div>
           <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1.5">
-            0 = kein Einfluss · 0,5 = Standard · höhere Werte wirken stärker
+            0 = kein Einfluss · 0,5 = Standard · bis zu ± 4 Noten möglich
           </p>
         </div>
 

@@ -62,12 +62,10 @@ INSERT INTO eintraege (spalte_id, schueler_id, wert) VALUES
   (1, 2, '3'),
   (2, 1, '1');
 
--- ── Zeugnisnoten (Fach 1 = Deutsch) ─────────────────────────────────────────
+-- ── Zeugnisnoten (Fach 1 = Deutsch) – eine durchgehende Note je Schüler:in (Slot 3) ──
 INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, note_manuell, s1_eingerechnet) VALUES
-  (1, 1, 1, 2.0,  NULL, 0),
-  (1, 1, 2, 2.5,  NULL, 1),
-  (1, 2, 1, 3.0,  NULL, 0),
-  (1, 2, 2, NULL, 3,    1);
+  (1, 1, 3, 2.0,  NULL, 1),
+  (1, 2, 3, NULL, 3,    1);
 
 -- ── Notizen (Schüler:in × Fach) ─────────────────────────────────────────────
 INSERT INTO notizen (schueler_id, fach_id, text) VALUES

@@ -141,16 +141,18 @@ export default function Einstellungen({ onClose }) {
       SA: gewichtungGlobal['SA'] ?? 0.4,
       T: gewichtungGlobal['T'] ?? 0.3,
       CUSTOM: gewichtungGlobal['CUSTOM'] ?? 0.1,
+      MAN: gewichtungGlobal['MAN'] ?? 0.3,
     }
-    const summe = roh.SA + roh.T + roh.CUSTOM || 1
+    const summe = roh.SA + roh.T + roh.CUSTOM + roh.MAN || 1
     const pct = {
       SA: Math.round(roh.SA / summe * 100),
       T: Math.round(roh.T / summe * 100),
       CUSTOM: Math.round(roh.CUSTOM / summe * 100),
+      MAN: Math.round(roh.MAN / summe * 100),
     }
     // Rundungsdifferenz der größten Kategorie zuschlagen, damit die Summe exakt 100 ergibt
-    const groesste = pct.SA >= pct.T && pct.SA >= pct.CUSTOM ? 'SA' : (pct.T >= pct.CUSTOM ? 'T' : 'CUSTOM')
-    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM)
+    const groesste = Object.keys(pct).reduce((a, b) => (pct[b] > pct[a] ? b : a))
+    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM + pct.MAN)
     return pct
   })
   const [maEinfluss, setMaEinfluss] = useState(einstellungen['ma_max_einfluss'] ?? einstellungen['ma_hue_max_einfluss'] ?? '0.5')
@@ -166,7 +168,15 @@ export default function Einstellungen({ onClose }) {
     vneg: einstellungen['ma_w_smiley_vneg'] ?? '0.1',
   })
   const [semester2Monat, setSemester2Monat] = useState(einstellungen['semester2_monat'] ?? '2')
-  const [s1Gewichtung, setS1Gewichtung] = useState(Math.round((parseFloat(einstellungen['s1_gewichtung'] ?? '0.5')) * 100))
+  // Rezenz-Faktor (§ 20 LBVO): neuere Leistungen je Kategorie stärker gewichten. 1.0 = aus.
+  const [rezenzFaktor, setRezenzFaktor] = useState(parseFloat(einstellungen['rezenz_faktor'] ?? '1'))
+  // Mitarbeit-Warnung (§ 3 LBVO): Default an, nur bei explizitem '0' aus.
+  const [maWarnung, setMaWarnung] = useState(einstellungen['ma_pflicht_warnung'] !== '0')
+  const handleMaWarnung = async (an) => {
+    setMaWarnung(an)
+    await window.api.einstellungen.set('ma_pflicht_warnung', an ? '1' : '0')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
   const [loading, setLoading] = useState(false)
   const [fehler, setFehler] = useState('')
   const [erfolg, setErfolg] = useState(false)
@@ -423,11 +433,11 @@ export default function Einstellungen({ onClose }) {
       await window.api.einstellungen.set('ma_w_smiley_neg', maGew.neg)
       await window.api.einstellungen.set('ma_w_smiley_vneg', maGew.vneg)
       await window.api.einstellungen.set('semester2_monat', semester2Monat)
-      await window.api.einstellungen.set('s1_gewichtung', String(s1Gewichtung / 100))
+      await window.api.einstellungen.set('rezenz_faktor', String(rezenzFaktor))
       await window.api.einstellungen.set('bundesland', bundesland)
       await window.api.einstellungen.set('planung_aktiv', planungAktiv ? '1' : '0')
 
-      // Notenrelevante Einstellungen (MA+/-, s1_gewichtung) wirken sich auf gespeicherte ZN aus
+      // Notenrelevante Einstellungen (MA+/-, Rezenz, Kategorie-Gewichtung) wirken sich auf gespeicherte ZN aus
       // → alle Zeugnisnoten im aktuellen Schuljahr neu berechnen
       await window.api.zeugnisnoten.rechneAllesNeu()
 
@@ -469,7 +479,7 @@ export default function Einstellungen({ onClose }) {
     if (ok === null) pushToast('Öffnen fehlgeschlagen.', 'error')
   }
 
-  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell' }
+  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell', MAN: 'Mitarbeitsnote' }
 
   return (
     <>
@@ -526,7 +536,7 @@ export default function Einstellungen({ onClose }) {
                   Gesamt: {gesamt.toFixed(0)}% {Math.abs(gesamt - 100) <= 0.5 ? '✓' : '(muss 100% ergeben)'}
                 </div>
                 <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1.5 leading-snug">
-                  Mitarbeit und Hausübungen bilden keine Note, sondern wirken nur als Einfluss (siehe unten).
+                  „Mitarbeitsnote" ist eine echte Note (benotete Mitarbeit, Skala 1–5) und ermöglicht eine Zeugnisnote auch in Fächern ohne Schularbeiten/Tests. Die symbolische Mitarbeit (+/−, ↗/↘, Smileys) und Hausübungen bilden dagegen keine Note, sondern wirken nur als Einfluss (siehe unten).
                 </p>
               </div>
 
@@ -542,12 +552,12 @@ export default function Einstellungen({ onClose }) {
                     ['Hausübung', hueEinfluss, setHueEinfluss],
                   ].map(([label, wert, setter]) => (
                     <div key={label}>
-                      <label className="block text-xs text-ink-500 mb-1">{label} – max. Verschiebung</label>
+                      <label className="block text-xs text-ink-500 mb-1">{label} – max. Verschiebung (Noten)</label>
                       <div className="flex items-center gap-3">
                         <input
                           type="range"
                           min="0"
-                          max="1.5"
+                          max="4"
                           step="0.05"
                           className="flex-1"
                           value={wert}
@@ -561,7 +571,7 @@ export default function Einstellungen({ onClose }) {
                   ))}
                 </div>
                 <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1">
-                  0 = kein Einfluss · 0,5 = empfohlen · höhere Werte wirken stärker
+                  0 = kein Einfluss · 0,5 = empfohlen · bis zu ± 4 Noten möglich (stärkerer Einfluss)
                 </p>
 
                 {/* Erweitert: Einfluss je Mitarbeits-Stufe */}
@@ -604,33 +614,48 @@ export default function Einstellungen({ onClose }) {
                 )}
               </div>
 
-              {/* Zeugnisnote */}
-              <div>
-                <h4 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Zeugnisnote</h4>
+              {/* Rezenz-Gewichtung (§ 20 LBVO) */}
+              <div className="border-t border-paper-200 dark:border-ink-700 pt-5">
+                <h4 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Neuere Leistungen stärker gewichten</h4>
                 <p className="text-xs text-ink-400 dark:text-ink-500 mb-3">
-                  Gewichtung der SN 1 in der Zeugnisnote (ZN).
-                  50% = SN 1 und SN 2 gleichwertig. Ist nur SN 1 vorhanden, wird SN 1 direkt als Zeugnisnote übernommen.
+                  Nach § 20 LBVO zählt der zuletzt erreichte Leistungsstand stärker. Der Faktor legt fest, wie viel
+                  stärker die neueste Note innerhalb einer Kategorie (SA, Test, Individuell) zählt. 1,0 = alle
+                  Leistungen gleich (wie bisher).
                 </p>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-ink-600 dark:text-ink-400 w-24">SN 1-Gewichtung</span>
+                  <span className="text-sm text-ink-600 dark:text-ink-400 w-24">Rezenz-Faktor</span>
                   <input
                     type="range"
-                    min="0"
-                    max="100"
-                    step="5"
+                    min="1"
+                    max="3"
+                    step="0.1"
                     className="flex-1"
-                    value={s1Gewichtung}
-                    onChange={e => setS1Gewichtung(parseInt(e.target.value))}
+                    value={rezenzFaktor}
+                    onChange={e => setRezenzFaktor(parseFloat(e.target.value))}
                   />
                   <span className="text-sm font-medium w-10 text-right text-ink-900 dark:text-white">
-                    {s1Gewichtung}%
+                    {rezenzFaktor.toFixed(1).replace('.', ',')}×
                   </span>
                 </div>
                 <div className="flex justify-between text-xs text-ink-400 mt-1">
-                  <span>nur SN 2</span>
-                  <span>SN 2 {100 - s1Gewichtung}% + SN 1 {s1Gewichtung}%</span>
-                  <span>nur SN 1</span>
+                  <span>1,0 – gleich</span>
+                  <span>3,0 – stark</span>
                 </div>
+              </div>
+
+              {/* Mitarbeit-Warnung (§ 3 LBVO) */}
+              <div className="border-t border-paper-200 dark:border-ink-700 pt-5">
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={maWarnung} onChange={e => handleMaWarnung(e.target.checked)} className="mt-0.5" />
+                  <div>
+                    <span className="text-sm font-semibold text-ink-700 dark:text-paper-300">Hinweis bei fehlender Mitarbeit</span>
+                    <p className="text-xs text-ink-400 dark:text-ink-500 leading-snug">
+                      Zeigt einen Hinweis (⚠), wenn ein Semester Noten (SA/Test/Individuell), aber keinerlei
+                      Mitarbeit oder Hausübung enthält. Laut § 3 LBVO dürfen schriftliche Leistungen nicht die
+                      alleinige Grundlage der Beurteilung sein.
+                    </p>
+                  </div>
+                </label>
               </div>
             </div>
           </Akkordeon>

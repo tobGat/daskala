@@ -19,6 +19,7 @@ import UebersichtView from './components/UebersichtView'
 import KVView from './components/KVView'
 import DokumentationModal from './components/DokumentationModal'
 import SperreOverlay from './components/SperreOverlay'
+import RezenzSetupModal from './components/RezenzSetupModal'
 import ChangelogModal, { CHANGELOG, cmpVersion } from './components/ChangelogModal'
 import {
   KlasseHinzufuegenModal,
@@ -77,6 +78,20 @@ export default function App() {
       useStore.setState({ einstellungen: { ...useStore.getState().einstellungen, doku_gesehen: '1' } })
     }
   }, [initialized, erststart, einstellungen?.doku_gesehen])
+
+  // Einmalig nach dem Update auf die durchgehende Jahresnote: alle Zeugnisnoten des aktiven
+  // Schuljahres neu berechnen (der alte SN1/SN2-Blend im Slot 3 wird ersetzt).
+  useEffect(() => {
+    if (initialized && !erststart && einstellungen && einstellungen.jahresnote_recompute !== '1') {
+      ;(async () => {
+        await window.api.zeugnisnoten.rechneAllesNeu()
+        await window.api.einstellungen.set('jahresnote_recompute', '1')
+        useStore.setState({ einstellungen: { ...useStore.getState().einstellungen, jahresnote_recompute: '1' } })
+        const { aktivesFach, ladeFachDaten } = useStore.getState()
+        if (aktivesFach) await ladeFachDaten(aktivesFach.id)
+      })()
+    }
+  }, [initialized, erststart, einstellungen?.jahresnote_recompute])
 
   useEffect(() => {
     const handler = async () => {
@@ -242,6 +257,9 @@ export default function App() {
 
     {/* App-Sperre: Overlay mit PIN-Eingabe (Inhalt dahinter ist geblurt) */}
     {gesperrt && <SperreOverlay onUnlock={entsperren} />}
+
+    {/* Verpflichtende Festlegung des Rezenz-Faktors (§ 20 LBVO) – Erststart & einmalig nach Update */}
+    {initialized && !erststart && einstellungen && einstellungen.rezenz_faktor == null && <RezenzSetupModal />}
     </>
   )
 }

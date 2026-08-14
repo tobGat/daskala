@@ -149,6 +149,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -178,6 +179,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -196,6 +198,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -214,6 +217,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -232,6 +236,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": "<UUID>"
@@ -354,6 +359,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         },
         {
@@ -368,6 +374,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         },
         {
@@ -382,6 +389,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": "<UUID>"
         }
       ]
@@ -1294,6 +1302,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1312,6 +1321,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1330,6 +1340,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1355,6 +1366,7 @@
           "hue_max_einfluss": null,
           "farbe": "#abcdef",
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1373,6 +1385,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1391,6 +1404,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1416,6 +1430,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "punkte",
           "alle_schueler": 1,
           "uuid": null
@@ -1434,6 +1449,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1452,6 +1468,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1477,6 +1494,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1495,6 +1513,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1513,6 +1532,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1538,6 +1558,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1556,6 +1577,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1574,6 +1596,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1599,6 +1622,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
           "uuid": null
@@ -1617,6 +1641,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1635,6 +1660,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1670,6 +1696,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -1688,6 +1715,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -2051,6 +2079,7 @@
           "notiz": "geändert",
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         },
         {
@@ -2065,6 +2094,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         }
       ]
@@ -2086,6 +2116,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         }
       ],
@@ -2125,6 +2156,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         },
         {
@@ -2139,6 +2171,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         }
       ]
@@ -2160,6 +2193,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         },
         {
@@ -2174,6 +2208,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         }
       ]
@@ -2195,6 +2230,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         },
         {
@@ -2209,6 +2245,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         }
       ]
@@ -2230,6 +2267,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         },
         {
@@ -2244,6 +2282,7 @@
           "notiz": null,
           "ma_stufen": 2,
           "ma_symbol": "pm",
+          "ma_symbole": null,
           "uuid": null
         }
       ]
@@ -2289,50 +2328,30 @@
           "id": 1,
           "fach_id": 1,
           "schueler_id": 1,
-          "semester": 1,
+          "semester": 3,
           "note_berechnet": 2,
-          "note_manuell": null,
-          "s1_eingerechnet": 0,
-          "uuid": null
-        },
-        {
-          "id": 2,
-          "fach_id": 1,
-          "schueler_id": 1,
-          "semester": 2,
-          "note_berechnet": 2.5,
           "note_manuell": null,
           "s1_eingerechnet": 1,
           "uuid": null
         },
         {
-          "id": 3,
+          "id": 2,
           "fach_id": 1,
           "schueler_id": 2,
-          "semester": 1,
-          "note_berechnet": 3,
-          "note_manuell": null,
-          "s1_eingerechnet": 0,
-          "uuid": null
-        },
-        {
-          "id": 4,
-          "fach_id": 1,
-          "schueler_id": 2,
-          "semester": 2,
+          "semester": 3,
           "note_berechnet": null,
           "note_manuell": 3,
           "s1_eingerechnet": 1,
           "uuid": null
         },
         {
-          "id": 5,
+          "id": 3,
           "fach_id": 1,
           "schueler_id": 3,
-          "semester": 1,
+          "semester": 3,
           "note_berechnet": null,
           "note_manuell": 2,
-          "s1_eingerechnet": 0,
+          "s1_eingerechnet": 1,
           "uuid": "<UUID>"
         }
       ]
@@ -2346,37 +2365,17 @@
           "id": 1,
           "fach_id": 1,
           "schueler_id": 1,
-          "semester": 1,
+          "semester": 3,
           "note_berechnet": 2,
-          "note_manuell": null,
-          "s1_eingerechnet": 0,
-          "uuid": null
-        },
-        {
-          "id": 2,
-          "fach_id": 1,
-          "schueler_id": 1,
-          "semester": 2,
-          "note_berechnet": 2.5,
           "note_manuell": null,
           "s1_eingerechnet": 1,
           "uuid": null
         },
         {
-          "id": 3,
+          "id": 2,
           "fach_id": 1,
           "schueler_id": 2,
-          "semester": 1,
-          "note_berechnet": 3,
-          "note_manuell": null,
-          "s1_eingerechnet": 0,
-          "uuid": null
-        },
-        {
-          "id": 4,
-          "fach_id": 1,
-          "schueler_id": 2,
-          "semester": 2,
+          "semester": 3,
           "note_berechnet": null,
           "note_manuell": null,
           "s1_eingerechnet": 1,
@@ -2393,37 +2392,17 @@
           "id": 1,
           "fach_id": 1,
           "schueler_id": 1,
-          "semester": 1,
+          "semester": 3,
           "note_berechnet": 1.8,
-          "note_manuell": null,
-          "s1_eingerechnet": 0,
-          "uuid": null
-        },
-        {
-          "id": 2,
-          "fach_id": 1,
-          "schueler_id": 1,
-          "semester": 2,
-          "note_berechnet": 2.5,
           "note_manuell": null,
           "s1_eingerechnet": 1,
           "uuid": null
         },
         {
-          "id": 3,
+          "id": 2,
           "fach_id": 1,
           "schueler_id": 2,
-          "semester": 1,
-          "note_berechnet": 3,
-          "note_manuell": null,
-          "s1_eingerechnet": 0,
-          "uuid": null
-        },
-        {
-          "id": 4,
-          "fach_id": 1,
-          "schueler_id": 2,
-          "semester": 2,
+          "semester": 3,
           "note_berechnet": null,
           "note_manuell": 3,
           "s1_eingerechnet": 1,
@@ -2440,61 +2419,21 @@
           "id": 1,
           "fach_id": 1,
           "schueler_id": 1,
-          "semester": 1,
+          "semester": 3,
           "note_berechnet": 1.8,
           "note_manuell": null,
-          "s1_eingerechnet": 0,
+          "s1_eingerechnet": 1,
           "uuid": null
         },
         {
           "id": 2,
           "fach_id": 1,
-          "schueler_id": 1,
-          "semester": 2,
-          "note_berechnet": null,
-          "note_manuell": null,
-          "s1_eingerechnet": 0,
-          "uuid": null
-        },
-        {
-          "id": 3,
-          "fach_id": 1,
           "schueler_id": 2,
-          "semester": 1,
+          "semester": 3,
           "note_berechnet": 3,
-          "note_manuell": null,
-          "s1_eingerechnet": 0,
-          "uuid": null
-        },
-        {
-          "id": 4,
-          "fach_id": 1,
-          "schueler_id": 2,
-          "semester": 2,
-          "note_berechnet": null,
           "note_manuell": 3,
-          "s1_eingerechnet": 0,
+          "s1_eingerechnet": 1,
           "uuid": null
-        },
-        {
-          "id": 7,
-          "fach_id": 1,
-          "schueler_id": 1,
-          "semester": 3,
-          "note_berechnet": 1.8,
-          "note_manuell": null,
-          "s1_eingerechnet": 1,
-          "uuid": "<UUID>"
-        },
-        {
-          "id": 8,
-          "fach_id": 1,
-          "schueler_id": 2,
-          "semester": 3,
-          "note_berechnet": 3,
-          "note_manuell": null,
-          "s1_eingerechnet": 1,
-          "uuid": "<UUID>"
         }
       ]
     }
@@ -2526,61 +2465,21 @@
           "id": 1,
           "fach_id": 1,
           "schueler_id": 1,
-          "semester": 1,
+          "semester": 3,
           "note_berechnet": 1.8,
           "note_manuell": null,
-          "s1_eingerechnet": 0,
+          "s1_eingerechnet": 1,
           "uuid": null
         },
         {
           "id": 2,
           "fach_id": 1,
-          "schueler_id": 1,
-          "semester": 2,
-          "note_berechnet": null,
-          "note_manuell": null,
-          "s1_eingerechnet": 0,
-          "uuid": null
-        },
-        {
-          "id": 3,
-          "fach_id": 1,
           "schueler_id": 2,
-          "semester": 1,
+          "semester": 3,
           "note_berechnet": 3,
-          "note_manuell": null,
-          "s1_eingerechnet": 0,
-          "uuid": null
-        },
-        {
-          "id": 4,
-          "fach_id": 1,
-          "schueler_id": 2,
-          "semester": 2,
-          "note_berechnet": null,
           "note_manuell": 3,
-          "s1_eingerechnet": 0,
+          "s1_eingerechnet": 1,
           "uuid": null
-        },
-        {
-          "id": 7,
-          "fach_id": 1,
-          "schueler_id": 1,
-          "semester": 3,
-          "note_berechnet": 1.8,
-          "note_manuell": null,
-          "s1_eingerechnet": 1,
-          "uuid": "<UUID>"
-        },
-        {
-          "id": 8,
-          "fach_id": 1,
-          "schueler_id": 2,
-          "semester": 3,
-          "note_berechnet": 3,
-          "note_manuell": null,
-          "s1_eingerechnet": 1,
-          "uuid": "<UUID>"
         }
       ]
     }
@@ -4281,6 +4180,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -4299,6 +4199,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -4317,6 +4218,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
@@ -4335,6 +4237,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": "<UUID>"
@@ -4353,6 +4256,7 @@
           "hue_max_einfluss": null,
           "farbe": null,
           "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": "<UUID>"
