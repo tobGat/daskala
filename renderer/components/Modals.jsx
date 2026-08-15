@@ -327,6 +327,14 @@ export function SchuelerVerwaltenModal() {
   const dateiInputRef = useRef(null)
   const mobil = useIsMobile()
 
+  // Mobil: statt Inline-Buttons (SPF/LEG/…/bearbeiten/löschen) ein Kontextmenü, das per
+  // langem Drücken auf eine Zeile öffnet – aufgeräumtere Liste. Desktop bleibt unverändert.
+  const [menuSchuelerId, setMenuSchuelerId] = useState(null)
+  const [menuConfirmDelete, setMenuConfirmDelete] = useState(false)
+  const menuSchueler = schueler.find(s => s.id === menuSchuelerId) || null
+  const schliesseMenu = () => { setMenuSchuelerId(null); setMenuConfirmDelete(false) }
+  const menuItem = 'w-full flex items-center gap-3 px-5 py-3.5 min-h-[52px] text-left text-[15px] text-ink-800 dark:text-paper-100 active:bg-paper-100 dark:active:bg-ink-800 transition-colors'
+
   // ── Manuelle Reihenfolge (Drag-and-Drop) ──────────────────────────────────
   const istManuell = aktiveKlasse?.sortierung === 'manuell'
   // Beim Öffnen über den „↕ Reihenfolge"-Button (openModal(..., { reorder:true }))
@@ -570,6 +578,9 @@ export function SchuelerVerwaltenModal() {
                 )}
               </div>
             )}
+            {mobil && !reorderModus && schueler.length > 0 && (
+              <p className="text-[11px] text-ink-400 dark:text-ink-500 mb-1 px-1">Zum Bearbeiten lange auf einen Namen drücken.</p>
+            )}
             <div className="max-h-64 overflow-y-auto space-y-1">
             {schueler.length === 0 ? (
               <p className="text-sm text-ink-400 text-center py-4">Noch keine Schüler:innen</p>
@@ -624,6 +635,19 @@ export function SchuelerVerwaltenModal() {
                   onClick={() => setEditId(null)}
                   title="Abbrechen"
                 >✕</button>
+              </div>
+              ) : mobil ? (
+              <div
+                key={s.id}
+                onContextMenu={e => { e.preventDefault(); setMenuConfirmDelete(false); setMenuSchuelerId(s.id) }}
+                className="flex items-center gap-2 px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg select-none"
+              >
+                <SchuelerAvatar schueler={s} size={28} />
+                <span className="text-sm text-ink-900 dark:text-white flex-1 truncate">{s.nachname} {s.vorname}</span>
+                {/* Aktive Merkmale als dezente, schreibgeschützte Badges – geändert wird im Menü. */}
+                {s.lernschwaeche ? <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">LS</span> : null}
+                {s.legasthenie ? <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400">LEG</span> : null}
+                {s.spf ? <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">SPF</span> : null}
               </div>
               ) : (
               <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg">
@@ -801,6 +825,64 @@ export function SchuelerVerwaltenModal() {
           onClose={() => setAvatarSchueler(null)}
           onSaved={ladeSchueler}
         />
+      )}
+
+      {/* Mobiles Kontextmenü (langes Drücken auf eine Zeile) – Bottom-Sheet */}
+      {mobil && menuSchueler && (
+        <div
+          className="fixed inset-0 z-[60] flex flex-col"
+          style={{ background: 'rgba(46,42,38,0.32)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+          onClick={schliesseMenu}
+        >
+          <div
+            className="mt-auto w-full bg-paper-50 dark:bg-ink-950 rounded-t-3xl shadow-pop animate-pop-in overflow-y-auto max-h-[85vh]"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-2.5 pb-1"><div className="w-10 h-1 rounded-full bg-paper-300 dark:bg-ink-700" /></div>
+            <div className="px-5 py-3 border-b border-paper-200 dark:border-ink-800 flex items-center gap-3">
+              <SchuelerAvatar schueler={menuSchueler} size={32} />
+              <div className="text-base font-semibold text-ink-900 dark:text-paper-100">{menuSchueler.nachname} {menuSchueler.vorname}</div>
+            </div>
+            {menuConfirmDelete ? (
+              <>
+                <div className="px-5 py-4 text-[15px] text-ink-700 dark:text-paper-200">
+                  {menuSchueler.vorname} {menuSchueler.nachname} wirklich aus der Klasse entfernen?
+                </div>
+                <button type="button" className={`${menuItem} text-red-500 dark:text-red-400`} onClick={() => { handleLoeschen(menuSchueler.id); schliesseMenu() }}>
+                  <span className="w-6 text-center">🗑</span> Entfernen
+                </button>
+                <div className="context-menu-separator" />
+                <button type="button" className={`${menuItem} justify-center text-ink-500 dark:text-ink-400`} onClick={() => setMenuConfirmDelete(false)}>Abbrechen</button>
+              </>
+            ) : (
+              <>
+                <button type="button" className={menuItem} onClick={() => { startBearbeiten(menuSchueler); schliesseMenu() }}>
+                  <span className="w-6 text-center">✎</span> Name bearbeiten
+                </button>
+                <button type="button" className={menuItem} onClick={() => { setAvatarSchueler(menuSchueler); schliesseMenu() }}>
+                  <span className="w-6 text-center">🎨</span> Avatar bearbeiten
+                </button>
+                <div className="context-menu-separator" />
+                <button type="button" className={menuItem} onClick={() => handleToggle(menuSchueler, 'lernschwaeche')}>
+                  <span className="w-6 text-center">{menuSchueler.lernschwaeche ? '☑' : '☐'}</span> Lernschwäche
+                </button>
+                <button type="button" className={menuItem} onClick={() => handleToggle(menuSchueler, 'legasthenie')}>
+                  <span className="w-6 text-center">{menuSchueler.legasthenie ? '☑' : '☐'}</span> Legasthenie
+                </button>
+                <button type="button" className={menuItem} onClick={() => handleToggle(menuSchueler, 'spf')}>
+                  <span className="w-6 text-center">{menuSchueler.spf ? '☑' : '☐'}</span> Sonderpäd. Förderbedarf (SPF)
+                </button>
+                <div className="context-menu-separator" />
+                <button type="button" className={`${menuItem} text-red-500 dark:text-red-400`} onClick={() => setMenuConfirmDelete(true)}>
+                  <span className="w-6 text-center">🗑</span> Aus Klasse entfernen
+                </button>
+                <div className="context-menu-separator" />
+                <button type="button" className={`${menuItem} justify-center text-ink-500 dark:text-ink-400`} onClick={schliesseMenu}>Abbrechen</button>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )
