@@ -340,8 +340,10 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
   // Benotete Mitarbeit (MA-Note) ist Mitarbeit → unterdrückt den § 3-Hinweis.
   const manEintr = fachEintraege.filter(e => e.kategorie === 'MAN' && istGueltigeNote(e.wert))
   // § 3 LBVO: schriftliche Leistungen dürfen nicht alleinige Beurteilungsgrundlage sein.
+  // Nur echte Mitarbeit (MA-Symbole oder benotete Mitarbeit) unterdrückt den Hinweis –
+  // eine bloße Hausübung ist keine Mitarbeits-Leistungsfeststellung.
   const maWarnung = einstellungen?.ma_pflicht_warnung !== '0'
-    && hatSaT && maEintr.length === 0 && hueEintr.length === 0 && manEintr.length === 0
+    && hatSaT && maEintr.length === 0 && manEintr.length === 0
 
   return (
     <div className="space-y-6">

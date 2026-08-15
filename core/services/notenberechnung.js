@@ -132,7 +132,6 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
   if (!fach) return { note: null }
 
   const istDifferenziert = fach.benotungssystem === 'differenziert'
-  const maxNote = istDifferenziert ? 7 : 5
 
   // Niveau-Historie laden (nur bei differenzierten Fächern relevant)
   let niveauHist = []
@@ -147,8 +146,11 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
       'SELECT niveau FROM schueler_niveau WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId]
     ))?.niveau ?? 'AHS'
   }
+  // Undatierte note-bildende Spalten werden konsistent als "aelteste" behandelt (wie in der
+  // Rezenz-Sortierung): ohne Datum gilt das aelteste bekannte Niveau, nicht das aktuelle.
+  const aeltestesNiveau = niveauHist.length ? niveauHist[niveauHist.length - 1].niveau : niveauFallback
   const offsetFor = (datum) => istDifferenziert
-    ? niveauOffset(niveauZurZeit(niveauHist, datum, niveauFallback))
+    ? niveauOffset(datum ? niveauZurZeit(niveauHist, datum, niveauFallback) : aeltestesNiveau)
     : 0
   const aktuellerOffset = istDifferenziert ? niveauOffset(niveauFallback) : 0
 
@@ -159,7 +161,7 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
   const gew = {
     SA: fach.gewichtung_sa ?? globaleGewichtung['SA'] ?? 0.4,
     T: fach.gewichtung_t ?? globaleGewichtung['T'] ?? 0.3,
-    CUSTOM: fach.gewichtung_custom ?? globaleGewichtung['CUSTOM'] ?? 0.0,
+    CUSTOM: fach.gewichtung_custom ?? globaleGewichtung['CUSTOM'] ?? 0.1,
     // Benotete Mitarbeit (MAN): Default > 0, damit reine MAN-Fächer eine Note bilden.
     MAN: fach.gewichtung_man ?? globaleGewichtung['MAN'] ?? 0.3,
   }
@@ -216,7 +218,7 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
   for (const [kat, werte] of Object.entries(basisWerte)) {
     if (werte.length === 0) continue
     const w = gew[kat] ?? 0
-    if (w === 0) continue
+    if (w <= 0) continue
     const avg = gewichteterSchnitt(werte, rezenzFaktor)
     summe += avg * w
     gesamtGewichtung += w
@@ -226,7 +228,6 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
 
   const maGesamt = maCount
   const hueGesamt = huePos + hueNeg
-  const hatMAHUE = maGesamt > 0 || hueGesamt > 0
 
   // maScore ist bereits die Roh-Summe in Notenpunkten; die Deckelung greift erst hier.
   let maEinfluss = maGesamt > 0 ? maScore : 0
@@ -235,23 +236,24 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
   hueEinfluss = Math.max(-maxHueEinfluss, Math.min(maxHueEinfluss, hueEinfluss))
   const einfluss = maEinfluss + hueEinfluss
 
-  // Verhältnis (−1…+1) nur für die grobe Fallback-Note, wenn es keine echten Noten gibt.
-  const ratios = []
-  if (maGesamt > 0) ratios.push(maDir / maGesamt)
-  if (hueGesamt > 0) ratios.push((huePos - hueNeg) / hueGesamt)
-  const verhaeltnis = ratios.length ? ratios.reduce((a, b) => a + b, 0) / ratios.length : 0
+  // Grobe Fallback-Note (ohne echte Basis) NUR aus Mitarbeit ableiten. Hausübung allein ist
+  // laut § 3 LBVO keine tragfähige Beurteilungsgrundlage → ohne MA und ohne Basis keine Note.
+  const maVerhaeltnis = maGesamt > 0 ? maDir / maGesamt : 0
 
   let noteIntern
   if (hatBasis) {
     noteIntern = basisIntern - einfluss  // viele +/✓ verbessern → kleinerer Wert
-  } else if (hatMAHUE) {
-    noteIntern = (3 - verhaeltnis * 2) + aktuellerOffset
+  } else if (maGesamt > 0) {
+    noteIntern = (3 - maVerhaeltnis * 2) + aktuellerOffset
   } else {
     return { note: null }
   }
 
-  noteIntern = Math.max(1, Math.min(maxNote, noteIntern))
-  return { note: Math.round(noteIntern * 10) / 10 }
+  // Niveau-abhängiger Clamp: interner Wert bleibt im Fenster [1+Offset, 5+Offset], damit die
+  // Anzeige (intern − aktuellerOffset) und der Klassenschnitt stets in 1–5 liegen.
+  noteIntern = Math.max(1 + aktuellerOffset, Math.min(5 + aktuellerOffset, noteIntern))
+  // Auf zwei Dezimalen runden – so entstehen keine falschen „Zwischennoten" durch Vorrundung auf x,5.
+  return { note: Math.round(noteIntern * 100) / 100 }
 }
 
 // Alle Fächer im angegebenen Schuljahr neu berechnen

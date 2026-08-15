@@ -661,8 +661,10 @@ function registerIPC() {
   // Alle Zeugnisnoten im aktuellen Schuljahr neu berechnen
   // (z.B. nach Änderung von Rezenz-Faktor, MA-Gewichten, Kategorie-Gewichtung)
   ipcMain.handle('noten:rechneAllesNeu', async () => {
-    const aktuellesSchuljahr = await dbPort.selectOne('SELECT id FROM schuljahre WHERE archiviert = 0 ORDER BY id DESC LIMIT 1')
-    await berechneAlleFuerSchuljahr(aktuellesSchuljahr?.id)
+    // Alle NICHT-archivierten Schuljahre neu berechnen (nicht nur das jüngste), damit keine
+    // parallel offenen Jahre mit einer alten Formel zurückbleiben. Archivierte bleiben unberührt.
+    const schuljahre = await dbPort.select('SELECT id FROM schuljahre WHERE archiviert = 0')
+    for (const sj of schuljahre) await berechneAlleFuerSchuljahr(sj.id)
     return true
   })
 

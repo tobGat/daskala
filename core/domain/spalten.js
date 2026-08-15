@@ -12,10 +12,15 @@ async function getAll(db, fachId) {
 
 async function create(db, data) {
   const maxReihenfolge = (await db.selectOne('SELECT MAX(reihenfolge) as m FROM spalten WHERE fach_id = ? AND semester = ?', [data.fachId, data.semester]))?.m ?? 0
-  // Eigene 4-stufige Symbole nur speichern, wenn es ein gültiges 4er-Array ist.
+  // Eigene Symbole speichern: 4-stufige Mitarbeit (MA, 4 Symbole) oder Mitarbeitsnote (MAN, 5 Symbole).
+  // Nur gültige Sets akzeptieren: erwartete Länge, nicht leer, paarweise verschieden (indexOf-Eindeutigkeit).
   let maSymbole = null
-  if (data.maStufen === 4 && Array.isArray(data.maSymbole) && data.maSymbole.length === 4) {
-    maSymbole = JSON.stringify(data.maSymbole.map((s) => String(s)))
+  const erwarteteLaenge = data.kategorie === 'MAN' ? 5 : (data.maStufen === 4 ? 4 : 0)
+  if (erwarteteLaenge && Array.isArray(data.maSymbole) && data.maSymbole.length === erwarteteLaenge) {
+    const syms = data.maSymbole.map((s) => String(s ?? '').trim())
+    if (syms.every((s) => s.length > 0) && new Set(syms).size === erwarteteLaenge) {
+      maSymbole = JSON.stringify(syms)
+    }
   }
   const info = await db.execute(`
       INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen, ma_symbol, ma_symbole, uuid)

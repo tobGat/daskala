@@ -568,7 +568,7 @@
         "fach_id": 1,
         "schueler_id": 1,
         "semester": 3,
-        "note_berechnet": 1.8,
+        "note_berechnet": 1.75,
         "note_manuell": null,
         "s1_eingerechnet": 1,
         "uuid": null

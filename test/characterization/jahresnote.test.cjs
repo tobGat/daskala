@@ -59,9 +59,9 @@ test('Rezenz läuft durchgehend übers Jahr (semesterübergreifend)', async () =
     { semester: 2, wert: 1, datum: '2026-05-01' },
   ]
   assert.strictEqual(await note(sp, 1), 2.5) // Mittel (4+3+2+1)/4
-  // Faktor 2: Rang-Gewichte 1, 1.33, 1.67, 2 (Summe 6) → (4+4+3.33+2)/6 = 2.22 → 2,2.
+  // Faktor 2: Rang-Gewichte 1, 1.33, 1.67, 2 (Summe 6) → (4+4+3.33+2)/6 = 2.2222 → 2,22 (2 Dezimalen).
   // Die späteren S2-Noten ziehen stärker als die frühen S1-Noten (durchgehende Rezenz).
-  assert.strictEqual(await note(sp, 2), 2.2)
+  assert.strictEqual(await note(sp, 2), 2.22)
 })
 
 test('berechneZeugnisnote nimmt keinen semester-Parameter mehr', () => {
