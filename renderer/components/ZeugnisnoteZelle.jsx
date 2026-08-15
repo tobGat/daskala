@@ -373,11 +373,12 @@ export default function ZeugnisnoteZelle({ schueler }) {
   const niveauKlasse = isDifferenziert && !istManuell ? niveauBgKlasse(niveau) : ''
 
   // Die ZN-Spalte ist sticky-right, damit sie beim horizontalen Scrollen sichtbar bleibt.
-  // Eigener BG ist nötig, damit beim Vorbeiscrollen keine Inhalte durchscheinen.
-  const tdClassName = 'p-0 relative bg-white dark:bg-ink-900 border-l-2 border-coral-300 dark:border-coral-700/60'
+  // Voll deckender (opaker) BG + eigener Stacking-Context (isolation) + hoher z-index,
+  // damit beim Vorbeiscrollen keine Symbole aus anderen Spalten durchscheinen.
+  const tdClassName = 'p-0 relative bg-coral-50 dark:bg-ink-900 border-l-2 border-coral-300 dark:border-coral-700/60'
   const tdStyle = {
     width: 46, minWidth: 46,
-    position: 'sticky', right: 0, zIndex: 4,
+    position: 'sticky', right: 0, zIndex: 20, isolation: 'isolate',
     boxShadow: '-3px 0 8px -2px rgba(46, 42, 38, 0.08)',
   }
 

@@ -88,13 +88,14 @@ const EingeklappteZelle = memo(function EingeklappteZelle() {
 function ENHeader() {
   return (
     <th
-      className="bg-gradient-to-b from-coral-100 to-coral-50 dark:from-coral-900/50 dark:to-coral-900/20 text-center border-l-2 border-coral-300 dark:border-coral-700/60"
+      className="bg-coral-50 dark:bg-ink-900 bg-gradient-to-b from-coral-100 to-coral-50 dark:from-coral-900/50 dark:to-coral-900/20 text-center border-l-2 border-coral-300 dark:border-coral-700/60"
       style={{
         width: 46,
         minWidth: 46,
         // sticky-top setzt schon die CSS-Regel; right:0 macht zusätzlich sticky-right
         right: 0,
-        zIndex: 10,
+        zIndex: 30,
+        isolation: 'isolate',
         boxShadow: '-3px 0 8px -2px rgba(46, 42, 38, 0.08), 0 1px 0 0 rgb(230 227 223)',
       }}
       title="Zeugnisnote – vorläufiger Stand aus allen Aufzeichnungen des Jahres (wird bis Schuljahresende fortgeschrieben)"

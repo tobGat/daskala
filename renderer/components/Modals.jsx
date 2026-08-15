@@ -878,7 +878,9 @@ export function SchuelerVerwaltenModal() {
                   <span className="w-6 text-center">🗑</span> Aus Klasse entfernen
                 </button>
                 <div className="context-menu-separator" />
-                <button type="button" className={`${menuItem} justify-center text-ink-500 dark:text-ink-400`} onClick={schliesseMenu}>Abbrechen</button>
+                <div className="p-3">
+                  <button type="button" className="w-full py-3 rounded-xl bg-coral-600 text-white font-semibold text-[15px] active:bg-coral-700 transition-colors" onClick={schliesseMenu}>OK</button>
+                </div>
               </>
             )}
           </div>
