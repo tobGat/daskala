@@ -314,7 +314,7 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
   }
 
   // Stats
-  // Positiv: + / 😄 / 🙂 ; negativ: − / 🙁 / 😞 (2- und 4-stufige Mitarbeit zusammengefasst).
+  // Positiv: + / 😄 / 🙂 ; negativ: − / 🙁 / 😞 ; ~ (neutral) zählt zu keiner Seite (2-/3-/4-stufig).
   const maEintr = fachEintraege.filter(e => e.kategorie === 'MA' && e.wert)
   const maPos = maEintr.filter(e => e.wert === '+' || e.wert === '😄' || e.wert === '🙂').length
   const maNeg = maEintr.filter(e => e.wert === '-' || e.wert === '🙁' || e.wert === '😞').length
@@ -338,13 +338,11 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
   }, [verlaufOffen, fach.id, schueler.id])
 
   const hatSaT = fachEintraege.some(e => (e.kategorie === 'SA' || e.kategorie === 'T') && istGueltigeNote(e.wert))
-  // Benotete Mitarbeit (MA-Note) ist Mitarbeit → unterdrückt den § 3-Hinweis.
-  const manEintr = fachEintraege.filter(e => e.kategorie === 'MAN' && istGueltigeNote(e.wert))
   // § 3 LBVO: schriftliche Leistungen dürfen nicht alleinige Beurteilungsgrundlage sein.
-  // Nur echte Mitarbeit (MA-Symbole oder benotete Mitarbeit) unterdrückt den Hinweis –
-  // eine bloße Hausübung ist keine Mitarbeits-Leistungsfeststellung.
+  // Mitarbeit (Bonus/Malus) UND Hausübung bilden gemeinsam die Mitarbeitsnote (§ 4 Abs. 2) →
+  // beide unterdrücken den Hinweis.
   const maWarnung = einstellungen?.ma_pflicht_warnung !== '0'
-    && hatSaT && maEintr.length === 0 && manEintr.length === 0
+    && hatSaT && maEintr.length === 0 && hueEintr.length === 0
 
   return (
     <div className="space-y-6">

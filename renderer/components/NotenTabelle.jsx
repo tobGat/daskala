@@ -16,7 +16,6 @@ const KAT_FARBE = {
   T:      'bg-lavender-100 text-lavender-700 dark:bg-lavender-900/40 dark:text-lavender-300',
   SA:     'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300',
   CUSTOM: 'bg-paper-200 text-ink-700 dark:bg-ink-800 dark:text-ink-300',
-  MAN:    'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
 }
 
 const KAT_DOT = {
@@ -25,10 +24,9 @@ const KAT_DOT = {
   T:      'bg-lavender-500',
   SA:     'bg-coral-500',
   CUSTOM: 'bg-ink-400',
-  MAN:    'bg-teal-500',
 }
 
-const KATEGORIEN_LABEL = { MA: 'Mitarbeit', 'HÜ': 'Hausübung', T: 'Test', SA: 'Schularbeit', CUSTOM: 'Individuell', MAN: 'Mitarbeitsnote' }
+const KATEGORIEN_LABEL = { MA: 'Mitarbeit', 'HÜ': 'Hausübung', T: 'Test', SA: 'Schularbeit', CUSTOM: 'Individuell' }
 
 // ─── Spalten-Header ───────────────────────────────────────────────────────────
 const SpalteHeader = memo(function SpalteHeader({ spalte, onContextMenu }) {

@@ -892,37 +892,31 @@ export function SchuelerVerwaltenModal() {
 
 // ─── Gewichtung anpassen (fach-spezifisch) ───────────────────────────────────
 export function GewichtungModal() {
-  const { closeModal, modalData: fach, gewichtungGlobal, einstellungen, ladeKlassen, aktuellesSchuljahr } = useStore()
+  const { closeModal, modalData: fach, gewichtungGlobal, ladeKlassen, aktuellesSchuljahr } = useStore()
 
-  // Nur SA/Test/Individuell bilden die Note (wie global). MA & HÜ wirken als Einfluss.
-  // Beim Laden auf 100 % normieren – exakt wie in den Einstellungen.
+  // SA/Test/Individuell/Mitarbeit bilden die Note. Beim Laden auf 100 % normieren.
   const [gew, setGew] = useState(() => {
     const roh = {
       SA: fach?.gewichtung_sa ?? gewichtungGlobal['SA'] ?? 0.4,
       T: fach?.gewichtung_t ?? gewichtungGlobal['T'] ?? 0.3,
       CUSTOM: fach?.gewichtung_custom ?? gewichtungGlobal['CUSTOM'] ?? 0.1,
-      MAN: fach?.gewichtung_man ?? gewichtungGlobal['MAN'] ?? 0.3,
+      MA: fach?.gewichtung_ma ?? gewichtungGlobal['MA'] ?? 0.2,
     }
-    const summe = roh.SA + roh.T + roh.CUSTOM + roh.MAN || 1
+    const summe = roh.SA + roh.T + roh.CUSTOM + roh.MA || 1
     const pct = {
       SA: Math.round(roh.SA / summe * 100),
       T: Math.round(roh.T / summe * 100),
       CUSTOM: Math.round(roh.CUSTOM / summe * 100),
-      MAN: Math.round(roh.MAN / summe * 100),
+      MA: Math.round(roh.MA / summe * 100),
     }
     const groesste = Object.keys(pct).reduce((a, b) => (pct[b] > pct[a] ? b : a))
-    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM + pct.MAN)
+    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM + pct.MA)
     return pct
   })
-  // Deckelung des MA- bzw. HÜ-Einflusses: Fach-Wert oder globaler Standard (0,5), unabhängig.
-  const globalMaEinfluss = einstellungen?.['ma_max_einfluss'] ?? einstellungen?.['ma_hue_max_einfluss'] ?? '0.5'
-  const globalHueEinfluss = einstellungen?.['hue_max_einfluss'] ?? einstellungen?.['ma_hue_max_einfluss'] ?? '0.5'
-  const [maEinfluss, setMaEinfluss] = useState(fach?.ma_max_einfluss != null ? String(fach.ma_max_einfluss) : globalMaEinfluss)
-  const [hueEinfluss, setHueEinfluss] = useState(fach?.hue_max_einfluss != null ? String(fach.hue_max_einfluss) : globalHueEinfluss)
   const [loading, setLoading] = useState(false)
 
   const gesamt = Object.values(gew).reduce((a, b) => a + b, 0)
-  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell', MAN: 'Mitarbeitsnote' }
+  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell', MA: 'Mitarbeit' }
 
   const handleSpeichern = async () => {
     if (Math.abs(gesamt - 100) > 0.5) return
@@ -932,9 +926,7 @@ export function GewichtungModal() {
       sa: gew.SA / 100,
       t: gew.T / 100,
       custom: gew.CUSTOM / 100,
-      man: gew.MAN / 100,
-      maEinfluss: parseFloat(maEinfluss),
-      hueEinfluss: parseFloat(hueEinfluss),
+      ma: gew.MA / 100,
     })
     await ladeKlassen(aktuellesSchuljahr.id)
     closeModal()
@@ -974,36 +966,9 @@ export function GewichtungModal() {
         <p className={`text-sm mb-1 ${Math.abs(gesamt - 100) > 0.5 ? 'text-red-500' : 'text-green-600'}`}>
           Gesamt: {gesamt.toFixed(0)}% {Math.abs(gesamt - 100) <= 0.5 ? '✓' : '(muss 100% sein)'}
         </p>
-
-        {/* Einfluss von Mitarbeit & Hausübung (fach-spezifische Deckelung, MA/HÜ unabhängig) */}
-        <div className="mt-4 pt-4 border-t border-paper-100 dark:border-ink-800">
-          <h3 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Einfluss von Mitarbeit &amp; Hausübung</h3>
-          <p className="text-[11px] text-ink-400 dark:text-ink-500 mb-3 leading-snug">
-            MA (+/−) und HÜ (✓/✗) bilden keine Note, sondern verschieben sie leicht. Deckelung nur für dieses Fach – MA und HÜ unabhängig voneinander.
-          </p>
-          <div className="space-y-2.5">
-            {[
-              ['Mitarbeit', maEinfluss, setMaEinfluss],
-              ['Hausübung', hueEinfluss, setHueEinfluss],
-            ].map(([label, wert, setter]) => (
-              <div key={label} className="flex items-center gap-3">
-                <span className="text-sm text-ink-600 dark:text-ink-400 w-28">{label}</span>
-                <input
-                  type="range" min="0" max="4" step="0.05"
-                  className="flex-1"
-                  value={wert}
-                  onChange={e => setter(e.target.value)}
-                />
-                <span className="text-sm font-medium w-16 text-right tabular-nums text-ink-900 dark:text-white">
-                  ± {Number(wert).toFixed(2).replace('.', ',')}
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1.5">
-            0 = kein Einfluss · 0,5 = Standard · bis zu ± 4 Noten möglich
-          </p>
-        </div>
+        <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1 leading-snug">
+          „Mitarbeit" ist eine Note aus dem Verhältnis positiver zu negativer Aufzeichnungen (Bonus/Malus + Hausübung).
+        </p>
 
         <div className="flex gap-3 mt-5">
           <button className="btn-secondary" onClick={handleZuruecksetzen} disabled={loading}>

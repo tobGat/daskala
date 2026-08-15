@@ -16,42 +16,27 @@ function noteKlasse(n) {
   return ''
 }
 
-// Mitarbeitsnote-Symbol → Note 1–5 (eigene Symbole via spalten.ma_symbole) oder parseInt.
-function manNoteVon(spalte, wert) {
-  if (spalte.ma_symbole) {
-    try {
-      const arr = JSON.parse(spalte.ma_symbole)
-      if (Array.isArray(arr) && arr.length === 5) { const i = arr.indexOf(wert); return i >= 0 ? i + 1 : NaN }
-    } catch { /* Zahleneingabe */ }
-  }
-  return parseInt(wert)
-}
-
-// Spiegelt core: Symbolliste einer 4-stufigen MA-Spalte (eigene oder Default-Smileys).
+// Spiegelt core: mehrstufige MA-Symbolliste (eigene oder Default). Länge nach ma_stufen (3/4).
 const MA_SMILEYS_DEFAULT = ['😄', '🙂', '🙁', '😞']
+const MA_DREI_DEFAULT = ['+', '~', '-']
 function maSymboleVon(spalte) {
+  const len = spalte.ma_stufen === 3 ? 3 : 4
   if (spalte.ma_symbole) {
     try {
       const arr = JSON.parse(spalte.ma_symbole)
-      if (Array.isArray(arr) && arr.length === 4) return arr
+      if (Array.isArray(arr) && arr.length === len) return arr
     } catch { /* Default */ }
   }
-  return MA_SMILEYS_DEFAULT
+  return len === 3 ? MA_DREI_DEFAULT : MA_SMILEYS_DEFAULT
 }
 
-// Spiegelt core maBewertung: { w (vorzeichenbehaftetes Gewicht), dir (±1) } oder null.
-// g = { plus, minus, vpos, pos, neg, vneg } aus den Einstellungen.
-function maBewertung(spalte, wert, g) {
-  if (spalte.ma_stufen === 4) {
-    const idx = maSymboleVon(spalte).indexOf(wert)
-    if (idx === 0) return { w: g.vpos, dir: 1 }
-    if (idx === 1) return { w: g.pos, dir: 1 }
-    if (idx === 2) return { w: -g.neg, dir: -1 }
-    if (idx === 3) return { w: -g.vneg, dir: -1 }
-    return null
-  }
-  if (wert === '+') return { w: g.plus, dir: 1 }
-  if (wert === '-') return { w: -g.minus, dir: -1 }
+// Spiegelt core maTeilnote: Teilnote 1–5 einer MA-Aufzeichnung (positionsbasiert bei 3-/4-stufig,
+// direkt bei 2-stufig). null = kein gültiger Eintrag.
+function maTeilnote(spalte, wert) {
+  if (spalte.ma_stufen === 3) { const i = maSymboleVon(spalte).indexOf(wert); return [1, 3, 5][i] ?? null }
+  if (spalte.ma_stufen === 4) { const i = maSymboleVon(spalte).indexOf(wert); return [1, 2, 4, 5][i] ?? null }
+  if (wert === '+') return 1
+  if (wert === '-') return 5
   return null
 }
 
@@ -111,90 +96,76 @@ function useZNBreakdown(schuelerId, spalten, eintraege, einstellungen, aktivesFa
     const offsetFor = (datum) => istDifferenziert
       ? niveauOffset(niveauZurZeit(niveauHistorie?.[schuelerId], datum, niveauFallback))
       : 0
-
-    // MA & HÜ getrennt gedeckelt: Fach-Wert vor global, global fällt auf Alt-Wert zurück.
-    const globalAltEinfluss = einstellungen?.ma_hue_max_einfluss
-    const maxMaEinfluss = aktivesFach?.ma_max_einfluss != null
-      ? aktivesFach.ma_max_einfluss
-      : parseFloat(einstellungen?.ma_max_einfluss ?? globalAltEinfluss ?? '0.5')
-    const maxHueEinfluss = aktivesFach?.hue_max_einfluss != null
-      ? aktivesFach.hue_max_einfluss
-      : parseFloat(einstellungen?.hue_max_einfluss ?? globalAltEinfluss ?? '0.5')
-    const einflussSchritt = parseFloat(einstellungen?.ma_hue_schritt ?? '0.1')
     const rezenzFaktor = parseFloat(einstellungen?.rezenz_faktor ?? '1')
-    // Mitarbeits-Gewichte je Stufe wie im Kern (ladeMaGewichte) – Default = bisheriges Verhalten.
-    const num = (key, def) => { const v = parseFloat(einstellungen?.[key]); return isNaN(v) ? def : v }
-    const maGew = {
-      plus: num('ma_w_plus', 0.1), minus: num('ma_w_minus', 0.1),
-      vpos: num('ma_w_smiley_vpos', 0.1), pos: num('ma_w_smiley_pos', 0.05),
-      neg: num('ma_w_smiley_neg', 0.05), vneg: num('ma_w_smiley_vneg', 0.1),
-    }
 
-    // SA/Test/Individuell/Mitarbeitsnote bilden die Basisnote. Symbolische MA/HÜ verschieben sie nur (niveau-frei).
+    // Note-bildende Kategorien: SA/Test/Individuell/Mitarbeit. Die Mitarbeitsnote (MA) entsteht
+    // aus dem Durchschnitt der Bonus/Malus- + Hausübungs-Teilnoten (§ 4 Abs. 2 LBVO).
     const gew = {
       SA:     aktivesFach?.gewichtung_sa     ?? gewichtungGlobal?.SA     ?? 0.4,
       T:      aktivesFach?.gewichtung_t      ?? gewichtungGlobal?.T      ?? 0.3,
       CUSTOM: aktivesFach?.gewichtung_custom ?? gewichtungGlobal?.CUSTOM ?? 0.1,
-      MAN:    aktivesFach?.gewichtung_man    ?? gewichtungGlobal?.MAN    ?? 0.3,
+      MA:     aktivesFach?.gewichtung_ma     ?? gewichtungGlobal?.MA     ?? 0.2,
     }
-    const KAT_LABEL = { SA: 'SA', T: 'T', CUSTOM: 'Ind.', MAN: 'MA-Note' }
+    const KAT_LABEL = { SA: 'SA', T: 'T', CUSTOM: 'Ind.', MA: 'Mitarb.' }
 
-    const basis = { SA: { werte: [], eingaben: [] }, T: { werte: [], eingaben: [] }, CUSTOM: { werte: [], eingaben: [] }, MAN: { werte: [], eingaben: [] } }
-    // Mitarbeit positionsbasiert wie im Kern: maScore = Roh-Summe der Gewichte, maCount/maDir für Zählung.
-    let maScore = 0, maCount = 0, maPlusCount = 0, maMinusCount = 0, huePos = 0, hueNeg = 0
+    const basis = { SA: { werte: [], eingaben: [] }, T: { werte: [], eingaben: [] }, CUSTOM: { werte: [], eingaben: [] } }
+    // Mitarbeit: alle Teilnoten (Bonus/Malus + Hausübung, intern inkl. Niveau-Offset) sammeln.
+    const maTeilnoten = []
+    let maPlusCount = 0, maMinusCount = 0, huePos = 0, hueNeg = 0
 
     for (const spalte of fachSpalten) {
       const wert = eintraege[`${spalte.id}_${schuelerId}`] ?? ''
       if (!wert) continue
       if (spalte.kategorie === 'MA') {
-        const b = maBewertung(spalte, wert, maGew)
-        if (b !== null) { maScore += b.w; maCount++; if (b.dir > 0) maPlusCount++; else maMinusCount++ }
+        const t = maTeilnote(spalte, wert)
+        if (t !== null) { maTeilnoten.push(t + offsetFor(spalte.datum)); if (t < 3) maPlusCount++; else if (t > 3) maMinusCount++ }
       } else if (spalte.kategorie === 'HÜ') {
-        if      (wert === '✓') huePos++
-        else if (wert === '✗') hueNeg++
-        // '—' = "nicht gewertet / entfällt": bewusst ohne Noteneinfluss, zählt nicht mit.
+        if      (wert === '✓') { huePos++; maTeilnoten.push(1 + offsetFor(spalte.datum)) }
+        else if (wert === '✗') { hueNeg++; maTeilnoten.push(5 + offsetFor(spalte.datum)) }
+        // '—' = "nicht gewertet / entfällt": zählt nicht mit.
       } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
         const n = parseInt(wert)
         if (n >= 1 && n <= 5) { basis[spalte.kategorie].werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge }); basis[spalte.kategorie].eingaben.push(n) }
       } else if (spalte.kategorie === 'CUSTOM') {
         const n = parseInt(wert)
         if (!isNaN(n) && n >= 1 && n <= 5) { basis.CUSTOM.werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge }); basis.CUSTOM.eingaben.push(n) }
-      } else if (spalte.kategorie === 'MAN') {
-        const n = manNoteVon(spalte, wert)
-        if (n >= 1 && n <= 5) { basis.MAN.werte.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge }); basis.MAN.eingaben.push(n) }
       }
     }
 
-    // Basisnote (gewichtet, nur vorhandene Kategorien)
+    const hatMitarbeit = maTeilnoten.length > 0
+    const maSchnitt = hatMitarbeit ? maTeilnoten.reduce((a, n) => a + n, 0) / maTeilnoten.length : null
+
+    // Basisnote (gewichtet, nur vorhandene Kategorien). SA/Test/Individuell zuerst.
     const beitraege = []
     let gesamtGewichtung = 0, summe = 0
-    for (const kat of ['SA', 'T', 'CUSTOM', 'MAN']) {
+    let hatBasisNoten = false  // SA/T/CUSTOM vorhanden (für § 3-Warnung)
+    for (const kat of ['SA', 'T', 'CUSTOM']) {
       const werte = basis[kat].werte
       if (!werte.length || gew[kat] <= 0) continue
+      hatBasisNoten = true
       const avg = gewichteterSchnitt(werte, rezenzFaktor)
       beitraege.push({ kat: KAT_LABEL[kat], detail: basis[kat].eingaben.join(', '), avg, w: gew[kat] })
       summe += avg * gew[kat]
       gesamtGewichtung += gew[kat]
     }
+    // Mitarbeit als eigene note-bildende Zeile (Durchschnitt der Teilnoten).
+    if (hatMitarbeit && gew.MA > 0) {
+      const teile = []
+      if (maPlusCount) teile.push(`+${maPlusCount}`)
+      if (maMinusCount) teile.push(`−${maMinusCount}`)
+      if (huePos) teile.push(`✓${huePos}`)
+      if (hueNeg) teile.push(`✗${hueNeg}`)
+      beitraege.push({ kat: KAT_LABEL.MA, detail: teile.join(' '), avg: maSchnitt, w: gew.MA })
+      summe += maSchnitt * gew.MA
+      gesamtGewichtung += gew.MA
+    }
     const hatBasis = gesamtGewichtung > 0
     const basisIntern = hatBasis ? summe / gesamtGewichtung : null
 
-    // MA-/HÜ-Einfluss wie im Kern: MA aus der Roh-Summe (maScore), HÜ pro Eintrag; je eigene Deckelung.
-    const maGesamt = maCount
-    const hueGesamt = huePos + hueNeg
-    const hatMA = maGesamt > 0
-    const hatMAHUE = maGesamt > 0 || hueGesamt > 0
-    let maEinfluss = maGesamt > 0 ? maScore : 0
-    maEinfluss = Math.max(-maxMaEinfluss, Math.min(maxMaEinfluss, maEinfluss))
-    let hueEinfluss = hueGesamt > 0 ? (huePos - hueNeg) * einflussSchritt : 0
-    hueEinfluss = Math.max(-maxHueEinfluss, Math.min(maxHueEinfluss, hueEinfluss))
-    const einflussPunkte = maEinfluss + hueEinfluss  // positiv = verbessert
-
     return {
       beitraege, gesamtGewichtung, maxNote, basisIntern, hatBasis,
+      hatMitarbeit, hatBasisNoten,
       ma: { plus: maPlusCount, minus: maMinusCount }, hue: { pos: huePos, neg: hueNeg },
-      hatMAHUE, hatMA, einflussPunkte,
-      hatMAN: basis.MAN.werte.length > 0,
     }
   }, [schuelerId, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus])
 }
@@ -253,11 +224,10 @@ export default function ZeugnisnoteZelle({ schueler }) {
   const znBreakdown = useZNBreakdown(schueler.id, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus)
 
   // § 3 LBVO: schriftliche Leistungen dürfen nicht alleinige Beurteilungsgrundlage sein.
-  // Warnung, wenn Noten (SA/Test/Individuell) vorliegen, aber KEINE Mitarbeit erfasst wurde.
-  // „Mitarbeit" = symbolische Mitarbeit (hatMA) ODER benotete Mitarbeit (hatMAN). Eine bloße
-  // Hausübung (✓/✗) ist keine Mitarbeits-Leistungsfeststellung und unterdrückt die Warnung NICHT.
+  // Warnung, wenn Noten (SA/Test/Individuell) vorliegen, aber KEINE Mitarbeit erfasst wurde
+  // (weder Bonus/Malus noch Hausübung – beide bilden zusammen die Mitarbeitsnote).
   const maWarnung = einstellungen?.ma_pflicht_warnung !== '0'
-    && !!znBreakdown && znBreakdown.hatBasis && !znBreakdown.hatMA && !znBreakdown.hatMAN && !istManuell
+    && !!znBreakdown && znBreakdown.hatBasisNoten && !znBreakdown.hatMitarbeit && !istManuell
 
   const handleClick         = () => setManuellPopup(true)
   const handleContextMenu   = (e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY }) }
@@ -291,56 +261,23 @@ export default function ZeugnisnoteZelle({ schueler }) {
         Zeugnisnote <span className="text-ink-400 font-normal">(laufender Stand)</span>{isDifferenziert && <span className="text-ink-400 font-normal ml-1">({niveau})</span>}
       </p>
 
-      {znBreakdown && (znBreakdown.hatBasis || znBreakdown.hatMAHUE) ? (
+      {znBreakdown && znBreakdown.hatBasis ? (
         <>
-          {/* Basisnote aus SA / Test / Individuell (avg intern → aufs aktuelle Niveau gemappt) */}
-          {znBreakdown.beitraege.length > 0 ? (
-            <div className="space-y-1 mb-2">
-              {znBreakdown.beitraege.map(({ kat, detail, avg, w }) => {
-                const avgAnzeige = avg - offset
-                return (
-                  <div key={kat} className="grid gap-1 text-[10px]" style={{ gridTemplateColumns: '3rem 1fr auto auto' }}>
-                    <span className="font-semibold text-ink-600 dark:text-ink-400">{kat}</span>
-                    <span className="text-ink-400 dark:text-ink-500 truncate">{detail}</span>
-                    <span className={`font-medium tabular-nums text-right ${noteKlasse(Math.max(1, Math.min(5, Math.round(avgAnzeige))))}`}>{avgAnzeige.toFixed(2)}</span>
-                    <span className="tabular-nums text-right text-ink-400">{Math.round(w * 100)}%</span>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <p className="text-[10px] text-ink-400 dark:text-ink-500 mb-2 italic">Noch keine Noten (SA/Test/Individuell) – grobe Note aus Mitarbeit/Hausübung.</p>
-          )}
-
-          {/* Mitarbeit & Hausübung – nur Einfluss, keine eigene Note */}
-          {znBreakdown.hatMAHUE && (
-            <div className="border-t border-paper-100 dark:border-ink-700 pt-2 mb-2 space-y-1">
-              {(znBreakdown.ma.plus > 0 || znBreakdown.ma.minus > 0) && (
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-ink-500 dark:text-ink-400">Mitarbeit</span>
-                  <span className="tabular-nums text-ink-500 dark:text-ink-400">+{znBreakdown.ma.plus} / −{znBreakdown.ma.minus}</span>
+          {/* Note-bildende Kategorien: SA / Test / Individuell / Mitarbeit. Die Mitarbeit-Zeile
+              zeigt die Zusammensetzung (+/− bzw. ✓/✗) und die daraus berechnete Note. */}
+          <div className="space-y-1 mb-2">
+            {znBreakdown.beitraege.map(({ kat, detail, avg, w }) => {
+              const avgAnzeige = avg - offset
+              return (
+                <div key={kat} className="grid gap-1 text-[10px]" style={{ gridTemplateColumns: '3.2rem 1fr auto auto' }}>
+                  <span className="font-semibold text-ink-600 dark:text-ink-400">{kat}</span>
+                  <span className="text-ink-400 dark:text-ink-500 truncate">{detail}</span>
+                  <span className={`font-medium tabular-nums text-right ${noteKlasse(Math.max(1, Math.min(5, Math.round(avgAnzeige))))}`}>{avgAnzeige.toFixed(2)}</span>
+                  <span className="tabular-nums text-right text-ink-400">{Math.round(w * 100)}%</span>
                 </div>
-              )}
-              {(znBreakdown.hue.pos > 0 || znBreakdown.hue.neg > 0) && (
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-ink-500 dark:text-ink-400">Hausübung</span>
-                  <span className="tabular-nums text-ink-500 dark:text-ink-400">✓{znBreakdown.hue.pos} / ✗{znBreakdown.hue.neg}</span>
-                </div>
-              )}
-              {znBreakdown.hatBasis && (
-                <div className="flex justify-between text-[10px] font-medium">
-                  <span className="text-ink-600 dark:text-ink-300">Einfluss</span>
-                  <span className={`tabular-nums ${znBreakdown.einflussPunkte > 0.001 ? 'text-mint-600 dark:text-mint-400' : znBreakdown.einflussPunkte < -0.001 ? 'text-rose-600 dark:text-rose-400' : 'text-ink-400'}`}>
-                    {znBreakdown.einflussPunkte > 0.001
-                      ? `−${znBreakdown.einflussPunkte.toFixed(2)} (besser)`
-                      : znBreakdown.einflussPunkte < -0.001
-                        ? `+${Math.abs(znBreakdown.einflussPunkte).toFixed(2)} (schlechter)`
-                        : 'neutral'}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
+              )
+            })}
+          </div>
 
           {/* § 3 LBVO – keine Mitarbeit erfasst */}
           {maWarnung && (
@@ -353,7 +290,7 @@ export default function ZeugnisnoteZelle({ schueler }) {
           {/* Ergebnis */}
           <div className="border-t border-paper-100 dark:border-ink-700 pt-2 flex items-center justify-between gap-3">
             <span className="font-semibold text-ink-700 dark:text-paper-200">
-              {znBreakdown.hatBasis ? 'Ergebnis' : 'Grobe Note'}{istManuell ? <span className="text-yellow-500 ml-1 font-normal">(manuell)</span> : null}
+              Ergebnis{istManuell ? <span className="text-yellow-500 ml-1 font-normal">(manuell)</span> : null}
             </span>
             <span className="tabular-nums">
               {noteBerechnetAnzeige != null

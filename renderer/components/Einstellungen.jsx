@@ -134,38 +134,25 @@ export default function Einstellungen({ onClose }) {
     }
   }
 
-  // Nur noch SA, Test, Individuell bilden die Note → beim Laden auf 100 % normieren
-  // (Mitarbeit/Hausübung zählen als Einfluss, nicht als Gewicht).
+  // SA, Test, Individuell, Mitarbeit bilden die Note → beim Laden auf 100 % normieren.
   const [gew, setGew] = useState(() => {
     const roh = {
       SA: gewichtungGlobal['SA'] ?? 0.4,
       T: gewichtungGlobal['T'] ?? 0.3,
       CUSTOM: gewichtungGlobal['CUSTOM'] ?? 0.1,
-      MAN: gewichtungGlobal['MAN'] ?? 0.3,
+      MA: gewichtungGlobal['MA'] ?? 0.2,
     }
-    const summe = roh.SA + roh.T + roh.CUSTOM + roh.MAN || 1
+    const summe = roh.SA + roh.T + roh.CUSTOM + roh.MA || 1
     const pct = {
       SA: Math.round(roh.SA / summe * 100),
       T: Math.round(roh.T / summe * 100),
       CUSTOM: Math.round(roh.CUSTOM / summe * 100),
-      MAN: Math.round(roh.MAN / summe * 100),
+      MA: Math.round(roh.MA / summe * 100),
     }
     // Rundungsdifferenz der größten Kategorie zuschlagen, damit die Summe exakt 100 ergibt
     const groesste = Object.keys(pct).reduce((a, b) => (pct[b] > pct[a] ? b : a))
-    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM + pct.MAN)
+    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM + pct.MA)
     return pct
-  })
-  const [maEinfluss, setMaEinfluss] = useState(einstellungen['ma_max_einfluss'] ?? einstellungen['ma_hue_max_einfluss'] ?? '0.5')
-  const [hueEinfluss, setHueEinfluss] = useState(einstellungen['hue_max_einfluss'] ?? einstellungen['ma_hue_max_einfluss'] ?? '0.5')
-  // Einfluss je Mitarbeits-Stufe (Erweitert). Defaults = bisheriges Verhalten.
-  const [erweitertOffen, setErweitertOffen] = useState(false)
-  const [maGew, setMaGew] = useState({
-    plus: einstellungen['ma_w_plus'] ?? '0.1',
-    minus: einstellungen['ma_w_minus'] ?? '0.1',
-    vpos: einstellungen['ma_w_smiley_vpos'] ?? '0.1',
-    pos: einstellungen['ma_w_smiley_pos'] ?? '0.05',
-    neg: einstellungen['ma_w_smiley_neg'] ?? '0.05',
-    vneg: einstellungen['ma_w_smiley_vneg'] ?? '0.1',
   })
   const [semester2Monat, setSemester2Monat] = useState(einstellungen['semester2_monat'] ?? '2')
   // Rezenz-Faktor (§ 20 LBVO): neuere Leistungen je Kategorie stärker gewichten. 1.0 = aus.
@@ -424,14 +411,6 @@ export default function Einstellungen({ onClose }) {
       for (const [kat, val] of Object.entries(gew)) {
         await window.api.gewichtungGlobal.update(kat, val / 100)
       }
-      await window.api.einstellungen.set('ma_max_einfluss', maEinfluss)
-      await window.api.einstellungen.set('hue_max_einfluss', hueEinfluss)
-      await window.api.einstellungen.set('ma_w_plus', maGew.plus)
-      await window.api.einstellungen.set('ma_w_minus', maGew.minus)
-      await window.api.einstellungen.set('ma_w_smiley_vpos', maGew.vpos)
-      await window.api.einstellungen.set('ma_w_smiley_pos', maGew.pos)
-      await window.api.einstellungen.set('ma_w_smiley_neg', maGew.neg)
-      await window.api.einstellungen.set('ma_w_smiley_vneg', maGew.vneg)
       await window.api.einstellungen.set('semester2_monat', semester2Monat)
       await window.api.einstellungen.set('rezenz_faktor', String(rezenzFaktor))
       await window.api.einstellungen.set('bundesland', bundesland)
@@ -479,7 +458,7 @@ export default function Einstellungen({ onClose }) {
     if (ok === null) pushToast('Öffnen fehlgeschlagen.', 'error')
   }
 
-  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell', MAN: 'Mitarbeitsnote' }
+  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell', MA: 'Mitarbeit' }
 
   return (
     <>
@@ -536,82 +515,8 @@ export default function Einstellungen({ onClose }) {
                   Gesamt: {gesamt.toFixed(0)}% {Math.abs(gesamt - 100) <= 0.5 ? '✓' : '(muss 100% ergeben)'}
                 </div>
                 <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1.5 leading-snug">
-                  „Mitarbeitsnote" ist eine echte Note (benotete Mitarbeit, Skala 1–5) und ermöglicht eine Zeugnisnote auch in Fächern ohne Schularbeiten/Tests. Die symbolische Mitarbeit (+/−, ↗/↘, Smileys) und Hausübungen bilden dagegen keine Note, sondern wirken nur als Einfluss (siehe unten).
+                  „Mitarbeit" ist eine eigene Note aus dem Verhältnis positiver zu negativer Aufzeichnungen (Bonus/Malus + Hausübung, § 4 Abs. 2 LBVO). SA, Test, Individuell und Mitarbeit bilden zusammen die Note.
                 </p>
-              </div>
-
-              {/* Einfluss von Mitarbeit & Hausübung */}
-              <div>
-                <h4 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-1">Einfluss von Mitarbeit &amp; Hausübung</h4>
-                <p className="text-xs text-ink-400 dark:text-ink-500 mb-3">
-                  Mitarbeit (+/−, ↗/↘ oder Smileys) und Hausübung (✓/✗) zählen nicht als Note, sondern verschieben die Note aus SA/Test/Individuell leicht – niveau-unabhängig. Jeder Eintrag zählt standardmäßig 0,1 Notenpunkte (je Stufe unter „Erweitert" anpassbar). MA und HÜ wirken unabhängig voneinander: jede hat ihre eigene Deckelung, beide werden addiert.
-                </p>
-                <div className="space-y-3">
-                  {[
-                    ['Mitarbeit', maEinfluss, setMaEinfluss],
-                    ['Hausübung', hueEinfluss, setHueEinfluss],
-                  ].map(([label, wert, setter]) => (
-                    <div key={label}>
-                      <label className="block text-xs text-ink-500 mb-1">{label} – max. Verschiebung (Noten)</label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          min="0"
-                          max="4"
-                          step="0.05"
-                          className="flex-1"
-                          value={wert}
-                          onChange={e => setter(e.target.value)}
-                        />
-                        <span className="text-sm font-medium w-16 text-right tabular-nums text-ink-900 dark:text-white">
-                          ± {Number(wert).toFixed(2).replace('.', ',')}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1">
-                  0 = kein Einfluss · 0,5 = empfohlen · je Regler bis ± 4 Noten. Mitarbeit und Hausübung sind getrennt gedeckelt und werden addiert – der maximale Gesamteinfluss ist also die Summe beider Regler. Hohe Werte können die Note aus SA/Test stark verschieben.
-                </p>
-
-                {/* Erweitert: Einfluss je Mitarbeits-Stufe */}
-                <button
-                  type="button"
-                  className="mt-3 text-xs font-medium text-coral-600 dark:text-coral-400 hover:underline"
-                  onClick={() => setErweitertOffen(o => !o)}
-                >
-                  {erweitertOffen ? '▾' : '▸'} Erweitert – Einfluss je Stufe
-                </button>
-                {erweitertOffen && (
-                  <div className="mt-2 p-3 rounded-lg bg-paper-50 dark:bg-ink-900/40 border border-paper-200 dark:border-ink-700">
-                    <p className="text-[11px] text-ink-400 dark:text-ink-500 mb-3 leading-snug">
-                      Wie stark ein einzelner Mitarbeits-Eintrag die Note verschiebt (in Notenpunkten). Die Deckelung oben begrenzt weiterhin die Gesamtsumme. Hausübung bleibt bei 0,1.
-                    </p>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                      {[
-                        ['Aufwärts (+ / ↗)', 'plus'],
-                        ['Abwärts (− / ↘)', 'minus'],
-                        ['😄 sehr fröhlich', 'vpos'],
-                        ['🙂 mäßig fröhlich', 'pos'],
-                        ['🙁 mäßig traurig', 'neg'],
-                        ['😞 sehr traurig', 'vneg'],
-                      ].map(([label, key]) => (
-                        <label key={key} className="flex items-center justify-between gap-2 text-xs text-ink-600 dark:text-paper-300">
-                          <span>{label}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            className="input w-20 text-right tabular-nums py-1"
-                            value={maGew[key]}
-                            onChange={e => setMaGew(g => ({ ...g, [key]: e.target.value }))}
-                          />
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Rezenz-Gewichtung (§ 20 LBVO) */}

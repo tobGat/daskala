@@ -79,7 +79,7 @@ export function createMobileApi(dbPort) {
       getSchuelerIds: (fId) => faecherDomain.getSchuelerIds(dbPort, deps, fId),
       create: (d) => faecherDomain.create(dbPort, deps, d),
       setBenotungssystem: (id, s) => faecherDomain.setBenotungssystem(dbPort, deps, id, s),
-      // Gewichtung pro Fach inkl. benoteter Mitarbeit (gewichtung_man) + Einfluss-Deckelung.
+      // Gewichtung pro Fach (SA/Test/Individuell/Mitarbeit); Mitarbeit = gewichtung_ma.
       updateGewichtung: (id, data) => faecherDomain.updateGewichtung(dbPort, deps, id, data),
       resetGewichtung: (id) => faecherDomain.resetGewichtung(dbPort, deps, id),
     }),

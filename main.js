@@ -1035,10 +1035,10 @@ function registerIPC() {
       for (const f of faecher) {
         const nf = await tx.execute(`INSERT INTO faecher
           (klasse_id, name, farbe, reihenfolge, benotungssystem, alle_schueler,
-           gewichtung_sa, gewichtung_t, gewichtung_custom, gewichtung_man, ma_max_einfluss, hue_max_einfluss, uuid)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+           gewichtung_sa, gewichtung_t, gewichtung_custom, gewichtung_ma, uuid)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
         [neueKlasseId, f.name, f.farbe ?? null, f.reihenfolge, f.benotungssystem ?? 'standard', f.alle_schueler ?? 1,
-          f.gewichtung_sa, f.gewichtung_t, f.gewichtung_custom, f.gewichtung_man, f.ma_max_einfluss, f.hue_max_einfluss, neueUuid()])
+          f.gewichtung_sa, f.gewichtung_t, f.gewichtung_custom, f.gewichtung_ma, neueUuid()])
         const neuFachId = nf.lastInsertRowid
         await initKompetenzVorlagen(neuFachId, f.name)
 

@@ -7,7 +7,7 @@ Zeichenlimits: Kurzbeschreibung ≤ 200, Beschreibung ≤ 10.000, je Produktfeat
 
 ## Kurzbeschreibung (Short description)
 
-Das digitale Notenbuch für österreichische Schulen: LBVO-konforme Zeugnisnote, Mitarbeit & Mitarbeitsnote, Stunden- und Jahresplanung – komplett offline, ohne Konto, voller Datenschutz.
+Das digitale Notenbuch für österreichische Schulen: LBVO-konforme Zeugnisnote, Mitarbeit als eigene Note, Stunden- und Jahresplanung – komplett offline, ohne Konto, voller Datenschutz.
 
 ---
 
@@ -26,15 +26,17 @@ am Ende des ersten Semesters ist sie ein klar gekennzeichneter Zwischenstand. Na
 LBVO zählt der zuletzt erreichte Leistungsstand stärker: Über einen einstellbaren Faktor
 gewichtest du neuere Leistungen – durchgehend übers ganze Jahr – höher.
 
-Mitarbeit erfasst du wahlweise als Bonus/Malus (+ / −, Pfeile ↗ / ↘ oder eine vierstufige
-Skala, deren Smileys 😄 🙂 🙁 😞 du durch eigene Symbole ersetzen kannst) – oder als echte
-Mitarbeitsnote (1–5) mit eigener Gewichtung, sodass auch Fächer ohne Schularbeiten eine
-belastbare Zeugnisnote bekommen. Wie stark ein Bonus/Malus-Eintrag zählt, bestimmst du je
-Stufe selbst, mit getrennt einstellbarer Deckelung (bis ± 4 Noten). Gewichtungen von
-Schularbeiten, Tests, individuellen Bewertungen und Mitarbeitsnote legst du global und pro
-Fach fest. Fehlt jede Mitarbeit, obwohl Noten vorhanden sind, weist dich ein Hinweis auf
-§ 3 LBVO hin (schriftliche Leistungen dürfen nicht die alleinige Grundlage sein). Liegt
-eine Note genau dazwischen (z. B. 2,5), entscheidest du per Klick.
+Mitarbeit zählt als eigene Note (§ 4 Abs. 2 LBVO): Einzelne Leistungen werden nicht einzeln
+benotet – aus allen Aufzeichnungen entsteht eine einzige Mitarbeitsnote. Du erfasst sie mit
++ / −, Pfeilen ↗ / ↘, dreistufig + / ~ / − oder einer vierstufigen Skala (Smileys 😄 🙂 🙁 😞,
+Symbole frei wählbar); auch die Hausübungen (✓ / ✗ / —) fließen mit ein. Die Note ergibt sich
+aus dem Verhältnis positiver zu negativer Einträge – ausgeglichen entspricht der Note 3 – und
+geht mit ihrem eigenen Gewichtungsanteil in die Zeugnisnote ein, wie Schularbeiten, Tests und
+individuelle Bewertungen. So bekommt auch ein Fach ohne Schularbeiten eine belastbare
+Zeugnisnote. Gewichtungen legst du global und pro Fach fest. Fehlt jede Mitarbeit, obwohl
+Noten vorhanden sind, weist dich ein Hinweis auf § 3 LBVO hin (schriftliche Leistungen dürfen
+nicht die alleinige Grundlage sein). Liegt eine Note genau dazwischen (z. B. 2,5),
+entscheidest du per Klick.
 
 DIFFERENZIERTE BEURTEILUNG (AHS/ST)
 Für differenzierte Fächer führt Daskala pro Schüler:in ein Niveau (AHS/Standard) und
@@ -83,8 +85,8 @@ Daskala ist freie Software (Open Source, GPL-3.0).
 - Fortlaufende Zeugnisnote aus allen Aufzeichnungen des Jahres – am Semesterende als Zwischenstand
 - Neuere Leistungen stärker gewichten (§ 20 LBVO) über einen einstellbaren Rezenz-Faktor
 - Flexible Spalten: Schularbeiten, Tests, individuelle Bewertungen
-- Mitarbeit als Bonus/Malus: + / −, Pfeile ↗ / ↘ oder vierstufige Smileys – Symbole frei wählbar, Einfluss je Stufe einstellbar (Deckelung bis ± 4 Noten)
-- Mitarbeitsnote: benotete Mitarbeit als echte Note (1–5) mit eigener Gewichtung – auch für Fächer ohne Schularbeiten
+- Mitarbeit als eigene Note (§ 4 Abs. 2 LBVO): eine Mitarbeitsnote aus dem Verhältnis +/− aller Aufzeichnungen inkl. Hausübung – auch für Fächer ohne Schularbeiten
+- Vier Mitarbeits-Skalen: + / −, Pfeile ↗ / ↘, dreistufig + / ~ / − oder vierstufige Smileys – Symbole frei wählbar; eigener Gewichtungsanteil
 - Hinweis nach § 3 LBVO, wenn schriftliche Leistungen die alleinige Grundlage wären
 - Frei einstellbare Gewichtung – global und pro Fach
 - Differenzierte Beurteilung AHS/ST mit Niveauführung pro Schüler:in

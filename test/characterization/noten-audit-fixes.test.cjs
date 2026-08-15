@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 //
-// Regressionstests fuer die Audit-Fixes (v1.3.1):
-// - Fallback-Note nur aus Mitarbeit (HUE allein → keine Note)
-// - MAN: eigene 5 Symbole werden von spalten.create gespeichert (bzw. Duplikate verworfen)
+// Regressionstests fuer Mitarbeit-als-Note (§ 4 Abs. 2 LBVO) + Audit-Fixes:
+// - Mitarbeit (MA + Hausuebung) bildet EINE Note (Verhaeltnis + / −; ✓/✗ faellt ein)
+// - eigene Symbole (3-/4-stufig) werden von spalten.create gespeichert (Duplikate verworfen)
 // - niveau-abhaengiger End-Clamp haelt die Note im Fenster [1+Offset, 5+Offset]
 // Ausführen:  npm run test:core
 
@@ -37,40 +37,41 @@ async function note(db, fId, sId) {
   return note
 }
 
-test('Fallback: nur Mitarbeit ergibt eine grobe Note', async () => {
+test('Nur Mitarbeit (+) ergibt die Mitarbeitsnote 1', async () => {
   const db = new Database(':memory:'); applySchema(db, { logError: () => {} })
   const { fId, sId } = baueFach(db)
   fuelle(db, fId, sId, [{ kategorie: 'MA', wert: '+' }])
-  assert.strictEqual(await note(db, fId, sId), 1.0) // + → verhaeltnis 1 → 3-2 = 1
+  assert.strictEqual(await note(db, fId, sId), 1.0) // + → Teilnote 1 → Mitarbeitsnote 1
   db.close()
 })
 
-test('Fallback: nur Hausübung ergibt KEINE Note (§ 3 – HÜ nicht alleinige Grundlage)', async () => {
+test('Nur Hausübung ergibt eine Note (✓ = Teilnote 1)', async () => {
   const db = new Database(':memory:'); applySchema(db, { logError: () => {} })
   const { fId, sId } = baueFach(db)
   fuelle(db, fId, sId, [{ kategorie: 'HÜ', wert: '✓' }, { kategorie: 'HÜ', wert: '✓' }])
-  assert.strictEqual(await note(db, fId, sId), null)
+  assert.strictEqual(await note(db, fId, sId), 1.0) // Hausübung fließt in die Mitarbeitsnote ein
   db.close()
 })
 
-test('Fallback: MA + HÜ ohne Basis wertet nur die Mitarbeit', async () => {
+test('MA + HÜ bilden zusammen die Mitarbeitsnote', async () => {
   const db = new Database(':memory:'); applySchema(db, { logError: () => {} })
   const { fId, sId } = baueFach(db)
   fuelle(db, fId, sId, [{ kategorie: 'MA', wert: '-' }, { kategorie: 'HÜ', wert: '✓' }])
-  assert.strictEqual(await note(db, fId, sId), 5.0) // − → 3+2 = 5, HÜ ignoriert
+  assert.strictEqual(await note(db, fId, sId), 3.0) // (5 + 1) / 2
   db.close()
 })
 
-test('spalten.create speichert eigene MAN-Symbole (5 Stück)', async () => {
+test('spalten.create speichert eigene 3-stufige Symbole (3 Stück)', async () => {
   const db = new Database(':memory:'); applySchema(db, { logError: () => {} })
   const { fId } = baueFach(db)
   const port = createDbAdapter(() => db)
   const id = await spalten.create(port, {
-    fachId: fId, semester: 1, kategorie: 'MAN', kuerzel: 'MA',
-    maStufen: 2, maSymbol: 'pm', maSymbole: ['A', 'B', 'C', 'D', 'E'],
+    fachId: fId, semester: 1, kategorie: 'MA', kuerzel: 'MA',
+    maStufen: 3, maSymbol: 'pm', maSymbole: ['P', 'N', 'M'],
   })
-  const row = db.prepare('SELECT ma_symbole FROM spalten WHERE id = ?').get(id)
-  assert.strictEqual(row.ma_symbole, JSON.stringify(['A', 'B', 'C', 'D', 'E']))
+  const row = db.prepare('SELECT ma_stufen, ma_symbole FROM spalten WHERE id = ?').get(id)
+  assert.strictEqual(row.ma_stufen, 3)
+  assert.strictEqual(row.ma_symbole, JSON.stringify(['P', 'N', 'M']))
   db.close()
 })
 
@@ -78,7 +79,7 @@ test('spalten.create verwirft doppelte/leere Symbole (Uniqueness-Schutz)', async
   const db = new Database(':memory:'); applySchema(db, { logError: () => {} })
   const { fId } = baueFach(db)
   const port = createDbAdapter(() => db)
-  const dup = await spalten.create(port, { fachId: fId, semester: 1, kategorie: 'MAN', kuerzel: 'MA', maStufen: 2, maSymbole: ['A', 'A', 'C', 'D', 'E'] })
+  const dup = await spalten.create(port, { fachId: fId, semester: 1, kategorie: 'MA', kuerzel: 'MA', maStufen: 3, maSymbole: ['A', 'A', 'C'] })
   assert.strictEqual(db.prepare('SELECT ma_symbole FROM spalten WHERE id = ?').get(dup).ma_symbole, null)
   const leer = await spalten.create(port, { fachId: fId, semester: 1, kategorie: 'MA', kuerzel: 'MA', maStufen: 4, maSymbole: ['+', '', '-', '~'] })
   assert.strictEqual(db.prepare('SELECT ma_symbole FROM spalten WHERE id = ?').get(leer).ma_symbole, null)
@@ -86,7 +87,8 @@ test('spalten.create verwirft doppelte/leere Symbole (Uniqueness-Schutz)', async
 })
 
 test('niveau-abhängiger Clamp: differenzierte Note bleibt im Fenster [1+Offset, 5+Offset]', async () => {
-  // ST-Schüler:in (Offset +2): alle SA=5 → intern 7; starker Minus-Einfluss würde 7,5 ergeben → auf 7 gedeckelt.
+  // ST-Schüler:in (Offset +2): SA=5 → intern 7; Mitarbeit alle '-' → Teilnote 5 → intern 7.
+  // Gewichteter Schnitt = 7 und bleibt im Fenster [3, 7] (Anzeige mappt später auf 1–5).
   const db = new Database(':memory:'); applySchema(db, { logError: () => {} })
   const { fId, sId } = baueFach(db, { differenziert: true, niveau: 'ST' })
   fuelle(db, fId, sId, [
@@ -95,6 +97,6 @@ test('niveau-abhängiger Clamp: differenzierte Note bleibt im Fenster [1+Offset,
   ])
   const n = await note(db, fId, sId)
   assert.ok(n <= 7 && n >= 3, `ST-Note muss in [3,7] liegen, war ${n}`)
-  assert.strictEqual(n, 7) // 7 - (-0,5 gedeckelt) = 7,5 → clamp 7
+  assert.strictEqual(n, 7)
   db.close()
 })

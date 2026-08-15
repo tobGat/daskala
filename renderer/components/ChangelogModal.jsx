@@ -8,6 +8,13 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.4.0',
+    datum: '2026-08-16',
+    punkte: [
+      'Mitarbeit neu (§ 4 Abs. 2 LBVO): Aus Bonus/Malus + Hausübung wird eine einzige Mitarbeitsnote berechnet (Verhältnis positiv/negativ, ausgeglichen = 3) und mit eigenem Anteil in die Note eingerechnet. Neue 3-stufige Skala + / ~ / − mit eigenen Symbolen. Die separate benotete Mitarbeitsnote (1–5) und die Einfluss-Deckelung entfallen.',
+    ],
+  },
+  {
     version: '1.3.2',
     datum: 'August 2026',
     punkte: [

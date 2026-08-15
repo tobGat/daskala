@@ -12,10 +12,12 @@ async function getAll(db, fachId) {
 
 async function create(db, data) {
   const maxReihenfolge = (await db.selectOne('SELECT MAX(reihenfolge) as m FROM spalten WHERE fach_id = ? AND semester = ?', [data.fachId, data.semester]))?.m ?? 0
-  // Eigene Symbole speichern: 4-stufige Mitarbeit (MA, 4 Symbole) oder Mitarbeitsnote (MAN, 5 Symbole).
-  // Nur gültige Sets akzeptieren: erwartete Länge, nicht leer, paarweise verschieden (indexOf-Eindeutigkeit).
+  // Mitarbeits-Stufen: 2 (+/−, Pfeile), 3 (+/~/−) oder 4 (Smileys). Eigene Symbole speichern:
+  // 3-stufig → 3 Symbole, 4-stufig → 4 Symbole. Nur gültige Sets: erwartete Länge, nicht leer,
+  // paarweise verschieden (indexOf-Eindeutigkeit).
+  const stufen = data.maStufen === 4 ? 4 : (data.maStufen === 3 ? 3 : 2)
   let maSymbole = null
-  const erwarteteLaenge = data.kategorie === 'MAN' ? 5 : (data.maStufen === 4 ? 4 : 0)
+  const erwarteteLaenge = stufen === 4 ? 4 : (stufen === 3 ? 3 : 0)
   if (erwarteteLaenge && Array.isArray(data.maSymbole) && data.maSymbole.length === erwarteteLaenge) {
     const syms = data.maSymbole.map((s) => String(s ?? '').trim())
     if (syms.every((s) => s.length > 0) && new Set(syms).size === erwarteteLaenge) {
@@ -25,7 +27,7 @@ async function create(db, data) {
   const info = await db.execute(`
       INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen, ma_symbol, ma_symbole, uuid)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, data.maStufen === 4 ? 4 : 2, data.maSymbol === 'pfeil' ? 'pfeil' : 'pm', maSymbole, neueUuid()])
+    `, [data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, stufen, data.maSymbol === 'pfeil' ? 'pfeil' : 'pm', maSymbole, neueUuid()])
   return info.lastInsertRowid
 }
 

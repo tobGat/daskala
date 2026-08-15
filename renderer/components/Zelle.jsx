@@ -8,32 +8,23 @@ import { niveauZurZeit, niveauBgKlasse } from '../utils/niveau'
 // ─── Klick-Cycle-Werte ────────────────────────────────────────────────────────
 const MA_CYCLE = ['+', '-', '']
 const HUE_CYCLE = ['✓', '✗', '—', '']
-// 4-stufige Mitarbeit: sehr fröhlich … sehr traurig (Gewichte in notenberechnung.js).
-const MA_SMILEYS = ['😄', '🙂', '🙁', '😞']
-const MA_SMILEY_TITEL = { '😄': 'sehr fröhlich (+0,1)', '🙂': 'mäßig fröhlich (+0,05)', '🙁': 'mäßig traurig (−0,05)', '😞': 'sehr traurig (−0,1)' }
-// Stufen-Labels für eigene Symbole (Reihenfolge sehr+ … sehr−).
-const MA_STUFEN_TITEL = ['sehr positiv (+0,1)', 'positiv (+0,05)', 'negativ (−0,05)', 'sehr negativ (−0,1)']
+// Default-Symbole der mehrstufigen Mitarbeit.
+const MA_SMILEYS = ['😄', '🙂', '🙁', '😞']            // 4-stufig: sehr+ … sehr−
+const MA_DREI = ['+', '~', '-']                        // 3-stufig: positiv/neutral/negativ
+const MA_SMILEY_TITEL = { '😄': 'sehr positiv', '🙂': 'positiv', '🙁': 'negativ', '😞': 'sehr negativ' }
+const MA_STUFEN_TITEL = ['sehr positiv', 'positiv', 'negativ', 'sehr negativ']
 
-// Symbolliste einer 4-stufigen MA-Spalte: eigene Symbole (spalten.ma_symbole als JSON) oder Default-Smileys.
+// Symbolliste einer mehrstufigen MA-Spalte (Position = Stufe): eigene Symbole
+// (spalten.ma_symbole als JSON) oder Default. Länge nach ma_stufen (3 oder 4).
 function maSymboleVon(spalte) {
+  const len = spalte?.ma_stufen === 3 ? 3 : 4
   if (spalte?.ma_symbole) {
     try {
       const arr = JSON.parse(spalte.ma_symbole)
-      if (Array.isArray(arr) && arr.length === 4) return arr
+      if (Array.isArray(arr) && arr.length === len) return arr
     } catch { /* Default */ }
   }
-  return MA_SMILEYS
-}
-
-// Eigene 5 Symbole einer Mitarbeitsnote (MAN) für die Noten 1…5, oder null (normale Zahleneingabe).
-function manSymboleVon(spalte) {
-  if (spalte?.ma_symbole) {
-    try {
-      const arr = JSON.parse(spalte.ma_symbole)
-      if (Array.isArray(arr) && arr.length === 5) return arr
-    } catch { /* Zahleneingabe */ }
-  }
-  return null
+  return len === 3 ? MA_DREI : MA_SMILEYS
 }
 
 function naechsterWert(cycle, aktuell) {
@@ -85,7 +76,7 @@ function ZahlenPopup({ wert, onSelect, onClose, anchorRef }) {
   )
 }
 
-// ─── Symbol-Popup für 4-stufige Mitarbeit bzw. Mitarbeitsnote (eigene Symbole) ────
+// ─── Symbol-Popup für 4-stufige Mitarbeit ─────────────────────────────────────
 function SmileyPopup({ wert, onSelect, onClose, anchorRef, symbole = MA_SMILEYS, titel }) {
   const popupRef = useRef(null)
   useEffect(() => {
@@ -155,19 +146,16 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
     : null
 
   const istMaVier = spalte.kategorie === 'MA' && spalte.ma_stufen === 4
-  // Mitarbeitsnote mit eigenen Symbolen (5 Stück für Note 1…5) statt Zahleneingabe.
-  const manSymbole = spalte.kategorie === 'MAN' ? manSymboleVon(spalte) : null
-  const istManSymbol = !!manSymbole
+  const istMaDrei = spalte.kategorie === 'MA' && spalte.ma_stufen === 3
 
   const handleClick = () => {
     if (spalte.kategorie === 'MA') {
       if (istMaVier) { setPopupOffen(true); return }
-      const naechster = naechsterWert(MA_CYCLE, wert)
-      setEintrag(spalte.id, schueler.id, naechster)
+      if (istMaDrei) { setEintrag(spalte.id, schueler.id, naechsterWert([...maSymboleVon(spalte), ''], wert)); return }
+      setEintrag(spalte.id, schueler.id, naechsterWert(MA_CYCLE, wert))
     } else if (spalte.kategorie === 'HÜ') {
-      const naechster = naechsterWert(HUE_CYCLE, wert)
-      setEintrag(spalte.id, schueler.id, naechster)
-    } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T' || spalte.kategorie === 'CUSTOM' || spalte.kategorie === 'MAN') {
+      setEintrag(spalte.id, schueler.id, naechsterWert(HUE_CYCLE, wert))
+    } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T' || spalte.kategorie === 'CUSTOM') {
       setPopupOffen(true)
     }
   }
@@ -189,6 +177,13 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
         const idx = maSymboleVon(spalte).indexOf(wert)
         anzeigeKlasse = (idx === 0 || idx === 1) ? 'zelle-plus' : (idx === 2 || idx === 3) ? 'zelle-minus' : ''
       }
+    } else if (istMaDrei) {
+      if (wert) {
+        anzeigeText = wert
+        // Position 0 positiv, 1 neutral, 2 negativ.
+        const idx = maSymboleVon(spalte).indexOf(wert)
+        anzeigeKlasse = idx === 0 ? 'zelle-plus' : idx === 2 ? 'zelle-minus' : 'zelle-strich'
+      }
     } else {
       // Pfeil-Darstellung ist rein optisch – gespeichert bleibt +/−.
       const pfeil = spalte.ma_symbol === 'pfeil'
@@ -199,9 +194,6 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
     if (wert === '✓') anzeigeKlasse = 'zelle-haken'
     else if (wert === '✗') anzeigeKlasse = 'zelle-kreuz'
     else if (wert === '—') anzeigeKlasse = 'zelle-strich'
-  } else if (istManSymbol) {
-    // Mitarbeitsnote mit eigenem Symbol: anzeigen + Farbe nach Note (Position+1).
-    if (wert) { anzeigeText = wert; anzeigeKlasse = noteKlasse(manSymbole.indexOf(wert) + 1) }
   } else if (wert) {
     anzeigeKlasse = noteKlasse(wert)
   }
@@ -231,15 +223,6 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
           <SmileyPopup
             wert={wert}
             symbole={maSymboleVon(spalte)}
-            onSelect={handleZahlSelect}
-            onClose={() => setPopupOffen(false)}
-            anchorRef={cellRef}
-          />
-        ) : istManSymbol ? (
-          <SmileyPopup
-            wert={wert}
-            symbole={manSymbole}
-            titel={(sm, i) => `Note ${i + 1}`}
             onSelect={handleZahlSelect}
             onClose={() => setPopupOffen(false)}
             anchorRef={cellRef}

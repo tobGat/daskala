@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Tobias Gatterbauer
 //
 // Kern-Service: Noten-/Zeugnisnotenberechnung + KV-Trigger. Spricht den async
-// DbPort an; DB-Funktionen sind async, reine Helfer (niveau/znAnzeige/maBewertung)
+// DbPort an; DB-Funktionen sind async, reine Helfer (niveau/znAnzeige/maTeilnote)
 // bleiben synchron. Funktionen rufen einander mit durchgereichtem db/tx auf.
 
 const { neueUuid } = require('../db/uuid')
@@ -29,73 +29,39 @@ function znInternZuAnzeige(intern, niveau, istDifferenziert) {
   return Math.max(1, Math.min(5, Math.round(intern - off)))
 }
 
-// Konfigurierbarer Einfluss je Mitarbeits-Stufe (in Notenpunkten). Aus den
-// Einstellungen gelesen; Defaults = bisheriges Verhalten. Pfeile ↗/↘ speichern
-// weiterhin '+'/'−' und nutzen daher dieselben Gewichte wie + / −.
-async function ladeMaGewichte(db) {
-  const keys = ['ma_w_plus', 'ma_w_minus', 'ma_w_smiley_vpos', 'ma_w_smiley_pos', 'ma_w_smiley_neg', 'ma_w_smiley_vneg']
-  const rows = await db.select(`SELECT schluessel, wert FROM einstellungen WHERE schluessel IN (${keys.map(() => '?').join(',')})`, keys)
-  const m = {}
-  rows.forEach((r) => { m[r.schluessel] = r.wert })
-  const num = (key, def) => { const v = parseFloat(m[key]); return isNaN(v) ? def : v }
-  return {
-    plus: num('ma_w_plus', 0.1), minus: num('ma_w_minus', 0.1),
-    vpos: num('ma_w_smiley_vpos', 0.1), pos: num('ma_w_smiley_pos', 0.05),
-    neg: num('ma_w_smiley_neg', 0.05), vneg: num('ma_w_smiley_vneg', 0.1),
-  }
-}
-
-// Default-Symbole der 4-stufigen Mitarbeit (sehr positiv … sehr negativ).
+// Default-Symbole der mehrstufigen Mitarbeit. 4-stufig [sehr+, +, −, sehr−] → Teilnoten
+// [1, 2, 4, 5]; 3-stufig [positiv, neutral, negativ] → Teilnoten [1, 3, 5].
 const MA_SMILEYS_DEFAULT = ['😄', '🙂', '🙁', '😞']
+const MA_DREI_DEFAULT = ['+', '~', '-']
 
-// Symbolliste einer 4-stufigen MA-Spalte: eigene Symbole (spalten.ma_symbole als JSON)
-// oder Default-Smileys. Reihenfolge = Stufen [sehr+, +, −, sehr−].
+// Symbolliste einer mehrstufigen MA-Spalte (Position = Stufe): eigene Symbole
+// (spalten.ma_symbole als JSON) oder Default. Länge richtet sich nach ma_stufen (3 oder 4).
 function maSymboleVon(spalte) {
+  const len = spalte.ma_stufen === 3 ? 3 : 4
   if (spalte.ma_symbole) {
     try {
       const arr = JSON.parse(spalte.ma_symbole)
-      if (Array.isArray(arr) && arr.length === 4) return arr
+      if (Array.isArray(arr) && arr.length === len) return arr
     } catch { /* fällt auf Default zurück */ }
   }
-  return MA_SMILEYS_DEFAULT
+  return len === 3 ? MA_DREI_DEFAULT : MA_SMILEYS_DEFAULT
 }
 
-// Eigene 5 Symbole einer Mitarbeitsnote-Spalte (MAN) für die Noten 1…5, oder null
-// (dann normale Zahleneingabe 1–5). ma_symbole als JSON-Array [Note1, …, Note5].
-function manSymboleVon(spalte) {
-  if (spalte.ma_symbole) {
-    try {
-      const arr = JSON.parse(spalte.ma_symbole)
-      if (Array.isArray(arr) && arr.length === 5) return arr
-    } catch { /* keine eigenen Symbole */ }
-  }
-  return null
-}
-
-// Note (1–5) eines MAN-Eintrags: eigenes Symbol → Position+1, sonst parseInt. NaN = ungültig.
-function manNoteVon(spalte, wert) {
-  const syms = manSymboleVon(spalte)
-  if (syms) {
-    const idx = syms.indexOf(wert)
-    return idx >= 0 ? idx + 1 : NaN
-  }
-  return parseInt(wert)
-}
-
-// Bewertung eines MA-Eintrags: { w: vorzeichenbehaftetes Gewicht in Notenpunkten,
-// dir: Richtung ±1 (für die grobe Fallback-Note) }. null = kein gültiger Eintrag.
-function maBewertung(spalte, wert, g) {
-  if (spalte.ma_stufen === 4) {
-    // Positionsbasiert: Stufe 0/1 positiv, 2/3 negativ – unabhängig vom konkreten Symbol.
+// Teilnote (1–5) einer einzelnen Mitarbeits-Aufzeichnung (§ 4 Abs. 2 LBVO: jede
+// Aufzeichnung ist eine Teil-Einschätzung, keine Einzelnote). Positionsbasiert bei
+// 3-/4-stufigen Skalen, direkt bei 2-stufig (+/−; Pfeile ↗/↘ speichern +/−).
+// null = kein gültiger Eintrag.
+function maTeilnote(spalte, wert) {
+  if (spalte.ma_stufen === 3) {
     const idx = maSymboleVon(spalte).indexOf(wert)
-    if (idx === 0) return { w: g.vpos, dir: 1 }
-    if (idx === 1) return { w: g.pos, dir: 1 }
-    if (idx === 2) return { w: -g.neg, dir: -1 }
-    if (idx === 3) return { w: -g.vneg, dir: -1 }
-    return null
+    return [1, 3, 5][idx] ?? null       // positiv / neutral / negativ
   }
-  if (wert === '+') return { w: g.plus, dir: 1 }
-  if (wert === '-') return { w: -g.minus, dir: -1 }
+  if (spalte.ma_stufen === 4) {
+    const idx = maSymboleVon(spalte).indexOf(wert)
+    return [1, 2, 4, 5][idx] ?? null    // sehr+ / + / − / sehr−
+  }
+  if (wert === '+') return 1
+  if (wert === '-') return 5
   return null
 }
 
@@ -162,20 +128,10 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
     SA: fach.gewichtung_sa ?? globaleGewichtung['SA'] ?? 0.4,
     T: fach.gewichtung_t ?? globaleGewichtung['T'] ?? 0.3,
     CUSTOM: fach.gewichtung_custom ?? globaleGewichtung['CUSTOM'] ?? 0.1,
-    // Benotete Mitarbeit (MAN): Default > 0, damit reine MAN-Fächer eine Note bilden.
-    MAN: fach.gewichtung_man ?? globaleGewichtung['MAN'] ?? 0.3,
+    // Mitarbeit (MA): aus Bonus/Malus + Hausübung berechnete Note, note-bildend wie SA/T.
+    MA: fach.gewichtung_ma ?? globaleGewichtung['MA'] ?? 0.2,
   }
 
-  // Maximaler Einfluss von Mitarbeit bzw. Hausübung (niveau-frei), getrennt steuerbar.
-  const globalAltEinfluss = (await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'ma_hue_max_einfluss'"))?.wert
-  const globalMaEinfluss = (await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'ma_max_einfluss'"))?.wert ?? globalAltEinfluss ?? '0.5'
-  const globalHueEinfluss = (await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'hue_max_einfluss'"))?.wert ?? globalAltEinfluss ?? '0.5'
-  const maxMaEinfluss = fach.ma_max_einfluss != null ? fach.ma_max_einfluss : parseFloat(globalMaEinfluss)
-  const maxHueEinfluss = fach.hue_max_einfluss != null ? fach.hue_max_einfluss : parseFloat(globalHueEinfluss)
-  // Einfluss pro einzelnem HÜ-Eintrag (jedes ✓/✗). Standard 0,1.
-  const einflussSchritt = parseFloat(
-    (await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'ma_hue_schritt'"))?.wert ?? '0.1'
-  )
   // Rezenz-Gewichtung innerhalb einer Kategorie (§ 20 LBVO). 1 = reiner Durchschnitt.
   const rezenzFaktor = parseFloat(
     (await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'rezenz_faktor'"))?.wert ?? '1'
@@ -183,34 +139,38 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
 
   const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ?', [fachId])
 
-  // Basisnote aus echten Noten (SA/T/Individuell/Mitarbeitsnote, intern inkl. Niveau-Offset).
-  const basisWerte = { SA: [], T: [], CUSTOM: [], MAN: [] }
-  // Mitarbeit: gewichtete Summe (maScore) + Richtungssumme (maDir). Hausübung: Zähler.
-  const maGew = await ladeMaGewichte(db)
-  let maScore = 0, maCount = 0, maDir = 0, huePos = 0, hueNeg = 0
+  // Basisnote aus Noten (SA/T/Individuell/Mitarbeit, intern inkl. Niveau-Offset).
+  const basisWerte = { SA: [], T: [], CUSTOM: [], MA: [] }
+  // Mitarbeit (§ 4 Abs. 2 LBVO): jede Bonus/Malus- UND Hausübungs-Aufzeichnung ist eine
+  // Teil-Einschätzung 1–5; die Mitarbeitsnote ist ihr Durchschnitt (Gesamtbeurteilung),
+  // nicht mehr ein gedeckelter Einfluss.
+  const maTeilnoten = []
 
   for (const spalte of spalten) {
     const wert = (await db.selectOne('SELECT wert FROM eintraege WHERE spalte_id = ? AND schueler_id = ?', [spalte.id, schuelerId]))?.wert ?? ''
     if (!wert) continue
 
     if (spalte.kategorie === 'MA') {
-      const b = maBewertung(spalte, wert, maGew)
-      if (b !== null) { maScore += b.w; maCount++; maDir += b.dir }
+      const t = maTeilnote(spalte, wert)
+      if (t !== null) maTeilnoten.push(t + offsetFor(spalte.datum))
     } else if (spalte.kategorie === 'HÜ') {
-      if (wert === '✓') huePos++
-      else if (wert === '✗') hueNeg++
-      // '—' = "nicht gewertet / entfällt": ohne Noteneinfluss.
+      if (wert === '✓') maTeilnoten.push(1 + offsetFor(spalte.datum))
+      else if (wert === '✗') maTeilnoten.push(5 + offsetFor(spalte.datum))
+      // '—' = "nicht gewertet / entfällt": zählt nicht in die Mitarbeitsnote.
     } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
       const n = parseInt(wert)
       if (n >= 1 && n <= 5) basisWerte[spalte.kategorie].push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge })
     } else if (spalte.kategorie === 'CUSTOM') {
       const n = parseInt(wert)
       if (!isNaN(n) && n <= 5 && n >= 1) basisWerte.CUSTOM.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge })
-    } else if (spalte.kategorie === 'MAN') {
-      // Benotete Mitarbeit: echte Note 1–5 (ggf. über eigene Symbole), niveau-fähig wie SA/T.
-      const n = manNoteVon(spalte, wert)
-      if (n >= 1 && n <= 5) basisWerte.MAN.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge })
     }
+  }
+
+  // Die eine Mitarbeitsnote = Durchschnitt aller Teilnoten (Bonus/Malus + Hausübung).
+  // Ein Aggregatwert, der wie eine echte Note mit gewichtung_ma in den Schnitt eingeht.
+  if (maTeilnoten.length > 0) {
+    const maSchnitt = maTeilnoten.reduce((a, n) => a + n, 0) / maTeilnoten.length
+    basisWerte.MA.push({ n: maSchnitt, datum: null, semester: 0, reihenfolge: 0 })
   }
 
   // Basisnote: gewichteter Durchschnitt; Gewichte der vorhandenen Kategorien werden neu normiert.
@@ -223,31 +183,10 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
     summe += avg * w
     gesamtGewichtung += w
   }
-  const hatBasis = gesamtGewichtung > 0
-  const basisIntern = hatBasis ? summe / gesamtGewichtung : null
 
-  const maGesamt = maCount
-  const hueGesamt = huePos + hueNeg
-
-  // maScore ist bereits die Roh-Summe in Notenpunkten; die Deckelung greift erst hier.
-  let maEinfluss = maGesamt > 0 ? maScore : 0
-  maEinfluss = Math.max(-maxMaEinfluss, Math.min(maxMaEinfluss, maEinfluss))
-  let hueEinfluss = hueGesamt > 0 ? (huePos - hueNeg) * einflussSchritt : 0
-  hueEinfluss = Math.max(-maxHueEinfluss, Math.min(maxHueEinfluss, hueEinfluss))
-  const einfluss = maEinfluss + hueEinfluss
-
-  // Grobe Fallback-Note (ohne echte Basis) NUR aus Mitarbeit ableiten. Hausübung allein ist
-  // laut § 3 LBVO keine tragfähige Beurteilungsgrundlage → ohne MA und ohne Basis keine Note.
-  const maVerhaeltnis = maGesamt > 0 ? maDir / maGesamt : 0
-
-  let noteIntern
-  if (hatBasis) {
-    noteIntern = basisIntern - einfluss  // viele +/✓ verbessern → kleinerer Wert
-  } else if (maGesamt > 0) {
-    noteIntern = (3 - maVerhaeltnis * 2) + aktuellerOffset
-  } else {
-    return { note: null }
-  }
+  // Ohne jede note-bildende Kategorie (SA/T/Individuell/Mitarbeit) gibt es keine Note.
+  if (gesamtGewichtung === 0) return { note: null }
+  let noteIntern = summe / gesamtGewichtung
 
   // Niveau-abhängiger Clamp: interner Wert bleibt im Fenster [1+Offset, 5+Offset], damit die
   // Anzeige (intern − aktuellerOffset) und der Klassenschnitt stets in 1–5 liegen.
@@ -365,7 +304,7 @@ async function pruefeNotenTrigger(db, spalteId, schuelerId, wertNeu, wertAlt) {
   if (!(n >= 1 && n <= 5)) return
   const spalte = await db.selectOne('SELECT s.kategorie, s.fach_id, f.klasse_id, f.name AS fach_name FROM spalten s JOIN faecher f ON f.id = s.fach_id WHERE s.id = ?', [spalteId])
   if (!spalte) return
-  if (!['SA', 'T', 'CUSTOM', 'MAN'].includes(spalte.kategorie)) return
+  if (!['SA', 'T', 'CUSTOM'].includes(spalte.kategorie)) return
   const klasse = await db.selectOne('SELECT ist_kv FROM klassen WHERE id = ?', [spalte.klasse_id])
   if (!klasse?.ist_kv) return
 

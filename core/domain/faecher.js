@@ -67,21 +67,22 @@ async function setFarbe(db, id, farbe) {
 }
 
 async function updateGewichtung(db, deps, id, data) {
-  // SA/Test/Individuell/Mitarbeitsnote gewichten die Note; symbolische MA & HÜ wirken als
-  // Einfluss (eigene Deckelung). gewichtung_man ist die benotete Mitarbeit (NICHT gewichtung_ma).
+  // SA/Test/Individuell/Mitarbeit gewichten die Note. Die Mitarbeitsnote (MA) wird aus den
+  // Bonus/Malus- + Hausübungs-Aufzeichnungen berechnet (§ 4 Abs. 2 LBVO); Hausübung hat kein
+  // eigenes Gewicht. Legacy-Felder (MAN, Einfluss-Deckelung) werden bewusst geleert.
   await db.execute(`
       UPDATE faecher SET
         gewichtung_sa = ?,
         gewichtung_t = ?,
-        gewichtung_ma = NULL,
-        gewichtung_hue = NULL,
+        gewichtung_ma = ?,
         gewichtung_custom = ?,
-        gewichtung_man = ?,
-        ma_hue_max_einfluss = NULL,
-        ma_max_einfluss = ?,
-        hue_max_einfluss = ?
+        gewichtung_hue = NULL,
+        gewichtung_man = NULL,
+        ma_max_einfluss = NULL,
+        hue_max_einfluss = NULL,
+        ma_hue_max_einfluss = NULL
       WHERE id = ?
-    `, [data.sa ?? null, data.t ?? null, data.custom ?? null, data.man ?? null, data.maEinfluss ?? null, data.hueEinfluss ?? null, id])
+    `, [data.sa ?? null, data.t ?? null, data.ma ?? null, data.custom ?? null, id])
   await deps.berechneAlleFuerFach(id)
   return true
 }

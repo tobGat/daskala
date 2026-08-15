@@ -8,7 +8,7 @@
 
 // Aktuelle Schema-Version. Erhoehen bei neuer EINMALIGER Migration (Daten-Umbau/Rebuild);
 // reine Spalten-Ergaenzungen laufen idempotent ueber spalteErgaenzen().
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 
 // ─── Schema als Daten (Portierung Phase 2.3) ─────────────────────────────────
 //
@@ -451,6 +451,18 @@ const MIGRATIONS = [
       'DELETE FROM zeugnisnoten WHERE semester IN (1, 2);',
     ].join('\n\n'),
   },
+  {
+    version: 3,
+    // Mitarbeit neu (§ 4 Abs. 2 LBVO): die benotete Mitarbeit (Kategorie MAN) entfällt – MA wird
+    // selbst zur Note (Verhältnis + / −, inkl. Hausübung). Alte MAN-Spalten samt Einträgen löschen.
+    // Idempotent (nach dem ersten Lauf gibt es keine MAN-Zeilen mehr), daher beim versions-losen
+    // Mobil-Bootstrap bei jedem Start unbedenklich.
+    description: 'LBVO v1.4: benotete Mitarbeit (MAN) entfernen – MA wird selbst zur Note',
+    sql: [
+      "DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE kategorie = 'MAN');",
+      "DELETE FROM spalten WHERE kategorie = 'MAN';",
+    ].join('\n\n'),
+  },
 ]
 
 function applySchema(db, deps) {
@@ -624,10 +636,11 @@ function applySchema(db, deps) {
 
   // Einmalige Daten-Migrationen – dürfen NICHT bei jedem Start laufen (siehe user_version).
   if (schemaVersion < 1) {
-    // Alte MA/HÜ-Fachgewichte entfernen: MA & HÜ sind nur noch Einfluss, kein Gewicht mehr.
+    // Altes HÜ-Fachgewicht entfernen: Hausübung hat kein eigenes Gewicht (fließt in die
+    // Mitarbeitsnote ein). gewichtung_ma bleibt hingegen erhalten – MA ist wieder note-bildend.
     try {
-      db.prepare('UPDATE faecher SET gewichtung_ma = NULL, gewichtung_hue = NULL WHERE gewichtung_ma IS NOT NULL OR gewichtung_hue IS NOT NULL').run()
-    } catch (e) { deps.logError('migration:gewichtung-ma-hue-loeschen', e) }
+      db.prepare('UPDATE faecher SET gewichtung_hue = NULL WHERE gewichtung_hue IS NOT NULL').run()
+    } catch (e) { deps.logError('migration:gewichtung-hue-loeschen', e) }
     // Alten gemeinsamen Wert einmalig auf beide getrennten Spalten übertragen.
     // Muss einmalig sein – ein später bewusst geleerter Wert würde sonst neu befüllt.
     try {
@@ -653,13 +666,14 @@ function applySchema(db, deps) {
   spalteErgaenzen('todos', 'faelligkeit', 'TEXT')
   spalteErgaenzen('todos', 'erinnerung', 'TEXT')
   spalteErgaenzen('spalten', 'notiz', 'TEXT')
-  // Mitarbeits-Bewertungsstufen: 2 = klassisch (+/−), 4 = Smiley-Skala (😄🙂🙁😞). Default 2.
+  // Mitarbeits-Bewertungsstufen: 2 = +/− (bzw. Pfeile), 3 = +/~/− (positiv/neutral/negativ),
+  // 4 = Smiley-Skala (😄🙂🙁😞). Default 2.
   spalteErgaenzen('spalten', 'ma_stufen', 'INTEGER DEFAULT 2')
   // Symboldarstellung der 2-stufigen Mitarbeit: 'pm' = + / −, 'pfeil' = ↗ / ↘.
   // Rein optisch – gespeichert werden weiterhin '+' / '−', die Bewertung ist identisch.
   spalteErgaenzen('spalten', 'ma_symbol', "TEXT DEFAULT 'pm'")
-  // Eigene Symbole der 4-stufigen Mitarbeit (JSON-Array [sehr+, +, −, sehr−]).
-  // NULL = Default-Smileys 😄🙂🙁😞. Wertung positionsbasiert wie bei den Smileys.
+  // Eigene Symbole der mehrstufigen Mitarbeit (JSON-Array): Länge 3 für +/~/−, Länge 4 für die
+  // Smiley-Skala. NULL = Defaults. Wertung positionsbasiert (Stufe → Teilnote).
   spalteErgaenzen('spalten', 'ma_symbole', 'TEXT')
   spalteErgaenzen('eintraege', 'kommentar', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_text', 'TEXT')
@@ -1206,6 +1220,16 @@ function applySchema(db, deps) {
       }
       db.prepare('DELETE FROM zeugnisnoten WHERE semester IN (1, 2)').run()
     } catch (e) { deps.logError('migration:zeugnisnoten-einzelnote', e) }
+  }
+
+  if (schemaVersion < 4) {
+    // Mitarbeit neu (§ 4 Abs. 2 LBVO): die benotete Mitarbeit (Kategorie MAN) entfällt – MA wird
+    // selbst zur Note (Verhältnis + / −, inkl. Hausübung). Alte MAN-Spalten samt Einträgen löschen;
+    // die eine Jahresnote wird danach neu berechnet (App.jsx-Once-Recompute).
+    try {
+      db.prepare("DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE kategorie = 'MAN')").run()
+      db.prepare("DELETE FROM spalten WHERE kategorie = 'MAN'").run()
+    } catch (e) { deps.logError('migration:man-entfernen', e) }
   }
 
   // Alle einmaligen Migrationen dieser Version sind durchlaufen → Schema-Version festschreiben.
