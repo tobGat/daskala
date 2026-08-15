@@ -316,6 +316,10 @@ export function SchuelerVerwaltenModal() {
   const [tab, setTab] = useState('liste') // 'liste' | 'hinzufuegen' | 'import'
   const [loeschenId, setLoeschenId] = useState(null)
   const [avatarSchueler, setAvatarSchueler] = useState(null)
+  // Inline-Umbenennen: welche:r Schüler:in wird gerade bearbeitet + Eingabewerte.
+  const [editId, setEditId] = useState(null)
+  const [editVorname, setEditVorname] = useState('')
+  const [editNachname, setEditNachname] = useState('')
   const [faecher, setFaecher] = useState([])
   const [ausgewaehlteFaecher, setAusgewaehlteFaecher] = useState(() => new Set())
   const vornameRef = useRef(null)
@@ -431,6 +435,20 @@ export function SchuelerVerwaltenModal() {
       [feld]: s[feld] ? 0 : 1,
     })
     await ladeSchueler()
+  }
+
+  const startBearbeiten = (s) => {
+    setLoeschenId(null)
+    setEditVorname(s.vorname ?? '')
+    setEditNachname(s.nachname ?? '')
+    setEditId(s.id)
+  }
+  const handleUmbenennen = async (s) => {
+    const v = editVorname.trim(), n = editNachname.trim()
+    if (!v || !n) return
+    await window.api.schueler.update(s.id, { vorname: v, nachname: n })
+    await ladeSchueler()
+    setEditId(null)
   }
 
   const handleDateiImport = async () => {
@@ -577,11 +595,47 @@ export function SchuelerVerwaltenModal() {
                 </div>
               ))
             ) : schueler.map(s => (
+              editId === s.id ? (
+              <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg">
+                <SchuelerAvatar schueler={s} size={28} />
+                <input
+                  className="input flex-1 py-1 text-sm min-w-0"
+                  value={editVorname}
+                  onChange={e => setEditVorname(e.target.value)}
+                  placeholder="Vorname"
+                  autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') handleUmbenennen(s); if (e.key === 'Escape') setEditId(null) }}
+                />
+                <input
+                  className="input flex-1 py-1 text-sm min-w-0"
+                  value={editNachname}
+                  onChange={e => setEditNachname(e.target.value)}
+                  placeholder="Nachname"
+                  onKeyDown={e => { if (e.key === 'Enter') handleUmbenennen(s); if (e.key === 'Escape') setEditId(null) }}
+                />
+                <button
+                  className="text-xs px-2 py-0.5 rounded bg-coral-600 text-white hover:bg-coral-700 transition-colors font-medium disabled:opacity-40"
+                  disabled={!editVorname.trim() || !editNachname.trim()}
+                  onClick={() => handleUmbenennen(s)}
+                  title="Speichern"
+                >✓</button>
+                <button
+                  className="text-xs px-1.5 py-0.5 rounded text-ink-400 hover:text-ink-600 transition-colors"
+                  onClick={() => setEditId(null)}
+                  title="Abbrechen"
+                >✕</button>
+              </div>
+              ) : (
               <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg">
                 <SchuelerAvatar schueler={s} size={28} />
                 <span className="text-sm text-ink-900 dark:text-white flex-1">
                   {s.nachname} {s.vorname}
                 </span>
+                <button
+                  title="Name bearbeiten"
+                  onClick={() => startBearbeiten(s)}
+                  className="text-xs px-1.5 py-0.5 rounded border border-paper-200 text-ink-400 dark:border-ink-600 hover:border-coral-300 hover:text-coral-600 transition-colors"
+                >✎</button>
                 <button
                   title="Avatar bearbeiten"
                   onClick={() => setAvatarSchueler(s)}
@@ -636,6 +690,7 @@ export function SchuelerVerwaltenModal() {
                   </button>
                 )}
               </div>
+              )
             ))}
             </div>
           </div>
@@ -762,15 +817,17 @@ export function GewichtungModal() {
       SA: fach?.gewichtung_sa ?? gewichtungGlobal['SA'] ?? 0.4,
       T: fach?.gewichtung_t ?? gewichtungGlobal['T'] ?? 0.3,
       CUSTOM: fach?.gewichtung_custom ?? gewichtungGlobal['CUSTOM'] ?? 0.1,
+      MAN: fach?.gewichtung_man ?? gewichtungGlobal['MAN'] ?? 0.3,
     }
-    const summe = roh.SA + roh.T + roh.CUSTOM || 1
+    const summe = roh.SA + roh.T + roh.CUSTOM + roh.MAN || 1
     const pct = {
       SA: Math.round(roh.SA / summe * 100),
       T: Math.round(roh.T / summe * 100),
       CUSTOM: Math.round(roh.CUSTOM / summe * 100),
+      MAN: Math.round(roh.MAN / summe * 100),
     }
-    const groesste = pct.SA >= pct.T && pct.SA >= pct.CUSTOM ? 'SA' : (pct.T >= pct.CUSTOM ? 'T' : 'CUSTOM')
-    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM)
+    const groesste = Object.keys(pct).reduce((a, b) => (pct[b] > pct[a] ? b : a))
+    pct[groesste] += 100 - (pct.SA + pct.T + pct.CUSTOM + pct.MAN)
     return pct
   })
   // Deckelung des MA- bzw. HÜ-Einflusses: Fach-Wert oder globaler Standard (0,5), unabhängig.
@@ -781,7 +838,7 @@ export function GewichtungModal() {
   const [loading, setLoading] = useState(false)
 
   const gesamt = Object.values(gew).reduce((a, b) => a + b, 0)
-  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell' }
+  const katLabel = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell', MAN: 'Mitarbeitsnote' }
 
   const handleSpeichern = async () => {
     if (Math.abs(gesamt - 100) > 0.5) return
@@ -791,6 +848,7 @@ export function GewichtungModal() {
       sa: gew.SA / 100,
       t: gew.T / 100,
       custom: gew.CUSTOM / 100,
+      man: gew.MAN / 100,
       maEinfluss: parseFloat(maEinfluss),
       hueEinfluss: parseFloat(hueEinfluss),
     })
@@ -847,7 +905,7 @@ export function GewichtungModal() {
               <div key={label} className="flex items-center gap-3">
                 <span className="text-sm text-ink-600 dark:text-ink-400 w-28">{label}</span>
                 <input
-                  type="range" min="0" max="1.5" step="0.05"
+                  type="range" min="0" max="4" step="0.05"
                   className="flex-1"
                   value={wert}
                   onChange={e => setter(e.target.value)}
@@ -859,7 +917,7 @@ export function GewichtungModal() {
             ))}
           </div>
           <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1.5">
-            0 = kein Einfluss · 0,5 = Standard · höhere Werte wirken stärker
+            0 = kein Einfluss · 0,5 = Standard · bis zu ± 4 Noten möglich
           </p>
         </div>
 

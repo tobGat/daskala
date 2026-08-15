@@ -61,7 +61,7 @@ async function fachOds(db, deps, fachId) {
       deps.znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
   })
 
-  const header = ['Name', ...spalten.map(s => `${s.kuerzel} ${s.datum ?? ''}`), 'SN 1', 'SN 2', 'ZN']
+  const header = ['Name', ...spalten.map(s => `${s.kuerzel} ${s.datum ?? ''}`), 'ZN']
   const rows = [header]
 
   for (const s of schueler) {
@@ -69,8 +69,6 @@ async function fachOds(db, deps, fachId) {
     for (const sp of spalten) {
       row.push(entryMap[`${sp.id}_${s.id}`] ?? '')
     }
-    row.push(znMap[`${s.id}_1`] ?? '')
-    row.push(znMap[`${s.id}_2`] ?? '')
     row.push(znMap[`${s.id}_3`] ?? '')
     rows.push(row)
   }
@@ -561,12 +559,12 @@ async function allSchuelerOds(db, deps) {
           deps.znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
       })
 
-      const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum.slice(5).replace('-', '.') : ''}`), 'SN 1', 'SN 2', 'ZN']
+      const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum.slice(5).replace('-', '.') : ''}`), 'ZN']
       const rows = [header]
       for (const s of await deps.rosterFuerFach(fach.id)) {
         const badges = [s.lernschwaeche ? 'LS' : null, s.legasthenie ? 'LEG' : null].filter(Boolean)
         const name = `${s.nachname} ${s.vorname}${badges.length ? ' [' + badges.join(' ') + ']' : ''}`
-        const row = [name, ...spalten.map(sp => entryMap[`${sp.id}_${s.id}`] ?? ''), znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '', znMap[`${s.id}_3`] ?? '']
+        const row = [name, ...spalten.map(sp => entryMap[`${sp.id}_${s.id}`] ?? ''), znMap[`${s.id}_3`] ?? '']
         rows.push(row)
       }
 
@@ -629,14 +627,14 @@ async function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '', in
 
       const thead = `<tr><th class="name">Name</th>${spalten.map(sp =>
         `<th>${escHtml(sp.kuerzel)}${sp.datum ? '<br>' + sp.datum.slice(5).replace('-', '.') : ''}</th>`
-      ).join('')}<th>SN 1</th><th>SN 2</th><th>ZN</th></tr>`
+      ).join('')}<th>ZN</th></tr>`
 
       let tbody = ''
       for (const s of await deps.rosterFuerFach(fach.id, { inklInaktiv })) {
         const lsBadge = s.lernschwaeche ? '<span class="badge">LS</span>' : ''
         const legBadge = s.legasthenie ? '<span class="badge leg">LEG</span>' : ''
         const cells = spalten.map(sp => `<td>${escHtml(entryMap[`${sp.id}_${s.id}`] ?? '')}</td>`).join('')
-        tbody += `<tr><td class="name">${escHtml(s.nachname)} ${escHtml(s.vorname)}${lsBadge}${legBadge}</td>${cells}<td class="zn">${znMap[`${s.id}_1`] ?? ''}</td><td class="zn">${znMap[`${s.id}_2`] ?? ''}</td><td class="zn">${znMap[`${s.id}_3`] ?? ''}</td></tr>`
+        tbody += `<tr><td class="name">${escHtml(s.nachname)} ${escHtml(s.vorname)}${lsBadge}${legBadge}</td>${cells}<td class="zn">${znMap[`${s.id}_3`] ?? ''}</td></tr>`
       }
 
       bodyHtml += `<div class="klasse-fach"><div class="klasse-fach-titel">${escHtml(klasse.name)} · ${escHtml(fach.name)}</div><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`
@@ -706,12 +704,12 @@ async function archivOds(db, deps, schuljahrId) {
           deps.znInternZuAnzeige(z.note_manuell ?? z.note_berechnet, niveauMap[z.schueler_id] ?? 'AHS', istDiff)
       })
 
-      const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum : ''}`), 'SN 1', 'SN 2', 'ZN']
+      const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum : ''}`), 'ZN']
       const rows = [header]
       for (const s of await deps.rosterFuerFach(fach.id, { inklInaktiv: true })) {
         const row = [`${s.nachname} ${s.vorname}`]
         for (const sp of spalten) row.push(entryMap[`${sp.id}_${s.id}`] ?? '')
-        row.push(znMap[`${s.id}_1`] ?? '', znMap[`${s.id}_2`] ?? '', znMap[`${s.id}_3`] ?? '')
+        row.push(znMap[`${s.id}_3`] ?? '')
         rows.push(row)
       }
 

@@ -8,6 +8,39 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.3.2',
+    datum: 'August 2026',
+    punkte: [
+      'Schüler:innen-Namen lassen sich jetzt auch nachträglich bearbeiten: In der Schüler:innen-Verwaltung („Liste") öffnet ein Klick auf ✎ die Felder für Vor- und Nachname. Der geänderte Name erscheint sofort überall (Notentabelle, Sitzplan, Exporte).',
+    ],
+  },
+  {
+    version: '1.3.1',
+    datum: 'August 2026',
+    punkte: [
+      'Behoben: Bei der Mitarbeitsnote gewählte eigene Symbole (statt der Ziffern 1–5) wurden nicht gespeichert – jetzt bleiben sie erhalten.',
+      'Behoben: Der Hinweis „Keine Mitarbeit erfasst" (§ 3 LBVO) erschien fälschlich, wenn die Mitarbeit über Smileys bzw. eigene Symbole erfasst wurde; außerdem passt die Rechenherleitung im Tooltip nun wieder exakt zur angezeigten Zeugnisnote.',
+      'Der § 3-Hinweis berücksichtigt jetzt nur echte Mitarbeit (Mitarbeits-Symbole oder benotete Mitarbeit) – eine bloße Hausübung unterdrückt ihn nicht mehr. Ohne jede Mitarbeit/Note bildet eine reine Hausübung keine Zeugnisnote.',
+      'Behoben: Bei differenzierten Fächern (AHS/ST) konnten Klassenschnitt und Detailwerte außerhalb von 1–5 liegen; die Note bleibt jetzt sauber im gültigen Bereich.',
+      'Genauere Rundung der Zeugnisnote: Ergebnisse werden nicht mehr fälschlich als „Zwischennote" (x,5) markiert.',
+      'Beim Einträge-Speichern und beim Update (Übernahme manueller Semesternoten, Neuberechnung aller laufenden Schuljahre) wurde die Datensicherheit verbessert.',
+      'Einstellungen: klarere Beschreibung der maximalen Verschiebung durch Mitarbeit und Hausübung.',
+    ],
+  },
+  {
+    version: '1.3.0',
+    datum: 'August 2026',
+    punkte: [
+      'Eine durchgehende Zeugnisnote: Statt getrennter Semesternoten (SN 1/SN 2) und einer daraus gemischten Endnote gibt es jetzt eine einzige Note, die laufend aus allen Aufzeichnungen des ganzen Jahres berechnet wird. Am Ende von Semester 1 ist sie ein vorläufiger Zwischenstand (im Kopf mit „ZN*" markiert). Die frühere Semestergewichtung entfällt.',
+      'Neuere Leistungen stärker gewichten (§ 20 LBVO): Über einen einstellbaren Rezenz-Faktor zählt der zuletzt erreichte Leistungsstand stärker als frühere Leistungen – durchgehend übers ganze Jahr. Beim ersten Start bzw. nach dem Update legst du den Faktor einmalig fest.',
+      'Mitarbeitsnote: Mitarbeit kann jetzt als echte Note (Skala 1–5) mit eigener Gewichtung geführt werden – niveau-fähig (AHS/ST). Damit entsteht auch in Fächern ohne Schularbeiten/Tests eine belastbare Zeugnisnote. Die bekannte symbolische Mitarbeit (+/−, ↗/↘, Smileys) bleibt weiterhin Bonus/Malus.',
+      'Eigene Symbole: Bei der 4-stufigen Mitarbeit lassen sich die Smileys je Spalte durch eigene Symbole ersetzen; ebenso bei der neuen Note-Skala (fünf frei wählbare Symbole für die Noten 1–5).',
+      'Mitarbeit-Hinweis (§ 3 LBVO): Fehlt jede Mitarbeit/Hausübung, obwohl Noten vorhanden sind, weist ein Hinweis darauf hin, dass schriftliche Leistungen nicht die alleinige Beurteilungsgrundlage sein dürfen (abschaltbar).',
+      'Der maximale Einfluss von Mitarbeit und Hausübung lässt sich nun bis zu 4 Noten erhöhen (zuvor 1,5).',
+      'Spalten-Dialog: Die Bewertungsvariante „Note" ist farblich abgesetzt, und beim Überfahren der Varianten erscheint eine kurze Info.',
+    ],
+  },
+  {
     version: '1.2.1',
     datum: 'August 2026',
     punkte: [

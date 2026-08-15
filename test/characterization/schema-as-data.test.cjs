@@ -102,6 +102,9 @@ test('MIGRATIONS ist wohlgeformt ([{version, description, sql}])', () => {
     assert.strictEqual(typeof m.version, 'number')
     assert.strictEqual(typeof m.description, 'string')
     assert.strictEqual(typeof m.sql, 'string')
-    assert.ok(m.sql.includes('CREATE TABLE'))
+    assert.ok(m.sql.trim().length > 0)
   }
+  // Die Baseline (v1) erzeugt das Schema; spätere Migrationen duerfen reine Daten-/Seed-
+  // Migrationen sein (z. B. v2: MAN-Seed + Slot-1/2-Aufraeumen), enthalten also kein CREATE TABLE.
+  assert.ok(MIGRATIONS[0].sql.includes('CREATE TABLE'))
 })

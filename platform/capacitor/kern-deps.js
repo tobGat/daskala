@@ -15,8 +15,7 @@ export function createMobileKernDeps(dbPort) {
     pushUndo: () => {}, // Undo im Spike nicht abgebildet
     berechneAlleFuerSchuljahr: (sjId) => noten.berechneAlleFuerSchuljahr(dbPort, sjId),
     berechneAlleFuerFach: (fachId) => noten.berechneAlleFuerFach(dbPort, fachId),
-    berechneZeugnisnote: (fachId, sId, sem) => noten.berechneZeugnisnote(dbPort, fachId, sId, sem),
-    berechneEndnote: (fachId, sId) => noten.berechneEndnote(dbPort, fachId, sId),
+    berechneZeugnisnote: (fachId, sId) => noten.berechneZeugnisnote(dbPort, fachId, sId),
     rosterIdsFuerFach: (fachId, opts) => noten.rosterIdsFuerFach(dbPort, fachId, opts),
     pruefeNotenTrigger: (...a) => noten.pruefeNotenTrigger(dbPort, ...a),
     pruefeFehlstundenSchwellen: (sId) => noten.pruefeFehlstundenSchwellen(dbPort, sId),

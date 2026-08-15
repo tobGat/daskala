@@ -37,15 +37,34 @@ function markiereMobil() {
   if (vp) vp.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover')
 }
 
+// Ergänzt eine Spalte nur, wenn sie in einer Bestands-DB noch fehlt. ALTER TABLE ADD COLUMN
+// ist nicht per IF NOT EXISTS idempotent (würde bei jedem Start werfen), daher der PRAGMA-Guard –
+// analog zu spalteErgaenzen() im Desktop-Schema. Frische Installationen haben die Spalte bereits
+// aus MIGRATIONS[0] (aus TABLE_DDL erzeugt), hier passiert dann nichts.
+async function spalteErgaenzenWennFehlt(dbPort, tabelle, spalte, definition) {
+  try {
+    const cols = await dbPort.select(`PRAGMA table_info(${tabelle})`)
+    if (cols.some((c) => c.name === spalte)) return
+    await dbPort.execute(`ALTER TABLE ${tabelle} ADD COLUMN ${spalte} ${definition}`)
+  } catch (e) {
+    console.error('[daskala:mobile] migration:spalte', `${tabelle}.${spalte}`, e)
+  }
+}
+
 export async function bootstrapMobile() {
   markiereMobil()
   const conn = await oeffneVerbindung()
-  // Schema anwenden – alle Statements sind idempotent (IF NOT EXISTS), daher bei
-  // jedem Start unbedenklich; ein separates Versions-Tracking spart sich der Spike.
+  // Schema anwenden – die MIGRATIONS-Statements sind idempotent (CREATE … IF NOT EXISTS,
+  // INSERT OR IGNORE, DELETE), daher bei jedem Start unbedenklich; ein separates
+  // Versions-Tracking spart sich der Spike.
   for (const m of MIGRATIONS) {
     await conn.execute(m.sql, false)
   }
   const dbPort = createCapacitorDbAdapter(conn)
+  // Bestands-DBs (vor v1.3) nachrüsten: die per CREATE-IF-NOT-EXISTS nicht nachziehbaren
+  // Spalten der LBVO-Features idempotent ergänzen (siehe MIGRATIONS v2 für die Daten-Seite).
+  await spalteErgaenzenWennFehlt(dbPort, 'faecher', 'gewichtung_man', 'REAL')
+  await spalteErgaenzenWennFehlt(dbPort, 'spalten', 'ma_symbole', 'TEXT')
   await seedDemoWennLeer(dbPort)
   window.api = createMobileApi(dbPort)
 }

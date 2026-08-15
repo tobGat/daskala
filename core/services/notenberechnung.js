@@ -45,14 +45,53 @@ async function ladeMaGewichte(db) {
   }
 }
 
+// Default-Symbole der 4-stufigen Mitarbeit (sehr positiv … sehr negativ).
+const MA_SMILEYS_DEFAULT = ['😄', '🙂', '🙁', '😞']
+
+// Symbolliste einer 4-stufigen MA-Spalte: eigene Symbole (spalten.ma_symbole als JSON)
+// oder Default-Smileys. Reihenfolge = Stufen [sehr+, +, −, sehr−].
+function maSymboleVon(spalte) {
+  if (spalte.ma_symbole) {
+    try {
+      const arr = JSON.parse(spalte.ma_symbole)
+      if (Array.isArray(arr) && arr.length === 4) return arr
+    } catch { /* fällt auf Default zurück */ }
+  }
+  return MA_SMILEYS_DEFAULT
+}
+
+// Eigene 5 Symbole einer Mitarbeitsnote-Spalte (MAN) für die Noten 1…5, oder null
+// (dann normale Zahleneingabe 1–5). ma_symbole als JSON-Array [Note1, …, Note5].
+function manSymboleVon(spalte) {
+  if (spalte.ma_symbole) {
+    try {
+      const arr = JSON.parse(spalte.ma_symbole)
+      if (Array.isArray(arr) && arr.length === 5) return arr
+    } catch { /* keine eigenen Symbole */ }
+  }
+  return null
+}
+
+// Note (1–5) eines MAN-Eintrags: eigenes Symbol → Position+1, sonst parseInt. NaN = ungültig.
+function manNoteVon(spalte, wert) {
+  const syms = manSymboleVon(spalte)
+  if (syms) {
+    const idx = syms.indexOf(wert)
+    return idx >= 0 ? idx + 1 : NaN
+  }
+  return parseInt(wert)
+}
+
 // Bewertung eines MA-Eintrags: { w: vorzeichenbehaftetes Gewicht in Notenpunkten,
 // dir: Richtung ±1 (für die grobe Fallback-Note) }. null = kein gültiger Eintrag.
 function maBewertung(spalte, wert, g) {
   if (spalte.ma_stufen === 4) {
-    if (wert === '😄') return { w: g.vpos, dir: 1 }
-    if (wert === '🙂') return { w: g.pos, dir: 1 }
-    if (wert === '🙁') return { w: -g.neg, dir: -1 }
-    if (wert === '😞') return { w: -g.vneg, dir: -1 }
+    // Positionsbasiert: Stufe 0/1 positiv, 2/3 negativ – unabhängig vom konkreten Symbol.
+    const idx = maSymboleVon(spalte).indexOf(wert)
+    if (idx === 0) return { w: g.vpos, dir: 1 }
+    if (idx === 1) return { w: g.pos, dir: 1 }
+    if (idx === 2) return { w: -g.neg, dir: -1 }
+    if (idx === 3) return { w: -g.vneg, dir: -1 }
     return null
   }
   if (wert === '+') return { w: g.plus, dir: 1 }
@@ -60,12 +99,39 @@ function maBewertung(spalte, wert, g) {
   return null
 }
 
-async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
+// Rezenz-gewichteter Durchschnitt einer Kategorie (§ 20 LBVO: zuletzt erreichter
+// Leistungsstand zählt stärker). `werte` = [{ n, datum, semester, reihenfolge }],
+// `faktor` = Gewicht der neuesten Leistung relativ zur ältesten (1 = kein Effekt =
+// reiner Durchschnitt). Chronologisch über das ganze Jahr sortiert (undatiert gilt als
+// am ältesten; Tie-Break Semester, dann reihenfolge); linear ansteigende Gewichte 1 … faktor.
+function gewichteterSchnitt(werte, faktor) {
+  const m = werte.length
+  if (m === 0) return 0
+  const f = Number(faktor)
+  if (!(f > 1) || m < 2) return werte.reduce((a, w) => a + w.n, 0) / m
+  const sortiert = [...werte].sort((a, b) => {
+    const da = a.datum || '', db2 = b.datum || ''
+    if (da !== db2) return da < db2 ? -1 : 1
+    if ((a.semester ?? 0) !== (b.semester ?? 0)) return (a.semester ?? 0) - (b.semester ?? 0)
+    return (a.reihenfolge ?? 0) - (b.reihenfolge ?? 0)
+  })
+  let summe = 0, gew = 0
+  sortiert.forEach((w, i) => {
+    const g = 1 + (f - 1) * (i / (m - 1))
+    summe += w.n * g
+    gew += g
+  })
+  return summe / gew
+}
+
+// Eine durchgehende Note (Zeugnisnote / laufender Jahresstand) aus ALLEN Aufzeichnungen
+// beider Semester. Rezenz (§ 20) wirkt kontinuierlich über das ganze Jahr; es gibt keine
+// getrennten Semesternoten und keine Semestergewichtung mehr.
+async function berechneZeugnisnote(db, fachId, schuelerId) {
   const fach = await db.selectOne('SELECT * FROM faecher WHERE id = ?', [fachId])
   if (!fach) return { note: null }
 
   const istDifferenziert = fach.benotungssystem === 'differenziert'
-  const maxNote = istDifferenziert ? 7 : 5
 
   // Niveau-Historie laden (nur bei differenzierten Fächern relevant)
   let niveauHist = []
@@ -80,19 +146,24 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
       'SELECT niveau FROM schueler_niveau WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId]
     ))?.niveau ?? 'AHS'
   }
+  // Undatierte note-bildende Spalten werden konsistent als "aelteste" behandelt (wie in der
+  // Rezenz-Sortierung): ohne Datum gilt das aelteste bekannte Niveau, nicht das aktuelle.
+  const aeltestesNiveau = niveauHist.length ? niveauHist[niveauHist.length - 1].niveau : niveauFallback
   const offsetFor = (datum) => istDifferenziert
-    ? niveauOffset(niveauZurZeit(niveauHist, datum, niveauFallback))
+    ? niveauOffset(datum ? niveauZurZeit(niveauHist, datum, niveauFallback) : aeltestesNiveau)
     : 0
   const aktuellerOffset = istDifferenziert ? niveauOffset(niveauFallback) : 0
 
-  // Gewichte der NOTE-BILDENDEN Kategorien (nur SA, Test, Individuell).
+  // Gewichte der NOTE-BILDENDEN Kategorien (SA, Test, Individuell, Mitarbeitsnote).
   const globaleGewichtung = {}
   ;(await db.select('SELECT * FROM gewichtung_global'))
     .forEach((r) => { globaleGewichtung[r.kategorie] = r.gewichtung })
   const gew = {
     SA: fach.gewichtung_sa ?? globaleGewichtung['SA'] ?? 0.4,
     T: fach.gewichtung_t ?? globaleGewichtung['T'] ?? 0.3,
-    CUSTOM: fach.gewichtung_custom ?? globaleGewichtung['CUSTOM'] ?? 0.0,
+    CUSTOM: fach.gewichtung_custom ?? globaleGewichtung['CUSTOM'] ?? 0.1,
+    // Benotete Mitarbeit (MAN): Default > 0, damit reine MAN-Fächer eine Note bilden.
+    MAN: fach.gewichtung_man ?? globaleGewichtung['MAN'] ?? 0.3,
   }
 
   // Maximaler Einfluss von Mitarbeit bzw. Hausübung (niveau-frei), getrennt steuerbar.
@@ -105,11 +176,15 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
   const einflussSchritt = parseFloat(
     (await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'ma_hue_schritt'"))?.wert ?? '0.1'
   )
+  // Rezenz-Gewichtung innerhalb einer Kategorie (§ 20 LBVO). 1 = reiner Durchschnitt.
+  const rezenzFaktor = parseFloat(
+    (await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'rezenz_faktor'"))?.wert ?? '1'
+  )
 
-  const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ? AND semester = ?', [fachId, semester])
+  const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ?', [fachId])
 
-  // Basisnote aus echten Noten (SA/T/Individuell, intern inkl. Niveau-Offset).
-  const basisWerte = { SA: [], T: [], CUSTOM: [] }
+  // Basisnote aus echten Noten (SA/T/Individuell/Mitarbeitsnote, intern inkl. Niveau-Offset).
+  const basisWerte = { SA: [], T: [], CUSTOM: [], MAN: [] }
   // Mitarbeit: gewichtete Summe (maScore) + Richtungssumme (maDir). Hausübung: Zähler.
   const maGew = await ladeMaGewichte(db)
   let maScore = 0, maCount = 0, maDir = 0, huePos = 0, hueNeg = 0
@@ -127,10 +202,14 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
       // '—' = "nicht gewertet / entfällt": ohne Noteneinfluss.
     } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T') {
       const n = parseInt(wert)
-      if (n >= 1 && n <= 5) basisWerte[spalte.kategorie].push(n + offsetFor(spalte.datum))
+      if (n >= 1 && n <= 5) basisWerte[spalte.kategorie].push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge })
     } else if (spalte.kategorie === 'CUSTOM') {
       const n = parseInt(wert)
-      if (!isNaN(n) && n >= 1 && n <= 5) basisWerte.CUSTOM.push(n + offsetFor(spalte.datum))
+      if (!isNaN(n) && n <= 5 && n >= 1) basisWerte.CUSTOM.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge })
+    } else if (spalte.kategorie === 'MAN') {
+      // Benotete Mitarbeit: echte Note 1–5 (ggf. über eigene Symbole), niveau-fähig wie SA/T.
+      const n = manNoteVon(spalte, wert)
+      if (n >= 1 && n <= 5) basisWerte.MAN.push({ n: n + offsetFor(spalte.datum), datum: spalte.datum, semester: spalte.semester, reihenfolge: spalte.reihenfolge })
     }
   }
 
@@ -139,8 +218,8 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
   for (const [kat, werte] of Object.entries(basisWerte)) {
     if (werte.length === 0) continue
     const w = gew[kat] ?? 0
-    if (w === 0) continue
-    const avg = werte.reduce((a, b) => a + b, 0) / werte.length
+    if (w <= 0) continue
+    const avg = gewichteterSchnitt(werte, rezenzFaktor)
     summe += avg * w
     gesamtGewichtung += w
   }
@@ -149,7 +228,6 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
 
   const maGesamt = maCount
   const hueGesamt = huePos + hueNeg
-  const hatMAHUE = maGesamt > 0 || hueGesamt > 0
 
   // maScore ist bereits die Roh-Summe in Notenpunkten; die Deckelung greift erst hier.
   let maEinfluss = maGesamt > 0 ? maScore : 0
@@ -158,37 +236,24 @@ async function berechneZeugnisnote(db, fachId, schuelerId, semester) {
   hueEinfluss = Math.max(-maxHueEinfluss, Math.min(maxHueEinfluss, hueEinfluss))
   const einfluss = maEinfluss + hueEinfluss
 
-  // Verhältnis (−1…+1) nur für die grobe Fallback-Note, wenn es keine echten Noten gibt.
-  const ratios = []
-  if (maGesamt > 0) ratios.push(maDir / maGesamt)
-  if (hueGesamt > 0) ratios.push((huePos - hueNeg) / hueGesamt)
-  const verhaeltnis = ratios.length ? ratios.reduce((a, b) => a + b, 0) / ratios.length : 0
+  // Grobe Fallback-Note (ohne echte Basis) NUR aus Mitarbeit ableiten. Hausübung allein ist
+  // laut § 3 LBVO keine tragfähige Beurteilungsgrundlage → ohne MA und ohne Basis keine Note.
+  const maVerhaeltnis = maGesamt > 0 ? maDir / maGesamt : 0
 
   let noteIntern
   if (hatBasis) {
     noteIntern = basisIntern - einfluss  // viele +/✓ verbessern → kleinerer Wert
-  } else if (hatMAHUE) {
-    noteIntern = (3 - verhaeltnis * 2) + aktuellerOffset
+  } else if (maGesamt > 0) {
+    noteIntern = (3 - maVerhaeltnis * 2) + aktuellerOffset
   } else {
     return { note: null }
   }
 
-  noteIntern = Math.max(1, Math.min(maxNote, noteIntern))
-  return { note: Math.round(noteIntern * 10) / 10 }
-}
-
-async function berechneEndnote(db, fachId, schuelerId) {
-  const s1Zn = await db.selectOne('SELECT note_manuell, note_berechnet FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = 1', [fachId, schuelerId])
-  const s2Zn = await db.selectOne('SELECT note_manuell, note_berechnet FROM zeugnisnoten WHERE fach_id = ? AND schueler_id = ? AND semester = 2', [fachId, schuelerId])
-  const s1Note = s1Zn?.note_manuell ?? s1Zn?.note_berechnet ?? null
-  const s2Note = s2Zn?.note_manuell ?? s2Zn?.note_berechnet ?? null
-  if (s1Note !== null && s2Note !== null) {
-    const s1Gewicht = parseFloat((await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 's1_gewichtung'"))?.wert ?? '0.5')
-    return Math.round((s1Note * s1Gewicht + s2Note * (1 - s1Gewicht)) * 10) / 10
-  }
-  if (s1Note !== null) return s1Note
-  if (s2Note !== null) return s2Note
-  return null
+  // Niveau-abhängiger Clamp: interner Wert bleibt im Fenster [1+Offset, 5+Offset], damit die
+  // Anzeige (intern − aktuellerOffset) und der Klassenschnitt stets in 1–5 liegen.
+  noteIntern = Math.max(1 + aktuellerOffset, Math.min(5 + aktuellerOffset, noteIntern))
+  // Auf zwei Dezimalen runden – so entstehen keine falschen „Zwischennoten" durch Vorrundung auf x,5.
+  return { note: Math.round(noteIntern * 100) / 100 }
 }
 
 // Alle Fächer im angegebenen Schuljahr neu berechnen
@@ -223,6 +288,8 @@ async function rosterIdsFuerFach(db, fachId, opts = {}) {
   return (await rosterFuerFach(db, fachId, opts)).map((s) => s.id)
 }
 
+// Die eine Note wird im Slot semester=3 gespeichert (Slots 1/2 werden nicht mehr genutzt).
+const NOTE_SEMESTER = 3
 const ZN_UPSERT = `
     INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet, uuid)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -231,26 +298,17 @@ const ZN_UPSERT = `
   `
 const ZN_UPDATE_ONLY = 'UPDATE zeugnisnoten SET note_berechnet = ?, s1_eingerechnet = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?'
 
-// Alle Zeugnisnoten für ein Fach neu berechnen (Roster-Schüler:innen, S1+S2+Endnote)
+// Alle Zeugnisnoten für ein Fach neu berechnen: eine durchgehende Jahresnote je Schüler:in.
 async function berechneAlleFuerFach(db, fachId) {
   const fach = await db.selectOne('SELECT klasse_id FROM faecher WHERE id = ?', [fachId])
   if (!fach) return
   const schueler = (await rosterIdsFuerFach(db, fachId)).map((id) => ({ id }))
   if (!schueler.length) return
   await db.transaction(async (tx) => {
-    // Erst S1 und S2 berechnen
     for (const s of schueler) {
-      for (const sem of [1, 2]) {
-        const { note } = await berechneZeugnisnote(tx, fachId, s.id, sem)
-        if (note !== null) await tx.execute(ZN_UPSERT, [fachId, s.id, sem, note, 0, neueUuid()])
-        else await tx.execute(ZN_UPDATE_ONLY, [null, 0, fachId, s.id, sem])
-      }
-    }
-    // Dann Endnote (liest die eben gespeicherten S1/S2-Noten)
-    for (const s of schueler) {
-      const endnote = await berechneEndnote(tx, fachId, s.id)
-      if (endnote !== null) await tx.execute(ZN_UPSERT, [fachId, s.id, 3, endnote, 1, neueUuid()])
-      else await tx.execute(ZN_UPDATE_ONLY, [null, 1, fachId, s.id, 3])
+      const { note } = await berechneZeugnisnote(tx, fachId, s.id)
+      if (note !== null) await tx.execute(ZN_UPSERT, [fachId, s.id, NOTE_SEMESTER, note, 1, neueUuid()])
+      else await tx.execute(ZN_UPDATE_ONLY, [null, 1, fachId, s.id, NOTE_SEMESTER])
     }
   })
 }
@@ -307,7 +365,7 @@ async function pruefeNotenTrigger(db, spalteId, schuelerId, wertNeu, wertAlt) {
   if (!(n >= 1 && n <= 5)) return
   const spalte = await db.selectOne('SELECT s.kategorie, s.fach_id, f.klasse_id, f.name AS fach_name FROM spalten s JOIN faecher f ON f.id = s.fach_id WHERE s.id = ?', [spalteId])
   if (!spalte) return
-  if (!['SA', 'T', 'CUSTOM'].includes(spalte.kategorie)) return
+  if (!['SA', 'T', 'CUSTOM', 'MAN'].includes(spalte.kategorie)) return
   const klasse = await db.selectOne('SELECT ist_kv FROM klassen WHERE id = ?', [spalte.klasse_id])
   if (!klasse?.ist_kv) return
 
@@ -326,8 +384,8 @@ async function pruefeNotenTrigger(db, spalteId, schuelerId, wertNeu, wertAlt) {
 }
 
 module.exports = {
-  niveauZurZeit, niveauOffset, znInternZuAnzeige,
-  berechneZeugnisnote, berechneEndnote, berechneAlleFuerSchuljahr,
+  niveauZurZeit, niveauOffset, znInternZuAnzeige, gewichteterSchnitt, NOTE_SEMESTER,
+  berechneZeugnisnote, berechneAlleFuerSchuljahr,
   rosterFuerFach, rosterIdsFuerFach, berechneAlleFuerFach,
   erzeugeTrigger, pruefeFehlstundenSchwellen, pruefeNotenTrigger,
 }

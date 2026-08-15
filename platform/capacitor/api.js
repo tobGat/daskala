@@ -79,6 +79,9 @@ export function createMobileApi(dbPort) {
       getSchuelerIds: (fId) => faecherDomain.getSchuelerIds(dbPort, deps, fId),
       create: (d) => faecherDomain.create(dbPort, deps, d),
       setBenotungssystem: (id, s) => faecherDomain.setBenotungssystem(dbPort, deps, id, s),
+      // Gewichtung pro Fach inkl. benoteter Mitarbeit (gewichtung_man) + Einfluss-Deckelung.
+      updateGewichtung: (id, data) => faecherDomain.updateGewichtung(dbPort, deps, id, data),
+      resetGewichtung: (id) => faecherDomain.resetGewichtung(dbPort, deps, id),
     }),
     schueler: dp('schueler', {
       getAll: (kId) => schuelerDomain.getAll(dbPort, kId),
@@ -114,8 +117,16 @@ export function createMobileApi(dbPort) {
     zeugnisnoten: dp('zeugnisnoten', {
       getAll: (fId) => zeugnisnotenDomain.getAll(dbPort, fId),
       berechneFach: (fId) => zeugnisnotenDomain.berechneFach(dbPort, deps, fId),
-      setManuell: (f, s, se, n) => zeugnisnotenDomain.setManuell(dbPort, deps, f, s, se, n),
-      clearManuell: (f, s, se) => zeugnisnotenDomain.clearManuell(dbPort, deps, f, s, se),
+      // Eine durchgehende Jahresnote (Slot semester=3) – kein semester-Parameter mehr.
+      setManuell: (f, s, n) => zeugnisnotenDomain.setManuell(dbPort, deps, f, s, n),
+      clearManuell: (f, s) => zeugnisnotenDomain.clearManuell(dbPort, deps, f, s),
+      // Neuberechnung aller nicht-archivierten Schuljahre (spiegelt main.js: noten:rechneAllesNeu)
+      // – genutzt vom Rezenz-Setup, den Einstellungen und dem einmaligen App-Recompute.
+      rechneAllesNeu: async () => {
+        const sj = await dbPort.select('SELECT id FROM schuljahre WHERE archiviert = 0')
+        for (const s of sj) await deps.berechneAlleFuerSchuljahr(s.id)
+        return true
+      },
     }),
     niveau: dp('niveau', {
       get: (fId) => niveauDomain.get(dbPort, fId),

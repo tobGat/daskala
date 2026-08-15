@@ -67,7 +67,8 @@ async function setFarbe(db, id, farbe) {
 }
 
 async function updateGewichtung(db, deps, id, data) {
-  // Nur SA/Test/Individuell gewichten die Note; MA & HÜ wirken als Einfluss (eigene Deckelung).
+  // SA/Test/Individuell/Mitarbeitsnote gewichten die Note; symbolische MA & HÜ wirken als
+  // Einfluss (eigene Deckelung). gewichtung_man ist die benotete Mitarbeit (NICHT gewichtung_ma).
   await db.execute(`
       UPDATE faecher SET
         gewichtung_sa = ?,
@@ -75,17 +76,18 @@ async function updateGewichtung(db, deps, id, data) {
         gewichtung_ma = NULL,
         gewichtung_hue = NULL,
         gewichtung_custom = ?,
+        gewichtung_man = ?,
         ma_hue_max_einfluss = NULL,
         ma_max_einfluss = ?,
         hue_max_einfluss = ?
       WHERE id = ?
-    `, [data.sa ?? null, data.t ?? null, data.custom ?? null, data.maEinfluss ?? null, data.hueEinfluss ?? null, id])
+    `, [data.sa ?? null, data.t ?? null, data.custom ?? null, data.man ?? null, data.maEinfluss ?? null, data.hueEinfluss ?? null, id])
   await deps.berechneAlleFuerFach(id)
   return true
 }
 
 async function resetGewichtung(db, deps, id) {
-  await db.execute('UPDATE faecher SET gewichtung_sa = NULL, gewichtung_t = NULL, gewichtung_ma = NULL, gewichtung_hue = NULL, gewichtung_custom = NULL, ma_hue_max_einfluss = NULL, ma_max_einfluss = NULL, hue_max_einfluss = NULL WHERE id = ?', [id])
+  await db.execute('UPDATE faecher SET gewichtung_sa = NULL, gewichtung_t = NULL, gewichtung_ma = NULL, gewichtung_hue = NULL, gewichtung_custom = NULL, gewichtung_man = NULL, ma_hue_max_einfluss = NULL, ma_max_einfluss = NULL, hue_max_einfluss = NULL WHERE id = ?', [id])
   await deps.berechneAlleFuerFach(id)
   return true
 }

@@ -8,7 +8,7 @@
 
 // Aktuelle Schema-Version. Erhoehen bei neuer EINMALIGER Migration (Daten-Umbau/Rebuild);
 // reine Spalten-Ergaenzungen laufen idempotent ueber spalteErgaenzen().
-const SCHEMA_VERSION = 2
+const SCHEMA_VERSION = 3
 
 // ─── Schema als Daten (Portierung Phase 2.3) ─────────────────────────────────
 //
@@ -59,6 +59,7 @@ const TABLE_DDL = [
       gewichtung_ma REAL,
       gewichtung_hue REAL,
       gewichtung_custom REAL,
+      gewichtung_man REAL,
       ma_max_einfluss REAL,
       hue_max_einfluss REAL,
       farbe TEXT,
@@ -94,6 +95,7 @@ const TABLE_DDL = [
       notiz TEXT,
       ma_stufen INTEGER DEFAULT 2,
       ma_symbol TEXT DEFAULT 'pm',
+      ma_symbole TEXT,
       uuid TEXT,
       FOREIGN KEY (fach_id) REFERENCES faecher(id)
     )`,
@@ -435,6 +437,20 @@ const MIGRATIONS = [
     description: 'Initiales Schema (Baseline, konsolidiert aus Desktop-Schema v1.x)',
     sql: [...TABLE_DDL, ...INDEX_DDL].map((s) => s.trim() + ';').join('\n\n'),
   },
+  {
+    version: 2,
+    // LBVO v1.3: benotete Mitarbeit (MAN) als Default-Gewichtung seeden und Umstieg auf EINE
+    // durchgehende Jahresnote (Slot semester=3) – die getrennten Semesternoten (Slots 1 & 2)
+    // entfallen. Beide Statements sind idempotent (INSERT OR IGNORE / DELETE), daher beim
+    // versions-losen Mobil-Bootstrap bei jedem Start unbedenklich. Fehlende SPALTEN
+    // (faecher.gewichtung_man, spalten.ma_symbole) werden – da ALTER nicht idempotent ist –
+    // separat in platform/capacitor/bootstrap.js per PRAGMA-Guard ergänzt.
+    description: 'LBVO v1.3: MAN-Gewichtung seeden + eine durchgehende Jahresnote (Slots 1/2 entfernen)',
+    sql: [
+      "INSERT OR IGNORE INTO gewichtung_global (kategorie, gewichtung) VALUES ('MAN', 0.30);",
+      'DELETE FROM zeugnisnoten WHERE semester IN (1, 2);',
+    ].join('\n\n'),
+  },
 ]
 
 function applySchema(db, deps) {
@@ -602,6 +618,9 @@ function applySchema(db, deps) {
   spalteErgaenzen('faecher', 'ma_hue_max_einfluss', 'REAL')
   spalteErgaenzen('faecher', 'ma_max_einfluss', 'REAL')
   spalteErgaenzen('faecher', 'hue_max_einfluss', 'REAL')
+  // Eigene Gewichtung der benoteten Mitarbeit (Kategorie MAN). NICHT verwechseln mit
+  // dem alten, hart-genullten 'gewichtung_ma' (MA = Bonus/Malus, keine Note).
+  spalteErgaenzen('faecher', 'gewichtung_man', 'REAL')
 
   // Einmalige Daten-Migrationen – dürfen NICHT bei jedem Start laufen (siehe user_version).
   if (schemaVersion < 1) {
@@ -639,6 +658,9 @@ function applySchema(db, deps) {
   // Symboldarstellung der 2-stufigen Mitarbeit: 'pm' = + / −, 'pfeil' = ↗ / ↘.
   // Rein optisch – gespeichert werden weiterhin '+' / '−', die Bewertung ist identisch.
   spalteErgaenzen('spalten', 'ma_symbol', "TEXT DEFAULT 'pm'")
+  // Eigene Symbole der 4-stufigen Mitarbeit (JSON-Array [sehr+, +, −, sehr−]).
+  // NULL = Default-Smileys 😄🙂🙁😞. Wertung positionsbasiert wie bei den Smileys.
+  spalteErgaenzen('spalten', 'ma_symbole', 'TEXT')
   spalteErgaenzen('eintraege', 'kommentar', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_text', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_frist_datum', 'TEXT')
@@ -1078,6 +1100,8 @@ function applySchema(db, deps) {
   insertGewichtung.run('MA', 0.20)
   insertGewichtung.run('HÜ', 0.10)
   insertGewichtung.run('CUSTOM', 0.10)
+  // Benotete Mitarbeit (MAN). INSERT OR IGNORE = idempotent, back-fillt Bestands-DBs.
+  insertGewichtung.run('MAN', 0.30)
 
   // Duplikate in stundenzeiten bereinigen (fehlerhafter INSERT OR IGNORE ohne UNIQUE)
   db.prepare(`
@@ -1159,6 +1183,30 @@ function applySchema(db, deps) {
       db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${t}_uuid ON ${t} (uuid)`).run()
     }
   } catch (e) { deps.logError('migration:uuid-index', e) }
+
+  if (schemaVersion < 3) {
+    // Umstieg auf EINE durchgehende Jahresnote (Slot semester=3). Die getrennten
+    // Semesternoten (Slots 1 & 2) entfallen. Bewusst gesetzte MANUELLE Semesternoten
+    // sollen aber nicht verloren gehen: falls Slot 3 keine manuelle Note hat, wird die
+    // manuelle Note aus Slot 2 (bevorzugt) bzw. Slot 1 uebernommen; danach werden 1 & 2 geloescht.
+    try {
+      for (const sem of [2, 1]) {
+        db.prepare(`
+          UPDATE zeugnisnoten SET note_manuell = (
+            SELECT z.note_manuell FROM zeugnisnoten z
+            WHERE z.fach_id = zeugnisnoten.fach_id AND z.schueler_id = zeugnisnoten.schueler_id AND z.semester = ?
+          )
+          WHERE semester = 3 AND note_manuell IS NULL
+            AND EXISTS (
+              SELECT 1 FROM zeugnisnoten z
+              WHERE z.fach_id = zeugnisnoten.fach_id AND z.schueler_id = zeugnisnoten.schueler_id
+                AND z.semester = ? AND z.note_manuell IS NOT NULL
+            )
+        `).run(sem, sem)
+      }
+      db.prepare('DELETE FROM zeugnisnoten WHERE semester IN (1, 2)').run()
+    } catch (e) { deps.logError('migration:zeugnisnoten-einzelnote', e) }
+  }
 
   // Alle einmaligen Migrationen dieser Version sind durchlaufen → Schema-Version festschreiben.
   if (schemaVersion < SCHEMA_VERSION) db.pragma(`user_version = ${SCHEMA_VERSION}`)
