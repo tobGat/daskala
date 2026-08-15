@@ -8,6 +8,19 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.3.1',
+    datum: 'August 2026',
+    punkte: [
+      'Behoben: Bei der Mitarbeitsnote gewählte eigene Symbole (statt der Ziffern 1–5) wurden nicht gespeichert – jetzt bleiben sie erhalten.',
+      'Behoben: Der Hinweis „Keine Mitarbeit erfasst" (§ 3 LBVO) erschien fälschlich, wenn die Mitarbeit über Smileys bzw. eigene Symbole erfasst wurde; außerdem passt die Rechenherleitung im Tooltip nun wieder exakt zur angezeigten Zeugnisnote.',
+      'Der § 3-Hinweis berücksichtigt jetzt nur echte Mitarbeit (Mitarbeits-Symbole oder benotete Mitarbeit) – eine bloße Hausübung unterdrückt ihn nicht mehr. Ohne jede Mitarbeit/Note bildet eine reine Hausübung keine Zeugnisnote.',
+      'Behoben: Bei differenzierten Fächern (AHS/ST) konnten Klassenschnitt und Detailwerte außerhalb von 1–5 liegen; die Note bleibt jetzt sauber im gültigen Bereich.',
+      'Genauere Rundung der Zeugnisnote: Ergebnisse werden nicht mehr fälschlich als „Zwischennote" (x,5) markiert.',
+      'Beim Einträge-Speichern und beim Update (Übernahme manueller Semesternoten, Neuberechnung aller laufenden Schuljahre) wurde die Datensicherheit verbessert.',
+      'Einstellungen: klarere Beschreibung der maximalen Verschiebung durch Mitarbeit und Hausübung.',
+    ],
+  },
+  {
     version: '1.3.0',
     datum: 'August 2026',
     punkte: [
