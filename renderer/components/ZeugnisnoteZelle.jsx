@@ -27,6 +27,34 @@ function manNoteVon(spalte, wert) {
   return parseInt(wert)
 }
 
+// Spiegelt core: Symbolliste einer 4-stufigen MA-Spalte (eigene oder Default-Smileys).
+const MA_SMILEYS_DEFAULT = ['😄', '🙂', '🙁', '😞']
+function maSymboleVon(spalte) {
+  if (spalte.ma_symbole) {
+    try {
+      const arr = JSON.parse(spalte.ma_symbole)
+      if (Array.isArray(arr) && arr.length === 4) return arr
+    } catch { /* Default */ }
+  }
+  return MA_SMILEYS_DEFAULT
+}
+
+// Spiegelt core maBewertung: { w (vorzeichenbehaftetes Gewicht), dir (±1) } oder null.
+// g = { plus, minus, vpos, pos, neg, vneg } aus den Einstellungen.
+function maBewertung(spalte, wert, g) {
+  if (spalte.ma_stufen === 4) {
+    const idx = maSymboleVon(spalte).indexOf(wert)
+    if (idx === 0) return { w: g.vpos, dir: 1 }
+    if (idx === 1) return { w: g.pos, dir: 1 }
+    if (idx === 2) return { w: -g.neg, dir: -1 }
+    if (idx === 3) return { w: -g.vneg, dir: -1 }
+    return null
+  }
+  if (wert === '+') return { w: g.plus, dir: 1 }
+  if (wert === '-') return { w: -g.minus, dir: -1 }
+  return null
+}
+
 // Spiegelt core/services/notenberechnung.js:gewichteterSchnitt (§ 20 LBVO), damit die
 // Tooltip-Vorschau exakt der berechneten Note entspricht. werte = [{ n, datum, semester, reihenfolge }].
 function gewichteterSchnitt(werte, faktor) {
@@ -94,25 +122,33 @@ function useZNBreakdown(schuelerId, spalten, eintraege, einstellungen, aktivesFa
       : parseFloat(einstellungen?.hue_max_einfluss ?? globalAltEinfluss ?? '0.5')
     const einflussSchritt = parseFloat(einstellungen?.ma_hue_schritt ?? '0.1')
     const rezenzFaktor = parseFloat(einstellungen?.rezenz_faktor ?? '1')
+    // Mitarbeits-Gewichte je Stufe wie im Kern (ladeMaGewichte) – Default = bisheriges Verhalten.
+    const num = (key, def) => { const v = parseFloat(einstellungen?.[key]); return isNaN(v) ? def : v }
+    const maGew = {
+      plus: num('ma_w_plus', 0.1), minus: num('ma_w_minus', 0.1),
+      vpos: num('ma_w_smiley_vpos', 0.1), pos: num('ma_w_smiley_pos', 0.05),
+      neg: num('ma_w_smiley_neg', 0.05), vneg: num('ma_w_smiley_vneg', 0.1),
+    }
 
     // SA/Test/Individuell/Mitarbeitsnote bilden die Basisnote. Symbolische MA/HÜ verschieben sie nur (niveau-frei).
     const gew = {
       SA:     aktivesFach?.gewichtung_sa     ?? gewichtungGlobal?.SA     ?? 0.4,
       T:      aktivesFach?.gewichtung_t      ?? gewichtungGlobal?.T      ?? 0.3,
-      CUSTOM: aktivesFach?.gewichtung_custom ?? gewichtungGlobal?.CUSTOM ?? 0.0,
+      CUSTOM: aktivesFach?.gewichtung_custom ?? gewichtungGlobal?.CUSTOM ?? 0.1,
       MAN:    aktivesFach?.gewichtung_man    ?? gewichtungGlobal?.MAN    ?? 0.3,
     }
     const KAT_LABEL = { SA: 'SA', T: 'T', CUSTOM: 'Ind.', MAN: 'MA-Note' }
 
     const basis = { SA: { werte: [], eingaben: [] }, T: { werte: [], eingaben: [] }, CUSTOM: { werte: [], eingaben: [] }, MAN: { werte: [], eingaben: [] } }
-    let maPlus = 0, maMinus = 0, huePos = 0, hueNeg = 0
+    // Mitarbeit positionsbasiert wie im Kern: maScore = Roh-Summe der Gewichte, maCount/maDir für Zählung.
+    let maScore = 0, maCount = 0, maPlusCount = 0, maMinusCount = 0, huePos = 0, hueNeg = 0
 
     for (const spalte of fachSpalten) {
       const wert = eintraege[`${spalte.id}_${schuelerId}`] ?? ''
       if (!wert) continue
       if (spalte.kategorie === 'MA') {
-        if      (wert === '+') maPlus++
-        else if (wert === '-') maMinus++
+        const b = maBewertung(spalte, wert, maGew)
+        if (b !== null) { maScore += b.w; maCount++; if (b.dir > 0) maPlusCount++; else maMinusCount++ }
       } else if (spalte.kategorie === 'HÜ') {
         if      (wert === '✓') huePos++
         else if (wert === '✗') hueNeg++
@@ -143,11 +179,12 @@ function useZNBreakdown(schuelerId, spalten, eintraege, einstellungen, aktivesFa
     const hatBasis = gesamtGewichtung > 0
     const basisIntern = hatBasis ? summe / gesamtGewichtung : null
 
-    // MA-/HÜ-Einfluss "pro Eintrag" (niveau-frei). MA und HÜ unabhängig, je eigene Deckelung, dann summiert.
-    const maGesamt = maPlus + maMinus
+    // MA-/HÜ-Einfluss wie im Kern: MA aus der Roh-Summe (maScore), HÜ pro Eintrag; je eigene Deckelung.
+    const maGesamt = maCount
     const hueGesamt = huePos + hueNeg
+    const hatMA = maGesamt > 0
     const hatMAHUE = maGesamt > 0 || hueGesamt > 0
-    let maEinfluss = maGesamt > 0 ? (maPlus - maMinus) * einflussSchritt : 0
+    let maEinfluss = maGesamt > 0 ? maScore : 0
     maEinfluss = Math.max(-maxMaEinfluss, Math.min(maxMaEinfluss, maEinfluss))
     let hueEinfluss = hueGesamt > 0 ? (huePos - hueNeg) * einflussSchritt : 0
     hueEinfluss = Math.max(-maxHueEinfluss, Math.min(maxHueEinfluss, hueEinfluss))
@@ -155,8 +192,8 @@ function useZNBreakdown(schuelerId, spalten, eintraege, einstellungen, aktivesFa
 
     return {
       beitraege, gesamtGewichtung, maxNote, basisIntern, hatBasis,
-      ma: { plus: maPlus, minus: maMinus }, hue: { pos: huePos, neg: hueNeg },
-      hatMAHUE, einflussPunkte,
+      ma: { plus: maPlusCount, minus: maMinusCount }, hue: { pos: huePos, neg: hueNeg },
+      hatMAHUE, hatMA, einflussPunkte,
       hatMAN: basis.MAN.werte.length > 0,
     }
   }, [schuelerId, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus])
@@ -216,11 +253,11 @@ export default function ZeugnisnoteZelle({ schueler }) {
   const znBreakdown = useZNBreakdown(schueler.id, spalten, eintraege, einstellungen, aktivesFach, gewichtungGlobal, niveauHistorie, niveaus)
 
   // § 3 LBVO: schriftliche Leistungen dürfen nicht alleinige Beurteilungsgrundlage sein.
-  // Warnung, wenn SA/T/Ind. vorhanden, aber keinerlei Mitarbeit/Hausübung erfasst wurde.
-  // § 3 LBVO: Warnung nur, wenn Noten (SA/Test/Individuell) vorliegen, aber KEINERLEI Mitarbeit –
-  // eine benotete Mitarbeit (MA-Note) ist Mitarbeit und unterdrückt die Warnung.
+  // Warnung, wenn Noten (SA/Test/Individuell) vorliegen, aber KEINE Mitarbeit erfasst wurde.
+  // „Mitarbeit" = symbolische Mitarbeit (hatMA) ODER benotete Mitarbeit (hatMAN). Eine bloße
+  // Hausübung (✓/✗) ist keine Mitarbeits-Leistungsfeststellung und unterdrückt die Warnung NICHT.
   const maWarnung = einstellungen?.ma_pflicht_warnung !== '0'
-    && !!znBreakdown && znBreakdown.hatBasis && !znBreakdown.hatMAHUE && !znBreakdown.hatMAN && !istManuell
+    && !!znBreakdown && znBreakdown.hatBasis && !znBreakdown.hatMA && !znBreakdown.hatMAN && !istManuell
 
   const handleClick         = () => setManuellPopup(true)
   const handleContextMenu   = (e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY }) }

@@ -54,11 +54,11 @@ test('MAN-only differenziert (ST): Niveau-Offset +2 wird intern angewandt', asyn
 })
 
 test('MAN + SA gemischt: normierte Gewichtung', async () => {
-  // gew_sa 0.4, gew_man 0.3, SA=2, MAN=4 → (2·0.4 + 4·0.3)/0.7 = 2,857… → 2,9
+  // gew_sa 0.4, gew_man 0.3, SA=2, MAN=4 → (2·0.4 + 4·0.3)/0.7 = 2,857… → 2,86 (2 Dezimalen)
   assert.strictEqual(await note(
     [{ kategorie: 'SA', wert: 2 }, { kategorie: 'MAN', wert: 4 }],
     { gewSA: 0.4, gewMAN: 0.3 }
-  ), 2.9)
+  ), 2.86)
 })
 
 test('Rezenz-Gewichtung wirkt auch auf Mitarbeitsnoten', async () => {
@@ -68,7 +68,7 @@ test('Rezenz-Gewichtung wirkt auch auf Mitarbeitsnoten', async () => {
     { kategorie: 'MAN', wert: 2, datum: '2025-12-01' },
   ]
   assert.strictEqual(await note(sp), 3.0)                                  // Faktor 1 = Mittel
-  assert.strictEqual(await note(sp, { einstellungen: { rezenz_faktor: 2 } }), 2.8) // neueste doppelt
+  assert.strictEqual(await note(sp, { einstellungen: { rezenz_faktor: 2 } }), 2.78) // neueste doppelt (2 Dez.)
 })
 
 test('Mitarbeitsnote mit eigenen Symbolen: Position = Note 1…5', async () => {

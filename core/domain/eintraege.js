@@ -19,30 +19,37 @@ async function set(db, deps, spalteId, schuelerId, wert) {
   const oldWert = existing ? existing.wert : null
   const wertAlt = existing?.wert ?? null
   const wertNeu = wert || null
-  if (wertAlt !== wertNeu) {
-    const spalte = await db.selectOne('SELECT fach_id FROM spalten WHERE id = ?', [spalteId])
-    const kommentarAlt = existing?.kommentar ?? null
-    await db.execute(`
+  const geaendert = wertAlt !== wertNeu
+  const kommentarAlt = existing?.kommentar ?? null
+  const spalte = geaendert ? await db.selectOne('SELECT fach_id FROM spalten WHERE id = ?', [spalteId]) : null
+
+  // handle = db oder Transaktions-Handle; so lässt sich apply atomar UND später für Undo nutzen.
+  const apply = async (handle, w) => {
+    const hasKommentar = !!(await handle.selectOne("SELECT 1 FROM eintraege WHERE spalte_id = ? AND schueler_id = ? AND kommentar IS NOT NULL AND kommentar != ''", [spalteId, schuelerId]))
+    if (w === '' || w === null) {
+      if (hasKommentar) {
+        await handle.execute('UPDATE eintraege SET wert = NULL WHERE spalte_id = ? AND schueler_id = ?', [spalteId, schuelerId])
+      } else {
+        await handle.execute('DELETE FROM eintraege WHERE spalte_id = ? AND schueler_id = ?', [spalteId, schuelerId])
+      }
+    } else {
+      await handle.execute('INSERT INTO eintraege (spalte_id, schueler_id, wert, uuid) VALUES (?, ?, ?, ?) ON CONFLICT(spalte_id, schueler_id) DO UPDATE SET wert = excluded.wert', [spalteId, schuelerId, w, neueUuid()])
+    }
+  }
+
+  // Verlauf-Eintrag und Wert-Änderung gemeinsam committen (kein verwaister Verlauf bei Fehler).
+  await db.transaction(async (tx) => {
+    if (geaendert) {
+      await tx.execute(`
         INSERT INTO eintraege_verlauf (fach_id, spalte_id, schueler_id, wert_alt, wert_neu, kommentar_alt, kommentar_neu, aktion)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'aenderung')
       `, [spalte?.fach_id ?? null, spalteId, schuelerId, wertAlt, wertNeu, kommentarAlt, kommentarAlt])
-  }
-  const apply = async (w) => {
-    const hasKommentar = !!(await db.selectOne("SELECT 1 FROM eintraege WHERE spalte_id = ? AND schueler_id = ? AND kommentar IS NOT NULL AND kommentar != ''", [spalteId, schuelerId]))
-    if (w === '' || w === null) {
-      if (hasKommentar) {
-        await db.execute('UPDATE eintraege SET wert = NULL WHERE spalte_id = ? AND schueler_id = ?', [spalteId, schuelerId])
-      } else {
-        await db.execute('DELETE FROM eintraege WHERE spalte_id = ? AND schueler_id = ?', [spalteId, schuelerId])
-      }
-    } else {
-      await db.execute('INSERT INTO eintraege (spalte_id, schueler_id, wert, uuid) VALUES (?, ?, ?, ?) ON CONFLICT(spalte_id, schueler_id) DO UPDATE SET wert = excluded.wert', [spalteId, schuelerId, w, neueUuid()])
     }
-  }
-  await apply(wert)
-  deps.pushUndo({ description: 'Eintrag', undo: () => apply(oldWert), redo: () => apply(wert) })
+    await apply(tx, wert)
+  })
+  deps.pushUndo({ description: 'Eintrag', undo: () => apply(db, oldWert), redo: () => apply(db, wert) })
   // KV-Trigger-Hook: nur wenn sich der Wert geändert hat
-  if (wertAlt !== wertNeu) {
+  if (geaendert) {
     try { await deps.pruefeNotenTrigger(spalteId, schuelerId, wertNeu, wertAlt) } catch (e) { console.error('[KV] pruefeNotenTrigger:', e) }
   }
   return true

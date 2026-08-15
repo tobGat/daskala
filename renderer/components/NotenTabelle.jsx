@@ -238,15 +238,18 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
     const mittel = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null)
     const gruppen = { AHS: [], ST: [] }
     const alle = []
+    // Angezeigte Note (1–5): internen Wert aufs Niveau umrechnen und auf 1–5 begrenzen,
+    // damit der Schnitt nie unter/über einer sichtbaren Einzelnote liegt.
+    const anzeige = (intern, off) => Math.max(1, Math.min(5, intern - off))
     for (const s of schueler) {
       const zn = zeugnisnoten[`${s.id}_3`]
       const intern = zn?.note_manuell ?? zn?.note_berechnet
       if (intern == null) continue
       if (istDiff) {
         const niv = niveaus[s.id] === 'ST' ? 'ST' : 'AHS'
-        gruppen[niv].push(intern - niveauOffset(niv))
+        gruppen[niv].push(anzeige(intern, niveauOffset(niv)))
       } else {
-        alle.push(intern)
+        alle.push(anzeige(intern, 0))
       }
     }
     return istDiff

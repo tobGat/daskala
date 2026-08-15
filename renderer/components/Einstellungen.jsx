@@ -571,7 +571,7 @@ export default function Einstellungen({ onClose }) {
                   ))}
                 </div>
                 <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-1">
-                  0 = kein Einfluss · 0,5 = empfohlen · bis zu ± 4 Noten möglich (stärkerer Einfluss)
+                  0 = kein Einfluss · 0,5 = empfohlen · je Regler bis ± 4 Noten. Mitarbeit und Hausübung sind getrennt gedeckelt und werden addiert – der maximale Gesamteinfluss ist also die Summe beider Regler. Hohe Werte können die Note aus SA/Test stark verschieben.
                 </p>
 
                 {/* Erweitert: Einfluss je Mitarbeits-Stufe */}

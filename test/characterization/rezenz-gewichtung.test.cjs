@@ -42,15 +42,15 @@ test('Faktor 1,0 = reiner Durchschnitt (rückwärtskompatibel)', async () => {
 })
 
 test('Faktor 2,0: neueste Note zählt doppelt so stark wie die älteste', async () => {
-  // 4,3,2 (alt→neu), Gewichte 1 / 1,5 / 2 → (4+4,5+4)/4,5 = 2,777… → 2,8
+  // 4,3,2 (alt→neu), Gewichte 1 / 1,5 / 2 → (4+4,5+4)/4,5 = 2,777… → 2,78 (2 Dezimalen)
   const sa = [{ note: 4, datum: '2025-10-01' }, { note: 3, datum: '2025-11-01' }, { note: 2, datum: '2025-12-01' }]
-  assert.strictEqual(await noteMitSA(sa, 2), 2.8)
+  assert.strictEqual(await noteMitSA(sa, 2), 2.78)
 })
 
 test('Sortierung nach Datum – Eingabereihenfolge egal', async () => {
   // Gleiche Noten/Daten, nur umgekehrt eingefügt → identisches Ergebnis.
   const sa = [{ note: 2, datum: '2025-12-01' }, { note: 3, datum: '2025-11-01' }, { note: 4, datum: '2025-10-01' }]
-  assert.strictEqual(await noteMitSA(sa, 2), 2.8)
+  assert.strictEqual(await noteMitSA(sa, 2), 2.78)
 })
 
 test('gewichteterSchnitt (rein): lineare Rang-Gewichte', () => {

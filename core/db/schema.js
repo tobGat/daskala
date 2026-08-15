@@ -1172,10 +1172,24 @@ function applySchema(db, deps) {
 
   if (schemaVersion < 3) {
     // Umstieg auf EINE durchgehende Jahresnote (Slot semester=3). Die getrennten
-    // Semesternoten (Slots 1 & 2) entfallen; ihre Zwischenwerte werden entfernt.
-    // Slot 3 (inkl. manueller Zeugnisnote) bleibt und wird beim ersten Update-Start
-    // einmalig neu berechnet (siehe App.jsx-Recompute-Hook).
+    // Semesternoten (Slots 1 & 2) entfallen. Bewusst gesetzte MANUELLE Semesternoten
+    // sollen aber nicht verloren gehen: falls Slot 3 keine manuelle Note hat, wird die
+    // manuelle Note aus Slot 2 (bevorzugt) bzw. Slot 1 uebernommen; danach werden 1 & 2 geloescht.
     try {
+      for (const sem of [2, 1]) {
+        db.prepare(`
+          UPDATE zeugnisnoten SET note_manuell = (
+            SELECT z.note_manuell FROM zeugnisnoten z
+            WHERE z.fach_id = zeugnisnoten.fach_id AND z.schueler_id = zeugnisnoten.schueler_id AND z.semester = ?
+          )
+          WHERE semester = 3 AND note_manuell IS NULL
+            AND EXISTS (
+              SELECT 1 FROM zeugnisnoten z
+              WHERE z.fach_id = zeugnisnoten.fach_id AND z.schueler_id = zeugnisnoten.schueler_id
+                AND z.semester = ? AND z.note_manuell IS NOT NULL
+            )
+        `).run(sem, sem)
+      }
       db.prepare('DELETE FROM zeugnisnoten WHERE semester IN (1, 2)').run()
     } catch (e) { deps.logError('migration:zeugnisnoten-einzelnote', e) }
   }
