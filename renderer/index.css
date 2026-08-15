@@ -44,7 +44,10 @@
   }
 
   .noten-tabelle {
-    border-collapse: collapse;
+    /* separate (nicht collapse!) – sonst decken die sticky-Spalten (Name links, ZN rechts)
+       in Chromium/WebView beim horizontalen Scrollen den durchlaufenden Inhalt NICHT ab. */
+    border-collapse: separate;
+    border-spacing: 0;
     white-space: nowrap;
     width: 100%;
   }
