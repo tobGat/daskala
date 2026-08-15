@@ -8,6 +8,13 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.3.2',
+    datum: 'August 2026',
+    punkte: [
+      'Schüler:innen-Namen lassen sich jetzt auch nachträglich bearbeiten: In der Schüler:innen-Verwaltung („Liste") öffnet ein Klick auf ✎ die Felder für Vor- und Nachname. Der geänderte Name erscheint sofort überall (Notentabelle, Sitzplan, Exporte).',
+    ],
+  },
+  {
     version: '1.3.1',
     datum: 'August 2026',
     punkte: [
