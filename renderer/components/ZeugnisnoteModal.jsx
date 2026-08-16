@@ -146,6 +146,7 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
   const [resetGewuenscht, setResetGewuenscht] = useState(false)
   const [gewichtDraft, setGewichtDraft] = useState(gewichtInit)
   const [gewichtEdit, setGewichtEdit] = useState(false)
+  const [gewichtEditKat, setGewichtEditKat] = useState(null) // Kategorie, deren % gerade getippt wird
   const [gewichtResetGewuenscht, setGewichtResetGewuenscht] = useState(false)
   const [offeneGruppen, setOffeneGruppen] = useState({}) // Leistungskategorien standardmäßig eingeklappt
   const [scopeFrage, setScopeFrage] = useState(false)
@@ -368,7 +369,7 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
             <div className="mt-3 rounded-lg bg-paper-50 dark:bg-ink-800/60 border border-paper-200 dark:border-ink-700 p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-500 dark:text-ink-400">Gewichtung</span>
-                <button type="button" onClick={() => setGewichtEdit(false)} className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300">Fertig</button>
+                <button type="button" onClick={() => { setGewichtEditKat(null); setGewichtEdit(false) }} className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300">Fertig</button>
               </div>
               <div className="space-y-2">
                 {[['SA', 'Schularbeiten'], ['T', 'Tests'], ['CUSTOM', 'Individuell'], ['MA', 'Mitarbeit']].map(([k, label]) => (
@@ -380,7 +381,27 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
                       onChange={e => setGewicht(k, parseFloat(e.target.value))}
                       className="flex-1 accent-coral-500"
                     />
-                    <span className="text-[11px] font-medium w-9 text-right tabular-nums text-ink-900 dark:text-white">{Math.round((gewichtDraft[k] ?? 0) * 100)}%</span>
+                    {gewichtEditKat === k ? (
+                      <input
+                        type="number" min="0" max="100"
+                        autoFocus
+                        value={Math.round((gewichtDraft[k] ?? 0) * 100)}
+                        onChange={e => setGewicht(k, parseFloat(e.target.value))}
+                        onFocus={e => e.target.select()}
+                        onBlur={() => setGewichtEditKat(null)}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setGewichtEditKat(null) }}
+                        className="input w-12 text-right px-1 py-0.5 text-[11px] tabular-nums"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setGewichtEditKat(k)}
+                        title="Wert eingeben"
+                        className="text-[11px] font-medium w-9 text-right tabular-nums text-ink-900 dark:text-white hover:text-coral-600 dark:hover:text-coral-300 cursor-text"
+                      >
+                        {Math.round((gewichtDraft[k] ?? 0) * 100)}%
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
