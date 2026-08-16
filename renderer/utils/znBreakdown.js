@@ -6,7 +6,7 @@
 // core/services/notenberechnung.js. Wird für Live-Vorschauen genutzt (Tooltip in der
 // ZN-Zelle, Entwurfs-Vorschau im Zeugnisnote-Modal), damit die Anzeige EXAKT der später
 // im Kern gespeicherten Note entspricht. Muss inhaltlich mit dem Kern übereinstimmen.
-import { niveauOffset, niveauZurZeit } from './niveau'
+import { niveauOffset, niveauZurZeit } from './niveau.js'
 
 // Spiegelt core: mehrstufige MA-Symbolliste (eigene oder Default). Länge nach ma_stufen (3/4).
 export const MA_SMILEYS_DEFAULT = ['😄', '🙂', '🙁', '😞']
@@ -33,6 +33,14 @@ export function maTeilnote(spalte, wert) {
   return null
 }
 
+// Lineares Rang-Gewicht (§ 20 LBVO): ältester Eintrag i=0 → 1, neuester i=m-1 → faktor.
+// m<2 oder faktor<=1 → 1 (kein Rezenz-Effekt). Eine Quelle für gewichteterSchnitt + Modal-Graph.
+export function rangGewicht(i, m, faktor) {
+  const f = Number(faktor)
+  if (!(f > 1) || m < 2) return 1
+  return 1 + (f - 1) * (i / (m - 1))
+}
+
 // Spiegelt core/services/notenberechnung.js:gewichteterSchnitt (§ 20 LBVO), damit die
 // Vorschau exakt der berechneten Note entspricht. werte = [{ n, datum, semester, reihenfolge }].
 export function gewichteterSchnitt(werte, faktor) {
@@ -48,7 +56,7 @@ export function gewichteterSchnitt(werte, faktor) {
   })
   let summe = 0, gew = 0
   sortiert.forEach((w, i) => {
-    const g = 1 + (f - 1) * (i / (m - 1))
+    const g = rangGewicht(i, m, f)
     summe += w.n * g
     gew += g
   })
@@ -67,8 +75,14 @@ export function computeZN({ spalten, eintraege, gewichtung, rezenzFaktor, istDif
   if (!fachSpalten.length) return null
 
   const maxNote = istDifferenziert ? 7 : 5
+  // Wie im Kern (notenberechnung.js): undatierte note-bildende Spalten gelten als "älteste" →
+  // ohne Datum das älteste bekannte Niveau, nicht das aktuelle (niveauZurZeit(...,'') gäbe sonst
+  // das NEUESTE). niveauHistorie ist absteigend nach gueltig_ab → letztes Element = ältestes.
+  const aeltestesNiveau = (Array.isArray(niveauHistorie) && niveauHistorie.length)
+    ? niveauHistorie[niveauHistorie.length - 1].niveau
+    : (niveauFallback ?? 'AHS')
   const offsetFor = (datum) => istDifferenziert
-    ? niveauOffset(niveauZurZeit(niveauHistorie, datum, niveauFallback ?? 'AHS'))
+    ? niveauOffset(datum ? niveauZurZeit(niveauHistorie, datum, niveauFallback ?? 'AHS') : aeltestesNiveau)
     : 0
   const faktor = parseFloat(rezenzFaktor ?? '1')
 
