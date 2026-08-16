@@ -76,6 +76,40 @@ const KAT_GRUPPEN = [
 ]
 const REZENZ_LABEL = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell' }
 
+// Liniendiagramm der Rezenz-Gewichte einer Kategorie: chronologisch (alt → neu), y = Rang-Gewicht.
+// Steigende Linie = neuere Leistungen zählen stärker; flach = gleich gewichtet. Punkte sind mit der
+// jeweiligen Note beschriftet. viewBox 0..100 (preserveAspectRatio none) füllt die Breite; Strich +
+// Punkte bleiben über vector-effect / HTML-Overlay unverzerrt.
+function RezenzLinie({ bars, maxG }) {
+  const m = bars.length
+  const ramp = maxG > 1
+  const xOf = (i) => (m === 1 ? 50 : 8 + (i / (m - 1)) * 84)
+  const yOf = (g) => {
+    const norm = ramp ? (g - 1) / (maxG - 1) : 0.5   // 0 = wenig, 1 = viel Gewicht
+    return 8 + (1 - norm) * 62                         // 8 % (oben, viel) … 70 % (unten, wenig)
+  }
+  const pts = bars.map((b, i) => `${xOf(i)},${yOf(b.g)}`).join(' ')
+  return (
+    <div className="relative h-16 text-coral-400 dark:text-coral-500">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full" aria-hidden="true">
+        {m > 1 && (
+          <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="2"
+            vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+        )}
+      </svg>
+      {bars.map((b, i) => (
+        <React.Fragment key={i}>
+          <div className="absolute w-2 h-2 rounded-full bg-coral-500 dark:bg-coral-400 ring-2 ring-white dark:ring-ink-900"
+            style={{ left: `${xOf(i)}%`, top: `${yOf(b.g)}%`, transform: 'translate(-50%, -50%)' }}
+            title={`Note ${b.n} · Gewicht ${komma(b.g)}×`} />
+          <div className="absolute text-[9px] text-ink-500 dark:text-ink-400 tabular-nums"
+            style={{ left: `${xOf(i)}%`, bottom: 0, transform: 'translateX(-50%)' }}>{b.n}</div>
+        </React.Fragment>
+      ))}
+    </div>
+  )
+}
+
 export default function ZeugnisnoteModal({ schueler, onClose }) {
   const {
     aktivesFach, spalten, eintraege, gewichtungGlobal,
@@ -107,13 +141,18 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
   const [manuellIntern, setManuellIntern] = useState(manuellInternInit)
   const [faktor, setFaktor] = useState(rezenzInit)
   const [resetGewuenscht, setResetGewuenscht] = useState(false)
-  const [rezenzOffen, setRezenzOffen] = useState(false)
+  const [offeneGruppen, setOffeneGruppen] = useState({}) // Leistungskategorien standardmäßig eingeklappt
   const [scopeFrage, setScopeFrage] = useState(false)
   const [speichert, setSpeichert] = useState(false)
 
   const setWert = (spalteId, wert) => {
     const key = `${spalteId}_${schueler.id}`
     setDraft(d => ({ ...d, [key]: d[key] === wert ? '' : wert }))
+  }
+  const toggleGruppe = (key) => setOffeneGruppen(o => ({ ...o, [key]: !o[key] }))
+  const gruppeSummary = (cols) => {
+    const vals = cols.map(sp => draft[`${sp.id}_${schueler.id}`] ?? '').filter(Boolean)
+    return vals.length ? vals.join(' · ') : '—'
   }
 
   // ── Vorschau (reine computeZN mit Entwurf + Slider-Faktor) ────────────────
@@ -170,13 +209,10 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
       arr.sort(chronologisch)
       const m = arr.length
       const maxG = rangGewicht(m - 1, m, faktor)
-      const bars = arr.map((e, i) => {
-        const g = rangGewicht(i, m, faktor)
-        return { n: e.n, g, hoehe: Math.round((g / maxG) * 100) }
-      })
+      const bars = arr.map((e, i) => ({ n: e.n, g: rangGewicht(i, m, faktor) }))
       const schnittMit = gewichteterSchnitt(arr.map(e => ({ n: e.n, datum: e.datum, semester: e.semester, reihenfolge: e.reihenfolge })), faktor)
       const schnittOhne = arr.reduce((a, e) => a + e.n, 0) / m
-      rows.push({ kat, bars, m, schnittMit, schnittOhne })
+      rows.push({ kat, bars, m, maxG, schnittMit, schnittOhne })
     }
     return rows
   }, [fachSpalten, draft, faktor, schueler.id])
@@ -324,50 +360,123 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
         {/* ── Mittelteil (scrollt) ── */}
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
 
-          {/* Teilnoten nach Kategorie gruppiert */}
+          {/* Rezenz – Liniendiagramm der Gewichtung, OBERHALB der Aufzeichnungen */}
+          <section className="rounded-2xl bg-paper-50 dark:bg-ink-800/50 border border-paper-200 dark:border-ink-700 p-4">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="text-sm font-medium text-ink-700 dark:text-paper-200">⚖ Gewichtung neuerer Leistungen <span className="text-ink-400 font-normal">(§ 20)</span></span>
+              <span className="text-sm font-bold tabular-nums text-coral-600 dark:text-coral-300">{komma(faktor, 1)}×</span>
+            </div>
+            <input
+              type="range"
+              min="1" max="3" step="0.1"
+              value={faktor}
+              onChange={e => { setFaktor(parseFloat(e.target.value)); setResetGewuenscht(false) }}
+              className="w-full accent-coral-500"
+            />
+            <div className="flex justify-between text-[10px] text-ink-400 mt-0.5 mb-2">
+              <span>1,0 – gleich</span>
+              <span>3,0 – stark</span>
+            </div>
+            <p className="text-[10px] text-ink-500 dark:text-ink-400 mb-3 leading-snug">
+              Linie = Gewicht der Leistung (alt → neu); steigt sie, zählen neuere Leistungen mehr. Wirkt je
+              Kategorie (SA/Test/Individuell), nicht auf Mitarbeit &amp; Hausübungen.
+            </p>
+
+            {rezenzRows.length > 0 ? (
+              <div className="space-y-2">
+                {rezenzRows.map(({ kat, bars, maxG, m, schnittMit, schnittOhne }) => (
+                  <div key={kat}>
+                    <div className="flex items-baseline justify-between text-[10px] mb-0.5">
+                      <span className="text-ink-500 dark:text-ink-400">{REZENZ_LABEL[kat]} <span className="text-ink-400">(alt → neu)</span></span>
+                      {m >= 2 && faktor > 1 && (
+                        <span className="text-ink-500 dark:text-ink-400 tabular-nums">Schnitt {komma(schnittMit - offset)} <span className="text-ink-400">statt {komma(schnittOhne - offset)}</span></span>
+                      )}
+                    </div>
+                    <RezenzLinie bars={bars} maxG={maxG} />
+                  </div>
+                ))}
+                {!rezenzWirkt && (
+                  <p className="text-[10px] text-ink-400">Bei Faktor 1,0 oder weniger als 2 Leistungen je Kategorie zählen alle gleich.</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-[11px] text-ink-400">Rezenz wirkt erst ab 2 Leistungen je Kategorie (SA/Test/Individuell).</p>
+            )}
+
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-paper-200 dark:border-ink-700 pt-2">
+              <span className="text-[11px] text-ink-500 dark:text-ink-400">
+                Standard (Fach): <span className="tabular-nums">{komma(globalRezenz, 1)}×</span>
+              </span>
+              {hatOverride && !resetGewuenscht && (
+                <button
+                  type="button"
+                  onClick={() => { setResetGewuenscht(true); setFaktor(globalRezenz) }}
+                  className="text-[11px] text-ink-500 hover:text-coral-600 dark:text-ink-400 dark:hover:text-coral-300"
+                >
+                  Auf Standard zurücksetzen
+                </button>
+              )}
+              {resetGewuenscht && <span className="text-[11px] text-coral-600 dark:text-coral-300">Überschreibung wird entfernt</span>}
+            </div>
+          </section>
+
+          {/* Teilnoten nach Kategorie gruppiert – Kategorien standardmäßig eingeklappt */}
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-500 dark:text-ink-400 mb-2">Einzelne Leistungen</h3>
             {fachSpalten.length === 0 ? (
               <p className="text-sm text-ink-400">Noch keine Aufzeichnungen in diesem Fach.</p>
             ) : (
-              <div className="space-y-4">
+              <div className="rounded-2xl border border-paper-200 dark:border-ink-700 divide-y divide-paper-200 dark:divide-ink-700 overflow-hidden">
                 {KAT_GRUPPEN.map(gruppe => {
                   const cols = fachSpalten.filter(sp => gruppe.kats.includes(sp.kategorie))
                   if (!cols.length) return null
+                  const offen = !!offeneGruppen[gruppe.key]
                   return (
                     <div key={gruppe.key}>
-                      <div className="text-[11px] font-semibold text-ink-400 dark:text-ink-500 mb-1.5">{gruppe.label}</div>
-                      <div className="space-y-1.5">
-                        {cols.map(sp => {
-                          const wert = draft[`${sp.id}_${schueler.id}`] ?? ''
-                          const optionen = gruppe.typ === 'note' ? ['1', '2', '3', '4', '5']
-                            : sp.kategorie === 'MA' ? maOptionen(sp) : HUE_OPTIONEN
-                          return (
-                            <div key={sp.id} className="flex items-center gap-2">
-                              <div className="w-24 shrink-0 min-w-0">
-                                <div className="text-xs font-medium text-ink-700 dark:text-paper-200 truncate">{sp.kuerzel}</div>
-                                {sp.datum && <div className="text-[10px] text-ink-400 tabular-nums">{fmtDatum(sp.datum)}</div>}
+                      <button
+                        type="button"
+                        onClick={() => toggleGruppe(gruppe.key)}
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-paper-50 dark:hover:bg-ink-800/60 transition-colors"
+                      >
+                        <span className="text-xs font-semibold text-ink-700 dark:text-paper-200 shrink-0">{gruppe.label}</span>
+                        <span className="flex items-center gap-2 min-w-0">
+                          {!offen && <span className="text-[11px] text-ink-400 dark:text-ink-500 truncate">{gruppeSummary(cols)}</span>}
+                          <span className={`text-ink-400 transition-transform ${offen ? 'rotate-90' : ''}`}>▸</span>
+                        </span>
+                      </button>
+                      {offen && (
+                        <div className="px-3 pb-3 pt-0.5 space-y-1.5 acc-body-in">
+                          {cols.map(sp => {
+                            const wert = draft[`${sp.id}_${schueler.id}`] ?? ''
+                            const optionen = gruppe.typ === 'note' ? ['1', '2', '3', '4', '5']
+                              : sp.kategorie === 'MA' ? maOptionen(sp) : HUE_OPTIONEN
+                            return (
+                              <div key={sp.id} className="flex items-center gap-2">
+                                <div className="w-24 shrink-0 min-w-0">
+                                  <div className="text-xs font-medium text-ink-700 dark:text-paper-200 truncate">{sp.kuerzel}</div>
+                                  {sp.datum && <div className="text-[10px] text-ink-400 tabular-nums">{fmtDatum(sp.datum)}</div>}
+                                </div>
+                                <div className="flex gap-1 flex-wrap">
+                                  {optionen.map(opt => {
+                                    const aktiv = wert === opt
+                                    const aktivKl = gruppe.typ === 'note' ? AKTIV_KLASSE.note : AKTIV_KLASSE[polaritaet(sp, opt)]
+                                    return (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => setWert(sp.id, opt)}
+                                        className={`min-w-[1.9rem] h-8 px-1 rounded-md text-sm font-medium transition-colors ${aktiv ? aktivKl : INAKTIV_KLASSE}`}
+                                      >
+                                        {opt}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
                               </div>
-                              <div className="flex gap-1 flex-wrap">
-                                {optionen.map(opt => {
-                                  const aktiv = wert === opt
-                                  const aktivKl = gruppe.typ === 'note' ? AKTIV_KLASSE.note : AKTIV_KLASSE[polaritaet(sp, opt)]
-                                  return (
-                                    <button
-                                      key={opt}
-                                      type="button"
-                                      onClick={() => setWert(sp.id, opt)}
-                                      className={`min-w-[1.9rem] h-8 px-1 rounded-md text-sm font-medium transition-colors ${aktiv ? aktivKl : INAKTIV_KLASSE}`}
-                                    >
-                                      {opt}
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -407,84 +516,6 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
                 ? 'Manuelle Note gilt. Teilnoten-Änderungen wirken nur auf die berechnete Note im Kopf.'
                 : 'Die berechnete Note aus den Teilnoten gilt.'}
             </p>
-          </section>
-
-          {/* Rezenz – zugeklappte Feinjustierung */}
-          <section className="rounded-2xl border border-paper-200 dark:border-ink-700 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setRezenzOffen(o => !o)}
-              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-paper-50 dark:hover:bg-ink-800/60 transition-colors"
-            >
-              <span className="text-sm font-medium text-ink-700 dark:text-paper-200">⚖ Gewichtung neuerer Leistungen <span className="text-ink-400 font-normal">(§ 20)</span></span>
-              <span className="flex items-center gap-2 shrink-0">
-                <span className="text-sm font-bold tabular-nums text-coral-600 dark:text-coral-300">{komma(faktor, 1)}×</span>
-                <span className={`text-ink-400 transition-transform ${rezenzOffen ? 'rotate-90' : ''}`}>▸</span>
-              </span>
-            </button>
-            {rezenzOffen && (
-              <div className="px-4 pb-4 pt-1 acc-body-in">
-                <input
-                  type="range"
-                  min="1" max="3" step="0.1"
-                  value={faktor}
-                  onChange={e => { setFaktor(parseFloat(e.target.value)); setResetGewuenscht(false) }}
-                  className="w-full accent-coral-500"
-                />
-                <div className="flex justify-between text-[10px] text-ink-400 mt-0.5 mb-2">
-                  <span>1,0 – gleich</span>
-                  <span>3,0 – stark</span>
-                </div>
-                <p className="text-[10px] text-ink-500 dark:text-ink-400 mb-3 leading-snug">
-                  Höhe = Gewicht der Leistung; neuere zählen mehr. Wirkt je Kategorie (SA/Test/Individuell),
-                  nicht auf Mitarbeit &amp; Hausübungen.
-                </p>
-
-                {rezenzRows.length > 0 ? (
-                  <div className="space-y-3">
-                    {rezenzRows.map(({ kat, bars, m, schnittMit, schnittOhne }) => (
-                      <div key={kat}>
-                        <div className="flex items-baseline justify-between text-[10px] mb-0.5">
-                          <span className="text-ink-500 dark:text-ink-400">{REZENZ_LABEL[kat]} <span className="text-ink-400">(alt → neu)</span></span>
-                          {m >= 2 && faktor > 1 && (
-                            <span className="text-ink-500 dark:text-ink-400 tabular-nums">Schnitt {komma(schnittMit - offset)} <span className="text-ink-400">statt {komma(schnittOhne - offset)}</span></span>
-                          )}
-                        </div>
-                        <div className="flex items-end gap-1 h-10">
-                          {bars.map((b, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center justify-end h-full min-w-0" title={`Note ${b.n} · Gewicht ${komma(b.g)}×`}>
-                              <div className="w-full max-w-[1.4rem] rounded-t bg-coral-400 dark:bg-coral-500" style={{ height: `${Math.max(10, b.hoehe)}%` }} />
-                              <span className="text-[9px] text-ink-500 dark:text-ink-400 tabular-nums mt-0.5">{b.n}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    {!rezenzWirkt && (
-                      <p className="text-[10px] text-ink-400">Bei Faktor 1,0 oder weniger als 2 Leistungen je Kategorie zählen alle gleich.</p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-ink-400">Rezenz wirkt erst ab 2 Leistungen je Kategorie (SA/Test/Individuell).</p>
-                )}
-
-                <div className="mt-3 flex items-center justify-between gap-2 border-t border-paper-200 dark:border-ink-700 pt-2">
-                  <span className="text-[11px] text-ink-500 dark:text-ink-400">
-                    Standard (Fach): <span className="tabular-nums">{komma(globalRezenz, 1)}×</span>
-                  </span>
-                  {hatOverride && !resetGewuenscht && (
-                    <button
-                      type="button"
-                      onClick={() => { setResetGewuenscht(true); setFaktor(globalRezenz) }}
-                      className="text-[11px] text-ink-500 hover:text-coral-600 dark:text-ink-400 dark:hover:text-coral-300"
-                    >
-                      Auf Standard zurücksetzen
-                    </button>
-                  )}
-                  {resetGewuenscht && <span className="text-[11px] text-coral-600 dark:text-coral-300">Überschreibung wird entfernt</span>}
-                </div>
-              </div>
-            )}
           </section>
         </div>
 
