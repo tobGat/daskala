@@ -367,24 +367,25 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
           {gewichtEdit ? (
             <div className="mt-3 rounded-lg bg-paper-50 dark:bg-ink-800/60 border border-paper-200 dark:border-ink-700 p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-500 dark:text-ink-400">Gewichtung (%)</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-500 dark:text-ink-400">Gewichtung</span>
                 <button type="button" onClick={() => setGewichtEdit(false)} className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300">Fertig</button>
               </div>
-              <div className="grid grid-cols-4 gap-2">
-                {[['SA', 'SA'], ['T', 'Test'], ['CUSTOM', 'Ind.'], ['MA', 'Mitarb.']].map(([k, label]) => (
-                  <label key={k} className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] text-ink-500 dark:text-ink-400">{label}</span>
+              <div className="space-y-2">
+                {[['SA', 'Schularbeiten'], ['T', 'Tests'], ['CUSTOM', 'Individuell'], ['MA', 'Mitarbeit']].map(([k, label]) => (
+                  <div key={k} className="flex items-center gap-2">
+                    <span className="text-[11px] text-ink-600 dark:text-ink-400 w-24 shrink-0 truncate">{label}</span>
                     <input
-                      type="number" min="0" max="100" step="5"
+                      type="range" min="0" max="100" step="5"
                       value={Math.round((gewichtDraft[k] ?? 0) * 100)}
-                      onChange={e => setGewicht(k, parseInt(e.target.value))}
-                      className="input text-center px-1 py-1 text-sm w-full tabular-nums"
+                      onChange={e => setGewicht(k, parseFloat(e.target.value))}
+                      className="flex-1 accent-coral-500"
                     />
-                  </label>
+                    <span className="text-[11px] font-medium w-9 text-right tabular-nums text-ink-900 dark:text-white">{Math.round((gewichtDraft[k] ?? 0) * 100)}%</span>
+                  </div>
                 ))}
               </div>
               <div className="mt-2 flex items-center justify-between gap-2 text-[10px]">
-                <span className="text-ink-400">Summe {gewichtSummeProzent}% · relativ gewichtet</span>
+                <span className={gewichtSummeProzent === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-400'}>Summe {gewichtSummeProzent}%</span>
                 {gewichtHatOverride && !gewichtResetGewuenscht ? (
                   <button type="button" onClick={gewichtAufFach} className="text-ink-500 hover:text-coral-600 dark:text-ink-400 dark:hover:text-coral-300">Auf Fach-Gewichtung zurücksetzen</button>
                 ) : gewichtResetGewuenscht ? (
