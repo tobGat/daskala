@@ -375,7 +375,7 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
                   <div key={k} className="flex items-center gap-2">
                     <span className="text-[11px] text-ink-600 dark:text-ink-400 w-24 shrink-0 truncate">{label}</span>
                     <input
-                      type="range" min="0" max="100" step="5"
+                      type="range" min="0" max="100" step="1"
                       value={Math.round((gewichtDraft[k] ?? 0) * 100)}
                       onChange={e => setGewicht(k, parseFloat(e.target.value))}
                       className="flex-1 accent-coral-500"
