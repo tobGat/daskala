@@ -17,6 +17,9 @@ import spaltenDomain from '../../core/domain/spalten'
 import eintraegeDomain from '../../core/domain/eintraege'
 import zeugnisnotenDomain from '../../core/domain/zeugnisnoten'
 import niveauDomain from '../../core/domain/niveau'
+import rezenzDomain from '../../core/domain/rezenz'
+import maNoteDomain from '../../core/domain/maNote'
+import gewichtungSchuelerDomain from '../../core/domain/gewichtungSchueler'
 import kompetenzenDomain from '../../core/domain/kompetenzen'
 import gewichtungDomain from '../../core/domain/gewichtung'
 import todosDomain from '../../core/domain/todos'
@@ -133,6 +136,19 @@ export function createMobileApi(dbPort) {
       getHistorie: (fId) => niveauDomain.getHistorie(dbPort, fId),
       set: (f, s, n, d) => niveauDomain.set(dbPort, deps, f, s, n, d),
       deleteHistorie: (f, s, g) => niveauDomain.deleteHistorie(dbPort, deps, f, s, g),
+    }),
+    rezenz: dp('rezenz', {
+      get: (fId) => rezenzDomain.get(dbPort, fId),
+      set: (f, s, faktor) => rezenzDomain.set(dbPort, deps, f, s, faktor),
+      setKlasse: (f, faktor) => rezenzDomain.setKlasse(dbPort, deps, f, faktor),
+    }),
+    maNote: dp('maNote', {
+      get: (fId) => maNoteDomain.get(dbPort, fId),
+      set: (f, s, note) => maNoteDomain.set(dbPort, deps, f, s, note),
+    }),
+    gewichtungSchueler: dp('gewichtungSchueler', {
+      get: (fId) => gewichtungSchuelerDomain.get(dbPort, fId),
+      set: (f, s, data) => gewichtungSchuelerDomain.set(dbPort, deps, f, s, data),
     }),
     kompetenzbereiche: dp('kompetenzbereiche', {
       getAll: (fId) => kompetenzenDomain.bereicheGetAll(dbPort, fId),

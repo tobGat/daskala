@@ -30,39 +30,33 @@ function znInternZuAnzeige(intern, niveau, istDifferenziert) {
 }
 
 // Default-Symbole der mehrstufigen Mitarbeit. 4-stufig [sehr+, +, −, sehr−] → Teilnoten
-// [1, 2, 4, 5]; 3-stufig [positiv, neutral, negativ] → Teilnoten [1, 3, 5].
+// [1, 2, 4, 5]; 3-stufig [positiv, neutral, negativ] → [1, 3, 5]; 2-stufig [positiv, negativ] → [1, 5].
 const MA_SMILEYS_DEFAULT = ['😄', '🙂', '🙁', '😞']
 const MA_DREI_DEFAULT = ['+', '~', '-']
+const MA_ZWEI_DEFAULT = ['+', '-']
 
-// Symbolliste einer mehrstufigen MA-Spalte (Position = Stufe): eigene Symbole
-// (spalten.ma_symbole als JSON) oder Default. Länge richtet sich nach ma_stufen (3 oder 4).
+// Symbolliste einer MA-Spalte (Position = Stufe): eigene Symbole (spalten.ma_symbole als JSON)
+// oder Default. Länge richtet sich nach ma_stufen (2/3/4).
 function maSymboleVon(spalte) {
-  const len = spalte.ma_stufen === 3 ? 3 : 4
+  const len = spalte.ma_stufen === 3 ? 3 : spalte.ma_stufen === 4 ? 4 : 2
   if (spalte.ma_symbole) {
     try {
       const arr = JSON.parse(spalte.ma_symbole)
       if (Array.isArray(arr) && arr.length === len) return arr
     } catch { /* fällt auf Default zurück */ }
   }
-  return len === 3 ? MA_DREI_DEFAULT : MA_SMILEYS_DEFAULT
+  return len === 3 ? MA_DREI_DEFAULT : len === 4 ? MA_SMILEYS_DEFAULT : MA_ZWEI_DEFAULT
 }
 
 // Teilnote (1–5) einer einzelnen Mitarbeits-Aufzeichnung (§ 4 Abs. 2 LBVO: jede
-// Aufzeichnung ist eine Teil-Einschätzung, keine Einzelnote). Positionsbasiert bei
-// 3-/4-stufigen Skalen, direkt bei 2-stufig (+/−; Pfeile ↗/↘ speichern +/−).
+// Aufzeichnung ist eine Teil-Einschätzung, keine Einzelnote). Positionsbasiert über die
+// (eigenen oder Default-)Symbole – auch 2-stufig (Default + → 1, − → 5; Pfeile ↗/↘ speichern +/−).
 // null = kein gültiger Eintrag.
 function maTeilnote(spalte, wert) {
-  if (spalte.ma_stufen === 3) {
-    const idx = maSymboleVon(spalte).indexOf(wert)
-    return [1, 3, 5][idx] ?? null       // positiv / neutral / negativ
-  }
-  if (spalte.ma_stufen === 4) {
-    const idx = maSymboleVon(spalte).indexOf(wert)
-    return [1, 2, 4, 5][idx] ?? null    // sehr+ / + / − / sehr−
-  }
-  if (wert === '+') return 1
-  if (wert === '-') return 5
-  return null
+  const idx = maSymboleVon(spalte).indexOf(wert)
+  if (spalte.ma_stufen === 3) return [1, 3, 5][idx] ?? null       // positiv / neutral / negativ
+  if (spalte.ma_stufen === 4) return [1, 2, 4, 5][idx] ?? null    // sehr+ / + / − / sehr−
+  return [1, 5][idx] ?? null                                       // 2-stufig: positiv / negativ
 }
 
 // Rezenz-gewichteter Durchschnitt einer Kategorie (§ 20 LBVO: zuletzt erreichter
@@ -124,18 +118,22 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
   const globaleGewichtung = {}
   ;(await db.select('SELECT * FROM gewichtung_global'))
     .forEach((r) => { globaleGewichtung[r.kategorie] = r.gewichtung })
+  // Individuelle Gewichtung pro (Fach, Schüler:in) hat Vorrang vor Fach- und globaler Gewichtung.
+  const perStudentGew = await db.selectOne('SELECT gewichtung_sa, gewichtung_t, gewichtung_custom, gewichtung_ma FROM schueler_gewichtung WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId])
   const gew = {
-    SA: fach.gewichtung_sa ?? globaleGewichtung['SA'] ?? 0.4,
-    T: fach.gewichtung_t ?? globaleGewichtung['T'] ?? 0.3,
-    CUSTOM: fach.gewichtung_custom ?? globaleGewichtung['CUSTOM'] ?? 0.1,
+    SA: perStudentGew?.gewichtung_sa ?? fach.gewichtung_sa ?? globaleGewichtung['SA'] ?? 0.4,
+    T: perStudentGew?.gewichtung_t ?? fach.gewichtung_t ?? globaleGewichtung['T'] ?? 0.3,
+    CUSTOM: perStudentGew?.gewichtung_custom ?? fach.gewichtung_custom ?? globaleGewichtung['CUSTOM'] ?? 0.1,
     // Mitarbeit (MA): aus Bonus/Malus + Hausübung berechnete Note, note-bildend wie SA/T.
-    MA: fach.gewichtung_ma ?? globaleGewichtung['MA'] ?? 0.2,
+    MA: perStudentGew?.gewichtung_ma ?? fach.gewichtung_ma ?? globaleGewichtung['MA'] ?? 0.2,
   }
 
-  // Rezenz-Gewichtung innerhalb einer Kategorie (§ 20 LBVO). 1 = reiner Durchschnitt.
-  const rezenzFaktor = parseFloat(
-    (await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'rezenz_faktor'"))?.wert ?? '1'
-  )
+  // Rezenz-Gewichtung (§ 20 LBVO): individueller Faktor pro (Fach, Schüler:in), sonst globaler
+  // Standard aus den Einstellungen. 1 = reiner Durchschnitt.
+  const perStudentRezenz = (await db.selectOne('SELECT faktor FROM schueler_rezenz WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId]))?.faktor
+  const rezenzFaktor = perStudentRezenz != null
+    ? perStudentRezenz
+    : parseFloat((await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'rezenz_faktor'"))?.wert ?? '1')
 
   const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ?', [fachId])
 
@@ -168,7 +166,12 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
 
   // Die eine Mitarbeitsnote = Durchschnitt aller Teilnoten (Bonus/Malus + Hausübung).
   // Ein Aggregatwert, der wie eine echte Note mit gewichtung_ma in den Schnitt eingeht.
-  if (maTeilnoten.length > 0) {
+  // Eine manuell gesetzte Mitarbeitsnote (§ 4 Abs. 2 – Gesamtbeurteilung) überschreibt den
+  // berechneten Schnitt (intern gespeichert, inkl. Niveau-Offset).
+  const maManuell = (await db.selectOne('SELECT note FROM schueler_ma_note WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId]))?.note
+  if (maManuell != null) {
+    basisWerte.MA.push({ n: maManuell, datum: null, semester: 0, reihenfolge: 0 })
+  } else if (maTeilnoten.length > 0) {
     const maSchnitt = maTeilnoten.reduce((a, n) => a + n, 0) / maTeilnoten.length
     basisWerte.MA.push({ n: maSchnitt, datum: null, semester: 0, reihenfolge: 0 })
   }

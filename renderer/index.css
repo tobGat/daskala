@@ -371,6 +371,13 @@
     padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
   }
 
+  /* Ausnahme: Das Zeugnisnote-Detail-Modal nutzt ein 3-Zonen-Flex-Layout (fixer Kopf,
+     scrollender Mittelteil, fixe Fußzeile). Die Box selbst darf daher NICHT scrollen und
+     hat kein eigenes padding-bottom – die Safe-Area wandert auf die Fußzeile. Steht nach
+     der generischen Regel, überschreibt sie damit (gleiche Spezifität). */
+  .cap .zn-detail-box { overflow: hidden; padding-bottom: 0; }
+  .cap .zn-detail-footer { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+
   /* Notentabelle mobil: die fixierte Namensspalte nur so breit wie ihr Inhalt
      (Inline width:1 + white-space:nowrap in NotenTabelle.jsx erzwingt Inhaltsbreite;
      der Name selbst ist auf max. 128px begrenzt). So bleibt mehr Platz für die

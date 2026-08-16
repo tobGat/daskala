@@ -215,6 +215,37 @@ const TABLE_DDL = [
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
     )`,
+  `CREATE TABLE IF NOT EXISTS schueler_rezenz (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      faktor REAL NOT NULL,
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
+  // Manuelle Mitarbeitsnote (§ 4 Abs. 2 LBVO – Gesamtbeurteilung): überschreibt den berechneten
+  // Teilnoten-Schnitt. note = interner Wert (1–7, inkl. Niveau-Offset), analog zeugnisnoten.note_manuell.
+  `CREATE TABLE IF NOT EXISTS schueler_ma_note (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      note INTEGER NOT NULL,
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
+  // Individuelle Notengewichtung pro (Fach, Schüler:in). Fehlt eine Zeile, gilt die Fach- bzw.
+  // globale Gewichtung. Werte als Anteile 0..1 (wie faecher.gewichtung_*).
+  `CREATE TABLE IF NOT EXISTS schueler_gewichtung (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      gewichtung_sa REAL,
+      gewichtung_t REAL,
+      gewichtung_custom REAL,
+      gewichtung_ma REAL,
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
   `CREATE TABLE IF NOT EXISTS termine (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       titel TEXT NOT NULL,
@@ -732,6 +763,48 @@ function applySchema(db, deps) {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_niveau_historie_lookup
       ON schueler_niveau_historie (fach_id, schueler_id, gueltig_ab)`).run()
   } catch {}
+
+  // Individueller Rezenzfaktor (§ 20 LBVO) pro (Fach, Schüler:in). Fehlt eine Zeile,
+  // gilt der globale Faktor aus den Einstellungen (Fallback). Additiv, keine Migration nötig.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schueler_rezenz (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      faktor REAL NOT NULL,
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )
+  `)
+
+  // Manuelle Mitarbeitsnote (§ 4 Abs. 2 LBVO) pro (Fach, Schüler:in). Fehlt eine Zeile,
+  // gilt der berechnete Teilnoten-Schnitt. note = interner Wert (1–7). Additiv, keine Migration.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schueler_ma_note (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      note INTEGER NOT NULL,
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )
+  `)
+
+  // Individuelle Notengewichtung (SA/Test/Individuell/Mitarbeit) pro (Fach, Schüler:in).
+  // Fehlt eine Zeile, gilt die Fach- bzw. globale Gewichtung. Additiv, keine Migration.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schueler_gewichtung (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      gewichtung_sa REAL,
+      gewichtung_t REAL,
+      gewichtung_custom REAL,
+      gewichtung_ma REAL,
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )
+  `)
 
   // Termine
   db.exec(`
