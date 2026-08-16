@@ -15,6 +15,7 @@ const todosDomain = require('./core/domain/todos')
 const gewichtungDomain = require('./core/domain/gewichtung')
 const klassenDomain = require('./core/domain/klassen')
 const niveauDomain = require('./core/domain/niveau')
+const rezenzDomain = require('./core/domain/rezenz')
 const faecherDomain = require('./core/domain/faecher')
 const schuelerDomain = require('./core/domain/schueler')
 const kompetenzenDomain = require('./core/domain/kompetenzen')
@@ -592,6 +593,9 @@ function registerIPC() {
   ipcMain.handle('niveau:getHistorie', (_, fachId) => niveauDomain.getHistorie(dbPort, fachId))
   ipcMain.handle('niveau:set', (_, fachId, schuelerId, niveau, datum) => niveauDomain.set(dbPort, kernDeps, fachId, schuelerId, niveau, datum))
   ipcMain.handle('niveau:deleteHistorie', (_, fachId, schuelerId, gueltigAb) => niveauDomain.deleteHistorie(dbPort, kernDeps, fachId, schuelerId, gueltigAb))
+  ipcMain.handle('rezenz:get', (_, fachId) => rezenzDomain.get(dbPort, fachId))
+  ipcMain.handle('rezenz:set', (_, fachId, schuelerId, faktor) => rezenzDomain.set(dbPort, kernDeps, fachId, schuelerId, faktor))
+  ipcMain.handle('rezenz:setKlasse', (_, fachId, faktor) => rezenzDomain.setKlasse(dbPort, kernDeps, fachId, faktor))
 
   // ─── Kompetenzbereiche ──────────────────────────────────────────────────────
   ipcMain.handle('kompetenzbereiche:getAll', (_, fachId) => kompetenzenDomain.bereicheGetAll(dbPort, fachId))

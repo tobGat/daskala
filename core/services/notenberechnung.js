@@ -132,10 +132,12 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
     MA: fach.gewichtung_ma ?? globaleGewichtung['MA'] ?? 0.2,
   }
 
-  // Rezenz-Gewichtung innerhalb einer Kategorie (§ 20 LBVO). 1 = reiner Durchschnitt.
-  const rezenzFaktor = parseFloat(
-    (await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'rezenz_faktor'"))?.wert ?? '1'
-  )
+  // Rezenz-Gewichtung (§ 20 LBVO): individueller Faktor pro (Fach, Schüler:in), sonst globaler
+  // Standard aus den Einstellungen. 1 = reiner Durchschnitt.
+  const perStudentRezenz = (await db.selectOne('SELECT faktor FROM schueler_rezenz WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId]))?.faktor
+  const rezenzFaktor = perStudentRezenz != null
+    ? perStudentRezenz
+    : parseFloat((await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'rezenz_faktor'"))?.wert ?? '1')
 
   const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ?', [fachId])
 

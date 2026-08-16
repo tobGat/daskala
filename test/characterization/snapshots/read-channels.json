@@ -197,6 +197,7 @@
       }
     ]
   },
+  "rezenz:get": {},
   "kompetenzbereiche:getAll": [
     {
       "id": 1,

@@ -2484,6 +2484,50 @@
       ]
     }
   },
+  "rezenz:set": {
+    "ret": true,
+    "state": {
+      "schueler_rezenz": [
+        {
+          "fach_id": 1,
+          "schueler_id": 3,
+          "faktor": 2
+        }
+      ]
+    }
+  },
+  "rezenz:setKlasse": {
+    "ret": true,
+    "state": {
+      "schueler_rezenz": [
+        {
+          "fach_id": 1,
+          "schueler_id": 1,
+          "faktor": 1.5
+        },
+        {
+          "fach_id": 1,
+          "schueler_id": 2,
+          "faktor": 1.5
+        },
+        {
+          "fach_id": 1,
+          "schueler_id": 3,
+          "faktor": 1.5
+        },
+        {
+          "fach_id": 1,
+          "schueler_id": 4,
+          "faktor": 1.5
+        },
+        {
+          "fach_id": 1,
+          "schueler_id": 5,
+          "faktor": 1.5
+        }
+      ]
+    }
+  },
   "niveau:deleteHistorie": {
     "ret": true,
     "state": {

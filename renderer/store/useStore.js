@@ -42,6 +42,7 @@ const useStore = create((set, get) => ({
   zeugnisnoten: {}, // { schueler_id_semester: { note_berechnet, note_manuell } }
   niveaus: {},       // { schueler_id: 'AHS'|'ST' } – aktueller Stand für aktives Fach
   niveauHistorie: {}, // { schueler_id: [{ niveau, gueltig_ab }, ...] } – Verlauf, desc nach Datum
+  rezenzFaktoren: {}, // { schueler_id: faktor } – individueller Rezenzfaktor je Schüler:in (aktives Fach)
   kompetenzbereiche: [],       // [{ id, fach_id, titel, beschreibung, reihenfolge }]
   schuelerKompetenzen: {},     // { kompetenzbereichId_schuelerId: { niveau, notiz, aktualisiert } }
   todos: [],
@@ -280,11 +281,12 @@ const useStore = create((set, get) => ({
 
   ladeFachDaten: async (fachId) => {
     const { aktivesFach } = get()
-    const [spalten, eintraegeArr, zeugnisnotenArr, schuelerIdArr] = await Promise.all([
+    const [spalten, eintraegeArr, zeugnisnotenArr, schuelerIdArr, rezenzFaktoren] = await Promise.all([
       window.api.spalten.getAll(fachId),
       window.api.eintraege.getAll(fachId),
       window.api.zeugnisnoten.getAll(fachId),
       window.api.faecher.getSchuelerIds(fachId),
+      window.api.rezenz.get(fachId),
     ])
 
     const eintraege = {}
@@ -330,7 +332,7 @@ const useStore = create((set, get) => ({
       }
     })
 
-    set({ spalten, eintraege, kommentare, zeugnisnoten, niveaus, niveauHistorie, kompetenzbereiche, schuelerKompetenzen, fachSchuelerIds: new Set(schuelerIdArr) })
+    set({ spalten, eintraege, kommentare, zeugnisnoten, niveaus, niveauHistorie, rezenzFaktoren, kompetenzbereiche, schuelerKompetenzen, fachSchuelerIds: new Set(schuelerIdArr) })
   },
 
   // ─── Einträge setzen ──────────────────────────────────────────────────────

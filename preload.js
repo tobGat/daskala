@@ -109,6 +109,13 @@ const api = {
     deleteHistorie: (fachId, schuelerId, gueltigAb) => invoke('niveau:deleteHistorie', fachId, schuelerId, gueltigAb),
   },
 
+  // Individueller Rezenzfaktor (§ 20 LBVO) pro (Fach, Schüler:in); faktor=null → zurück auf global.
+  rezenz: {
+    get: (fachId) => invoke('rezenz:get', fachId),
+    set: (fachId, schuelerId, faktor) => invoke('rezenz:set', fachId, schuelerId, faktor),
+    setKlasse: (fachId, faktor) => invoke('rezenz:setKlasse', fachId, faktor),
+  },
+
   schueler: {
     getAll: (klasseId) => invoke('schueler:getAll', klasseId),
     create: (data) => invoke('schueler:create', data),

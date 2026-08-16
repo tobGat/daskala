@@ -215,6 +215,14 @@ const TABLE_DDL = [
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
     )`,
+  `CREATE TABLE IF NOT EXISTS schueler_rezenz (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      faktor REAL NOT NULL,
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
   `CREATE TABLE IF NOT EXISTS termine (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       titel TEXT NOT NULL,
@@ -732,6 +740,19 @@ function applySchema(db, deps) {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_niveau_historie_lookup
       ON schueler_niveau_historie (fach_id, schueler_id, gueltig_ab)`).run()
   } catch {}
+
+  // Individueller Rezenzfaktor (§ 20 LBVO) pro (Fach, Schüler:in). Fehlt eine Zeile,
+  // gilt der globale Faktor aus den Einstellungen (Fallback). Additiv, keine Migration nötig.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schueler_rezenz (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      faktor REAL NOT NULL,
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )
+  `)
 
   // Termine
   db.exec(`

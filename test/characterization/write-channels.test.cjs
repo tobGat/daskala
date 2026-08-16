@@ -80,6 +80,10 @@ const CASES = [
   { name: 'gewichtungGlobal:update', channel: 'gewichtungGlobal:update', args: ['SA', 4], tables: ['gewichtung_global'] },
   { name: 'noten:rechneAllesNeu', channel: 'noten:rechneAllesNeu', args: [], tables: ['zeugnisnoten'] },
 
+  // ── Rezenz (§ 20 LBVO) pro (Fach, Schüler:in) ──────────────────────────────
+  { name: 'rezenz:set', channel: 'rezenz:set', args: [1, 3, 2], tables: ['schueler_rezenz'] },
+  { name: 'rezenz:setKlasse', channel: 'rezenz:setKlasse', args: [1, 1.5], tables: ['schueler_rezenz'] },
+
   // ── Niveau / Kompetenzen ───────────────────────────────────────────────────
   { name: 'niveau:deleteHistorie', channel: 'niveau:deleteHistorie', args: [1, 2, '2026-02-01'], tables: ['schueler_niveau_historie'] },
   { name: 'kompetenzbereiche:create', channel: 'kompetenzbereiche:create', args: [1, 'Hören', 'Zuhören und verstehen'], tables: ['kompetenzbereiche'] },
