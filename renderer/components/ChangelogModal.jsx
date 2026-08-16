@@ -14,6 +14,8 @@ export const CHANGELOG = [
       'Zeugnisnote-Detail: Ein Klick auf eine Zeugnisnote öffnet ein Fenster mit der Aufschlüsselung der Note. Schularbeiten, Tests und individuelle Leistungen kannst du dort ansehen und ändern (nach Kategorie gruppiert) – die Zeugnisnote-Vorschau aktualisiert sich sofort. Die Zeugnisnote lässt sich manuell überschreiben und wieder auf die Berechnung zurücksetzen.',
       'Mitarbeitsnote als Gesamtbeurteilung (§ 4 Abs. 2 LBVO): Im Zeugnisnote-Detail kannst du die Mitarbeitsnote direkt festlegen, statt einzelne + / − und ✓ / ✗ zu bearbeiten. Die manuelle Note überschreibt den berechneten Durchschnitt und fließt in die Zeugnisnote ein; „Berechnet" stellt den Durchschnitt wieder her.',
       'Rezenz-Faktor pro Schüler:in (§ 20 LBVO): Im Zeugnisnote-Detail stellst du mit einem Schieberegler ein, wie stark neuere Leistungen zählen – ein Liniendiagramm zeigt über den Winkel der Linie die Wirkung. Beim Speichern wählst du, ob der Faktor nur für diese:n Schüler:in oder für die ganze Klasse gelten soll. Der globale Wert (Einstellungen) bleibt Standard.',
+      'Gewichtung im Zeugnisnote-Detail anpassen: Ein Klick auf die Prozentwerte in der Aufschlüsselung öffnet den Gewichtungs-Editor (SA/Test/Individuell/Mitarbeit). Beim Speichern wählst du – wie beim Rezenz-Faktor – ob die Gewichtung nur für diese:n Schüler:in oder für die ganze Klasse gilt.',
+      'Eigene Symbole jetzt auch bei der 2-stufigen Mitarbeit: Beim Erstellen einer Mitarbeitsspalte lassen sich – wie bei 3- und 4-stufig – eigene Symbole festlegen (Wertung nach Position: erstes = positiv, zweites = negativ). Standard bleibt + / − bzw. ↗ / ↘.',
     ],
   },
   {

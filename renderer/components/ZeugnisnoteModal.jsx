@@ -98,8 +98,8 @@ function RezenzLinie({ bars }) {
 export default function ZeugnisnoteModal({ schueler, onClose }) {
   const {
     aktivesFach, spalten, eintraege, gewichtungGlobal,
-    niveaus, niveauHistorie, einstellungen, zeugnisnoten, rezenzFaktoren, maNoten,
-    ladeFachDaten,
+    niveaus, niveauHistorie, einstellungen, zeugnisnoten, rezenzFaktoren, maNoten, gewichtungSchueler,
+    ladeFachDaten, refreshAktivesFach,
   } = useStore()
 
   const fachSpalten = spalten || []
@@ -124,13 +124,42 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
     }
     return d
   })
+  // Gewichtung (Anteile 0..1): effektiv = per-Schüler:in ?? Fach ?? global ?? Default.
+  const fachGewichtung = {
+    SA:     aktivesFach?.gewichtung_sa     ?? gewichtungGlobal?.SA     ?? 0.4,
+    T:      aktivesFach?.gewichtung_t      ?? gewichtungGlobal?.T      ?? 0.3,
+    CUSTOM: aktivesFach?.gewichtung_custom ?? gewichtungGlobal?.CUSTOM ?? 0.1,
+    MA:     aktivesFach?.gewichtung_ma     ?? gewichtungGlobal?.MA     ?? 0.2,
+  }
+  const gewichtOverride = gewichtungSchueler?.[schueler.id]
+  const gewichtHatOverride = gewichtOverride != null
+  const gewichtInit = gewichtOverride
+    ? {
+        SA: gewichtOverride.sa ?? fachGewichtung.SA, T: gewichtOverride.t ?? fachGewichtung.T,
+        CUSTOM: gewichtOverride.custom ?? fachGewichtung.CUSTOM, MA: gewichtOverride.ma ?? fachGewichtung.MA,
+      }
+    : fachGewichtung
+
   const [manuellIntern, setManuellIntern] = useState(manuellInternInit)
   const [maIntern, setMaIntern] = useState(maInternInit)
   const [faktor, setFaktor] = useState(rezenzInit)
   const [resetGewuenscht, setResetGewuenscht] = useState(false)
+  const [gewichtDraft, setGewichtDraft] = useState(gewichtInit)
+  const [gewichtEdit, setGewichtEdit] = useState(false)
+  const [gewichtResetGewuenscht, setGewichtResetGewuenscht] = useState(false)
   const [offeneGruppen, setOffeneGruppen] = useState({}) // Leistungskategorien standardmäßig eingeklappt
   const [scopeFrage, setScopeFrage] = useState(false)
   const [speichert, setSpeichert] = useState(false)
+
+  const setGewicht = (kat, prozent) => {
+    setGewichtResetGewuenscht(false)
+    setGewichtDraft(g => ({ ...g, [kat]: Math.max(0, Math.min(100, prozent || 0)) / 100 }))
+  }
+  const gewichtAufFach = () => { setGewichtResetGewuenscht(true); setGewichtDraft(fachGewichtung) }
+  const gewichtGleich = (a, b) => ['SA', 'T', 'CUSTOM', 'MA'].every(k => Math.abs((a[k] ?? 0) - (b[k] ?? 0)) < 0.0001)
+  const gewichtWertGeaendert = !gewichtResetGewuenscht && !gewichtGleich(gewichtDraft, gewichtInit)
+  const gewichtResetAktiv = gewichtResetGewuenscht && gewichtHatOverride
+  const gewichtSummeProzent = Math.round(['SA', 'T', 'CUSTOM', 'MA'].reduce((a, k) => a + (gewichtDraft[k] ?? 0), 0) * 100)
 
   const setWert = (spalteId, wert) => {
     const key = `${spalteId}_${schueler.id}`
@@ -142,22 +171,15 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
     return vals.length ? vals.join(' · ') : '—'
   }
 
-  // ── Vorschau (reine computeZN mit Entwurf + Slider-Faktor) ────────────────
-  const gewichtung = useMemo(() => ({
-    SA:     aktivesFach?.gewichtung_sa     ?? gewichtungGlobal?.SA     ?? 0.4,
-    T:      aktivesFach?.gewichtung_t      ?? gewichtungGlobal?.T      ?? 0.3,
-    CUSTOM: aktivesFach?.gewichtung_custom ?? gewichtungGlobal?.CUSTOM ?? 0.1,
-    MA:     aktivesFach?.gewichtung_ma     ?? gewichtungGlobal?.MA     ?? 0.2,
-  }), [aktivesFach, gewichtungGlobal])
-
+  // ── Vorschau (reine computeZN mit Entwurf + Slider-Faktor + Gewichtungs-Entwurf) ──
   const bd = useMemo(() => computeZN({
-    spalten: fachSpalten, eintraege: draft, gewichtung, rezenzFaktor: faktor,
+    spalten: fachSpalten, eintraege: draft, gewichtung: gewichtDraft, rezenzFaktor: faktor,
     istDifferenziert: isDifferenziert,
     niveauHistorie: niveauHistorie?.[schueler.id],
     niveauFallback: niveau ?? 'AHS',
     schuelerId: schueler.id,
     maNoteManuell: maIntern,
-  }), [fachSpalten, draft, gewichtung, faktor, isDifferenziert, niveauHistorie, niveau, schueler.id, maIntern])
+  }), [fachSpalten, draft, gewichtDraft, faktor, isDifferenziert, niveauHistorie, niveau, schueler.id, maIntern])
 
   // Kernkette exakt nachbilden: intern auf Niveau-Fenster deckeln, DANN auf 2 Dezimalen runden,
   // erst danach auf die Anzeige (intern − Offset) umrechnen. So == gespeicherte Note.
@@ -252,21 +274,46 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
     }
     // 4. Rezenzfaktor (per-Schüler:in oder Klasse; resetGewuenscht → null = auf global zurück).
     //    rezenz.set/setKlasse rechnen das ganze Fach bereits neu.
-    if (scope) {
+    if (rezenzChanged) {
       const val = resetGewuenscht ? null : faktor
       if (scope === 'klasse') await window.api.rezenz.setKlasse(fachId, val)
       else await window.api.rezenz.set(fachId, schueler.id, val)
       recomputed = true
     }
-    // 5. Falls noch nicht neu gerechnet (nur Teilnoten/Manuell-ZN geändert): jetzt nachholen.
+    // 5. Gewichtung. Zurücksetzen = immer per-Schüler:in (Override entfernen). Wertänderung folgt
+    //    dem Scope: „ganze Klasse" schreibt die Fach-Gewichtung (und entfernt diesen Override),
+    //    „einzeln" schreibt einen per-Schüler:in-Override.
+    let fachAktualisiert = false
+    if (gewichtResetAktiv) {
+      await window.api.gewichtungSchueler.set(fachId, schueler.id, null)
+      recomputed = true
+    } else if (gewichtWertGeaendert) {
+      const data = { sa: gewichtDraft.SA, t: gewichtDraft.T, custom: gewichtDraft.CUSTOM, ma: gewichtDraft.MA }
+      if (scope === 'klasse') {
+        await window.api.faecher.updateGewichtung(fachId, data)
+        await window.api.gewichtungSchueler.set(fachId, schueler.id, null)
+        fachAktualisiert = true
+      } else {
+        await window.api.gewichtungSchueler.set(fachId, schueler.id, data)
+      }
+      recomputed = true
+    }
+    // 6. Falls noch nicht neu gerechnet (nur Teilnoten/Manuell-ZN geändert): jetzt nachholen.
     if (!recomputed) await window.api.zeugnisnoten.berechneFach(fachId)
     await ladeFachDaten(fachId)
+    if (fachAktualisiert) await refreshAktivesFach()
     setSpeichert(false)
     onClose()
   }
 
+  // Scope-Frage nur bei Wertänderungen, die auch klassenweit gelten können (Rezenz / Gewichtung).
+  const brauchtScope = rezenzChanged || gewichtWertGeaendert
+  const scopeItems = []
+  if (gewichtWertGeaendert) scopeItems.push('Gewichtung')
+  if (rezenzChanged) scopeItems.push('Rezenzfaktor')
+  const scopeLabel = scopeItems.join(' & ') || 'Änderungen'
   const handleSpeichern = () => {
-    if (rezenzChanged) { setScopeFrage(true); return }
+    if (brauchtScope) { setScopeFrage(true); return }
     commit(null)
   }
 
@@ -316,8 +363,36 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
             </div>
           </div>
 
-          {/* Aufschlüsselung (bd.beitraege): wie sich die Note zusammensetzt */}
-          {bd && bd.hatBasis ? (
+          {/* Aufschlüsselung (bd.beitraege) – Klick auf die %-Werte öffnet den Gewichtungs-Editor */}
+          {gewichtEdit ? (
+            <div className="mt-3 rounded-lg bg-paper-50 dark:bg-ink-800/60 border border-paper-200 dark:border-ink-700 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-500 dark:text-ink-400">Gewichtung (%)</span>
+                <button type="button" onClick={() => setGewichtEdit(false)} className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300">Fertig</button>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {[['SA', 'SA'], ['T', 'Test'], ['CUSTOM', 'Ind.'], ['MA', 'Mitarb.']].map(([k, label]) => (
+                  <label key={k} className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] text-ink-500 dark:text-ink-400">{label}</span>
+                    <input
+                      type="number" min="0" max="100" step="5"
+                      value={Math.round((gewichtDraft[k] ?? 0) * 100)}
+                      onChange={e => setGewicht(k, parseInt(e.target.value))}
+                      className="input text-center px-1 py-1 text-sm w-full tabular-nums"
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-2 text-[10px]">
+                <span className="text-ink-400">Summe {gewichtSummeProzent}% · relativ gewichtet</span>
+                {gewichtHatOverride && !gewichtResetGewuenscht ? (
+                  <button type="button" onClick={gewichtAufFach} className="text-ink-500 hover:text-coral-600 dark:text-ink-400 dark:hover:text-coral-300">Auf Fach-Gewichtung zurücksetzen</button>
+                ) : gewichtResetGewuenscht ? (
+                  <span className="text-coral-600 dark:text-coral-300">Überschreibung wird entfernt</span>
+                ) : null}
+              </div>
+            </div>
+          ) : bd && bd.hatBasis ? (
             <div className="mt-3 space-y-1">
               {bd.beitraege.map(({ kat, detail, avg, w }) => {
                 const avgAnzeige = avg - offset
@@ -326,12 +401,13 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
                     <span className="font-semibold text-ink-600 dark:text-ink-300">{kat}</span>
                     <span className="text-ink-400 dark:text-ink-500 truncate">{detail}</span>
                     <span className={`font-medium tabular-nums text-right ${noteKlasse(clamp15(Math.round(avgAnzeige)))}`}>{komma(avgAnzeige)}</span>
-                    <span className="tabular-nums text-right text-ink-400 w-9">{Math.round(w * 100)}%</span>
+                    <button type="button" onClick={() => setGewichtEdit(true)} title="Gewichtung bearbeiten"
+                      className="tabular-nums text-right text-ink-400 w-9 hover:text-coral-600 dark:hover:text-coral-300 underline decoration-dotted underline-offset-2 cursor-pointer">{Math.round(w * 100)}%</button>
                   </div>
                 )
               })}
               <div className="grid gap-2 text-[11px] items-baseline border-t border-paper-100 dark:border-ink-800 pt-1 mt-1" style={{ gridTemplateColumns: '5rem 1fr auto auto' }}>
-                <span className="font-semibold text-ink-700 dark:text-paper-200">gewichtet</span>
+                <span className="font-semibold text-ink-700 dark:text-paper-200">gewichtet{gewichtHatOverride && <span className="ml-1 font-normal text-coral-500" title="Individuelle Gewichtung">•</span>}</span>
                 <span />
                 <span className="font-bold tabular-nums text-right text-ink-700 dark:text-paper-200">{berAnzeige != null ? komma(berAnzeige) : '–'}</span>
                 <span className="w-9" />
@@ -577,15 +653,13 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
           </button>
         </footer>
 
-        {/* Scope-Frage: Rezenzfaktor nur für Schüler:in oder ganze Klasse */}
+        {/* Scope-Frage: Gewichtung / Rezenzfaktor nur für Schüler:in oder ganze Klasse */}
         {scopeFrage && (
           <div className="modal-overlay" style={{ zIndex: 70 }} onMouseDown={e => e.target === e.currentTarget && !speichert && setScopeFrage(false)}>
             <div className="modal-box max-w-sm">
-              <h3 className="text-base font-semibold text-ink-900 dark:text-white mb-1">Rezenzfaktor übernehmen</h3>
+              <h3 className="text-base font-semibold text-ink-900 dark:text-white mb-1">{scopeLabel} übernehmen</h3>
               <p className="text-sm text-ink-500 dark:text-ink-400 mb-4">
-                {resetGewuenscht
-                  ? 'Soll die individuelle Gewichtung nur bei dieser Schüler:in oder in der ganzen Klasse entfernt werden?'
-                  : <>Soll der Faktor <span className="font-medium tabular-nums">{komma(faktor, 1)}×</span> nur für diese:n Schüler:in oder für die ganze Klasse gelten?</>}
+                Sollen die Änderungen ({scopeLabel}) nur für {schueler.vorname} {schueler.nachname} oder für die ganze Klasse gelten?
               </p>
               <div className="space-y-2">
                 <button type="button" className="btn-secondary w-full" onClick={() => commit('einzeln')} disabled={speichert}>

@@ -19,6 +19,7 @@ import zeugnisnotenDomain from '../../core/domain/zeugnisnoten'
 import niveauDomain from '../../core/domain/niveau'
 import rezenzDomain from '../../core/domain/rezenz'
 import maNoteDomain from '../../core/domain/maNote'
+import gewichtungSchuelerDomain from '../../core/domain/gewichtungSchueler'
 import kompetenzenDomain from '../../core/domain/kompetenzen'
 import gewichtungDomain from '../../core/domain/gewichtung'
 import todosDomain from '../../core/domain/todos'
@@ -144,6 +145,10 @@ export function createMobileApi(dbPort) {
     maNote: dp('maNote', {
       get: (fId) => maNoteDomain.get(dbPort, fId),
       set: (f, s, note) => maNoteDomain.set(dbPort, deps, f, s, note),
+    }),
+    gewichtungSchueler: dp('gewichtungSchueler', {
+      get: (fId) => gewichtungSchuelerDomain.get(dbPort, fId),
+      set: (f, s, data) => gewichtungSchuelerDomain.set(dbPort, deps, f, s, data),
     }),
     kompetenzbereiche: dp('kompetenzbereiche', {
       getAll: (fId) => kompetenzenDomain.bereicheGetAll(dbPort, fId),

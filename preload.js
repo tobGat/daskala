@@ -119,6 +119,10 @@ const api = {
     get: (fachId) => invoke('maNote:get', fachId),
     set: (fachId, schuelerId, note) => invoke('maNote:set', fachId, schuelerId, note),
   },
+  gewichtungSchueler: {
+    get: (fachId) => invoke('gewichtungSchueler:get', fachId),
+    set: (fachId, schuelerId, data) => invoke('gewichtungSchueler:set', fachId, schuelerId, data),
+  },
 
   schueler: {
     getAll: (klasseId) => invoke('schueler:getAll', klasseId),

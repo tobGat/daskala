@@ -48,6 +48,8 @@
   "faecher.updateGewichtung",
   "gewichtungGlobal.getAll",
   "gewichtungGlobal.update",
+  "gewichtungSchueler.get",
+  "gewichtungSchueler.set",
   "import.schuelerFromFile",
   "jahresabschluss.neuesSchuljahr",
   "jahresplanung.anwendenAufFaecher",

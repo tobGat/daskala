@@ -233,6 +233,19 @@ const TABLE_DDL = [
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
     )`,
+  // Individuelle Notengewichtung pro (Fach, Schüler:in). Fehlt eine Zeile, gilt die Fach- bzw.
+  // globale Gewichtung. Werte als Anteile 0..1 (wie faecher.gewichtung_*).
+  `CREATE TABLE IF NOT EXISTS schueler_gewichtung (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      gewichtung_sa REAL,
+      gewichtung_t REAL,
+      gewichtung_custom REAL,
+      gewichtung_ma REAL,
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
   `CREATE TABLE IF NOT EXISTS termine (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       titel TEXT NOT NULL,
@@ -771,6 +784,22 @@ function applySchema(db, deps) {
       fach_id INTEGER NOT NULL,
       schueler_id INTEGER NOT NULL,
       note INTEGER NOT NULL,
+      PRIMARY KEY (fach_id, schueler_id),
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )
+  `)
+
+  // Individuelle Notengewichtung (SA/Test/Individuell/Mitarbeit) pro (Fach, Schüler:in).
+  // Fehlt eine Zeile, gilt die Fach- bzw. globale Gewichtung. Additiv, keine Migration.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schueler_gewichtung (
+      fach_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      gewichtung_sa REAL,
+      gewichtung_t REAL,
+      gewichtung_custom REAL,
+      gewichtung_ma REAL,
       PRIMARY KEY (fach_id, schueler_id),
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE

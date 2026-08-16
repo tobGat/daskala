@@ -2540,6 +2540,21 @@
       ]
     }
   },
+  "gewichtungSchueler:set": {
+    "ret": true,
+    "state": {
+      "schueler_gewichtung": [
+        {
+          "fach_id": 1,
+          "schueler_id": 3,
+          "gewichtung_sa": 0.5,
+          "gewichtung_t": 0.3,
+          "gewichtung_custom": 0.1,
+          "gewichtung_ma": 0.1
+        }
+      ]
+    }
+  },
   "niveau:deleteHistorie": {
     "ret": true,
     "state": {

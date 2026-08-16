@@ -199,6 +199,7 @@
   },
   "rezenz:get": {},
   "maNote:get": {},
+  "gewichtungSchueler:get": {},
   "kompetenzbereiche:getAll": [
     {
       "id": 1,

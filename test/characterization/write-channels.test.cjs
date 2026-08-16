@@ -87,6 +87,9 @@ const CASES = [
   // ── Manuelle Mitarbeitsnote (§ 4 Abs. 2 LBVO) pro (Fach, Schüler:in) ────────
   { name: 'maNote:set', channel: 'maNote:set', args: [1, 3, 2], tables: ['schueler_ma_note'] },
 
+  // ── Individuelle Notengewichtung pro (Fach, Schüler:in) ────────────────────
+  { name: 'gewichtungSchueler:set', channel: 'gewichtungSchueler:set', args: [1, 3, { sa: 0.5, t: 0.3, custom: 0.1, ma: 0.1 }], tables: ['schueler_gewichtung'] },
+
   // ── Niveau / Kompetenzen ───────────────────────────────────────────────────
   { name: 'niveau:deleteHistorie', channel: 'niveau:deleteHistorie', args: [1, 2, '2026-02-01'], tables: ['schueler_niveau_historie'] },
   { name: 'kompetenzbereiche:create', channel: 'kompetenzbereiche:create', args: [1, 'Hören', 'Zuhören und verstehen'], tables: ['kompetenzbereiche'] },

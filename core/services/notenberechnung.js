@@ -118,12 +118,14 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
   const globaleGewichtung = {}
   ;(await db.select('SELECT * FROM gewichtung_global'))
     .forEach((r) => { globaleGewichtung[r.kategorie] = r.gewichtung })
+  // Individuelle Gewichtung pro (Fach, Schüler:in) hat Vorrang vor Fach- und globaler Gewichtung.
+  const perStudentGew = await db.selectOne('SELECT gewichtung_sa, gewichtung_t, gewichtung_custom, gewichtung_ma FROM schueler_gewichtung WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId])
   const gew = {
-    SA: fach.gewichtung_sa ?? globaleGewichtung['SA'] ?? 0.4,
-    T: fach.gewichtung_t ?? globaleGewichtung['T'] ?? 0.3,
-    CUSTOM: fach.gewichtung_custom ?? globaleGewichtung['CUSTOM'] ?? 0.1,
+    SA: perStudentGew?.gewichtung_sa ?? fach.gewichtung_sa ?? globaleGewichtung['SA'] ?? 0.4,
+    T: perStudentGew?.gewichtung_t ?? fach.gewichtung_t ?? globaleGewichtung['T'] ?? 0.3,
+    CUSTOM: perStudentGew?.gewichtung_custom ?? fach.gewichtung_custom ?? globaleGewichtung['CUSTOM'] ?? 0.1,
     // Mitarbeit (MA): aus Bonus/Malus + Hausübung berechnete Note, note-bildend wie SA/T.
-    MA: fach.gewichtung_ma ?? globaleGewichtung['MA'] ?? 0.2,
+    MA: perStudentGew?.gewichtung_ma ?? fach.gewichtung_ma ?? globaleGewichtung['MA'] ?? 0.2,
   }
 
   // Rezenz-Gewichtung (§ 20 LBVO): individueller Faktor pro (Fach, Schüler:in), sonst globaler
