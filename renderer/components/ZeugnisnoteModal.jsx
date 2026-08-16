@@ -441,7 +441,12 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
               })}
               <div className="grid gap-2 text-[11px] items-baseline border-t border-paper-100 dark:border-ink-800 pt-1 mt-1" style={{ gridTemplateColumns: '5rem 1fr auto auto' }}>
                 <span className="font-semibold text-ink-700 dark:text-paper-200">gewichtet{gewichtHatOverride && <span className="ml-1 font-normal text-coral-500" title="Individuelle Gewichtung">•</span>}</span>
-                <span />
+                <span>
+                  {gewichtDirty && (
+                    <button type="button" onClick={gewichtRestore} title="Ursprüngliche Gewichtung wiederherstellen"
+                      className="text-[10px] text-ink-400 hover:text-coral-600 dark:hover:text-coral-300">↺ zurücksetzen</button>
+                  )}
+                </span>
                 <span className="font-bold tabular-nums text-right text-ink-700 dark:text-paper-200">{berAnzeige != null ? komma(berAnzeige) : '–'}</span>
                 <span className="w-9" />
               </div>
