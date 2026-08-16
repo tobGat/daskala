@@ -76,22 +76,26 @@ const KAT_GRUPPEN = [
 ]
 const REZENZ_LABEL = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell' }
 
-// Liniendiagramm der Rezenz-Gewichte einer Kategorie: chronologisch (alt → neu), y = Rang-Gewicht.
-// Steigende Linie = neuere Leistungen zählen stärker; flach = gleich gewichtet. Punkte sind mit der
-// jeweiligen Note beschriftet. viewBox 0..100 (preserveAspectRatio none) füllt die Breite; Strich +
-// Punkte bleiben über vector-effect / HTML-Overlay unverzerrt.
-function RezenzLinie({ bars, maxG }) {
+// Liniendiagramm der Rezenz-Gewichtung einer Kategorie: x = Zeit (alt → neu), y = Einfluss (Gewicht)
+// auf FESTER Skala 1×…3× (Slider-Maximum). Der WINKEL der Linie zeigt damit den Einfluss neuerer
+// Leistungen: flach auf der 1×-Grundlinie = alle gleich, steil = neuere zählen stark. Die Linie bildet
+// NICHT die Noten ab; die Punkte tragen den Kommawert des Gewichts. viewBox 0..100 (preserveAspectRatio
+// none) füllt die Breite; Strich + Punkte bleiben über vector-effect / HTML-Overlay unverzerrt.
+const WEIGHT_MAX = 3 // Slider-Maximum → feste y-Skala, damit der Winkel den Faktor widerspiegelt
+function RezenzLinie({ bars }) {
   const m = bars.length
-  const ramp = maxG > 1
   const xOf = (i) => (m === 1 ? 50 : 8 + (i / (m - 1)) * 84)
   const yOf = (g) => {
-    const norm = ramp ? (g - 1) / (maxG - 1) : 0.5   // 0 = wenig, 1 = viel Gewicht
-    return 8 + (1 - norm) * 62                         // 8 % (oben, viel) … 70 % (unten, wenig)
+    const y = 10 + (1 - (g - 1) / (WEIGHT_MAX - 1)) * 64 // g=1 → 74 (unten), g=3 → 10 (oben)
+    return Math.max(4, Math.min(78, y))
   }
   const pts = bars.map((b, i) => `${xOf(i)},${yOf(b.g)}`).join(' ')
   return (
-    <div className="relative h-16 text-coral-400 dark:text-coral-500">
+    <div className="relative h-20 text-coral-400 dark:text-coral-500">
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full" aria-hidden="true">
+        {/* 1×-Grundlinie (kein Einfluss) als Bezug für den Winkel */}
+        <line x1="0" y1={yOf(1)} x2="100" y2={yOf(1)} className="stroke-paper-300 dark:stroke-ink-700"
+          strokeWidth="1" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
         {m > 1 && (
           <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="2"
             vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
@@ -103,7 +107,7 @@ function RezenzLinie({ bars, maxG }) {
             style={{ left: `${xOf(i)}%`, top: `${yOf(b.g)}%`, transform: 'translate(-50%, -50%)' }}
             title={`Note ${b.n} · Gewicht ${komma(b.g)}×`} />
           <div className="absolute text-[9px] text-ink-500 dark:text-ink-400 tabular-nums"
-            style={{ left: `${xOf(i)}%`, bottom: 0, transform: 'translateX(-50%)' }}>{b.n}</div>
+            style={{ left: `${xOf(i)}%`, bottom: 0, transform: 'translateX(-50%)' }}>{komma(b.g, 1)}×</div>
         </React.Fragment>
       ))}
     </div>
@@ -208,11 +212,10 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
       if (!arr.length) continue
       arr.sort(chronologisch)
       const m = arr.length
-      const maxG = rangGewicht(m - 1, m, faktor)
       const bars = arr.map((e, i) => ({ n: e.n, g: rangGewicht(i, m, faktor) }))
       const schnittMit = gewichteterSchnitt(arr.map(e => ({ n: e.n, datum: e.datum, semester: e.semester, reihenfolge: e.reihenfolge })), faktor)
       const schnittOhne = arr.reduce((a, e) => a + e.n, 0) / m
-      rows.push({ kat, bars, m, maxG, schnittMit, schnittOhne })
+      rows.push({ kat, bars, m, schnittMit, schnittOhne })
     }
     return rows
   }, [fachSpalten, draft, faktor, schueler.id])
@@ -378,13 +381,14 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
               <span>3,0 – stark</span>
             </div>
             <p className="text-[10px] text-ink-500 dark:text-ink-400 mb-3 leading-snug">
-              Linie = Gewicht der Leistung (alt → neu); steigt sie, zählen neuere Leistungen mehr. Wirkt je
-              Kategorie (SA/Test/Individuell), nicht auf Mitarbeit &amp; Hausübungen.
+              Der Winkel der Linie zeigt den Einfluss (§ 20): je steiler, desto stärker zählen neuere
+              Leistungen; flach auf der Grundlinie = alle gleich. Die Zahlen sind das Gewicht je Leistung
+              (1,0× = wie alle anderen). Wirkt je Kategorie (SA/Test/Individuell), nicht auf Mitarbeit &amp; Hausübungen.
             </p>
 
             {rezenzRows.length > 0 ? (
               <div className="space-y-2">
-                {rezenzRows.map(({ kat, bars, maxG, m, schnittMit, schnittOhne }) => (
+                {rezenzRows.map(({ kat, bars, m, schnittMit, schnittOhne }) => (
                   <div key={kat}>
                     <div className="flex items-baseline justify-between text-[10px] mb-0.5">
                       <span className="text-ink-500 dark:text-ink-400">{REZENZ_LABEL[kat]} <span className="text-ink-400">(alt → neu)</span></span>
@@ -392,7 +396,7 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
                         <span className="text-ink-500 dark:text-ink-400 tabular-nums">Schnitt {komma(schnittMit - offset)} <span className="text-ink-400">statt {komma(schnittOhne - offset)}</span></span>
                       )}
                     </div>
-                    <RezenzLinie bars={bars} maxG={maxG} />
+                    <RezenzLinie bars={bars} />
                   </div>
                 ))}
                 {!rezenzWirkt && (
