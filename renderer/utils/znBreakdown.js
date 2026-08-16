@@ -8,29 +8,29 @@
 // im Kern gespeicherten Note entspricht. Muss inhaltlich mit dem Kern übereinstimmen.
 import { niveauOffset, niveauZurZeit } from './niveau.js'
 
-// Spiegelt core: mehrstufige MA-Symbolliste (eigene oder Default). Länge nach ma_stufen (3/4).
+// Spiegelt core: MA-Symbolliste (eigene oder Default). Länge nach ma_stufen (2/3/4).
 export const MA_SMILEYS_DEFAULT = ['😄', '🙂', '🙁', '😞']
 export const MA_DREI_DEFAULT = ['+', '~', '-']
+export const MA_ZWEI_DEFAULT = ['+', '-']
 
 export function maSymboleVon(spalte) {
-  const len = spalte.ma_stufen === 3 ? 3 : 4
+  const len = spalte.ma_stufen === 3 ? 3 : spalte.ma_stufen === 4 ? 4 : 2
   if (spalte.ma_symbole) {
     try {
       const arr = JSON.parse(spalte.ma_symbole)
       if (Array.isArray(arr) && arr.length === len) return arr
     } catch { /* Default */ }
   }
-  return len === 3 ? MA_DREI_DEFAULT : MA_SMILEYS_DEFAULT
+  return len === 3 ? MA_DREI_DEFAULT : len === 4 ? MA_SMILEYS_DEFAULT : MA_ZWEI_DEFAULT
 }
 
-// Spiegelt core maTeilnote: Teilnote 1–5 einer MA-Aufzeichnung (positionsbasiert bei 3-/4-stufig,
-// direkt bei 2-stufig). null = kein gültiger Eintrag.
+// Spiegelt core maTeilnote: Teilnote 1–5 einer MA-Aufzeichnung (positionsbasiert über die eigenen
+// oder Default-Symbole – auch 2-stufig). null = kein gültiger Eintrag.
 export function maTeilnote(spalte, wert) {
-  if (spalte.ma_stufen === 3) { const i = maSymboleVon(spalte).indexOf(wert); return [1, 3, 5][i] ?? null }
-  if (spalte.ma_stufen === 4) { const i = maSymboleVon(spalte).indexOf(wert); return [1, 2, 4, 5][i] ?? null }
-  if (wert === '+') return 1
-  if (wert === '-') return 5
-  return null
+  const i = maSymboleVon(spalte).indexOf(wert)
+  if (spalte.ma_stufen === 3) return [1, 3, 5][i] ?? null
+  if (spalte.ma_stufen === 4) return [1, 2, 4, 5][i] ?? null
+  return [1, 5][i] ?? null
 }
 
 // Lineares Rang-Gewicht (§ 20 LBVO): ältester Eintrag i=0 → 1, neuester i=m-1 → faktor.

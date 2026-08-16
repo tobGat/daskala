@@ -18,6 +18,9 @@ const MA_STUFEN_LABEL = ['sehr positiv', 'positiv', 'negativ', 'sehr negativ']
 // Default-Symbole + Labels der 3-stufigen Mitarbeit (positiv, neutral, negativ).
 const MA_DREI = ['+', '~', '-']
 const MA_DREI_LABEL = ['positiv', 'neutral', 'negativ']
+// Default-Symbole + Labels der 2-stufigen Mitarbeit (positiv, negativ).
+const MA_ZWEI = ['+', '-']
+const MA_ZWEI_LABEL = ['positiv', 'negativ']
 
 export default function SpalteHinzufuegen({ onClose }) {
   const { aktivesFach, aktiveSemester, spalten, ladeSpalten, refreshZeugnisnoten, gewichtungGlobal, openModal, modalData } = useStore()
@@ -51,6 +54,7 @@ export default function SpalteHinzufuegen({ onClose }) {
   }
   const [maSymbole, setMaSymbole] = useState(() => letzteSymboleVon(4, 4, MA_SMILEYS))
   const [dreiSymbole, setDreiSymbole] = useState(() => letzteSymboleVon(3, 3, MA_DREI))
+  const [zweiSymbole, setZweiSymbole] = useState(() => letzteSymboleVon(2, 2, MA_ZWEI))
   const [datum, setDatum] = useState(new Date().toISOString().slice(0, 10))
   const [notiz, setNotiz] = useState('')
   const [loading, setLoading] = useState(false)
@@ -86,15 +90,23 @@ export default function SpalteHinzufuegen({ onClose }) {
     (dreiTrim.every(s => s.length >= 1 && s.length <= 4) && new Set(dreiTrim).size === 3)
   const istDefaultDrei = dreiTrim.join(' ') === MA_DREI.join(' ')
 
-  // Eigene Symbole an die Spalte übergeben: 4 (smiley) bzw. 3 (dreistufig), nur wenn nicht Default.
+  // 2-stufige Symbole: nur bei „2-stufig"-Skala. Gültig = 2 nicht-leere, verschiedene Symbole.
+  const istZweistufig = kategorie === 'MA' && stufen === 2
+  const zweiTrim = zweiSymbole.map(s => (s ?? '').trim())
+  const zweiGueltig = !istZweistufig ||
+    (zweiTrim.every(s => s.length >= 1 && s.length <= 4) && new Set(zweiTrim).size === 2)
+  const istDefaultZwei = zweiTrim.join(' ') === MA_ZWEI.join(' ')
+
+  // Eigene Symbole an die Spalte übergeben: 4 (smiley), 3 (dreistufig) bzw. 2 (zweistufig), nur wenn nicht Default.
   const maSymboleSubmit = istVierstufig && !istDefaultSmileys ? symboleTrim
     : istDreistufig && !istDefaultDrei ? dreiTrim
-      : undefined
+      : istZweistufig && !istDefaultZwei ? zweiTrim
+        : undefined
 
   const handleSpeichern = async () => {
     if (!kuerzel.trim()) return
     if (!aktivesFach) return
-    if (!symboleGueltig || !dreiGueltig) return
+    if (!symboleGueltig || !dreiGueltig || !zweiGueltig) return
     setLoading(true)
     try {
       await window.api.spalten.create({
@@ -105,7 +117,8 @@ export default function SpalteHinzufuegen({ onClose }) {
         datum: datum || null,
         notiz: notiz.trim() || null,
         maStufen: kategorie === 'MA' ? stufen : 2,
-        maSymbol: kategorie === 'MA' && stufen === 2 && zweiDarstellung === 'pfeil' ? 'pfeil' : 'pm',
+        // Pfeil-Darstellung nur bei Default-Symbolen; eigene 2-stufige Symbole haben Vorrang.
+        maSymbol: kategorie === 'MA' && stufen === 2 && zweiDarstellung === 'pfeil' && istDefaultZwei ? 'pfeil' : 'pm',
         maSymbole: maSymboleSubmit,
       })
       await ladeSpalten()
@@ -210,6 +223,41 @@ export default function SpalteHinzufuegen({ onClose }) {
                 <p className="mt-2 text-[11px] text-ink-400 dark:text-ink-500 leading-snug">
                   ↗ / ↘ ist nur eine andere Darstellung von + / −. Alle Aufzeichnungen ergeben zusammen die Mitarbeitsnote.
                 </p>
+
+                {/* Eigene Symbole (optional) – ersetzen die Darstellung */}
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-ink-600 dark:text-paper-300 mb-1.5">Eigene Symbole (positiv → negativ)</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MA_ZWEI_LABEL.map((stufe, i) => (
+                      <div key={i} className="flex flex-col items-center gap-1">
+                        <input
+                          className={`input text-center px-1 py-1.5 text-base ${!zweiGueltig ? 'border-red-400 dark:border-red-500' : ''}`}
+                          value={zweiSymbole[i] ?? ''}
+                          maxLength={4}
+                          onChange={e => setZweiSymbole(prev => prev.map((s, j) => (j === i ? e.target.value : s)))}
+                        />
+                        <span className="text-[9px] text-ink-400 leading-tight text-center">{stufe}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <button
+                      type="button"
+                      className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-400"
+                      onClick={() => setZweiSymbole(MA_ZWEI)}
+                    >
+                      Standard (+ −) zurücksetzen
+                    </button>
+                    {!zweiGueltig && (
+                      <span className="text-[11px] text-red-500">2 verschiedene, nicht-leere Symbole nötig.</span>
+                    )}
+                  </div>
+                  {!istDefaultZwei && (
+                    <p className="mt-1.5 text-[11px] text-ink-400 dark:text-ink-500 leading-snug">
+                      Eigene Symbole ersetzen die Darstellung; intern zählt die Position (positiv/negativ).
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 

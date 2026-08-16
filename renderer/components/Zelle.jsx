@@ -6,25 +6,25 @@ import useStore from '../store/useStore'
 import { niveauZurZeit, niveauBgKlasse } from '../utils/niveau'
 
 // ─── Klick-Cycle-Werte ────────────────────────────────────────────────────────
-const MA_CYCLE = ['+', '-', '']
 const HUE_CYCLE = ['✓', '✗', '—', '']
 // Default-Symbole der mehrstufigen Mitarbeit.
 const MA_SMILEYS = ['😄', '🙂', '🙁', '😞']            // 4-stufig: sehr+ … sehr−
 const MA_DREI = ['+', '~', '-']                        // 3-stufig: positiv/neutral/negativ
+const MA_ZWEI = ['+', '-']                             // 2-stufig: positiv/negativ (Default)
 const MA_SMILEY_TITEL = { '😄': 'sehr positiv', '🙂': 'positiv', '🙁': 'negativ', '😞': 'sehr negativ' }
 const MA_STUFEN_TITEL = ['sehr positiv', 'positiv', 'negativ', 'sehr negativ']
 
-// Symbolliste einer mehrstufigen MA-Spalte (Position = Stufe): eigene Symbole
-// (spalten.ma_symbole als JSON) oder Default. Länge nach ma_stufen (3 oder 4).
+// Symbolliste einer MA-Spalte (Position = Stufe): eigene Symbole (spalten.ma_symbole als JSON)
+// oder Default. Länge nach ma_stufen (2/3/4).
 function maSymboleVon(spalte) {
-  const len = spalte?.ma_stufen === 3 ? 3 : 4
+  const len = spalte?.ma_stufen === 3 ? 3 : spalte?.ma_stufen === 4 ? 4 : 2
   if (spalte?.ma_symbole) {
     try {
       const arr = JSON.parse(spalte.ma_symbole)
       if (Array.isArray(arr) && arr.length === len) return arr
     } catch { /* Default */ }
   }
-  return len === 3 ? MA_DREI : MA_SMILEYS
+  return len === 3 ? MA_DREI : len === 4 ? MA_SMILEYS : MA_ZWEI
 }
 
 function naechsterWert(cycle, aktuell) {
@@ -151,8 +151,8 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
   const handleClick = () => {
     if (spalte.kategorie === 'MA') {
       if (istMaVier) { setPopupOffen(true); return }
-      if (istMaDrei) { setEintrag(spalte.id, schueler.id, naechsterWert([...maSymboleVon(spalte), ''], wert)); return }
-      setEintrag(spalte.id, schueler.id, naechsterWert(MA_CYCLE, wert))
+      // 2-/3-stufig: Klick schaltet über die (eigenen oder Default-)Symbole, dann leeren.
+      setEintrag(spalte.id, schueler.id, naechsterWert([...maSymboleVon(spalte), ''], wert))
     } else if (spalte.kategorie === 'HÜ') {
       setEintrag(spalte.id, schueler.id, naechsterWert(HUE_CYCLE, wert))
     } else if (spalte.kategorie === 'SA' || spalte.kategorie === 'T' || spalte.kategorie === 'CUSTOM') {
@@ -185,10 +185,13 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
         anzeigeKlasse = idx === 0 ? 'zelle-plus' : idx === 2 ? 'zelle-minus' : 'zelle-strich'
       }
     } else {
-      // Pfeil-Darstellung ist rein optisch – gespeichert bleibt +/−.
-      const pfeil = spalte.ma_symbol === 'pfeil'
-      if (wert === '+') { anzeigeText = pfeil ? '↗' : '+'; anzeigeKlasse = 'zelle-plus' }
-      else if (wert === '-') { anzeigeText = pfeil ? '↘' : '−'; anzeigeKlasse = 'zelle-minus' }
+      // 2-stufig: eigene Symbole (positionsbasiert) oder Default +/−. Pfeile ↗/↘ nur bei Default.
+      const symbole = maSymboleVon(spalte)
+      const eigene = !!spalte.ma_symbole
+      const pfeil = spalte.ma_symbol === 'pfeil' && !eigene
+      const idx = symbole.indexOf(wert)
+      if (idx === 0) { anzeigeText = pfeil ? '↗' : (eigene ? wert : '+'); anzeigeKlasse = 'zelle-plus' }
+      else if (idx === 1) { anzeigeText = pfeil ? '↘' : (eigene ? wert : '−'); anzeigeKlasse = 'zelle-minus' }
     }
   } else if (spalte.kategorie === 'HÜ') {
     if (wert === '✓') anzeigeKlasse = 'zelle-haken'

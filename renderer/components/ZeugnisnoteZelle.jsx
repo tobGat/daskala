@@ -174,6 +174,12 @@ export default function ZeugnisnoteZelle({ schueler }) {
       ) : (
         <p className="text-ink-400 dark:text-ink-500">Noch keine Einträge vorhanden.</p>
       )}
+
+      {/* Hinweis: die Zelle ist anklickbar (Detail-Ansicht + Bearbeitung) */}
+      <div className="border-t border-paper-100 dark:border-ink-700 mt-2 pt-2 flex items-center gap-1.5 text-[10px] text-coral-600 dark:text-coral-300">
+        <span className="shrink-0">✎</span>
+        <span>Klick öffnet Details &amp; Bearbeitung</span>
+      </div>
     </div>
   )
 

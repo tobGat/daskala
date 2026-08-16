@@ -30,39 +30,33 @@ function znInternZuAnzeige(intern, niveau, istDifferenziert) {
 }
 
 // Default-Symbole der mehrstufigen Mitarbeit. 4-stufig [sehr+, +, −, sehr−] → Teilnoten
-// [1, 2, 4, 5]; 3-stufig [positiv, neutral, negativ] → Teilnoten [1, 3, 5].
+// [1, 2, 4, 5]; 3-stufig [positiv, neutral, negativ] → [1, 3, 5]; 2-stufig [positiv, negativ] → [1, 5].
 const MA_SMILEYS_DEFAULT = ['😄', '🙂', '🙁', '😞']
 const MA_DREI_DEFAULT = ['+', '~', '-']
+const MA_ZWEI_DEFAULT = ['+', '-']
 
-// Symbolliste einer mehrstufigen MA-Spalte (Position = Stufe): eigene Symbole
-// (spalten.ma_symbole als JSON) oder Default. Länge richtet sich nach ma_stufen (3 oder 4).
+// Symbolliste einer MA-Spalte (Position = Stufe): eigene Symbole (spalten.ma_symbole als JSON)
+// oder Default. Länge richtet sich nach ma_stufen (2/3/4).
 function maSymboleVon(spalte) {
-  const len = spalte.ma_stufen === 3 ? 3 : 4
+  const len = spalte.ma_stufen === 3 ? 3 : spalte.ma_stufen === 4 ? 4 : 2
   if (spalte.ma_symbole) {
     try {
       const arr = JSON.parse(spalte.ma_symbole)
       if (Array.isArray(arr) && arr.length === len) return arr
     } catch { /* fällt auf Default zurück */ }
   }
-  return len === 3 ? MA_DREI_DEFAULT : MA_SMILEYS_DEFAULT
+  return len === 3 ? MA_DREI_DEFAULT : len === 4 ? MA_SMILEYS_DEFAULT : MA_ZWEI_DEFAULT
 }
 
 // Teilnote (1–5) einer einzelnen Mitarbeits-Aufzeichnung (§ 4 Abs. 2 LBVO: jede
-// Aufzeichnung ist eine Teil-Einschätzung, keine Einzelnote). Positionsbasiert bei
-// 3-/4-stufigen Skalen, direkt bei 2-stufig (+/−; Pfeile ↗/↘ speichern +/−).
+// Aufzeichnung ist eine Teil-Einschätzung, keine Einzelnote). Positionsbasiert über die
+// (eigenen oder Default-)Symbole – auch 2-stufig (Default + → 1, − → 5; Pfeile ↗/↘ speichern +/−).
 // null = kein gültiger Eintrag.
 function maTeilnote(spalte, wert) {
-  if (spalte.ma_stufen === 3) {
-    const idx = maSymboleVon(spalte).indexOf(wert)
-    return [1, 3, 5][idx] ?? null       // positiv / neutral / negativ
-  }
-  if (spalte.ma_stufen === 4) {
-    const idx = maSymboleVon(spalte).indexOf(wert)
-    return [1, 2, 4, 5][idx] ?? null    // sehr+ / + / − / sehr−
-  }
-  if (wert === '+') return 1
-  if (wert === '-') return 5
-  return null
+  const idx = maSymboleVon(spalte).indexOf(wert)
+  if (spalte.ma_stufen === 3) return [1, 3, 5][idx] ?? null       // positiv / neutral / negativ
+  if (spalte.ma_stufen === 4) return [1, 2, 4, 5][idx] ?? null    // sehr+ / + / − / sehr−
+  return [1, 5][idx] ?? null                                       // 2-stufig: positiv / negativ
 }
 
 // Rezenz-gewichteter Durchschnitt einer Kategorie (§ 20 LBVO: zuletzt erreichter

@@ -35,6 +35,7 @@ async function maNote(maStufen, symbole, werte) {
 
 const CUSTOM4 = ['+', '+~', '-~', '-'] // Position 0…3 → Teilnote 1/2/4/5
 const CUSTOM3 = ['P', 'N', 'M']        // Position 0…2 → Teilnote 1/3/5
+const CUSTOM2 = ['↑', '↓']             // Position 0…1 → Teilnote 1/5
 
 test('4-stufig: eigene Symbole positionsbasiert (Teilnote 1/2/4/5)', async () => {
   assert.strictEqual(await maNote(4, CUSTOM4, ['+']), 1)
@@ -51,9 +52,16 @@ test('3-stufig: eigene Symbole positionsbasiert (Teilnote 1/3/5)', async () => {
   assert.strictEqual(await maNote(3, CUSTOM3, ['P', 'M']), 3)   // (1+5)/2
 })
 
+test('2-stufig: eigene Symbole positionsbasiert (Teilnote 1/5)', async () => {
+  assert.strictEqual(await maNote(2, CUSTOM2, ['↑']), 1)
+  assert.strictEqual(await maNote(2, CUSTOM2, ['↓']), 5)
+  assert.strictEqual(await maNote(2, CUSTOM2, ['↑', '↓']), 3)   // (1+5)/2
+})
+
 test('Symbole ausserhalb der Liste zählen nicht (keine Note)', async () => {
   assert.strictEqual(await maNote(4, CUSTOM4, ['😄']), null)  // Smiley nicht in eigener Liste
   assert.strictEqual(await maNote(3, CUSTOM3, ['x']), null)
+  assert.strictEqual(await maNote(2, CUSTOM2, ['+']), null)   // + nicht in eigener 2-stufiger Liste
 })
 
 test('ohne eigene Symbole gelten die Default-Symbole', async () => {
@@ -62,4 +70,6 @@ test('ohne eigene Symbole gelten die Default-Symbole', async () => {
   assert.strictEqual(await maNote(3, null, ['+']), 1)   // Default +/~/−
   assert.strictEqual(await maNote(3, null, ['~']), 3)
   assert.strictEqual(await maNote(3, null, ['-']), 5)
+  assert.strictEqual(await maNote(2, null, ['+']), 1)   // Default +/−
+  assert.strictEqual(await maNote(2, null, ['-']), 5)
 })

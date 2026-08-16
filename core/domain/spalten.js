@@ -13,11 +13,11 @@ async function getAll(db, fachId) {
 async function create(db, data) {
   const maxReihenfolge = (await db.selectOne('SELECT MAX(reihenfolge) as m FROM spalten WHERE fach_id = ? AND semester = ?', [data.fachId, data.semester]))?.m ?? 0
   // Mitarbeits-Stufen: 2 (+/−, Pfeile), 3 (+/~/−) oder 4 (Smileys). Eigene Symbole speichern:
-  // 3-stufig → 3 Symbole, 4-stufig → 4 Symbole. Nur gültige Sets: erwartete Länge, nicht leer,
+  // 2-stufig → 2, 3-stufig → 3, 4-stufig → 4 Symbole. Nur gültige Sets: erwartete Länge, nicht leer,
   // paarweise verschieden (indexOf-Eindeutigkeit).
   const stufen = data.maStufen === 4 ? 4 : (data.maStufen === 3 ? 3 : 2)
   let maSymbole = null
-  const erwarteteLaenge = stufen === 4 ? 4 : (stufen === 3 ? 3 : 0)
+  const erwarteteLaenge = stufen === 4 ? 4 : (stufen === 3 ? 3 : 2)
   if (erwarteteLaenge && Array.isArray(data.maSymbole) && data.maSymbole.length === erwarteteLaenge) {
     const syms = data.maSymbole.map((s) => String(s ?? '').trim())
     if (syms.every((s) => s.length > 0) && new Set(syms).size === erwarteteLaenge) {
