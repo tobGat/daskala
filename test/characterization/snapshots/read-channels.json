@@ -198,6 +198,7 @@
     ]
   },
   "rezenz:get": {},
+  "maNote:get": {},
   "kompetenzbereiche:getAll": [
     {
       "id": 1,

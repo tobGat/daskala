@@ -170,7 +170,12 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
 
   // Die eine Mitarbeitsnote = Durchschnitt aller Teilnoten (Bonus/Malus + Hausübung).
   // Ein Aggregatwert, der wie eine echte Note mit gewichtung_ma in den Schnitt eingeht.
-  if (maTeilnoten.length > 0) {
+  // Eine manuell gesetzte Mitarbeitsnote (§ 4 Abs. 2 – Gesamtbeurteilung) überschreibt den
+  // berechneten Schnitt (intern gespeichert, inkl. Niveau-Offset).
+  const maManuell = (await db.selectOne('SELECT note FROM schueler_ma_note WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId]))?.note
+  if (maManuell != null) {
+    basisWerte.MA.push({ n: maManuell, datum: null, semester: 0, reihenfolge: 0 })
+  } else if (maTeilnoten.length > 0) {
     const maSchnitt = maTeilnoten.reduce((a, n) => a + n, 0) / maTeilnoten.length
     basisWerte.MA.push({ n: maSchnitt, datum: null, semester: 0, reihenfolge: 0 })
   }

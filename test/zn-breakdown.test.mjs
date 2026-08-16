@@ -78,6 +78,33 @@ test('Differenziert + DATIERT: Niveau zur Zeit des Datums', () => {
   approx(nurSA({ datum: '2026-03-01', istDifferenziert: true, niveauHistorie: hist }).basisIntern, 3)
 })
 
+test('computeZN: manuelle Mitarbeitsnote überschreibt den Teilnoten-Schnitt', () => {
+  const spalten = [
+    { id: 1, kategorie: 'SA', datum: '2025-10-01', semester: 1, reihenfolge: 0 },
+    { id: 2, kategorie: 'MA', semester: 1, reihenfolge: 1, ma_stufen: 2 },
+    { id: 3, kategorie: 'MA', semester: 1, reihenfolge: 2, ma_stufen: 2 },
+  ]
+  const eintraege = { '1_9': '2', '2_9': '+', '3_9': '-' }
+  const base = { spalten, eintraege, gewichtung: GEW, rezenzFaktor: 1, istDifferenziert: false, schuelerId: 9 }
+  const bdAuto = computeZN(base)
+  approx(bdAuto.maBerechnet, 3)                       // Schnitt aus + (1) und − (5)
+  approx(bdAuto.basisIntern, (2 * 0.4 + 3 * 0.2) / 0.6)
+  const bdManuell = computeZN({ ...base, maNoteManuell: 1 })
+  approx(bdManuell.basisIntern, (2 * 0.4 + 1 * 0.2) / 0.6)
+  const maZeile = bdManuell.beitraege.find(b => b.kat === 'Mitarb.')
+  assert.equal(maZeile.detail, 'manuell')
+  approx(maZeile.avg, 1)
+  assert.equal(bdManuell.hatMitarbeit, true)
+})
+
+test('computeZN: manuelle Mitarbeitsnote gilt als Mitarbeit (ohne + / −)', () => {
+  const spalten = [{ id: 1, kategorie: 'SA', datum: '2025-10-01', semester: 1, reihenfolge: 0 }]
+  const bd = computeZN({ spalten, eintraege: { '1_9': '2' }, gewichtung: GEW, rezenzFaktor: 1, istDifferenziert: false, schuelerId: 9, maNoteManuell: 4 })
+  assert.equal(bd.hatMitarbeit, true)
+  assert.equal(bd.maBerechnet, null)
+  approx(bd.basisIntern, (2 * 0.4 + 4 * 0.2) / 0.6)
+})
+
 test('rangGewicht: älteste=1, neueste=faktor; m<2 oder faktor<=1 → 1', () => {
   assert.equal(rangGewicht(0, 3, 2), 1)
   assert.equal(rangGewicht(2, 3, 2), 2)

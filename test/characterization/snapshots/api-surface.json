@@ -109,6 +109,8 @@
   "kv.wochenaufgaben.getStatusFuerWochen",
   "kv.wochenaufgaben.setStatus",
   "kv.wochenaufgaben.updateTemplate",
+  "maNote.get",
+  "maNote.set",
   "materialien.dateienHinzufuegen",
   "materialien.entfernen",
   "materialien.getRoot",

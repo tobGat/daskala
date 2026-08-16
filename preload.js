@@ -115,6 +115,10 @@ const api = {
     set: (fachId, schuelerId, faktor) => invoke('rezenz:set', fachId, schuelerId, faktor),
     setKlasse: (fachId, faktor) => invoke('rezenz:setKlasse', fachId, faktor),
   },
+  maNote: {
+    get: (fachId) => invoke('maNote:get', fachId),
+    set: (fachId, schuelerId, note) => invoke('maNote:set', fachId, schuelerId, note),
+  },
 
   schueler: {
     getAll: (klasseId) => invoke('schueler:getAll', klasseId),

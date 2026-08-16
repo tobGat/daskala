@@ -69,8 +69,10 @@ const KAT_LABEL = { SA: 'SA', T: 'T', CUSTOM: 'Ind.', MA: 'Mitarb.' }
 // durchgehenden Note zusammen. Rein: nimmt Entwurfs-Einträge + beliebigen Rezenzfaktor entgegen.
 //   eintraege: Map `${spalteId}_${schuelerId}` → Wert (String)
 //   gewichtung: aufgelöstes { SA, T, CUSTOM, MA }
-// → { beitraege, gesamtGewichtung, maxNote, basisIntern, hatBasis, hatMitarbeit, hatBasisNoten, ma, hue }
-export function computeZN({ spalten, eintraege, gewichtung, rezenzFaktor, istDifferenziert, niveauHistorie, niveauFallback, schuelerId }) {
+//   maNoteManuell: interner Wert (1–7) einer manuell gesetzten Mitarbeitsnote oder null/undefined
+// → { beitraege, gesamtGewichtung, maxNote, basisIntern, hatBasis, hatMitarbeit, hatBasisNoten,
+//     ma, hue, maBerechnet }
+export function computeZN({ spalten, eintraege, gewichtung, rezenzFaktor, istDifferenziert, niveauHistorie, niveauFallback, schuelerId, maNoteManuell = null }) {
   const fachSpalten = spalten || []
   if (!fachSpalten.length) return null
 
@@ -117,8 +119,12 @@ export function computeZN({ spalten, eintraege, gewichtung, rezenzFaktor, istDif
     }
   }
 
-  const hatMitarbeit = maTeilnoten.length > 0
-  const maSchnitt = hatMitarbeit ? maTeilnoten.reduce((a, n) => a + n, 0) / maTeilnoten.length : null
+  // Berechnete Mitarbeitsnote (Teilnoten-Schnitt); eine manuelle Mitarbeitsnote (§ 4 Abs. 2 –
+  // Gesamtbeurteilung) überschreibt sie. Mitarbeit gilt als vorhanden, sobald Teilnoten ODER
+  // eine manuelle Note existieren (relevant für § 3 und die MA-Beitragszeile).
+  const maBerechnet = maTeilnoten.length > 0 ? maTeilnoten.reduce((a, n) => a + n, 0) / maTeilnoten.length : null
+  const maEffektiv = maNoteManuell != null ? maNoteManuell : maBerechnet
+  const hatMitarbeit = maEffektiv != null
 
   // Basisnote (gewichtet, nur vorhandene Kategorien). SA/Test/Individuell zuerst.
   const beitraege = []
@@ -133,15 +139,21 @@ export function computeZN({ spalten, eintraege, gewichtung, rezenzFaktor, istDif
     summe += avg * gew[kat]
     gesamtGewichtung += gew[kat]
   }
-  // Mitarbeit als eigene note-bildende Zeile (Durchschnitt der Teilnoten).
+  // Mitarbeit als eigene note-bildende Zeile (manuelle Note oder Teilnoten-Schnitt).
   if (hatMitarbeit && gew.MA > 0) {
-    const teile = []
-    if (maPlusCount) teile.push(`+${maPlusCount}`)
-    if (maMinusCount) teile.push(`−${maMinusCount}`)
-    if (huePos) teile.push(`✓${huePos}`)
-    if (hueNeg) teile.push(`✗${hueNeg}`)
-    beitraege.push({ kat: KAT_LABEL.MA, detail: teile.join(' '), avg: maSchnitt, w: gew.MA })
-    summe += maSchnitt * gew.MA
+    let detail
+    if (maNoteManuell != null) {
+      detail = 'manuell'
+    } else {
+      const teile = []
+      if (maPlusCount) teile.push(`+${maPlusCount}`)
+      if (maMinusCount) teile.push(`−${maMinusCount}`)
+      if (huePos) teile.push(`✓${huePos}`)
+      if (hueNeg) teile.push(`✗${hueNeg}`)
+      detail = teile.join(' ')
+    }
+    beitraege.push({ kat: KAT_LABEL.MA, detail, avg: maEffektiv, w: gew.MA })
+    summe += maEffektiv * gew.MA
     gesamtGewichtung += gew.MA
   }
   const hatBasis = gesamtGewichtung > 0
@@ -149,7 +161,7 @@ export function computeZN({ spalten, eintraege, gewichtung, rezenzFaktor, istDif
 
   return {
     beitraege, gesamtGewichtung, maxNote, basisIntern, hatBasis,
-    hatMitarbeit, hatBasisNoten,
+    hatMitarbeit, hatBasisNoten, maBerechnet,
     ma: { plus: maPlusCount, minus: maMinusCount }, hue: { pos: huePos, neg: hueNeg },
   }
 }

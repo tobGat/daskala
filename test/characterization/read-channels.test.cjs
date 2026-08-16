@@ -34,6 +34,7 @@ const CASES = [
   { channel: 'niveau:get',              args: [1] },      // Fach 1 (differenziert)
   { channel: 'niveau:getHistorie',      args: [1] },
   { channel: 'rezenz:get',              args: [1] },      // Fach 1: individuelle Rezenzfaktoren
+  { channel: 'maNote:get',              args: [1] },      // Fach 1: manuelle Mitarbeitsnoten
   { channel: 'kompetenzbereiche:getAll', args: [1] },
   { channel: 'schuelerKompetenzen:getAll', args: [1] },
   // Stundenplan / Termine / Todos / Ferien / Jahresplanung

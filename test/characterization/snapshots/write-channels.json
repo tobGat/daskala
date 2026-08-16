@@ -2528,6 +2528,18 @@
       ]
     }
   },
+  "maNote:set": {
+    "ret": true,
+    "state": {
+      "schueler_ma_note": [
+        {
+          "fach_id": 1,
+          "schueler_id": 3,
+          "note": 2
+        }
+      ]
+    }
+  },
   "niveau:deleteHistorie": {
     "ret": true,
     "state": {

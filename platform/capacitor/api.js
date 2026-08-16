@@ -18,6 +18,7 @@ import eintraegeDomain from '../../core/domain/eintraege'
 import zeugnisnotenDomain from '../../core/domain/zeugnisnoten'
 import niveauDomain from '../../core/domain/niveau'
 import rezenzDomain from '../../core/domain/rezenz'
+import maNoteDomain from '../../core/domain/maNote'
 import kompetenzenDomain from '../../core/domain/kompetenzen'
 import gewichtungDomain from '../../core/domain/gewichtung'
 import todosDomain from '../../core/domain/todos'
@@ -139,6 +140,10 @@ export function createMobileApi(dbPort) {
       get: (fId) => rezenzDomain.get(dbPort, fId),
       set: (f, s, faktor) => rezenzDomain.set(dbPort, deps, f, s, faktor),
       setKlasse: (f, faktor) => rezenzDomain.setKlasse(dbPort, deps, f, faktor),
+    }),
+    maNote: dp('maNote', {
+      get: (fId) => maNoteDomain.get(dbPort, fId),
+      set: (f, s, note) => maNoteDomain.set(dbPort, deps, f, s, note),
     }),
     kompetenzbereiche: dp('kompetenzbereiche', {
       getAll: (fId) => kompetenzenDomain.bereicheGetAll(dbPort, fId),

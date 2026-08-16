@@ -16,7 +16,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import ReactDOM from 'react-dom'
 import useStore from '../store/useStore'
-import { computeZN, maSymboleVon, gewichteterSchnitt, rangGewicht } from '../utils/znBreakdown'
+import { computeZN, gewichteterSchnitt, rangGewicht } from '../utils/znBreakdown'
 import { niveauOffset } from '../utils/niveau'
 
 function noteKlasse(n) {
@@ -37,26 +37,7 @@ function fmtDatum(d) {
   return isNaN(dt) ? d : dt.toLocaleDateString('de-AT')
 }
 
-// Auswahl-Symbole einer MA-Spalte je nach Stufen (2-stufig fix +/−, 3-/4-stufig aus der Spalte).
-function maOptionen(spalte) {
-  if (spalte.ma_stufen === 3 || spalte.ma_stufen === 4) return maSymboleVon(spalte)
-  return ['+', '-']
-}
-const HUE_OPTIONEN = ['✓', '✗', '—']
-
-// Polarität einer MA/HÜ-Option für die semantische Einfärbung (grün positiv / rot negativ / neutral).
-function polaritaet(spalte, opt) {
-  if (spalte.kategorie === 'HÜ') return opt === '✓' ? 'plus' : opt === '✗' ? 'minus' : 'neutral'
-  if (spalte.ma_stufen === 3) { const i = maOptionen(spalte).indexOf(opt); return i === 0 ? 'plus' : i === 2 ? 'minus' : 'neutral' }
-  if (spalte.ma_stufen === 4) { const i = maOptionen(spalte).indexOf(opt); return i <= 1 ? 'plus' : 'minus' }
-  return opt === '+' ? 'plus' : 'minus'
-}
-const AKTIV_KLASSE = {
-  note:    'bg-coral-600 text-white',
-  plus:    'bg-emerald-500 text-white',
-  minus:   'bg-rose-500 text-white',
-  neutral: 'bg-ink-400 text-white dark:bg-ink-500',
-}
+const AKTIV_NOTE = 'bg-coral-600 text-white'
 const INAKTIV_KLASSE = 'bg-paper-100 dark:bg-ink-800 text-ink-600 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-700'
 
 // Chronologische Sortierung wie im Kern (gewichteterSchnitt): Datum (leer = ältest) → Semester → Reihenfolge.
@@ -67,12 +48,12 @@ function chronologisch(a, b) {
   return (a.reihenfolge ?? 0) - (b.reihenfolge ?? 0)
 }
 
-// Note-bildende Kategorien in Anzeige-Reihenfolge. MA + HÜ werden als eine Mitarbeits-Gruppe gezeigt.
+// Editierbare, note-bildende Kategorien (SA/Test/Individuell). Mitarbeit & Hausübungen werden
+// NICHT einzeln bearbeitet – dort wird nur die (berechnete) Mitarbeitsnote überschrieben.
 const KAT_GRUPPEN = [
-  { key: 'SA', label: 'Schularbeiten', kats: ['SA'], typ: 'note' },
-  { key: 'T', label: 'Tests', kats: ['T'], typ: 'note' },
-  { key: 'CUSTOM', label: 'Individuell', kats: ['CUSTOM'], typ: 'note' },
-  { key: 'MA', label: 'Mitarbeit & Hausübungen', kats: ['MA', 'HÜ'], typ: 'symbol' },
+  { key: 'SA', label: 'Schularbeiten', kats: ['SA'] },
+  { key: 'T', label: 'Tests', kats: ['T'] },
+  { key: 'CUSTOM', label: 'Individuell', kats: ['CUSTOM'] },
 ]
 const REZENZ_LABEL = { SA: 'Schularbeiten', T: 'Tests', CUSTOM: 'Individuell' }
 
@@ -117,7 +98,7 @@ function RezenzLinie({ bars }) {
 export default function ZeugnisnoteModal({ schueler, onClose }) {
   const {
     aktivesFach, spalten, eintraege, gewichtungGlobal,
-    niveaus, niveauHistorie, einstellungen, zeugnisnoten, rezenzFaktoren,
+    niveaus, niveauHistorie, einstellungen, zeugnisnoten, rezenzFaktoren, maNoten,
     ladeFachDaten,
   } = useStore()
 
@@ -132,6 +113,7 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
 
   const znInit = zeugnisnoten[`${schueler.id}_3`]
   const manuellInternInit = (znInit?.note_manuell ?? null)
+  const maInternInit = (maNoten?.[schueler.id] ?? null) // manuelle Mitarbeitsnote (intern) oder null
 
   // ── Entwurfs-Zustand ──────────────────────────────────────────────────────
   const [draft, setDraft] = useState(() => {
@@ -143,6 +125,7 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
     return d
   })
   const [manuellIntern, setManuellIntern] = useState(manuellInternInit)
+  const [maIntern, setMaIntern] = useState(maInternInit)
   const [faktor, setFaktor] = useState(rezenzInit)
   const [resetGewuenscht, setResetGewuenscht] = useState(false)
   const [offeneGruppen, setOffeneGruppen] = useState({}) // Leistungskategorien standardmäßig eingeklappt
@@ -173,7 +156,8 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
     niveauHistorie: niveauHistorie?.[schueler.id],
     niveauFallback: niveau ?? 'AHS',
     schuelerId: schueler.id,
-  }), [fachSpalten, draft, gewichtung, faktor, isDifferenziert, niveauHistorie, niveau, schueler.id])
+    maNoteManuell: maIntern,
+  }), [fachSpalten, draft, gewichtung, faktor, isDifferenziert, niveauHistorie, niveau, schueler.id, maIntern])
 
   // Kernkette exakt nachbilden: intern auf Niveau-Fenster deckeln, DANN auf 2 Dezimalen runden,
   // erst danach auf die Anzeige (intern − Offset) umrechnen. So == gespeicherte Note.
@@ -187,6 +171,11 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
   const previewNote = istManuell
     ? manuellAnzeige
     : (berAnzeige != null ? clamp15(Math.round(berAnzeige)) : null)
+
+  // Mitarbeitsnote (§ 4 Abs. 2): berechneter Vorschlag (aus MA/HÜ) vs. manuelle Überschreibung.
+  const istMaManuell = maIntern != null
+  const maBerechnetAnzeige = bd?.maBerechnet != null ? bd.maBerechnet - offset : null
+  const maManuellAnzeige = istMaManuell ? clamp15(maIntern - offset) : null
 
   // Zwischennote (x,5) – aus dem gerundeten Wert (wie Zelle/Kern), nur ohne manuelle Note.
   const istTie = !istManuell && berAnzeige != null && berAnzeige >= 1 && berAnzeige <= 5
@@ -250,21 +239,27 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
         await window.api.eintraege.set(sp.id, schueler.id, neu)
       }
     }
-    // 2. Manuelle Note
+    let recomputed = false
+    // 2. Manuelle Mitarbeitsnote (§ 4 Abs. 2). maNote.set rechnet das ganze Fach bereits neu.
+    if (maIntern !== maInternInit) {
+      await window.api.maNote.set(fachId, schueler.id, maIntern) // null → entfernen
+      recomputed = true
+    }
+    // 3. Manuelle Zeugnisnote
     if (manuellIntern !== manuellInternInit) {
       if (manuellIntern == null) await window.api.zeugnisnoten.clearManuell(fachId, schueler.id)
       else await window.api.zeugnisnoten.setManuell(fachId, schueler.id, manuellIntern)
     }
-    // 3. Rezenzfaktor (per-Schüler:in oder Klasse; resetGewuenscht → null = auf global zurück).
+    // 4. Rezenzfaktor (per-Schüler:in oder Klasse; resetGewuenscht → null = auf global zurück).
     //    rezenz.set/setKlasse rechnen das ganze Fach bereits neu.
     if (scope) {
       const val = resetGewuenscht ? null : faktor
       if (scope === 'klasse') await window.api.rezenz.setKlasse(fachId, val)
       else await window.api.rezenz.set(fachId, schueler.id, val)
-    } else {
-      // 4. Ohne Rezenz-Commit: Teilnoten/Manuell-Änderungen selbst neu berechnen.
-      await window.api.zeugnisnoten.berechneFach(fachId)
+      recomputed = true
     }
+    // 5. Falls noch nicht neu gerechnet (nur Teilnoten/Manuell-ZN geändert): jetzt nachholen.
+    if (!recomputed) await window.api.zeugnisnoten.berechneFach(fachId)
     await ladeFachDaten(fachId)
     setSpeichert(false)
     onClose()
@@ -278,6 +273,10 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
   const aufBerechnet = () => setManuellIntern(null)
   const aufManuell = () => setManuellIntern((berAnzeige != null ? clamp15(Math.round(berAnzeige)) : 3) + offset)
   const setManuellDisplay = (n) => setManuellIntern(n + offset)
+
+  const maAufBerechnet = () => setMaIntern(null)
+  const maAufManuell = () => setMaIntern((maBerechnetAnzeige != null ? clamp15(Math.round(maBerechnetAnzeige)) : 3) + offset)
+  const setMaDisplay = (n) => setMaIntern(n + offset)
 
   // ── Render ────────────────────────────────────────────────────────────────
   const modal = (
@@ -424,68 +423,115 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
             </div>
           </section>
 
-          {/* Teilnoten nach Kategorie gruppiert – Kategorien standardmäßig eingeklappt */}
+          {/* Einzelne Leistungen (SA/Test/Individuell) – Kategorien standardmäßig eingeklappt.
+              Mitarbeit & Hausübungen werden hier NICHT einzeln bearbeitet (eigene Sektion darunter). */}
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-500 dark:text-ink-400 mb-2">Einzelne Leistungen</h3>
-            {fachSpalten.length === 0 ? (
-              <p className="text-sm text-ink-400">Noch keine Aufzeichnungen in diesem Fach.</p>
-            ) : (
-              <div className="rounded-2xl border border-paper-200 dark:border-ink-700 divide-y divide-paper-200 dark:divide-ink-700 overflow-hidden">
-                {KAT_GRUPPEN.map(gruppe => {
-                  const cols = fachSpalten.filter(sp => gruppe.kats.includes(sp.kategorie))
-                  if (!cols.length) return null
-                  const offen = !!offeneGruppen[gruppe.key]
-                  return (
-                    <div key={gruppe.key}>
-                      <button
-                        type="button"
-                        onClick={() => toggleGruppe(gruppe.key)}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-paper-50 dark:hover:bg-ink-800/60 transition-colors"
-                      >
-                        <span className="text-xs font-semibold text-ink-700 dark:text-paper-200 shrink-0">{gruppe.label}</span>
-                        <span className="flex items-center gap-2 min-w-0">
-                          {!offen && <span className="text-[11px] text-ink-400 dark:text-ink-500 truncate">{gruppeSummary(cols)}</span>}
-                          <span className={`text-ink-400 transition-transform ${offen ? 'rotate-90' : ''}`}>▸</span>
-                        </span>
-                      </button>
-                      {offen && (
-                        <div className="px-3 pb-3 pt-0.5 space-y-1.5 acc-body-in">
-                          {cols.map(sp => {
-                            const wert = draft[`${sp.id}_${schueler.id}`] ?? ''
-                            const optionen = gruppe.typ === 'note' ? ['1', '2', '3', '4', '5']
-                              : sp.kategorie === 'MA' ? maOptionen(sp) : HUE_OPTIONEN
-                            return (
-                              <div key={sp.id} className="flex items-center gap-2">
-                                <div className="w-24 shrink-0 min-w-0">
-                                  <div className="text-xs font-medium text-ink-700 dark:text-paper-200 truncate">{sp.kuerzel}</div>
-                                  {sp.datum && <div className="text-[10px] text-ink-400 tabular-nums">{fmtDatum(sp.datum)}</div>}
-                                </div>
-                                <div className="flex gap-1 flex-wrap">
-                                  {optionen.map(opt => {
-                                    const aktiv = wert === opt
-                                    const aktivKl = gruppe.typ === 'note' ? AKTIV_KLASSE.note : AKTIV_KLASSE[polaritaet(sp, opt)]
-                                    return (
+            {(() => {
+              const gruppen = KAT_GRUPPEN
+                .map(g => ({ g, cols: fachSpalten.filter(sp => g.kats.includes(sp.kategorie)) }))
+                .filter(x => x.cols.length)
+              if (!gruppen.length) {
+                return <p className="text-sm text-ink-400">Keine Schularbeiten, Tests oder individuellen Leistungen erfasst.</p>
+              }
+              return (
+                <div className="rounded-2xl border border-paper-200 dark:border-ink-700 divide-y divide-paper-200 dark:divide-ink-700 overflow-hidden">
+                  {gruppen.map(({ g: gruppe, cols }) => {
+                    const offen = !!offeneGruppen[gruppe.key]
+                    return (
+                      <div key={gruppe.key}>
+                        <button
+                          type="button"
+                          onClick={() => toggleGruppe(gruppe.key)}
+                          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-paper-50 dark:hover:bg-ink-800/60 transition-colors"
+                        >
+                          <span className="text-xs font-semibold text-ink-700 dark:text-paper-200 shrink-0">{gruppe.label}</span>
+                          <span className="flex items-center gap-2 min-w-0">
+                            {!offen && <span className="text-[11px] text-ink-400 dark:text-ink-500 truncate">{gruppeSummary(cols)}</span>}
+                            <span className={`text-ink-400 transition-transform ${offen ? 'rotate-90' : ''}`}>▸</span>
+                          </span>
+                        </button>
+                        {offen && (
+                          <div className="px-3 pb-3 pt-0.5 space-y-1.5 acc-body-in">
+                            {cols.map(sp => {
+                              const wert = draft[`${sp.id}_${schueler.id}`] ?? ''
+                              return (
+                                <div key={sp.id} className="flex items-center gap-2">
+                                  <div className="w-24 shrink-0 min-w-0">
+                                    <div className="text-xs font-medium text-ink-700 dark:text-paper-200 truncate">{sp.kuerzel}</div>
+                                    {sp.datum && <div className="text-[10px] text-ink-400 tabular-nums">{fmtDatum(sp.datum)}</div>}
+                                  </div>
+                                  <div className="flex gap-1 flex-wrap">
+                                    {['1', '2', '3', '4', '5'].map(opt => (
                                       <button
                                         key={opt}
                                         type="button"
                                         onClick={() => setWert(sp.id, opt)}
-                                        className={`min-w-[1.9rem] h-8 px-1 rounded-md text-sm font-medium transition-colors ${aktiv ? aktivKl : INAKTIV_KLASSE}`}
+                                        className={`min-w-[1.9rem] h-8 px-1 rounded-md text-sm font-medium transition-colors ${wert === opt ? AKTIV_NOTE : INAKTIV_KLASSE}`}
                                       >
                                         {opt}
                                       </button>
-                                    )
-                                  })}
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </section>
+
+          {/* Mitarbeit & Hausübungen (§ 4 Abs. 2): nicht einzeln editierbar – nur die (berechnete)
+              Mitarbeitsnote wird als Gesamtbeurteilung überschrieben. */}
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-500 dark:text-ink-400 mb-2">
+              Mitarbeit &amp; Hausübungen <span className="normal-case text-ink-400 font-normal">(§ 4 Abs. 2)</span>
+            </h3>
+            <div className="inline-flex rounded-xl bg-paper-100 dark:bg-ink-800 p-1 mb-2">
+              <button type="button" onClick={maAufBerechnet}
+                className={`px-3 h-8 rounded-lg text-sm font-medium transition-colors ${!istMaManuell ? 'bg-white dark:bg-ink-900 shadow-sm text-ink-900 dark:text-white' : 'text-ink-500 dark:text-ink-400'}`}>
+                Berechnet
+              </button>
+              <button type="button" onClick={maAufManuell}
+                className={`px-3 h-8 rounded-lg text-sm font-medium transition-colors ${istMaManuell ? 'bg-white dark:bg-ink-900 shadow-sm text-ink-900 dark:text-white' : 'text-ink-500 dark:text-ink-400'}`}>
+                Manuell
+              </button>
+            </div>
+            {istMaManuell ? (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setMaDisplay(n)}
+                      className={`w-9 h-9 rounded-md font-bold text-sm transition-colors ${maManuellAnzeige === n ? AKTIV_NOTE : INAKTIV_KLASSE}`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                {maBerechnetAnzeige != null && (
+                  <span className="text-[11px] text-ink-400 tabular-nums">berechnet {komma(maBerechnetAnzeige)}</span>
+                )}
               </div>
+            ) : (
+              <p className="text-sm text-ink-600 dark:text-paper-300">
+                {maBerechnetAnzeige != null
+                  ? <>Berechnete Mitarbeitsnote: <span className={`font-bold ${noteKlasse(clamp15(Math.round(maBerechnetAnzeige)))}`}>{komma(maBerechnetAnzeige)}</span> <span className="text-ink-400">(Durchschnitt aus + / − und ✓ / ✗)</span></>
+                  : <span className="text-ink-400">Noch keine Mitarbeit oder Hausübung erfasst.</span>}
+              </p>
             )}
+            <p className="text-[10px] text-ink-400 mt-1.5">
+              {istMaManuell
+                ? 'Manuelle Mitarbeitsnote (Gesamtbeurteilung) – fließt mit ihrem Gewicht in die Zeugnisnote ein.'
+                : 'Die einzelnen + / − und ✓ / ✗ werden in der Notentabelle erfasst; hier zählt ihr Durchschnitt.'}
+            </p>
           </section>
 
           {/* Manuelle Note – Segmented Control */}

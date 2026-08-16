@@ -84,6 +84,9 @@ const CASES = [
   { name: 'rezenz:set', channel: 'rezenz:set', args: [1, 3, 2], tables: ['schueler_rezenz'] },
   { name: 'rezenz:setKlasse', channel: 'rezenz:setKlasse', args: [1, 1.5], tables: ['schueler_rezenz'] },
 
+  // ── Manuelle Mitarbeitsnote (§ 4 Abs. 2 LBVO) pro (Fach, Schüler:in) ────────
+  { name: 'maNote:set', channel: 'maNote:set', args: [1, 3, 2], tables: ['schueler_ma_note'] },
+
   // ── Niveau / Kompetenzen ───────────────────────────────────────────────────
   { name: 'niveau:deleteHistorie', channel: 'niveau:deleteHistorie', args: [1, 2, '2026-02-01'], tables: ['schueler_niveau_historie'] },
   { name: 'kompetenzbereiche:create', channel: 'kompetenzbereiche:create', args: [1, 'Hören', 'Zuhören und verstehen'], tables: ['kompetenzbereiche'] },

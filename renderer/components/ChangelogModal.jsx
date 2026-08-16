@@ -11,8 +11,9 @@ export const CHANGELOG = [
     version: '1.5.0',
     datum: '2026-08-16',
     punkte: [
-      'Zeugnisnote-Detail: Ein Klick auf eine Zeugnisnote öffnet ein Fenster, in dem du alle Teilnoten des Fachs (SA, Test, Individuell, Mitarbeit, Hausübung) direkt ansehen und ändern kannst – die Zeugnisnote-Vorschau aktualisiert sich sofort. Die Note lässt sich manuell überschreiben und wieder auf die Berechnung zurücksetzen.',
-      'Rezenz-Faktor pro Schüler:in (§ 20 LBVO): Im Zeugnisnote-Detail stellst du mit einem Schieberegler ein, wie stark neuere Leistungen zählen – mit einer Balken-Grafik, die die Wirkung live zeigt. Beim Speichern wählst du, ob der Faktor nur für diese:n Schüler:in oder für die ganze Klasse gelten soll. Der globale Wert (Einstellungen) bleibt Standard.',
+      'Zeugnisnote-Detail: Ein Klick auf eine Zeugnisnote öffnet ein Fenster mit der Aufschlüsselung der Note. Schularbeiten, Tests und individuelle Leistungen kannst du dort ansehen und ändern (nach Kategorie gruppiert) – die Zeugnisnote-Vorschau aktualisiert sich sofort. Die Zeugnisnote lässt sich manuell überschreiben und wieder auf die Berechnung zurücksetzen.',
+      'Mitarbeitsnote als Gesamtbeurteilung (§ 4 Abs. 2 LBVO): Im Zeugnisnote-Detail kannst du die Mitarbeitsnote direkt festlegen, statt einzelne + / − und ✓ / ✗ zu bearbeiten. Die manuelle Note überschreibt den berechneten Durchschnitt und fließt in die Zeugnisnote ein; „Berechnet" stellt den Durchschnitt wieder her.',
+      'Rezenz-Faktor pro Schüler:in (§ 20 LBVO): Im Zeugnisnote-Detail stellst du mit einem Schieberegler ein, wie stark neuere Leistungen zählen – ein Liniendiagramm zeigt über den Winkel der Linie die Wirkung. Beim Speichern wählst du, ob der Faktor nur für diese:n Schüler:in oder für die ganze Klasse gelten soll. Der globale Wert (Einstellungen) bleibt Standard.',
     ],
   },
   {
