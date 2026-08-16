@@ -161,6 +161,9 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
   const gewichtWertGeaendert = !gewichtResetGewuenscht && !gewichtGleich(gewichtDraft, gewichtInit)
   const gewichtResetAktiv = gewichtResetGewuenscht && gewichtHatOverride
   const gewichtSummeProzent = Math.round(['SA', 'T', 'CUSTOM', 'MA'].reduce((a, k) => a + (gewichtDraft[k] ?? 0), 0) * 100)
+  // „Ursprünglich" = Stand beim Öffnen des Modals (macht Änderungen in dieser Sitzung rückgängig).
+  const gewichtDirty = gewichtResetGewuenscht || !gewichtGleich(gewichtDraft, gewichtInit)
+  const gewichtRestore = () => { setGewichtDraft(gewichtInit); setGewichtResetGewuenscht(false); setGewichtEditKat(null) }
 
   const setWert = (spalteId, wert) => {
     const key = `${spalteId}_${schueler.id}`
@@ -237,6 +240,8 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
   const rezenzChanged = resetGewuenscht
     ? hatOverride
     : Math.abs(faktor - rezenzInit) > 0.001
+  const rezenzDirty = resetGewuenscht || Math.abs(faktor - rezenzInit) > 0.001
+  const rezenzRestore = () => { setFaktor(rezenzInit); setResetGewuenscht(false) }
 
   // ── Escape schließt (erst die Scope-Frage, sonst das Modal) ───────────────
   useEffect(() => {
@@ -369,7 +374,13 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
             <div className="mt-3 rounded-lg bg-paper-50 dark:bg-ink-800/60 border border-paper-200 dark:border-ink-700 p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-500 dark:text-ink-400">Gewichtung</span>
-                <button type="button" onClick={() => { setGewichtEditKat(null); setGewichtEdit(false) }} className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300">Fertig</button>
+                <div className="flex items-center gap-2">
+                  {gewichtDirty && (
+                    <button type="button" onClick={gewichtRestore} title="Ursprüngliche Werte wiederherstellen"
+                      className="text-xs leading-none text-ink-400 hover:text-coral-600 dark:hover:text-coral-300">↺</button>
+                  )}
+                  <button type="button" onClick={() => { setGewichtEditKat(null); setGewichtEdit(false) }} className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300">Fertig</button>
+                </div>
               </div>
               <div className="space-y-2">
                 {[['SA', 'Schularbeiten'], ['T', 'Tests'], ['CUSTOM', 'Individuell'], ['MA', 'Mitarbeit']].map(([k, label]) => (
@@ -464,7 +475,13 @@ export default function ZeugnisnoteModal({ schueler, onClose }) {
           <section className="rounded-2xl bg-paper-50 dark:bg-ink-800/50 border border-paper-200 dark:border-ink-700 p-4">
             <div className="flex items-center justify-between gap-2 mb-1">
               <span className="text-sm font-medium text-ink-700 dark:text-paper-200">⚖ Gewichtung neuerer Leistungen <span className="text-ink-400 font-normal">(§ 20)</span></span>
-              <span className="text-sm font-bold tabular-nums text-coral-600 dark:text-coral-300">{komma(faktor, 1)}×</span>
+              <span className="flex items-center gap-2 shrink-0">
+                {rezenzDirty && (
+                  <button type="button" onClick={rezenzRestore} title="Ursprünglichen Wert wiederherstellen"
+                    className="text-xs leading-none text-ink-400 hover:text-coral-600 dark:hover:text-coral-300">↺</button>
+                )}
+                <span className="text-sm font-bold tabular-nums text-coral-600 dark:text-coral-300">{komma(faktor, 1)}×</span>
+              </span>
             </div>
             <input
               type="range"
