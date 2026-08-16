@@ -19,15 +19,6 @@ const MA_STUFEN_LABEL = ['sehr positiv', 'positiv', 'negativ', 'sehr negativ']
 const MA_DREI = ['+', '~', '-']
 const MA_DREI_LABEL = ['positiv', 'neutral', 'negativ']
 
-// Info-Texte für den Hover-Tooltip je Bewertungsskala. Alle Stufen bilden gemeinsam die
-// Mitarbeitsnote (§ 4 Abs. 2 LBVO) – keine Einzelnoten mehr.
-const SKALA_INFO = {
-  pm: { titel: '+ / −', text: 'Zwei Stufen (positiv/negativ). Alle Aufzeichnungen ergeben zusammen die Mitarbeitsnote.' },
-  pfeil: { titel: '↗ / ↘', text: 'Wie + / − – nur andere Darstellung. Bildet gemeinsam die Mitarbeitsnote.' },
-  dreistufig: { titel: '+ / ~ / −', text: 'Drei Stufen: positiv, neutral (~ = Note 3), negativ. Symbole frei wählbar.' },
-  smiley: { titel: '4-stufig', text: 'Vier Stufen von sehr positiv bis sehr negativ (😄 zählt stärker als 🙂). Symbole frei wählbar.' },
-}
-
 export default function SpalteHinzufuegen({ onClose }) {
   const { aktivesFach, aktiveSemester, spalten, ladeSpalten, refreshZeugnisnoten, gewichtungGlobal, openModal, modalData } = useStore()
   // Vorauswahl der Kategorie (z. B. aus dem mobilen Speed-Dial); Fallback MA.
@@ -36,20 +27,20 @@ export default function SpalteHinzufuegen({ onClose }) {
   const initialKat = vorgewaehlt ? modalData.kategorie : 'MA'
   const [kategorie, setKategorie] = useState(initialKat)
   const [kuerzel, setKuerzel] = useState(KATEGORIEN.find(k => k.id === initialKat)?.kuerzel ?? '')
-  // Variante der Mitarbeits-Skala: 'pm' (+ / −), 'pfeil' (↗ / ↘), 'dreistufig' (+ / ~ / −),
-  // 'smiley' (vierstufig). Vorauswahl = zuletzt in einer MA-Spalte gewählte Variante.
-  const letzteMaVariante = (() => {
+  // Mitarbeits-Skala in zwei Schritten: zuerst Stufen (2/3/4), dann die passenden Symbole. Bei
+  // 2-stufig zusätzlich die Darstellung (+/− oder ↗/↘). Vorauswahl = zuletzt genutzte MA-Spalte.
+  const letzteMa = (() => {
     const maSp = (spalten || []).filter(s => s.kategorie === 'MA')
-    if (!maSp.length) return 'pm'
+    if (!maSp.length) return { stufen: 2, darstellung: 'pm' }
     const last = maSp.reduce((a, b) => (b.id > a.id ? b : a))
-    if (last.ma_stufen === 4) return 'smiley'
-    if (last.ma_stufen === 3) return 'dreistufig'
-    return last.ma_symbol === 'pfeil' ? 'pfeil' : 'pm'
+    const st = last.ma_stufen === 4 ? 4 : last.ma_stufen === 3 ? 3 : 2
+    return { stufen: st, darstellung: last.ma_symbol === 'pfeil' ? 'pfeil' : 'pm' }
   })()
-  const [maVariante, setMaVariante] = useState(letzteMaVariante)
+  const [stufen, setStufen] = useState(letzteMa.stufen)
+  const [zweiDarstellung, setZweiDarstellung] = useState(letzteMa.darstellung)
   // Eigene Symbole je Skala: Vorauswahl = zuletzt genutzte eigene Symbole, sonst Default.
-  const letzteSymboleVon = (stufen, laenge, fallback) => {
-    const cols = (spalten || []).filter(s => s.kategorie === 'MA' && s.ma_stufen === stufen && s.ma_symbole)
+  const letzteSymboleVon = (anzStufen, laenge, fallback) => {
+    const cols = (spalten || []).filter(s => s.kategorie === 'MA' && s.ma_stufen === anzStufen && s.ma_symbole)
     if (!cols.length) return fallback
     const last = cols.reduce((a, b) => (b.id > a.id ? b : a))
     try {
@@ -82,14 +73,14 @@ export default function SpalteHinzufuegen({ onClose }) {
   const zeigeNullGewichtHinweis = effektivesGewicht === 0
 
   // 4-stufige Symbole: nur bei „smiley"-Skala. Gültig = 4 nicht-leere, verschiedene Symbole.
-  const istVierstufig = kategorie === 'MA' && maVariante === 'smiley'
+  const istVierstufig = kategorie === 'MA' && stufen === 4
   const symboleTrim = maSymbole.map(s => (s ?? '').trim())
   const symboleGueltig = !istVierstufig ||
     (symboleTrim.every(s => s.length >= 1 && s.length <= 4) && new Set(symboleTrim).size === 4)
   const istDefaultSmileys = symboleTrim.join(' ') === MA_SMILEYS.join(' ')
 
   // 3-stufige Symbole: nur bei „dreistufig"-Skala. Gültig = 3 nicht-leere, verschiedene Symbole.
-  const istDreistufig = kategorie === 'MA' && maVariante === 'dreistufig'
+  const istDreistufig = kategorie === 'MA' && stufen === 3
   const dreiTrim = dreiSymbole.map(s => (s ?? '').trim())
   const dreiGueltig = !istDreistufig ||
     (dreiTrim.every(s => s.length >= 1 && s.length <= 4) && new Set(dreiTrim).size === 3)
@@ -113,8 +104,8 @@ export default function SpalteHinzufuegen({ onClose }) {
         kuerzel: kuerzel.trim(),
         datum: datum || null,
         notiz: notiz.trim() || null,
-        maStufen: istVierstufig ? 4 : (istDreistufig ? 3 : 2),
-        maSymbol: kategorie === 'MA' && maVariante === 'pfeil' ? 'pfeil' : 'pm',
+        maStufen: kategorie === 'MA' ? stufen : 2,
+        maSymbol: kategorie === 'MA' && stufen === 2 && zweiDarstellung === 'pfeil' ? 'pfeil' : 'pm',
         maSymbole: maSymboleSubmit,
       })
       await ladeSpalten()
@@ -166,48 +157,64 @@ export default function SpalteHinzufuegen({ onClose }) {
         {kategorie === 'MA' && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Bewertungsskala</label>
-            <div className="grid grid-cols-2 gap-2">
+            {/* Schritt 1: Stufen wählen */}
+            <div className="grid grid-cols-3 gap-2">
               {[
-                { id: 'pm', label: '+ / −' },
-                { id: 'pfeil', label: '↗ / ↘' },
-                { id: 'dreistufig', label: '+ / ~ / −' },
-                { id: 'smiley', label: '😄 🙂 🙁 😞' },
-              ].map(v => {
-                const info = SKALA_INFO[v.id]
-                const aktiv = maVariante === v.id
+                { n: 2, label: '2-stufig', info: 'Positiv / negativ – + / − oder ↗ / ↘.' },
+                { n: 3, label: '3-stufig', info: 'Positiv / neutral / negativ (~ = Note 3).' },
+                { n: 4, label: '4-stufig', info: 'Sehr positiv … sehr negativ (😄 zählt stärker als 🙂).' },
+              ].map(o => {
+                const aktiv = stufen === o.n
                 const cls = aktiv
                   ? 'border-coral-500 bg-coral-50 dark:bg-coral-900 text-coral-700 dark:text-coral-300'
                   : 'border-transparent bg-paper-100 dark:bg-ink-700 text-ink-700 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-600'
                 return (
-                  <div key={v.id} className="relative group">
+                  <div key={o.n} className="relative group">
                     <button
                       type="button"
                       className={`w-full px-2 py-2 rounded-lg text-sm font-medium transition-colors border-2 ${cls}`}
-                      onClick={() => setMaVariante(v.id)}
+                      onClick={() => setStufen(o.n)}
                     >
-                      {v.label}
+                      {o.label}
                     </button>
-                    {/* Hover-Tooltip mit Info zur Bewertungsvariante */}
+                    {/* Hover-Tooltip mit Info zur Stufen-Anzahl */}
                     <div className="pointer-events-none absolute z-30 left-1/2 -translate-x-1/2 top-full mt-1.5 w-44 rounded-lg border border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-800 shadow-xl p-2 text-[11px] leading-snug text-ink-600 dark:text-paper-300 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                      <p className="font-semibold text-ink-700 dark:text-paper-200 mb-0.5">{info.titel}</p>
-                      {info.text}
+                      {o.info}
                     </div>
                   </div>
                 )
               })}
             </div>
-            <p className="mt-2 text-xs text-ink-500 dark:text-ink-400 leading-snug">
-              {maVariante === 'smiley'
-                ? '4-stufig von sehr positiv bis sehr negativ (😄 zählt stärker als 🙂). Standard sind Smileys 😄🙂🙁😞 – unten durch eigene Symbole ersetzbar.'
-                : maVariante === 'dreistufig'
-                  ? 'Drei Stufen: positiv (Note 1), neutral ~ (Note 3), negativ (Note 5). Symbole unten frei wählbar.'
-                  : maVariante === 'pfeil'
-                    ? '↗ / ↘ ist nur eine andere Darstellung von + / − – die Bewertung ist identisch.'
-                    : 'Positiv (+) und negativ (−). Alle Aufzeichnungen ergeben zusammen die Mitarbeitsnote.'}
-            </p>
+            {/* Schritt 2a: 2-stufig → Darstellung (+/− oder ↗/↘) */}
+            {stufen === 2 && (
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-ink-600 dark:text-paper-300 mb-1.5">Darstellung</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[{ id: 'pm', label: '+ / −' }, { id: 'pfeil', label: '↗ / ↘' }].map(d => {
+                    const aktiv = zweiDarstellung === d.id
+                    const cls = aktiv
+                      ? 'border-coral-500 bg-coral-50 dark:bg-coral-900 text-coral-700 dark:text-coral-300'
+                      : 'border-transparent bg-paper-100 dark:bg-ink-700 text-ink-700 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-600'
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        className={`w-full px-2 py-2 rounded-lg text-sm font-medium transition-colors border-2 ${cls}`}
+                        onClick={() => setZweiDarstellung(d.id)}
+                      >
+                        {d.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="mt-2 text-[11px] text-ink-400 dark:text-ink-500 leading-snug">
+                  ↗ / ↘ ist nur eine andere Darstellung von + / −. Alle Aufzeichnungen ergeben zusammen die Mitarbeitsnote.
+                </p>
+              </div>
+            )}
 
-            {/* Eigene Symbole für die 4-stufige Skala */}
-            {maVariante === 'smiley' && (
+            {/* Schritt 2b: 4-stufig → eigene Symbole */}
+            {stufen === 4 && (
               <div className="mt-3">
                 <label className="block text-xs font-medium text-ink-600 dark:text-paper-300 mb-1.5">Symbole (sehr positiv → sehr negativ)</label>
                 <div className="grid grid-cols-4 gap-2">
@@ -238,8 +245,8 @@ export default function SpalteHinzufuegen({ onClose }) {
               </div>
             )}
 
-            {/* Eigene Symbole für die 3-stufige Skala (positiv → negativ) */}
-            {maVariante === 'dreistufig' && (
+            {/* Schritt 2c: 3-stufig → eigene Symbole (positiv → negativ) */}
+            {stufen === 3 && (
               <div className="mt-3">
                 <label className="block text-xs font-medium text-ink-600 dark:text-paper-300 mb-1.5">Symbole (positiv → negativ)</label>
                 <div className="grid grid-cols-3 gap-2">
