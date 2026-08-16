@@ -51,6 +51,15 @@ INSERT INTO schueler (id, klasse_id, vorname, nachname, reihenfolge, aktiv) VALU
   (5, 1, 'Emma',  'Auer',       5, 1),
   (6, 1, 'Felix', 'Xaver',      6, 0);
 
+-- ── Klassen-Mitgliedschaft (n:m) – spiegelt die Stammklasse-Zuordnung oben ──────────
+INSERT INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse) VALUES
+  (1, 1, 1, 1, 1),
+  (1, 2, 2, 1, 1),
+  (1, 3, 3, 1, 1),
+  (1, 4, 4, 1, 1),
+  (1, 5, 5, 1, 1),
+  (1, 6, 6, 0, 1);
+
 -- ── Spalten (Fach 1 = Deutsch) ──────────────────────────────────────────────
 INSERT INTO spalten (id, fach_id, semester, kategorie, kuerzel, datum, reihenfolge) VALUES
   (1, 1, 1, 'SA', 'SA1', '2025-10-15', 1),

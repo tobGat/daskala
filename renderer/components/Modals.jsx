@@ -121,17 +121,33 @@ export function KlasseHinzufuegenModal() {
 
 // ─── Fach hinzufügen ──────────────────────────────────────────────────────────
 // Gemeinsame Alle/Auswahl-Schülerauswahl (Fach anlegen & Fach-Zuordnung bearbeiten)
+// Auswahl der Fach-/Gruppen-Mitglieder. „Ganze Klasse" = alle_schueler=1 (die Heimatklasse des
+// Fachs). „Auswahl" = manuelle, KLASSENÜBERGREIFENDE Zusammenstellung (Personen aus beliebigen Klassen);
+// dafür wird die schuljahrweite Liste nach Klasse gruppiert angeboten (Personen mit `klassen`-Feld).
 function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt }) {
   const toggle = (id) => setAusgewaehlt(prev => {
     const n = new Set(prev)
     if (n.has(id)) n.delete(id); else n.add(id)
     return n
   })
+  // Nach Klasse gruppieren (aus s.klassen); Personen in mehreren Klassen erscheinen je Klasse.
+  const gruppen = (() => {
+    const byId = new Map()
+    for (const s of schueler) {
+      const ks = (s.klassen && s.klassen.length) ? s.klassen : [{ id: 0, name: '' }]
+      for (const k of ks) {
+        if (!byId.has(k.id)) byId.set(k.id, { klasse: k, liste: [] })
+        byId.get(k.id).liste.push(s)
+      }
+    }
+    return [...byId.values()].sort((a, b) => (a.klasse.name || '').localeCompare(b.klasse.name || ''))
+  })()
+  const alleIds = schueler.map(s => s.id)
   return (
     <div className="mb-5">
       <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Schüler:innen</label>
       <div className="flex gap-2 mb-2">
-        {[[true, 'Alle Schüler:innen'], [false, 'Auswahl']].map(([val, label]) => (
+        {[[true, 'Ganze Klasse'], [false, 'Auswahl']].map(([val, label]) => (
           <button key={String(val)} type="button" onClick={() => setAlle(val)}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
               alle === val
@@ -145,26 +161,33 @@ function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt 
       {!alle && (
         <>
           <div className="flex justify-between items-center text-xs text-ink-400 mb-1 px-1">
-            <span>{ausgewaehlt.size} von {schueler.length} ausgewählt</span>
+            <span>{ausgewaehlt.size} ausgewählt (klassenübergreifend möglich)</span>
             <span className="flex gap-2">
-              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(new Set(schueler.map(s => s.id)))}>Alle</button>
+              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(new Set(alleIds))}>Alle</button>
               <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(new Set())}>Keine</button>
             </span>
           </div>
-          <div className="max-h-52 overflow-y-auto space-y-0.5 border border-paper-200 dark:border-ink-700 rounded-lg p-1">
+          <div className="max-h-60 overflow-y-auto space-y-1 border border-paper-200 dark:border-ink-700 rounded-lg p-1">
             {schueler.length === 0 ? (
-              <p className="text-sm text-ink-400 text-center py-3">Keine Schüler:innen in der Klasse</p>
-            ) : schueler.map(s => {
-              const on = ausgewaehlt.has(s.id)
-              return (
-                <button type="button" key={s.id} onClick={() => toggle(s.id)}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${on ? 'bg-coral-50 dark:bg-coral-900/30' : 'hover:bg-paper-50 dark:hover:bg-ink-800'}`}>
-                  <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${on ? 'bg-coral-600 border-coral-600 text-white' : 'border-paper-300 dark:border-ink-600'}`}>{on ? '✓' : ''}</span>
-                  <SchuelerAvatar schueler={s} size={24} />
-                  <span className="text-sm text-ink-800 dark:text-paper-200 flex-1 truncate">{s.nachname} {s.vorname}</span>
-                </button>
-              )
-            })}
+              <p className="text-sm text-ink-400 text-center py-3">Keine Schüler:innen vorhanden</p>
+            ) : gruppen.map(g => (
+              <div key={g.klasse.id}>
+                {g.klasse.name && (
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-ink-400 dark:text-ink-500 px-2 pt-1.5 pb-0.5">{g.klasse.name}</div>
+                )}
+                {g.liste.map(s => {
+                  const on = ausgewaehlt.has(s.id)
+                  return (
+                    <button type="button" key={`${g.klasse.id}_${s.id}`} onClick={() => toggle(s.id)}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${on ? 'bg-coral-50 dark:bg-coral-900/30' : 'hover:bg-paper-50 dark:hover:bg-ink-800'}`}>
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${on ? 'bg-coral-600 border-coral-600 text-white' : 'border-paper-300 dark:border-ink-600'}`}>{on ? '✓' : ''}</span>
+                      <SchuelerAvatar schueler={s} size={24} />
+                      <span className="text-sm text-ink-800 dark:text-paper-200 flex-1 truncate">{s.nachname} {s.vorname}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
           </div>
         </>
       )}
@@ -173,7 +196,8 @@ function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt 
 }
 
 export function FachHinzufuegenModal() {
-  const { closeModal, aktiveKlasse, schueler, ladeAktiveKlassenliste } = useStore()
+  const { closeModal, aktiveKlasse, alleSchueler: alleSchuelerListe, ladeAlleSchueler, ladeAktiveKlassenliste } = useStore()
+  useEffect(() => { ladeAlleSchueler() }, [ladeAlleSchueler])
   const [name, setName] = useState('')
   const [farbe, setFarbe] = useState(null)
   const [benotungssystem, setBenotungssystem] = useState('standard')
@@ -239,7 +263,7 @@ export function FachHinzufuegenModal() {
           </div>
         </div>
         <SchuelerAuswahl
-          schueler={schueler}
+          schueler={alleSchuelerListe}
           alle={alleSchueler}
           setAlle={setAlleSchueler}
           ausgewaehlt={ausgewaehlt}
@@ -258,12 +282,13 @@ export function FachHinzufuegenModal() {
 
 // ─── Fach-Zuordnung nachträglich bearbeiten (prop-getrieben, aus dem Fach-Kontextmenü) ──
 export function FachSchuelerModal({ fach, onClose, onSaved }) {
-  const { schueler } = useStore()
+  const { alleSchueler: alleSchuelerListe, ladeAlleSchueler } = useStore()
   const [alle, setAlle] = useState(fach.alle_schueler !== 0)
   const [ausgewaehlt, setAusgewaehlt] = useState(() => new Set())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  useEffect(() => { ladeAlleSchueler() }, [ladeAlleSchueler])
   useEffect(() => {
     window.api.faecher.getSchuelerIds(fach.id).then(ids => {
       if (fach.alle_schueler === 0) { setAlle(false); setAusgewaehlt(new Set(ids)) }
@@ -293,7 +318,7 @@ export function FachSchuelerModal({ fach, onClose, onSaved }) {
         {loading ? (
           <p className="text-sm text-ink-400 py-6 text-center">Lade…</p>
         ) : (
-          <SchuelerAuswahl schueler={schueler} alle={alle} setAlle={setAlle} ausgewaehlt={ausgewaehlt} setAusgewaehlt={setAusgewaehlt} />
+          <SchuelerAuswahl schueler={alleSchuelerListe} alle={alle} setAlle={setAlle} ausgewaehlt={ausgewaehlt} setAusgewaehlt={setAusgewaehlt} />
         )}
         <div className="flex gap-3">
           <button className="btn-secondary flex-1" onClick={onClose} disabled={saving}>Abbrechen</button>
@@ -388,7 +413,7 @@ export function SchuelerVerwaltenModal() {
     })
   }
   const handleReihenfolgeSpeichern = async () => {
-    await window.api.schueler.reorder(reihenfolgeListe.map((s, i) => ({ id: s.id, reihenfolge: i })))
+    await window.api.schueler.reorder(aktiveKlasse.id, reihenfolgeListe.map((s, i) => ({ id: s.id, reihenfolge: i })))
     await ladeSchueler()
     setReorderModus(false)
   }
@@ -431,9 +456,13 @@ export function SchuelerVerwaltenModal() {
     }
   }
 
+  // Klassen-Modal: „Löschen" = aus DIESER Klasse entfernen (Mitgliedschaft). Ist es die einzige
+  // Klasse der Person, deaktiviert der Kern die Person (wie bisher). Andere Klassen bleiben.
   const handleLoeschen = async (id) => {
-    await window.api.schueler.delete(id)
+    await window.api.schueler.entferneAusKlasse(id, aktiveKlasse.id)
     await ladeSchueler()
+    const { aktivesFach, ladeFachDaten } = useStore.getState()
+    if (aktivesFach) await ladeFachDaten(aktivesFach.id)
   }
 
   const handleToggle = async (s, feld) => {

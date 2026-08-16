@@ -8,6 +8,14 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.6.0',
+    datum: '2026-08-16',
+    punkte: [
+      'Zentrale Schüler:innen-Verwaltung: Der neue Button „Schüler:innen" (neben „Dashboard") zeigt alle Schüler:innen des Schuljahrs auf einen Blick – mit Merkmalen (Lernschwäche/Legasthenie/SPF), Klassen- und Fächer-Zuordnung. Merkmale, Namen und die Klassen-Zuordnung lassen sich hier zentral bearbeiten.',
+      'Klassenübergreifende Gruppen: Schüler:innen können jetzt mehreren Klassen angehören. Lege ein Fach mit „Auswahl" an und stelle die Gruppe aus Schüler:innen beliebiger Klassen zusammen (im Dialog nach Klasse gruppiert). Neu angelegte Personen werden global gespeichert und automatisch der aktuellen Klasse zugeordnet.',
+    ],
+  },
+  {
     version: '1.5.0',
     datum: '2026-08-16',
     punkte: [

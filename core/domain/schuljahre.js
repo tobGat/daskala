@@ -27,9 +27,12 @@ async function letztesArchivWiederherstellen(db) {
   return db.transaction(async (tx) => {
     await tx.execute('UPDATE schuljahre SET archiviert = 0 WHERE id = ?', [archiv.id])
     await tx.execute('UPDATE schueler SET aktiv = 1 WHERE klasse_id IN (SELECT id FROM klassen WHERE schuljahr_id = ?)', [archiv.id])
+    // Roster liest die Mitgliedschaft (klassen_schueler.aktiv) → konsistent mitziehen.
+    await tx.execute('UPDATE klassen_schueler SET aktiv = 1 WHERE klasse_id IN (SELECT id FROM klassen WHERE schuljahr_id = ?)', [archiv.id])
     if (aktuell && aktuell.id !== archiv.id) {
       await tx.execute('UPDATE schuljahre SET archiviert = 1 WHERE id = ?', [aktuell.id])
       await tx.execute('UPDATE schueler SET aktiv = 0 WHERE klasse_id IN (SELECT id FROM klassen WHERE schuljahr_id = ?)', [aktuell.id])
+      await tx.execute('UPDATE klassen_schueler SET aktiv = 0 WHERE klasse_id IN (SELECT id FROM klassen WHERE schuljahr_id = ?)', [aktuell.id])
     }
     await tx.execute('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)', ['schuljahr_aktuell', archiv.bezeichnung])
     return {

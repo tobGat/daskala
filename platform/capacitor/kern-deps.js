@@ -17,6 +17,7 @@ export function createMobileKernDeps(dbPort) {
     berechneAlleFuerFach: (fachId) => noten.berechneAlleFuerFach(dbPort, fachId),
     berechneZeugnisnote: (fachId, sId) => noten.berechneZeugnisnote(dbPort, fachId, sId),
     rosterIdsFuerFach: (fachId, opts) => noten.rosterIdsFuerFach(dbPort, fachId, opts),
+    rosterFuerFach: (fachId, opts) => noten.rosterFuerFach(dbPort, fachId, opts),
     pruefeNotenTrigger: (...a) => noten.pruefeNotenTrigger(dbPort, ...a),
     pruefeFehlstundenSchwellen: (sId) => noten.pruefeFehlstundenSchwellen(dbPort, sId),
     erzeugeTrigger: (...a) => noten.erzeugeTrigger(dbPort, ...a),

@@ -28,6 +28,9 @@ function setup(globalFaktor) {
   const fId = db.prepare('INSERT INTO faecher (klasse_id, name, alle_schueler) VALUES (?, ?, 1)').run(kId, 'M').lastInsertRowid
   const sA = db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname, aktiv) VALUES (?, ?, ?, 1)').run(kId, 'A', 'A').lastInsertRowid
   const sB = db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname, aktiv) VALUES (?, ?, ?, 1)').run(kId, 'B', 'B').lastInsertRowid
+  // Klassen-Mitgliedschaft (n:m) – nötig, damit der Roster (alle_schueler=1) beide erfasst.
+  db.prepare('INSERT INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse) VALUES (?, ?, 1, 1, 1)').run(kId, sA)
+  db.prepare('INSERT INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse) VALUES (?, ?, 2, 1, 1)').run(kId, sB)
   const sa = [{ note: 4, datum: '2025-10-01' }, { note: 3, datum: '2025-11-01' }, { note: 2, datum: '2025-12-01' }]
   sa.forEach(({ note, datum }, i) => {
     const spId = db.prepare('INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge) VALUES (?, 1, ?, ?, ?, ?)')

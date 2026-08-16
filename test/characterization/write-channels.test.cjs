@@ -23,7 +23,7 @@ const CASES = [
   // Sonderfall: manuelle Kaskade beim Löschen einer Klasse (Klasse 1 = voller Baum).
   { name: 'klassen:delete (Kaskade)', channel: 'klassen:delete', args: [1], tables: ['klassen', 'faecher', 'schueler', 'eintraege', 'zeugnisnoten', 'notizen'] },
   { name: 'faecher:create', channel: 'faecher:create', args: [{ klasseId: 1, name: 'Englisch', farbe: null, benotungssystem: 'standard', alleSchueler: 1 }], tables: ['faecher'] },
-  { name: 'schueler:create', channel: 'schueler:create', args: [{ klasseId: 1, vorname: 'Greta', nachname: 'Novak', fachIds: [1] }], tables: ['schueler', 'fach_schueler'] },
+  { name: 'schueler:create', channel: 'schueler:create', args: [{ klasseId: 1, vorname: 'Greta', nachname: 'Novak', fachIds: [1] }], tables: ['schueler', 'klassen_schueler', 'fach_schueler'] },
   { name: 'spalten:create', channel: 'spalten:create', args: [{ fachId: 1, semester: 2, kategorie: 'SA', kuerzel: 'SA2', datum: '2026-03-10', notiz: null }], tables: ['spalten'] },
   { name: 'eintraege:set (neu)', channel: 'eintraege:set', args: [1, 3, '4'], tables: ['eintraege', 'eintraege_verlauf'] },
   { name: 'eintraege:set (update)', channel: 'eintraege:set', args: [1, 1, '1'], tables: ['eintraege', 'eintraege_verlauf'] },
@@ -42,7 +42,7 @@ const CASES = [
   { name: 'schuljahre:create', channel: 'schuljahre:create', args: ['2026/27'], tables: ['schuljahre'] },
   // Letztes Archiv (SJ 2) wird wieder aktuell, SJ 1 wandert ins Archiv (Tausch, nichts gelöscht);
   // Schüler:innen des nun archivierten SJ 1 werden deaktiviert.
-  { name: 'schuljahre:letztesArchivWiederherstellen', channel: 'schuljahre:letztesArchivWiederherstellen', args: [], tables: ['schuljahre', 'schueler'] },
+  { name: 'schuljahre:letztesArchivWiederherstellen', channel: 'schuljahre:letztesArchivWiederherstellen', args: [], tables: ['schuljahre', 'schueler', 'klassen_schueler'] },
   // Archiviertes Schuljahr (SJ 2) endgültig löschen.
   { name: 'schuljahre:loeschen', channel: 'schuljahre:loeschen', args: [2], tables: ['schuljahre'] },
   { name: 'klassen:rename', channel: 'klassen:rename', args: [1, '1A neu'], tables: ['klassen'] },
@@ -62,8 +62,10 @@ const CASES = [
   // ── Schüler:innen ──────────────────────────────────────────────────────────
   { name: 'schueler:update', channel: 'schueler:update', args: [1, { vorname: 'Anna-Maria', nachname: 'Bauer', lernschwaeche: 1 }], tables: ['schueler'] },
   { name: 'schueler:setAvatar', channel: 'schueler:setAvatar', args: [1, 'DSK1|test'], tables: ['schueler'] },
-  { name: 'schueler:reorder', channel: 'schueler:reorder', args: [[{ id: 1, reihenfolge: 9 }, { id: 2, reihenfolge: 1 }]], tables: ['schueler'] },
+  { name: 'schueler:reorder', channel: 'schueler:reorder', args: [1, [{ id: 1, reihenfolge: 9 }, { id: 2, reihenfolge: 1 }]], tables: ['klassen_schueler'] },
   { name: 'schueler:delete', channel: 'schueler:delete', args: [6], tables: ['schueler'] },
+  { name: 'schueler:entferneAusKlasse', channel: 'schueler:entferneAusKlasse', args: [5, 1], tables: ['klassen_schueler', 'schueler'] },
+  { name: 'schueler:setKlassen', channel: 'schueler:setKlassen', args: [1, [1, 2]], tables: ['klassen_schueler', 'zeugnisnoten'] },
 
   // ── Spalten / Einträge / Zeugnisnoten ──────────────────────────────────────
   { name: 'spalten:update', channel: 'spalten:update', args: [1, { kuerzel: 'SA1x', datum: '2025-10-16', notiz: 'geändert' }], tables: ['spalten'] },
@@ -161,11 +163,11 @@ const CASES = [
   // ── Weitere DB-Writes (Vorlagen, Import, Duplizieren, Planung übertragen) ──
   { name: 'kompetenzbereiche:initVorlagen', channel: 'kompetenzbereiche:initVorlagen', args: [2, 'Musik'], tables: ['kompetenzbereiche'] },
   { name: 'stundenzeiten:saveAll', channel: 'stundenzeiten:saveAll', args: [[{ id: 1, beginn: '07:55', ende: '08:45' }, { beginn: '08:50', ende: '09:40' }]], tables: ['stundenzeiten'] },
-  { name: 'schueler:importBatch', channel: 'schueler:importBatch', args: [1, [{ vorname: 'Ida', nachname: 'Wolf' }, { vorname: 'Jan', nachname: 'Vogel' }], [1]], tables: ['schueler', 'fach_schueler'] },
+  { name: 'schueler:importBatch', channel: 'schueler:importBatch', args: [1, [{ vorname: 'Ida', nachname: 'Wolf' }, { vorname: 'Jan', nachname: 'Vogel' }], [1]], tables: ['schueler', 'klassen_schueler', 'fach_schueler'] },
   { name: 'stundenPlanung:setEntfall', channel: 'stundenPlanung:setEntfall', args: [1, '2025-10-20', false, []], tables: ['stunden_planung'] },
   { name: 'jahresplanung:importVonFach', channel: 'jahresplanung:importVonFach', args: [1, 3, {}], tables: ['jahresplanung_abschnitte'] },
   { name: 'jahresplanung:anwendenAufFaecher', channel: 'jahresplanung:anwendenAufFaecher', args: [1, [3], {}], tables: ['jahresplanung_abschnitte'] },
-  { name: 'klassen:duplizieren', channel: 'klassen:duplizieren', args: [{ klasseId: 1, neuerName: '1A Kopie', mitPlanung: false, mitSchueler: true }], tables: ['klassen', 'faecher', 'schueler'] },
+  { name: 'klassen:duplizieren', channel: 'klassen:duplizieren', args: [{ klasseId: 1, neuerName: '1A Kopie', mitPlanung: false, mitSchueler: true }], tables: ['klassen', 'faecher', 'schueler', 'klassen_schueler'] },
 
   // ── Undo (leerer Stack → deterministisch) ──────────────────────────────────
   { name: 'undo:state', channel: 'undo:state', args: [], tables: [] },

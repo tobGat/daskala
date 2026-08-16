@@ -140,6 +140,21 @@ export default function KlassenTabs() {
         </button>
       )}
 
+      {/* Zentrale Schüler:innen-Verwaltung (klassenübergreifend) */}
+      {!vorlagenModus && (
+        <button
+          className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all
+            ${currentView === 'schueler'
+              ? 'bg-white dark:bg-ink-800 text-coral-600 dark:text-coral-300 shadow-soft'
+              : 'text-ink-600 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300 hover:bg-paper-200 dark:hover:bg-ink-800'}`}
+          onClick={() => setCurrentView('schueler')}
+          title="Zentrale Schüler:innen-Verwaltung (alle Klassen, Zuordnungen, Details)"
+        >
+          <span aria-hidden>🙋</span>
+          Schüler:innen
+        </button>
+      )}
+
       {/* KV-Button (nur sichtbar wenn mindestens eine KV-Klasse existiert) */}
       {!vorlagenModus && klassen.some(k => k.ist_kv) && (
         <button
@@ -194,7 +209,7 @@ export default function KlassenTabs() {
                     setAktiveKlasse(k)
                     setKlasseDropdown(null)
                     setCurrentView('jahresplanung')
-                  } else if (currentView === 'stundenplan' || currentView === 'kv') {
+                  } else if (currentView === 'stundenplan' || currentView === 'kv' || currentView === 'schueler') {
                     setAktiveKlasse(k)
                     setKlasseDropdown(null)
                     setCurrentView('notentabelle')

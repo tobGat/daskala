@@ -217,8 +217,19 @@ async function rosterFuerFach(db, fachId, opts = {}) {
   if (!fach) return []
   const inkl = opts.inklInaktiv === true
   if (fach.alle_schueler) {
-    return db.select(`SELECT * FROM schueler WHERE klasse_id = ?${inkl ? '' : ' AND aktiv = 1'} ORDER BY reihenfolge, nachname, vorname`, [fach.klasse_id])
+    // Alle Mitglieder der Fach-Klasse (n:m über klassen_schueler). aktiv = Mitgliedschafts-Status
+    // PRO Klasse; reihenfolge kommt aus der Junction. So erscheinen auch klassenübergreifend
+    // zugeordnete Schüler:innen im Roster genau der Klassen, denen sie angehören.
+    return db.select(`
+      SELECT s.*, ks.reihenfolge AS reihenfolge
+      FROM schueler s
+      JOIN klassen_schueler ks ON ks.schueler_id = s.id
+      WHERE ks.klasse_id = ?${inkl ? '' : ' AND ks.aktiv = 1'}
+      ORDER BY ks.reihenfolge, s.nachname, s.vorname
+    `, [fach.klasse_id])
   }
+  // Gruppen-Fach (alle_schueler=0): Roster = fach_schueler (bereits klassenneutral → Mitglieder aus
+  // beliebigen Klassen möglich). aktiv-Filter auf die Person.
   return db.select(`
     SELECT s.* FROM schueler s
     JOIN fach_schueler fs ON fs.schueler_id = s.id

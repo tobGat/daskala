@@ -340,6 +340,57 @@
           "uuid": "<UUID>"
         }
       ],
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 5,
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 7,
+          "reihenfolge": 7,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        }
+      ],
       "fach_schueler": []
     }
   },
@@ -927,6 +978,50 @@
           "spf": 0,
           "avatar": null,
           "uuid": null
+        }
+      ],
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 5,
+          "reihenfolge": 5,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
         }
       ]
     }
@@ -1896,84 +1991,48 @@
   "schueler:reorder": {
     "ret": true,
     "state": {
-      "schueler": [
+      "klassen_schueler": [
         {
-          "id": 1,
           "klasse_id": 1,
-          "vorname": "Anna",
-          "nachname": "Bauer",
+          "schueler_id": 1,
           "reihenfolge": 9,
           "aktiv": 1,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         },
         {
-          "id": 2,
           "klasse_id": 1,
-          "vorname": "Ben",
-          "nachname": "Auer",
+          "schueler_id": 2,
           "reihenfolge": 1,
           "aktiv": 1,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         },
         {
-          "id": 3,
           "klasse_id": 1,
-          "vorname": "Clara",
-          "nachname": "Zimmermann",
+          "schueler_id": 3,
           "reihenfolge": 3,
           "aktiv": 1,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         },
         {
-          "id": 4,
           "klasse_id": 1,
-          "vorname": "David",
-          "nachname": "Müller",
+          "schueler_id": 4,
           "reihenfolge": 4,
           "aktiv": 1,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         },
         {
-          "id": 5,
           "klasse_id": 1,
-          "vorname": "Emma",
-          "nachname": "Auer",
+          "schueler_id": 5,
           "reihenfolge": 5,
           "aktiv": 1,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         },
         {
-          "id": 6,
           "klasse_id": 1,
-          "vorname": "Felix",
-          "nachname": "Xaver",
+          "schueler_id": 6,
           "reihenfolge": 6,
           "aktiv": 0,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         }
       ]
     }
@@ -2058,6 +2117,206 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "uuid": null
+        }
+      ]
+    }
+  },
+  "schueler:entferneAusKlasse": {
+    "ret": true,
+    "state": {
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        }
+      ],
+      "schueler": [
+        {
+          "id": 1,
+          "klasse_id": 1,
+          "vorname": "Anna",
+          "nachname": "Bauer",
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "klasse_id": 1,
+          "vorname": "Ben",
+          "nachname": "Auer",
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 3,
+          "klasse_id": 1,
+          "vorname": "Clara",
+          "nachname": "Zimmermann",
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 1,
+          "vorname": "David",
+          "nachname": "Müller",
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 5,
+          "klasse_id": 1,
+          "vorname": "Emma",
+          "nachname": "Auer",
+          "reihenfolge": 5,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 6,
+          "klasse_id": 1,
+          "vorname": "Felix",
+          "nachname": "Xaver",
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        }
+      ]
+    }
+  },
+  "schueler:setKlassen": {
+    "ret": true,
+    "state": {
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 5,
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 2,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 0
+        }
+      ],
+      "zeugnisnoten": [
+        {
+          "id": 1,
+          "fach_id": 1,
+          "schueler_id": 1,
+          "semester": 3,
+          "note_berechnet": 2,
+          "note_manuell": null,
+          "s1_eingerechnet": 1,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "fach_id": 1,
+          "schueler_id": 2,
+          "semester": 3,
+          "note_berechnet": null,
+          "note_manuell": 3,
+          "s1_eingerechnet": 1,
           "uuid": null
         }
       ]
@@ -3999,7 +4258,7 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
-          "uuid": null
+          "uuid": "<UUID>"
         },
         {
           "id": 8,
@@ -4012,7 +4271,65 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
-          "uuid": null
+          "uuid": "<UUID>"
+        }
+      ],
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 5,
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 7,
+          "reihenfolge": 7,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 8,
+          "reihenfolge": 8,
+          "aktiv": 1,
+          "ist_stammklasse": 1
         }
       ],
       "fach_schueler": []
@@ -4476,6 +4793,85 @@
           "spf": 0,
           "avatar": null,
           "uuid": "<UUID>"
+        }
+      ],
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 5,
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 5,
+          "schueler_id": 7,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 5,
+          "schueler_id": 8,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 5,
+          "schueler_id": 9,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 5,
+          "schueler_id": 10,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 5,
+          "schueler_id": 11,
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "ist_stammklasse": 1
         }
       ]
     }

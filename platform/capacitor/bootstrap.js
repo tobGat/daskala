@@ -51,6 +51,23 @@ async function spalteErgaenzenWennFehlt(dbPort, tabelle, spalte, definition) {
   }
 }
 
+// Einmaliger Backfill der Klassen-Mitgliedschaft (n:m) aus der alten schueler.klasse_id-Bindung.
+// MUSS flag-geschützt sein: die MIGRATIONS laufen bei JEDEM Start, ein unbedingtes INSERT würde
+// später gelöschte Mitgliedschaften bei jedem Start wieder auferstehen lassen.
+async function backfillKlassenSchuelerEinmalig(dbPort) {
+  try {
+    const flag = await dbPort.select("SELECT wert FROM einstellungen WHERE schluessel = 'migr_v5_klassen_schueler'")
+    if (flag.length) return
+    await dbPort.execute(`
+      INSERT OR IGNORE INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse)
+      SELECT klasse_id, id, reihenfolge, aktiv, 1 FROM schueler
+    `)
+    await dbPort.execute("INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES ('migr_v5_klassen_schueler', '1')")
+  } catch (e) {
+    console.error('[daskala:mobile] migration:klassen_schueler', e)
+  }
+}
+
 export async function bootstrapMobile() {
   markiereMobil()
   const conn = await oeffneVerbindung()
@@ -66,5 +83,7 @@ export async function bootstrapMobile() {
   await spalteErgaenzenWennFehlt(dbPort, 'faecher', 'gewichtung_man', 'REAL')
   await spalteErgaenzenWennFehlt(dbPort, 'spalten', 'ma_symbole', 'TEXT')
   await seedDemoWennLeer(dbPort)
+  // Nach dem Seed: Junction einmalig aus schueler.klasse_id backfillen (erfasst auch Demo-Daten).
+  await backfillKlassenSchuelerEinmalig(dbPort)
   window.api = createMobileApi(dbPort)
 }

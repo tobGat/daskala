@@ -35,7 +35,9 @@ const useStore = create((set, get) => ({
 
   // ─── Daten ───────────────────────────────────────────────────────────────
   schueler: [],
+  fachSchueler: [],             // volle Roster-Zeilen des AKTIVEN Fachs (inkl. klassenfremder Mitglieder)
   fachSchuelerIds: new Set(),   // ids der im AKTIVEN Fach sichtbaren Schüler:innen (Gruppen-Roster)
+  alleSchueler: [],             // zentrale Verwaltung: alle Schüler:innen des Schuljahrs (mit Klassen/Fächern)
   spalten: [],
   eintraege: {},   // { spalte_id_schueler_id: wert }
   kommentare: {},  // { spalte_id_schueler_id: kommentar }
@@ -283,15 +285,16 @@ const useStore = create((set, get) => ({
 
   ladeFachDaten: async (fachId) => {
     const { aktivesFach } = get()
-    const [spalten, eintraegeArr, zeugnisnotenArr, schuelerIdArr, rezenzFaktoren, maNoten, gewichtungSchueler] = await Promise.all([
+    const [spalten, eintraegeArr, zeugnisnotenArr, fachSchueler, rezenzFaktoren, maNoten, gewichtungSchueler] = await Promise.all([
       window.api.spalten.getAll(fachId),
       window.api.eintraege.getAll(fachId),
       window.api.zeugnisnoten.getAll(fachId),
-      window.api.faecher.getSchuelerIds(fachId),
+      window.api.faecher.getRoster(fachId), // volle Roster-Zeilen (inkl. klassenfremder Mitglieder)
       window.api.rezenz.get(fachId),
       window.api.maNote.get(fachId),
       window.api.gewichtungSchueler.get(fachId),
     ])
+    const schuelerIdArr = fachSchueler.map(s => s.id)
 
     const eintraege = {}
     const kommentare = {}
@@ -336,7 +339,7 @@ const useStore = create((set, get) => ({
       }
     })
 
-    set({ spalten, eintraege, kommentare, zeugnisnoten, niveaus, niveauHistorie, rezenzFaktoren, maNoten, gewichtungSchueler, kompetenzbereiche, schuelerKompetenzen, fachSchuelerIds: new Set(schuelerIdArr) })
+    set({ spalten, eintraege, kommentare, zeugnisnoten, niveaus, niveauHistorie, rezenzFaktoren, maNoten, gewichtungSchueler, kompetenzbereiche, schuelerKompetenzen, fachSchueler, fachSchuelerIds: new Set(schuelerIdArr) })
   },
 
   // Lädt die Fach-Objekte der aktiven Klasse neu und aktualisiert aktivesFach IN PLACE (ohne das
@@ -476,6 +479,24 @@ const useStore = create((set, get) => ({
     if (!aktiveKlasse) return
     const schueler = await window.api.schueler.getAll(aktiveKlasse.id)
     set({ schueler })
+  },
+
+  // Zentrale Verwaltung: alle Schüler:innen des aktuellen Schuljahrs (mit Klassen-/Fächer-Zuordnung).
+  ladeAlleSchueler: async () => {
+    const { aktuellesSchuljahr } = get()
+    if (!aktuellesSchuljahr) { set({ alleSchueler: [] }); return }
+    const alleSchueler = await window.api.schueler.getAllImSchuljahr(aktuellesSchuljahr.id)
+    set({ alleSchueler })
+  },
+
+  // Klassen-Zuordnung einer Person setzen (zentrale Verwaltung) und betroffene Ansichten neu laden.
+  setSchuelerKlassen: async (schuelerId, klasseIds) => {
+    await window.api.schueler.setKlassen(schuelerId, klasseIds)
+    await get().ladeAlleSchueler()
+    // Aktive Klasse könnte betroffen sein (Mitglied hinzugefügt/entfernt) → Klassenliste + Fach neu laden.
+    const { aktiveKlasse, aktivesFach } = get()
+    if (aktiveKlasse) await get().ladeSchueler()
+    if (aktivesFach) await get().ladeFachDaten(aktivesFach.id)
   },
 
   // Sortier-Modus der aktiven Klasse setzen ('vorname' | 'nachname' | 'manuell')

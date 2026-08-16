@@ -53,12 +53,15 @@ async function neuesSchuljahr(db, { altesSchuljahreId, neueBezeichnung, klassen 
       if (!klasseIdMapping[z.alteKlasseId]) continue   // Klasse nicht vorgerückt → Schüler:in bleibt im alten Jahr
       if (z.aktion === 'ausgeschieden') {
         await tx.execute('UPDATE schueler SET aktiv = 0 WHERE id = ?', [z.schuelerId])
+        await tx.execute('UPDATE klassen_schueler SET aktiv = 0 WHERE schueler_id = ?', [z.schuelerId])
       } else if (z.aktion === 'bleibt') {
-        // Schüler:in in neuer Klasse anlegen
+        // Schüler:in in neuer Klasse anlegen (Phase 1: neue Person-Zeile pro Jahr) + Mitgliedschaft.
         const s = await tx.selectOne('SELECT * FROM schueler WHERE id = ?', [z.schuelerId])
         const ns = await tx.execute('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge, uuid) VALUES (?, ?, ?, ?, ?)', [klasseIdMapping[z.alteKlasseId], s.vorname, s.nachname, s.reihenfolge, neueUuid()])
         schuelerIdMapping[z.schuelerId] = ns.lastInsertRowid
+        await tx.execute('INSERT INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse) VALUES (?, ?, ?, 1, 1)', [klasseIdMapping[z.alteKlasseId], ns.lastInsertRowid, s.reihenfolge])
         await tx.execute('UPDATE schueler SET aktiv = 0 WHERE id = ?', [z.schuelerId])
+        await tx.execute('UPDATE klassen_schueler SET aktiv = 0 WHERE schueler_id = ?', [z.schuelerId])
       }
     }
 

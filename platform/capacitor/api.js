@@ -80,6 +80,7 @@ export function createMobileApi(dbPort) {
       getAll: (kId) => faecherDomain.getAll(dbPort, kId),
       getAllImSchuljahr: (sjId) => faecherDomain.getAllImSchuljahr(dbPort, sjId),
       getSchuelerIds: (fId) => faecherDomain.getSchuelerIds(dbPort, deps, fId),
+      getRoster: (fId) => deps.rosterFuerFach(fId),
       create: (d) => faecherDomain.create(dbPort, deps, d),
       setBenotungssystem: (id, s) => faecherDomain.setBenotungssystem(dbPort, deps, id, s),
       // Gewichtung pro Fach (SA/Test/Individuell/Mitarbeit); Mitarbeit = gewichtung_ma.
@@ -88,8 +89,12 @@ export function createMobileApi(dbPort) {
     }),
     schueler: dp('schueler', {
       getAll: (kId) => schuelerDomain.getAll(dbPort, kId),
+      getAllImSchuljahr: (sjId) => schuelerDomain.getAllImSchuljahr(dbPort, sjId),
       create: (d) => schuelerDomain.create(dbPort, d),
+      entferneAusKlasse: (id, kId) => schuelerDomain.entferneAusKlasse(dbPort, id, kId),
+      setKlassen: (id, kIds) => schuelerDomain.setKlassen(dbPort, deps, id, kIds),
       update: (id, d) => schuelerDomain.update(dbPort, id, d),
+      reorder: (kId, updates) => schuelerDomain.reorder(dbPort, kId, updates),
       importBatch: (kId, list, fachIds) => schuelerDomain.importBatch(dbPort, kId, list, fachIds),
       getLeistungsProfil: (id) => schuelerDomain.getLeistungsProfil(dbPort, deps, id),
     }),

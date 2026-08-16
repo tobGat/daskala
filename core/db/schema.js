@@ -8,7 +8,7 @@
 
 // Aktuelle Schema-Version. Erhoehen bei neuer EINMALIGER Migration (Daten-Umbau/Rebuild);
 // reine Spalten-Ergaenzungen laufen idempotent ueber spalteErgaenzen().
-const SCHEMA_VERSION = 4
+const SCHEMA_VERSION = 5
 
 // ─── Schema als Daten (Portierung Phase 2.3) ─────────────────────────────────
 //
@@ -196,6 +196,19 @@ const TABLE_DDL = [
       schueler_id INTEGER NOT NULL,
       PRIMARY KEY (fach_id, schueler_id),
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
+  // Klassen-Mitgliedschaft (n:m): eine Schüler:in kann mehreren Klassen angehören.
+  // reihenfolge/aktiv gelten PRO Klasse; ist_stammklasse = KV-/Anzeige-Default (≤1 pro Schuljahr).
+  // Identität über den PK (klasse_id, schueler_id) bzw. die Entitäts-UUIDs – keine eigene uuid nötig.
+  `CREATE TABLE IF NOT EXISTS klassen_schueler (
+      klasse_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      reihenfolge INTEGER DEFAULT 0,
+      aktiv INTEGER DEFAULT 1,
+      ist_stammklasse INTEGER DEFAULT 0,
+      PRIMARY KEY (klasse_id, schueler_id),
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE CASCADE,
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
     )`,
   `CREATE TABLE IF NOT EXISTS schueler_niveau (
@@ -448,6 +461,8 @@ const INDEX_DDL = [
       ON kv_aktenvermerke (klasse_id, datum DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_kv_fehlstunden_schueler
       ON kv_fehlstunden (schueler_id, datum)`,
+  `CREATE INDEX IF NOT EXISTS idx_klassen_schueler_schueler
+      ON klassen_schueler (schueler_id)`,
   // UUID-Weiche (Phase 2.4): geräteübergreifend eindeutige Identität je Entität
   // für ein späteres Zusammenführen. UNIQUE-Index; mehrere NULL sind in SQLite
   // erlaubt, daher stören noch nicht befüllte Zeilen die Eindeutigkeit nicht.
@@ -732,6 +747,22 @@ function applySchema(db, deps) {
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
     )
   `)
+
+  // Klassen-Mitgliedschaft (n:m) – Schüler:in kann mehreren Klassen angehören. reihenfolge/aktiv
+  // pro Klasse, ist_stammklasse = KV-/Anzeige-Default. Backfill aus schueler.klasse_id unten (v<5).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS klassen_schueler (
+      klasse_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      reihenfolge INTEGER DEFAULT 0,
+      aktiv INTEGER DEFAULT 1,
+      ist_stammklasse INTEGER DEFAULT 0,
+      PRIMARY KEY (klasse_id, schueler_id),
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_klassen_schueler_schueler ON klassen_schueler (schueler_id)`)
 
   // Schüler-Niveau pro Fach (AHS/ST-Differenzierung) — aktueller Stand
   db.exec(`
@@ -1303,6 +1334,19 @@ function applySchema(db, deps) {
       db.prepare("DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE kategorie = 'MAN')").run()
       db.prepare("DELETE FROM spalten WHERE kategorie = 'MAN'").run()
     } catch (e) { deps.logError('migration:man-entfernen', e) }
+  }
+
+  if (schemaVersion < 5) {
+    // Klassen-Mitgliedschaft n:m: bestehende 1:1-Bindung (schueler.klasse_id) in die neue Junction
+    // backfillen – je Bestands-Schüler:in genau eine Zeile mit ist_stammklasse=1. reihenfolge/aktiv
+    // 1:1 übernehmen. Einmalig (user_version-gesteuert), damit gelöschte Mitgliedschaften nicht
+    // wieder auferstehen.
+    try {
+      db.prepare(`
+        INSERT OR IGNORE INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse)
+        SELECT klasse_id, id, reihenfolge, aktiv, 1 FROM schueler
+      `).run()
+    } catch (e) { deps.logError('migration:klassen-schueler-backfill', e) }
   }
 
   // Alle einmaligen Migrationen dieser Version sind durchlaufen → Schema-Version festschreiben.

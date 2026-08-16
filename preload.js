@@ -99,6 +99,7 @@ const api = {
     resetGewichtung: (id) => invoke('faecher:resetGewichtung', id),
     setBenotungssystem: (id, system) => invoke('faecher:setBenotungssystem', id, system),
     getSchuelerIds: (fachId) => invoke('faecher:getSchuelerIds', fachId),
+    getRoster: (fachId) => invoke('faecher:getRoster', fachId),
     setSchueler: (fachId, data) => invoke('faecher:setSchueler', fachId, data),
   },
 
@@ -126,11 +127,14 @@ const api = {
 
   schueler: {
     getAll: (klasseId) => invoke('schueler:getAll', klasseId),
+    getAllImSchuljahr: (schuljahrId) => invoke('schueler:getAllImSchuljahr', schuljahrId),
     create: (data) => invoke('schueler:create', data),
     delete: (id) => invoke('schueler:delete', id),
+    entferneAusKlasse: (id, klasseId) => invoke('schueler:entferneAusKlasse', id, klasseId),
+    setKlassen: (id, klasseIds) => invoke('schueler:setKlassen', id, klasseIds),
     update: (id, data) => invoke('schueler:update', id, data),
     setAvatar: (id, avatar) => invoke('schueler:setAvatar', id, avatar),
-    reorder: (updates) => invoke('schueler:reorder', updates),
+    reorder: (klasseId, updates) => invoke('schueler:reorder', klasseId, updates),
     importBatch: (klasseId, list, fachIds) => invoke('schueler:importBatch', klasseId, list, fachIds),
     getLeistungsProfil: (id) => invoke('schueler:getLeistungsProfil', id),
     exportProfilPDF: (data) => invoke('schueler:exportProfilPDF', data),

@@ -508,19 +508,16 @@ function NotenToolbar({ aktivesFach, schueler, zeugnisnoten, aktiveSemester, sem
 // ─── Haupt-Tabelle ────────────────────────────────────────────────────────────
 export default function NotenTabelle() {
   const {
-    schueler, spalten, aktivesFach, zeugnisnoten,
+    fachSchueler, spalten, aktivesFach, zeugnisnoten,
     aktiveSemester, semester1Eingeklappt, setSemester1Eingeklappt,
     setDetailSchueler, openModal, aktiveKlasse,
     ladeSpalten, refreshZeugnisnoten,
     niveaus, niveauHistorie, setNiveau, deleteNiveauHistorie,
-    fachSchuelerIds,
   } = useStore()
 
-  // Nur die dem aktiven Fach zugeordneten Schüler:innen (Gruppen-Roster)
-  const sichtbareSchueler = useMemo(
-    () => schueler.filter(s => fachSchuelerIds.has(s.id)),
-    [schueler, fachSchuelerIds]
-  )
+  // Roster des aktiven Fachs (volle Zeilen, inkl. klassenübergreifend zugeordneter Schüler:innen).
+  const sichtbareSchueler = fachSchueler
+
 
   const [spaltenContextMenu, setSpaltenContextMenu] = useState(null)
   const [spalteBearbeitenModal, setSpalteBearbeitenModal] = useState(null)
@@ -603,8 +600,8 @@ export default function NotenTabelle() {
     )
   }
 
-  // ── Empty State: Keine Schüler ──
-  if (schueler.length === 0) {
+  // ── Empty State: Keine Schüler im Roster des aktiven Fachs ──
+  if (sichtbareSchueler.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-paper-50 dark:bg-ink-950">
         <div className="text-center animate-fade-up">
@@ -831,7 +828,7 @@ export default function NotenTabelle() {
         <NiveauWechselPopup
           schuelerId={niveauPopup.schuelerId}
           schuelerName={(() => {
-            const s = schueler.find(x => x.id === niveauPopup.schuelerId)
+            const s = sichtbareSchueler.find(x => x.id === niveauPopup.schuelerId)
             return s ? `${s.vorname} ${s.nachname}` : ''
           })()}
           aktuellesNiveau={niveaus[niveauPopup.schuelerId] ?? 'AHS'}

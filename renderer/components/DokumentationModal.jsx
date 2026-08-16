@@ -40,6 +40,9 @@ const DOKU = [
   {
     id: 'schueler', titel: 'Schüler:innen', bloecke: [
       'Über „Schüler:innen" verwaltest du die Klassenliste – einzeln, per Text oder per CSV-/Excel-Import.',
+      { h: 'Zentrale Schüler:innen-Verwaltung' },
+      'Der Button „Schüler:innen" (neben „Dashboard") öffnet eine klassenübergreifende Gesamtliste aller Schüler:innen des Schuljahrs – mit Merkmalen (Lernschwäche/Legasthenie/SPF), Klassen- und Fächer-Zuordnung. Hier bearbeitest du Merkmale/Namen und änderst die Klassen-Zuordnung. Ein Klick auf den Namen öffnet das Leistungsprofil.',
+      'Schüler:innen können mehreren Klassen angehören. So lassen sich klassenübergreifende Gruppen bilden: Lege ein Fach mit „Auswahl" statt „Ganze Klasse" an und wähle Personen aus beliebigen Klassen (im Auswahl-Dialog nach Klasse gruppiert). Neu angelegte Personen werden global gespeichert und automatisch der aktiven Klasse zugeordnet.',
       'Beim Hinzufügen kannst du gleich auswählen, zu welchen Fächern die Person gehört (Fächer mit „(alle)" enthalten ohnehin die ganze Klasse). Nach Vor- und Nachname genügt die Enter-Taste: die Person wird gespeichert und der Cursor springt zurück ins Vorname-Feld – so trägst du zügig eine ganze Liste ein.',
       { h: 'Sortierung der Liste' },
       'Oben in der Notentabelle wählst du pro Klasse, wie die Liste sortiert wird: nach Vorname, nach Nachname oder Manuell. Bei „Manuell" bringst du die Reihenfolge über „↕ Reihenfolge bearbeiten" selbst in Ordnung – im Bearbeitungsmodus ziehst du die Einträge per Drag-&-Drop an die gewünschte Stelle. Die Sortierung gilt überall, wo die Klassenliste erscheint (Notentabelle, Kompetenzraster …).',

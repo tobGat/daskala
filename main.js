@@ -617,13 +617,17 @@ function registerIPC() {
 
   // Schüler:innen. Reihenfolge richtet sich nach der pro Klasse gewählten Sortierung.
   ipcMain.handle('schueler:getAll', (_, klasseId) => schuelerDomain.getAll(dbPort, klasseId))
+  ipcMain.handle('schueler:getAllImSchuljahr', (_, schuljahrId) => schuelerDomain.getAllImSchuljahr(dbPort, schuljahrId))
   ipcMain.handle('schueler:create', (_, data) => schuelerDomain.create(dbPort, data))
   ipcMain.handle('schueler:delete', (_, id) => schuelerDomain.remove(dbPort, id))
+  ipcMain.handle('schueler:entferneAusKlasse', (_, id, klasseId) => schuelerDomain.entferneAusKlasse(dbPort, id, klasseId))
+  ipcMain.handle('schueler:setKlassen', (_, id, klasseIds) => schuelerDomain.setKlassen(dbPort, kernDeps, id, klasseIds))
   ipcMain.handle('schueler:update', (_, id, data) => schuelerDomain.update(dbPort, id, data))
   ipcMain.handle('schueler:setAvatar', (_, id, avatar) => schuelerDomain.setAvatar(dbPort, id, avatar))
-  ipcMain.handle('schueler:reorder', (_, updates) => schuelerDomain.reorder(dbPort, updates))
+  ipcMain.handle('schueler:reorder', (_, klasseId, updates) => schuelerDomain.reorder(dbPort, klasseId, updates))
   ipcMain.handle('schueler:importBatch', (_, klasseId, list, fachIds = []) => schuelerDomain.importBatch(dbPort, klasseId, list, fachIds))
   ipcMain.handle('schueler:getLeistungsProfil', (_, schuelerId) => schuelerDomain.getLeistungsProfil(dbPort, kernDeps, schuelerId))
+  ipcMain.handle('faecher:getRoster', (_, fachId) => rosterFuerFach(fachId))
 
   ipcMain.handle('schueler:exportProfilPDF', async (_, { profil, klassenname }) => {
     const { filePath, canceled } = await dialog.showSaveDialog({
@@ -1029,13 +1033,14 @@ function registerIPC() {
         [orig.schuljahr_id, (neuerName && neuerName.trim()) || (orig.name + ' (Kopie)'), orig.farbe ?? null, maxReihen + 1, orig.teams_link ?? null, orig.ist_kv ?? 0, neueUuid()])
       const neueKlasseId = nk.lastInsertRowid
 
-      // Schüler:innen kopieren (ohne Noten)
+      // Schüler:innen kopieren (ohne Noten): Roster der Klasse über die n:m-Mitgliedschaft.
       const schuelerMap = {}
       if (mitSchueler) {
-        const schueler = await tx.select('SELECT * FROM schueler WHERE klasse_id=? AND aktiv=1 ORDER BY reihenfolge, id', [klasseId])
+        const schueler = await tx.select('SELECT s.*, ks.reihenfolge AS ks_reihenfolge FROM schueler s JOIN klassen_schueler ks ON ks.schueler_id = s.id WHERE ks.klasse_id=? AND ks.aktiv=1 AND s.aktiv=1 ORDER BY ks.reihenfolge, s.id', [klasseId])
         for (const s of schueler) {
           const r = await tx.execute('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge, aktiv, avatar, lernschwaeche, legasthenie, spf, uuid) VALUES (?,?,?,?,1,?,?,?,?,?)',
-            [neueKlasseId, s.vorname, s.nachname, s.reihenfolge, s.avatar ?? null, s.lernschwaeche ?? 0, s.legasthenie ?? 0, s.spf ?? 0, neueUuid()])
+            [neueKlasseId, s.vorname, s.nachname, s.ks_reihenfolge, s.avatar ?? null, s.lernschwaeche ?? 0, s.legasthenie ?? 0, s.spf ?? 0, neueUuid()])
+          await tx.execute('INSERT INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse) VALUES (?, ?, ?, 1, 1)', [neueKlasseId, r.lastInsertRowid, s.ks_reihenfolge])
           schuelerMap[s.id] = r.lastInsertRowid
         }
       }

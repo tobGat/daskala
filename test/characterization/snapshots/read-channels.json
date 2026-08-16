@@ -88,7 +88,8 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "uuid": null,
+      "ist_stammklasse": 1
     },
     {
       "id": 5,
@@ -101,7 +102,8 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "uuid": null,
+      "ist_stammklasse": 1
     },
     {
       "id": 1,
@@ -109,6 +111,243 @@
       "vorname": "Anna",
       "nachname": "Bauer",
       "reihenfolge": 1,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "uuid": null,
+      "ist_stammklasse": 1
+    },
+    {
+      "id": 4,
+      "klasse_id": 1,
+      "vorname": "David",
+      "nachname": "Müller",
+      "reihenfolge": 4,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "uuid": null,
+      "ist_stammklasse": 1
+    },
+    {
+      "id": 3,
+      "klasse_id": 1,
+      "vorname": "Clara",
+      "nachname": "Zimmermann",
+      "reihenfolge": 3,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "uuid": null,
+      "ist_stammklasse": 1
+    }
+  ],
+  "schueler:getAllImSchuljahr": [
+    {
+      "id": 2,
+      "klasse_id": 1,
+      "vorname": "Ben",
+      "nachname": "Auer",
+      "reihenfolge": 2,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "uuid": null,
+      "klassen": [
+        {
+          "id": 1,
+          "name": "1A",
+          "farbe": "#fb6936",
+          "ist_stammklasse": 1
+        }
+      ],
+      "faecher": [
+        {
+          "id": 1,
+          "name": "Deutsch",
+          "klasse_name": "1A"
+        },
+        {
+          "id": 2,
+          "name": "Mathematik",
+          "klasse_name": "1A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "klasse_id": 1,
+      "vorname": "Emma",
+      "nachname": "Auer",
+      "reihenfolge": 5,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "uuid": null,
+      "klassen": [
+        {
+          "id": 1,
+          "name": "1A",
+          "farbe": "#fb6936",
+          "ist_stammklasse": 1
+        }
+      ],
+      "faecher": [
+        {
+          "id": 1,
+          "name": "Deutsch",
+          "klasse_name": "1A"
+        },
+        {
+          "id": 2,
+          "name": "Mathematik",
+          "klasse_name": "1A"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "klasse_id": 1,
+      "vorname": "Anna",
+      "nachname": "Bauer",
+      "reihenfolge": 1,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "uuid": null,
+      "klassen": [
+        {
+          "id": 1,
+          "name": "1A",
+          "farbe": "#fb6936",
+          "ist_stammklasse": 1
+        }
+      ],
+      "faecher": [
+        {
+          "id": 1,
+          "name": "Deutsch",
+          "klasse_name": "1A"
+        },
+        {
+          "id": 2,
+          "name": "Mathematik",
+          "klasse_name": "1A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "klasse_id": 1,
+      "vorname": "David",
+      "nachname": "Müller",
+      "reihenfolge": 4,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "uuid": null,
+      "klassen": [
+        {
+          "id": 1,
+          "name": "1A",
+          "farbe": "#fb6936",
+          "ist_stammklasse": 1
+        }
+      ],
+      "faecher": [
+        {
+          "id": 1,
+          "name": "Deutsch",
+          "klasse_name": "1A"
+        },
+        {
+          "id": 2,
+          "name": "Mathematik",
+          "klasse_name": "1A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "klasse_id": 1,
+      "vorname": "Clara",
+      "nachname": "Zimmermann",
+      "reihenfolge": 3,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "uuid": null,
+      "klassen": [
+        {
+          "id": 1,
+          "name": "1A",
+          "farbe": "#fb6936",
+          "ist_stammklasse": 1
+        }
+      ],
+      "faecher": [
+        {
+          "id": 1,
+          "name": "Deutsch",
+          "klasse_name": "1A"
+        },
+        {
+          "id": 2,
+          "name": "Mathematik",
+          "klasse_name": "1A"
+        }
+      ]
+    }
+  ],
+  "faecher:getRoster": [
+    {
+      "id": 1,
+      "klasse_id": 1,
+      "vorname": "Anna",
+      "nachname": "Bauer",
+      "reihenfolge": 1,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "uuid": null
+    },
+    {
+      "id": 2,
+      "klasse_id": 1,
+      "vorname": "Ben",
+      "nachname": "Auer",
+      "reihenfolge": 2,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "uuid": null
+    },
+    {
+      "id": 3,
+      "klasse_id": 1,
+      "vorname": "Clara",
+      "nachname": "Zimmermann",
+      "reihenfolge": 3,
       "aktiv": 1,
       "lernschwaeche": 0,
       "legasthenie": 0,
@@ -130,11 +369,11 @@
       "uuid": null
     },
     {
-      "id": 3,
+      "id": 5,
       "klasse_id": 1,
-      "vorname": "Clara",
-      "nachname": "Zimmermann",
-      "reihenfolge": 3,
+      "vorname": "Emma",
+      "nachname": "Auer",
+      "reihenfolge": 5,
       "aktiv": 1,
       "lernschwaeche": 0,
       "legasthenie": 0,
