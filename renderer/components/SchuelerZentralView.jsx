@@ -40,32 +40,70 @@ export default function SchuelerZentralView() {
   const { alleSchueler, ladeAlleSchueler, klassen, aktuellesSchuljahr, setDetailSchueler, bearbeiteSchueler } = useStore()
   const [suche, setSuche] = useState('')
   const [bearbeiten, setBearbeiten] = useState(null) // { schueler } – Bearbeiten-Modal
+  const [klasseFilter, setKlasseFilter] = useState('') // '' = alle Klassen, sonst klasse_id (String)
+  const [merkmalFilter, setMerkmalFilter] = useState(() => ({ lernschwaeche: false, legasthenie: false, spf: false }))
+  const [sort, setSort] = useState({ feld: 'nachname', richtung: 'asc' })
 
   useEffect(() => { ladeAlleSchueler() }, [aktuellesSchuljahr?.id, ladeAlleSchueler])
 
   const echteKlassen = useMemo(() => (klassen || []).filter(k => !k.ist_vorlage), [klassen])
+  const merkmalUmschalten = (feld) => setMerkmalFilter(m => ({ ...m, [feld]: !m[feld] }))
+  // Klick auf eine sortierbare Spalte: gleiche Spalte → Richtung wechseln, sonst neu (aufsteigend).
+  const sortieren = (feld) => setSort(s => s.feld === feld ? { feld, richtung: s.richtung === 'asc' ? 'desc' : 'asc' } : { feld, richtung: 'asc' })
+  const sortPfeil = (feld) => sort.feld !== feld ? '' : (sort.richtung === 'asc' ? ' ▲' : ' ▼')
+
   const gefiltert = useMemo(() => {
     const q = suche.trim().toLowerCase()
-    if (!q) return alleSchueler
-    return alleSchueler.filter(s =>
-      `${s.vorname} ${s.nachname}`.toLowerCase().includes(q) ||
-      (s.klassen || []).some(k => (k.name || '').toLowerCase().includes(q)))
-  }, [alleSchueler, suche])
+    const kId = klasseFilter ? Number(klasseFilter) : null
+    const aktiveMerkmale = Object.keys(merkmalFilter).filter(f => merkmalFilter[f])
+    let list = alleSchueler.filter(s => {
+      if (q && !(`${s.vorname} ${s.nachname}`.toLowerCase().includes(q) || (s.klassen || []).some(k => (k.name || '').toLowerCase().includes(q)))) return false
+      if (kId && !(s.klassen || []).some(k => k.id === kId)) return false
+      if (aktiveMerkmale.length && !aktiveMerkmale.every(f => s[f])) return false
+      return true
+    })
+    const { feld, richtung } = sort
+    const faktor = richtung === 'desc' ? -1 : 1
+    const zweit = feld === 'nachname' ? 'vorname' : 'nachname'
+    return [...list].sort((a, b) => {
+      const p = (a[feld] || '').localeCompare(b[feld] || '', 'de', { sensitivity: 'base' }) * faktor
+      return p !== 0 ? p : (a[zweit] || '').localeCompare(b[zweit] || '', 'de', { sensitivity: 'base' })
+    })
+  }, [alleSchueler, suche, klasseFilter, merkmalFilter, sort])
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col bg-paper-50 dark:bg-ink-950">
-      {/* Kopfleiste */}
+      {/* Kopfleiste mit Suche + Filtern */}
       <div className="shrink-0 px-4 py-3 border-b border-paper-200 dark:border-ink-800 flex items-center gap-3 flex-wrap">
         <h1 className="text-base font-semibold text-ink-900 dark:text-white flex items-center gap-2">
           <span aria-hidden>🙋</span> Schüler:innen
-          <span className="text-xs font-normal text-ink-400">({alleSchueler.length})</span>
+          <span className="text-xs font-normal text-ink-400">({gefiltert.length}{gefiltert.length !== alleSchueler.length ? ` / ${alleSchueler.length}` : ''})</span>
         </h1>
-        <input
-          value={suche}
-          onChange={e => setSuche(e.target.value)}
-          placeholder="Suchen (Name oder Klasse) …"
-          className="input text-sm px-3 py-1.5 w-64 max-w-full ml-auto"
-        />
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          {/* Filter: Merkmale */}
+          <div className="flex items-center gap-1">
+            {MERKMALE.map(m => (
+              <button key={m.feld} type="button" onClick={() => merkmalUmschalten(m.feld)}
+                className={`text-[10px] font-bold px-1.5 py-1 rounded border transition-colors ${
+                  merkmalFilter[m.feld] ? m.farbe + ' border-transparent' : 'border-paper-200 dark:border-ink-700 text-ink-400 hover:text-ink-600'}`}
+                title={merkmalFilter[m.feld] ? `Filter ${m.label} aktiv – nur mit ${m.label}` : `Nach ${m.label} filtern`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          {/* Filter: Klasse */}
+          <select value={klasseFilter} onChange={e => setKlasseFilter(e.target.value)}
+            className="input text-sm px-2 py-1.5" title="Nach Klasse filtern">
+            <option value="">Alle Klassen</option>
+            {echteKlassen.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
+          </select>
+          <input
+            value={suche}
+            onChange={e => setSuche(e.target.value)}
+            placeholder="Suchen (Name oder Klasse) …"
+            className="input text-sm px-3 py-1.5 w-56 max-w-full"
+          />
+        </div>
       </div>
 
       {/* Tabelle (nur Ansicht) */}
@@ -81,7 +119,12 @@ export default function SchuelerZentralView() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 bg-paper-100 dark:bg-ink-800/60">
-                  <th className="text-left px-3 py-2">Name</th>
+                  <th className="text-left px-3 py-2">
+                    <button type="button" onClick={() => sortieren('vorname')} className="text-[10px] font-bold uppercase tracking-wider hover:text-coral-600 dark:hover:text-coral-300" title="Nach Vorname sortieren">Vorname{sortPfeil('vorname')}</button>
+                  </th>
+                  <th className="text-left px-3 py-2">
+                    <button type="button" onClick={() => sortieren('nachname')} className="text-[10px] font-bold uppercase tracking-wider hover:text-coral-600 dark:hover:text-coral-300" title="Nach Nachname sortieren">Nachname{sortPfeil('nachname')}</button>
+                  </th>
                   <th className="text-left px-3 py-2">Merkmale</th>
                   <th className="text-left px-3 py-2">Klassen</th>
                   <th className="text-left px-3 py-2">Fächer</th>
@@ -95,12 +138,14 @@ export default function SchuelerZentralView() {
                       <div className="flex items-center gap-2.5">
                         <SchuelerAvatar schueler={s} size={30} className="shadow-softer shrink-0" />
                         <button type="button" onClick={() => setDetailSchueler(s)}
-                          className="text-left leading-tight hover:text-coral-600 dark:hover:text-coral-300"
-                          title="Detail-/Leistungsprofil öffnen">
-                          <div className="font-semibold text-ink-800 dark:text-paper-100">{s.nachname}</div>
-                          <div className="text-xs text-ink-500 dark:text-ink-400">{s.vorname}</div>
-                        </button>
+                          className="text-left text-ink-700 dark:text-paper-200 hover:text-coral-600 dark:hover:text-coral-300"
+                          title="Detail-/Leistungsprofil öffnen">{s.vorname}</button>
                       </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <button type="button" onClick={() => setDetailSchueler(s)}
+                        className="text-left font-semibold text-ink-800 dark:text-paper-100 hover:text-coral-600 dark:hover:text-coral-300"
+                        title="Detail-/Leistungsprofil öffnen">{s.nachname}</button>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-1">
