@@ -73,37 +73,36 @@ export default function SchuelerZentralView() {
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col bg-paper-50 dark:bg-ink-950">
-      {/* Kopfleiste mit Suche + Filtern */}
-      <div className="shrink-0 px-4 py-3 border-b border-paper-200 dark:border-ink-800 flex items-center gap-3 flex-wrap">
-        <h1 className="text-base font-semibold text-ink-900 dark:text-white flex items-center gap-2">
+      {/* Kompakte Kopfleiste: Titel + Filter/Suche in EINER schmalen Zeile */}
+      <div className="shrink-0 px-4 py-1.5 border-b border-paper-200 dark:border-ink-800 flex items-center gap-2 flex-wrap">
+        <h1 className="text-sm font-semibold text-ink-900 dark:text-white flex items-center gap-1.5">
           <span aria-hidden>🙋</span> Schüler:innen
-          <span className="text-xs font-normal text-ink-400">({gefiltert.length}{gefiltert.length !== alleSchueler.length ? ` / ${alleSchueler.length}` : ''})</span>
+          <span className="text-xs font-normal text-ink-400">({gefiltert.length}{gefiltert.length !== alleSchueler.length ? `/${alleSchueler.length}` : ''})</span>
         </h1>
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
-          {/* Filter: Merkmale */}
-          <div className="flex items-center gap-1">
-            {MERKMALE.map(m => (
-              <button key={m.feld} type="button" onClick={() => merkmalUmschalten(m.feld)}
-                className={`text-[10px] font-bold px-1.5 py-1 rounded border transition-colors ${
-                  merkmalFilter[m.feld] ? m.farbe + ' border-transparent' : 'border-paper-200 dark:border-ink-700 text-ink-400 hover:text-ink-600'}`}
-                title={merkmalFilter[m.feld] ? `Filter ${m.label} aktiv – nur mit ${m.label}` : `Nach ${m.label} filtern`}>
-                {m.label}
-              </button>
-            ))}
-          </div>
-          {/* Filter: Klasse */}
-          <select value={klasseFilter} onChange={e => setKlasseFilter(e.target.value)}
-            className="input text-sm px-2 py-1.5" title="Nach Klasse filtern">
-            <option value="">Alle Klassen</option>
-            {echteKlassen.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
-          </select>
-          <input
-            value={suche}
-            onChange={e => setSuche(e.target.value)}
-            placeholder="Suchen (Name oder Klasse) …"
-            className="input text-sm px-3 py-1.5 w-56 max-w-full"
-          />
+        {/* Filter: Merkmale */}
+        <div className="flex items-center gap-1 ml-auto">
+          {MERKMALE.map(m => (
+            <button key={m.feld} type="button" onClick={() => merkmalUmschalten(m.feld)}
+              className={`text-[10px] font-bold px-1.5 h-7 rounded-lg border transition-colors ${
+                merkmalFilter[m.feld] ? m.farbe + ' border-transparent' : 'border-paper-200 dark:border-ink-700 text-ink-400 hover:text-ink-600'}`}
+              title={merkmalFilter[m.feld] ? `Filter ${m.label} aktiv – nur mit ${m.label}` : `Nach ${m.label} filtern`}>
+              {m.label}
+            </button>
+          ))}
         </div>
+        {/* Filter: Klasse */}
+        <select value={klasseFilter} onChange={e => setKlasseFilter(e.target.value)}
+          className="h-7 text-xs px-2 rounded-lg border border-paper-300 dark:border-ink-700 bg-white dark:bg-ink-800 text-ink-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-coral-400/30 focus:border-coral-400"
+          title="Nach Klasse filtern">
+          <option value="">Alle Klassen</option>
+          {echteKlassen.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
+        </select>
+        <input
+          value={suche}
+          onChange={e => setSuche(e.target.value)}
+          placeholder="Suchen …"
+          className="h-7 text-xs px-2.5 rounded-lg w-44 max-w-full border border-paper-300 dark:border-ink-700 bg-white dark:bg-ink-800 text-ink-800 dark:text-white placeholder:text-ink-400 dark:placeholder:text-ink-500 focus:outline-none focus:ring-2 focus:ring-coral-400/30 focus:border-coral-400"
+        />
       </div>
 
       {/* Tabelle (nur Ansicht) */}
