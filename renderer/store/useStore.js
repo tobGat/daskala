@@ -508,6 +508,21 @@ const useStore = create((set, get) => ({
     if (aktivesFach) await get().ladeFachDaten(aktivesFach.id)
   },
 
+  // Zentrale Verwaltung: Details (Name/Merkmale), Klassen- und Fächer-Zuordnung einer Person
+  // gebündelt in EINEM Bearbeiten-Modal speichern und danach betroffene Ansichten EINMAL neu laden.
+  // payload = { details, klasseIds|null, faecherChanges:{add,remove} }.
+  bearbeiteSchueler: async (schuelerId, { details, klasseIds = null, faecherChanges = null }) => {
+    if (details) await window.api.schueler.update(schuelerId, details)
+    if (klasseIds && klasseIds.length) await window.api.schueler.setKlassen(schuelerId, klasseIds)
+    if (faecherChanges && ((faecherChanges.add || []).length || (faecherChanges.remove || []).length)) {
+      await window.api.schueler.setFaecher(schuelerId, faecherChanges)
+    }
+    await get().ladeAlleSchueler()
+    const { aktiveKlasse, aktivesFach } = get()
+    if (aktiveKlasse) await get().ladeSchueler()
+    if (aktivesFach) await get().ladeFachDaten(aktivesFach.id)
+  },
+
   // Sortier-Modus der aktiven Klasse setzen ('vorname' | 'nachname' | 'manuell')
   // und die Liste in der neuen Reihenfolge nachladen.
   setSchuelerSortierung: async (modus) => {
