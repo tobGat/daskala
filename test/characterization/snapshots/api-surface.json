@@ -144,6 +144,7 @@
   "schueler.setAvatar",
   "schueler.setFaecher",
   "schueler.setKlassen",
+  "schueler.setSpfFaecher",
   "schueler.update",
   "schuelerKompetenzen.getAll",
   "schuelerKompetenzen.set",

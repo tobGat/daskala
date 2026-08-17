@@ -228,22 +228,27 @@ async function rosterFuerFach(db, fachId, opts = {}) {
       : modus === 'manuell'
         ? 'ks.reihenfolge, s.nachname COLLATE NOCASE, s.vorname COLLATE NOCASE'
         : 's.nachname COLLATE NOCASE, s.vorname COLLATE NOCASE'
+    // spf_fach: SPF gilt fachbezogen (schueler_fach_spf); überschreibt das globale schueler.spf für
+    // die Anzeige in genau diesem Fach (Notentabelle-Badge).
     return db.select(`
-      SELECT s.*, ks.reihenfolge AS reihenfolge
+      SELECT s.*, ks.reihenfolge AS reihenfolge,
+        EXISTS (SELECT 1 FROM schueler_fach_spf sfs WHERE sfs.schueler_id = s.id AND sfs.fach_id = ?) AS spf_fach
       FROM schueler s
       JOIN klassen_schueler ks ON ks.schueler_id = s.id
       WHERE ks.klasse_id = ?${inkl ? '' : ' AND ks.aktiv = 1 AND s.aktiv = 1'}
       ORDER BY ${order}
-    `, [fach.klasse_id])
+    `, [fachId, fach.klasse_id])
   }
   // Gruppen-Fach (alle_schueler=0): Roster = fach_schueler (bereits klassenneutral → Mitglieder aus
   // beliebigen Klassen möglich). aktiv-Filter auf die Person.
   return db.select(`
-    SELECT s.* FROM schueler s
+    SELECT s.*,
+      EXISTS (SELECT 1 FROM schueler_fach_spf sfs WHERE sfs.schueler_id = s.id AND sfs.fach_id = ?) AS spf_fach
+    FROM schueler s
     JOIN fach_schueler fs ON fs.schueler_id = s.id
     WHERE fs.fach_id = ?${inkl ? '' : ' AND s.aktiv = 1'}
     ORDER BY s.reihenfolge, s.nachname, s.vorname
-  `, [fachId])
+  `, [fachId, fachId])
 }
 async function rosterIdsFuerFach(db, fachId, opts = {}) {
   return (await rosterFuerFach(db, fachId, opts)).map((s) => s.id)

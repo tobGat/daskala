@@ -747,15 +747,9 @@ export function SchuelerVerwaltenModal() {
                       : 'border-paper-200 text-ink-400 dark:border-ink-600 hover:border-violet-300 hover:text-violet-600'
                   }`}
                 >LEG</button>
-                <button
-                  title="Sonderpädagogischer Förderbedarf"
-                  onClick={() => handleToggle(s, 'spf')}
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
-                    s.spf
-                      ? 'bg-rose-100 border-rose-300 text-rose-700 dark:bg-rose-900/40 dark:border-rose-700 dark:text-rose-400'
-                      : 'border-paper-200 text-ink-400 dark:border-ink-600 hover:border-rose-300 hover:text-rose-600'
-                  }`}
-                >SPF</button>
+                {/* SPF ist fachbezogen → wird in der zentralen „Schüler:innen"-Verwaltung je Fach gesetzt.
+                    Hier nur als schreibgeschützter Hinweis, falls in ≥1 Fach gesetzt. */}
+                {s.spf ? <span title="SPF (fachbezogen – Bearbeiten in der Schüler:innen-Verwaltung)" className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">SPF</span> : null}
                 {loeschenId !== s.id && (
                   <button
                     className="text-ink-600 dark:text-paper-300 dark:text-ink-600 hover:text-red-400 dark:hover:text-red-400 text-sm px-1 transition-colors"
@@ -922,9 +916,7 @@ export function SchuelerVerwaltenModal() {
                 <button type="button" className={menuItem} onClick={() => handleToggle(menuSchueler, 'legasthenie')}>
                   <span className="w-6 text-center">{menuSchueler.legasthenie ? '☑' : '☐'}</span> Legasthenie
                 </button>
-                <button type="button" className={menuItem} onClick={() => handleToggle(menuSchueler, 'spf')}>
-                  <span className="w-6 text-center">{menuSchueler.spf ? '☑' : '☐'}</span> Sonderpäd. Förderbedarf (SPF)
-                </button>
+                {/* SPF ist fachbezogen und wird in der zentralen „Schüler:innen"-Verwaltung je Fach gesetzt. */}
                 <div className="context-menu-separator" />
                 <button type="button" className={`${menuItem} text-red-500 dark:text-red-400`} onClick={() => setMenuConfirmDelete(true)}>
                   <span className="w-6 text-center">🗑</span> Aus Klasse entfernen

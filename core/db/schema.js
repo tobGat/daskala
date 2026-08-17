@@ -8,7 +8,7 @@
 
 // Aktuelle Schema-Version. Erhoehen bei neuer EINMALIGER Migration (Daten-Umbau/Rebuild);
 // reine Spalten-Ergaenzungen laufen idempotent ueber spalteErgaenzen().
-const SCHEMA_VERSION = 5
+const SCHEMA_VERSION = 6
 
 // ─── Schema als Daten (Portierung Phase 2.3) ─────────────────────────────────
 //
@@ -210,6 +210,15 @@ const TABLE_DDL = [
       PRIMARY KEY (klasse_id, schueler_id),
       FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE CASCADE,
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
+  // SPF (sonderpädagogischer Förderbedarf) PRO Fach: eine Person kann SPF nur in bestimmten Fächern
+  // haben. Vorhandene Zeile = SPF in diesem Fach. schueler.spf bleibt als Summen-Flag (≥1 Fach).
+  `CREATE TABLE IF NOT EXISTS schueler_fach_spf (
+      schueler_id INTEGER NOT NULL,
+      fach_id INTEGER NOT NULL,
+      PRIMARY KEY (schueler_id, fach_id),
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
     )`,
   `CREATE TABLE IF NOT EXISTS schueler_niveau (
       fach_id INTEGER NOT NULL,
@@ -463,6 +472,8 @@ const INDEX_DDL = [
       ON kv_fehlstunden (schueler_id, datum)`,
   `CREATE INDEX IF NOT EXISTS idx_klassen_schueler_schueler
       ON klassen_schueler (schueler_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_schueler_fach_spf_fach
+      ON schueler_fach_spf (fach_id)`,
   // UUID-Weiche (Phase 2.4): geräteübergreifend eindeutige Identität je Entität
   // für ein späteres Zusammenführen. UNIQUE-Index; mehrere NULL sind in SQLite
   // erlaubt, daher stören noch nicht befüllte Zeilen die Eindeutigkeit nicht.
@@ -763,6 +774,18 @@ function applySchema(db, deps) {
     )
   `)
   db.exec(`CREATE INDEX IF NOT EXISTS idx_klassen_schueler_schueler ON klassen_schueler (schueler_id)`)
+
+  // SPF pro Fach (v<6): SPF gilt nur in ausgewählten Fächern. schueler.spf bleibt Summen-Flag.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schueler_fach_spf (
+      schueler_id INTEGER NOT NULL,
+      fach_id INTEGER NOT NULL,
+      PRIMARY KEY (schueler_id, fach_id),
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_schueler_fach_spf_fach ON schueler_fach_spf (fach_id)`)
 
   // Schüler-Niveau pro Fach (AHS/ST-Differenzierung) — aktueller Stand
   db.exec(`
@@ -1350,6 +1373,21 @@ function applySchema(db, deps) {
         WHERE klasse_id IN (SELECT id FROM klassen)
       `).run()
     } catch (e) { deps.logError('migration:klassen-schueler-backfill', e) }
+  }
+
+  if (schemaVersion < 6) {
+    // SPF wird fachbezogen: bestehende global-SPF-Schüler:innen (schueler.spf=1) erhalten einen
+    // SPF-Eintrag für alle Fächer ihrer Stammklasse – so bleibt der Badge dort erhalten, wo er
+    // vorher erschien. Danach kann pro Kind je Fach verfeinert werden. Einmalig (user_version).
+    try {
+      db.prepare(`
+        INSERT OR IGNORE INTO schueler_fach_spf (schueler_id, fach_id)
+        SELECT s.id, f.id FROM schueler s
+        JOIN faecher f ON f.klasse_id = s.klasse_id
+        WHERE s.spf = 1
+          AND (f.alle_schueler = 1 OR EXISTS (SELECT 1 FROM fach_schueler fs WHERE fs.fach_id = f.id AND fs.schueler_id = s.id))
+      `).run()
+    } catch (e) { deps.logError('migration:spf-fach-backfill', e) }
   }
 
   // Alle einmaligen Migrationen dieser Version sind durchlaufen → Schema-Version festschreiben.

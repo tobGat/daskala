@@ -180,7 +180,8 @@
           "name": "Mathematik",
           "klasse_name": "1A"
         }
-      ]
+      ],
+      "spf_faecher": []
     },
     {
       "id": 5,
@@ -213,7 +214,8 @@
           "name": "Mathematik",
           "klasse_name": "1A"
         }
-      ]
+      ],
+      "spf_faecher": []
     },
     {
       "id": 1,
@@ -246,7 +248,8 @@
           "name": "Mathematik",
           "klasse_name": "1A"
         }
-      ]
+      ],
+      "spf_faecher": []
     },
     {
       "id": 4,
@@ -279,7 +282,8 @@
           "name": "Mathematik",
           "klasse_name": "1A"
         }
-      ]
+      ],
+      "spf_faecher": []
     },
     {
       "id": 3,
@@ -312,7 +316,8 @@
           "name": "Mathematik",
           "klasse_name": "1A"
         }
-      ]
+      ],
+      "spf_faecher": []
     }
   ],
   "faecher:getRoster": [
@@ -327,7 +332,8 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "uuid": null,
+      "spf_fach": 0
     },
     {
       "id": 5,
@@ -340,7 +346,8 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "uuid": null,
+      "spf_fach": 0
     },
     {
       "id": 1,
@@ -353,7 +360,8 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "uuid": null,
+      "spf_fach": 0
     },
     {
       "id": 4,
@@ -366,7 +374,8 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "uuid": null,
+      "spf_fach": 0
     },
     {
       "id": 3,
@@ -379,7 +388,8 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "uuid": null,
+      "spf_fach": 0
     }
   ],
   "zeugnisnoten:getAll": [

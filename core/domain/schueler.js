@@ -60,12 +60,23 @@ async function getAllImSchuljahr(db, schuljahrId) {
     WHERE k.schuljahr_id = ? AND f.alle_schueler = 0
   `, [schuljahrId, schuljahrId])
 
+  // SPF pro Fach: welche Fächer hat die Person mit sonderpäd. Förderbedarf markiert.
+  const spfRows = await db.select(`
+    SELECT sfs.schueler_id, sfs.fach_id
+    FROM schueler_fach_spf sfs
+    JOIN faecher f ON f.id = sfs.fach_id
+    JOIN klassen k ON k.id = f.klasse_id
+    WHERE k.schuljahr_id = ?
+  `, [schuljahrId])
+
   const klassenVon = {}
   for (const m of mitglied) (klassenVon[m.schueler_id] ??= []).push({ id: m.klasse_id, name: m.klasse_name, farbe: m.klasse_farbe, ist_stammklasse: m.ist_stammklasse })
   const faecherVon = {}
   for (const f of faecherRows) (faecherVon[f.schueler_id] ??= []).push({ id: f.fach_id, name: f.fach_name, klasse_name: f.klasse_name })
+  const spfVon = {}
+  for (const r of spfRows) (spfVon[r.schueler_id] ??= []).push(r.fach_id)
 
-  return personen.map((s) => ({ ...s, klassen: klassenVon[s.id] ?? [], faecher: faecherVon[s.id] ?? [] }))
+  return personen.map((s) => ({ ...s, klassen: klassenVon[s.id] ?? [], faecher: faecherVon[s.id] ?? [], spf_faecher: spfVon[s.id] ?? [] }))
 }
 
 // Differenzierte alle_schueler-Fächer einer Klasse mit Niveau-Default 'AHS' seeden (idempotent).
@@ -212,6 +223,18 @@ async function setFaecher(db, deps, schuelerId, { add = [], remove = [] } = {}) 
   return true
 }
 
+// SPF (sonderpäd. Förderbedarf) pro Fach setzen: die Fach-Menge exakt auf `fachIds` bringen.
+// schueler.spf bleibt als Summen-Flag (1, falls in ≥1 Fach). SPF beeinflusst keine Noten.
+async function setSpfFaecher(db, schuelerId, fachIds) {
+  const ids = [...new Set((fachIds || []).map(Number).filter(Boolean))]
+  await db.transaction(async (tx) => {
+    await tx.execute('DELETE FROM schueler_fach_spf WHERE schueler_id = ?', [schuelerId])
+    for (const fid of ids) await tx.execute('INSERT OR IGNORE INTO schueler_fach_spf (schueler_id, fach_id) VALUES (?, ?)', [schuelerId, fid])
+    await tx.execute('UPDATE schueler SET spf = ? WHERE id = ?', [ids.length ? 1 : 0, schuelerId])
+  })
+  return true
+}
+
 async function update(db, id, data) {
   await db.execute(`UPDATE schueler SET vorname = ?, nachname = ?,
       lernschwaeche = CASE WHEN ? IS NOT NULL THEN ? ELSE lernschwaeche END,
@@ -316,4 +339,4 @@ async function getLeistungsProfil(db, deps, schuelerId) {
   return { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus, niveauHistorie }
 }
 
-module.exports = { getAll, getAllImSchuljahr, create, remove, entferneAusKlasse, setKlassen, setFaecher, update, setAvatar, reorder, importBatch, getLeistungsProfil }
+module.exports = { getAll, getAllImSchuljahr, create, remove, entferneAusKlasse, setKlassen, setFaecher, setSpfFaecher, update, setAvatar, reorder, importBatch, getLeistungsProfil }

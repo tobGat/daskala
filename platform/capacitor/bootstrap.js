@@ -68,6 +68,25 @@ async function backfillKlassenSchuelerEinmalig(dbPort) {
   }
 }
 
+// Einmaliger Backfill für fachbezogenes SPF (v6): globale SPF-Schüler:innen erhalten SPF für alle
+// Fächer ihrer Stammklasse. Flag-geschützt (MIGRATIONS laufen bei jedem Start).
+async function backfillSpfFaecherEinmalig(dbPort) {
+  try {
+    const flag = await dbPort.select("SELECT wert FROM einstellungen WHERE schluessel = 'migr_v6_spf_faecher'")
+    if (flag.length) return
+    await dbPort.execute(`
+      INSERT OR IGNORE INTO schueler_fach_spf (schueler_id, fach_id)
+      SELECT s.id, f.id FROM schueler s
+      JOIN faecher f ON f.klasse_id = s.klasse_id
+      WHERE s.spf = 1
+        AND (f.alle_schueler = 1 OR EXISTS (SELECT 1 FROM fach_schueler fs WHERE fs.fach_id = f.id AND fs.schueler_id = s.id))
+    `)
+    await dbPort.execute("INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES ('migr_v6_spf_faecher', '1')")
+  } catch (e) {
+    console.error('[daskala:mobile] migration:spf_faecher', e)
+  }
+}
+
 export async function bootstrapMobile() {
   markiereMobil()
   const conn = await oeffneVerbindung()
@@ -85,5 +104,6 @@ export async function bootstrapMobile() {
   await seedDemoWennLeer(dbPort)
   // Nach dem Seed: Junction einmalig aus schueler.klasse_id backfillen (erfasst auch Demo-Daten).
   await backfillKlassenSchuelerEinmalig(dbPort)
+  await backfillSpfFaecherEinmalig(dbPort)
   window.api = createMobileApi(dbPort)
 }

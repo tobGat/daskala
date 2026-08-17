@@ -2526,6 +2526,97 @@
       ]
     }
   },
+  "schueler:setSpfFaecher": {
+    "ret": true,
+    "state": {
+      "schueler_fach_spf": [
+        {
+          "schueler_id": 1,
+          "fach_id": 1
+        }
+      ],
+      "schueler": [
+        {
+          "id": 1,
+          "klasse_id": 1,
+          "vorname": "Anna",
+          "nachname": "Bauer",
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 1,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "klasse_id": 1,
+          "vorname": "Ben",
+          "nachname": "Auer",
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 3,
+          "klasse_id": 1,
+          "vorname": "Clara",
+          "nachname": "Zimmermann",
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 1,
+          "vorname": "David",
+          "nachname": "Müller",
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 5,
+          "klasse_id": 1,
+          "vorname": "Emma",
+          "nachname": "Auer",
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        },
+        {
+          "id": 6,
+          "klasse_id": 1,
+          "vorname": "Felix",
+          "nachname": "Xaver",
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "uuid": null
+        }
+      ]
+    }
+  },
   "spalten:update": {
     "ret": true,
     "state": {

@@ -510,13 +510,14 @@ const useStore = create((set, get) => ({
 
   // Zentrale Verwaltung: Details (Name/Merkmale), Klassen- und Fächer-Zuordnung einer Person
   // gebündelt in EINEM Bearbeiten-Modal speichern und danach betroffene Ansichten EINMAL neu laden.
-  // payload = { details, klasseIds|null, faecherChanges:{add,remove} }.
-  bearbeiteSchueler: async (schuelerId, { details, klasseIds = null, faecherChanges = null }) => {
+  // payload = { details, klasseIds|null, faecherChanges:{add,remove}, spfFaecher|null }.
+  bearbeiteSchueler: async (schuelerId, { details, klasseIds = null, faecherChanges = null, spfFaecher = null }) => {
     if (details) await window.api.schueler.update(schuelerId, details)
     if (klasseIds && klasseIds.length) await window.api.schueler.setKlassen(schuelerId, klasseIds)
     if (faecherChanges && ((faecherChanges.add || []).length || (faecherChanges.remove || []).length)) {
       await window.api.schueler.setFaecher(schuelerId, faecherChanges)
     }
+    if (spfFaecher !== null) await window.api.schueler.setSpfFaecher(schuelerId, spfFaecher)
     await get().ladeAlleSchueler()
     const { aktiveKlasse, aktivesFach } = get()
     if (aktiveKlasse) await get().ladeSchueler()

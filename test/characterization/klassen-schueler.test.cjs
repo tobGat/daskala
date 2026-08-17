@@ -99,7 +99,7 @@ test('Migration v4→v5 backfillt klassen_schueler aus schueler.klasse_id', () =
   assert.equal(rows[0].reihenfolge, 3)
   assert.equal(rows[0].ist_stammklasse, 1)
   assert.equal(rows[1].aktiv, 0)                       // aktiv 1:1 aus schueler übernommen
-  assert.equal(db.pragma('user_version', { simple: true }), 5)
+  assert.equal(db.pragma('user_version', { simple: true }), 6)  // applySchema hebt auf aktuelle SCHEMA_VERSION
   db.close()
 })
 
@@ -143,7 +143,7 @@ test('Migration v4→v5 überspringt verwaiste schueler (klasse_id ohne Klasse) 
   const rows = db.prepare('SELECT * FROM klassen_schueler').all()
   assert.equal(rows.length, 1)                                  // nur der gültige Schüler wandert in die Junction
   assert.equal(rows[0].klasse_id, k)
-  assert.equal(db.pragma('user_version', { simple: true }), 5)  // Migration lief durch (kein FK-Abbruch)
+  assert.equal(db.pragma('user_version', { simple: true }), 6)  // Migration lief durch (kein FK-Abbruch)
   db.close()
 })
 
@@ -198,5 +198,61 @@ test('setFaecher: Person einzeln einem Gruppen-Fach zuordnen/entfernen (Voll-Fac
   assert.equal(db.prepare('SELECT COUNT(*) c FROM fach_schueler WHERE fach_id = ? AND schueler_id = ?').get(voll, sA).c, 0)
   await schueler.setFaecher(port, deps, sA, { remove: [g] })
   assert.deepStrictEqual(ids(await noten.rosterFuerFach(port, g)), [])
+  db.close()
+})
+
+test('setSpfFaecher: SPF fachbezogen – Roster-spf_fach nur im gewählten Fach; Summen-Flag folgt', async () => {
+  const { db, port, k1, f1 } = baueDb()
+  const f2 = db.prepare("INSERT INTO faecher (klasse_id, name, alle_schueler) VALUES (?, 'M', 1)").run(k1).lastInsertRowid
+  const sA = await schueler.create(port, { klasseId: k1, vorname: 'A', nachname: 'A' })
+  await schueler.setSpfFaecher(port, sA, [f1])
+  assert.equal((await noten.rosterFuerFach(port, f1)).find(s => s.id === sA).spf_fach, 1)
+  assert.equal((await noten.rosterFuerFach(port, f2)).find(s => s.id === sA).spf_fach, 0)
+  assert.equal(db.prepare('SELECT spf FROM schueler WHERE id = ?').get(sA).spf, 1) // Summen-Flag gesetzt
+  await schueler.setSpfFaecher(port, sA, [])
+  assert.equal((await noten.rosterFuerFach(port, f1)).find(s => s.id === sA).spf_fach, 0)
+  assert.equal(db.prepare('SELECT spf FROM schueler WHERE id = ?').get(sA).spf, 0) // Summen-Flag entfernt
+  db.close()
+})
+
+test('Migration v<6 backfillt fachbezogenes SPF aus globalem schueler.spf (Stammklassen-Fächer)', () => {
+  const db = new Database(':memory:')
+  db.pragma('user_version = 5')
+  db.exec("CREATE TABLE schuljahre (id INTEGER PRIMARY KEY AUTOINCREMENT, bezeichnung TEXT NOT NULL)")
+  db.exec("CREATE TABLE klassen (id INTEGER PRIMARY KEY AUTOINCREMENT, schuljahr_id INTEGER NOT NULL, name TEXT NOT NULL)")
+  db.exec("CREATE TABLE faecher (id INTEGER PRIMARY KEY AUTOINCREMENT, klasse_id INTEGER NOT NULL, name TEXT, alle_schueler INTEGER DEFAULT 1)")
+  db.exec("CREATE TABLE schueler (id INTEGER PRIMARY KEY AUTOINCREMENT, klasse_id INTEGER NOT NULL, vorname TEXT, nachname TEXT, aktiv INTEGER DEFAULT 1, spf INTEGER DEFAULT 0)")
+  const sj = db.prepare("INSERT INTO schuljahre (bezeichnung) VALUES ('T')").run().lastInsertRowid
+  const k = db.prepare('INSERT INTO klassen (schuljahr_id, name) VALUES (?, ?)').run(sj, '1A').lastInsertRowid
+  const fA = db.prepare("INSERT INTO faecher (klasse_id, name) VALUES (?, 'D')").run(k).lastInsertRowid
+  const fB = db.prepare("INSERT INTO faecher (klasse_id, name) VALUES (?, 'M')").run(k).lastInsertRowid
+  const sSpf = db.prepare("INSERT INTO schueler (klasse_id, vorname, nachname, spf) VALUES (?,?,?,1)").run(k, 'S', 'P').lastInsertRowid
+  const sKein = db.prepare("INSERT INTO schueler (klasse_id, vorname, nachname, spf) VALUES (?,?,?,0)").run(k, 'K', 'E').lastInsertRowid
+  applySchema(db, { logError: () => {} })
+  const rows = db.prepare('SELECT schueler_id, fach_id FROM schueler_fach_spf ORDER BY fach_id').all()
+  assert.deepStrictEqual(rows, [{ schueler_id: sSpf, fach_id: fA }, { schueler_id: sSpf, fach_id: fB }]) // alle Stammklassen-Fächer
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM schueler_fach_spf WHERE schueler_id = ?').get(sKein).c, 0)
+  assert.equal(db.pragma('user_version', { simple: true }), 6)
+  db.close()
+})
+
+test('Migration v<6: SPF-Backfill nur für belegte Fächer (nicht eingeschriebenes Gruppenfach ausgenommen)', () => {
+  const db = new Database(':memory:')
+  db.pragma('user_version = 5')
+  db.exec("CREATE TABLE schuljahre (id INTEGER PRIMARY KEY AUTOINCREMENT, bezeichnung TEXT NOT NULL)")
+  db.exec("CREATE TABLE klassen (id INTEGER PRIMARY KEY AUTOINCREMENT, schuljahr_id INTEGER NOT NULL, name TEXT NOT NULL)")
+  db.exec("CREATE TABLE faecher (id INTEGER PRIMARY KEY AUTOINCREMENT, klasse_id INTEGER NOT NULL, name TEXT, alle_schueler INTEGER DEFAULT 1)")
+  db.exec("CREATE TABLE schueler (id INTEGER PRIMARY KEY AUTOINCREMENT, klasse_id INTEGER NOT NULL, vorname TEXT, nachname TEXT, aktiv INTEGER DEFAULT 1, spf INTEGER DEFAULT 0)")
+  db.exec("CREATE TABLE fach_schueler (fach_id INTEGER NOT NULL, schueler_id INTEGER NOT NULL, PRIMARY KEY (fach_id, schueler_id))")
+  const sj = db.prepare("INSERT INTO schuljahre (bezeichnung) VALUES ('T')").run().lastInsertRowid
+  const k = db.prepare('INSERT INTO klassen (schuljahr_id, name) VALUES (?, ?)').run(sj, '1A').lastInsertRowid
+  const voll = db.prepare("INSERT INTO faecher (klasse_id, name, alle_schueler) VALUES (?, 'D', 1)").run(k).lastInsertRowid
+  const grpMit = db.prepare("INSERT INTO faecher (klasse_id, name, alle_schueler) VALUES (?, 'Chor', 0)").run(k).lastInsertRowid
+  db.prepare("INSERT INTO faecher (klasse_id, name, alle_schueler) VALUES (?, 'Band', 0)").run(k) // Gruppenfach ohne Einschreibung
+  const s = db.prepare("INSERT INTO schueler (klasse_id, vorname, nachname, spf) VALUES (?,?,?,1)").run(k, 'S', 'P').lastInsertRowid
+  db.prepare('INSERT INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)').run(grpMit, s) // nur in Chor eingeschrieben
+  applySchema(db, { logError: () => {} })
+  const faecherMitSpf = db.prepare('SELECT fach_id FROM schueler_fach_spf WHERE schueler_id = ? ORDER BY fach_id').all(s).map(r => r.fach_id)
+  assert.deepStrictEqual(faecherMitSpf, [voll, grpMit]) // Voll-Fach + belegtes Gruppenfach; NICHT das unbelegte „Band"
   db.close()
 })

@@ -180,8 +180,8 @@ function SchuelerNameZelle({ schueler, isDifferenziert, niveau, onClick, onNivea
           {schueler.legasthenie ? (
             <span title="Legasthenie" className="text-[8px] font-bold px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400">LEG</span>
           ) : null}
-          {schueler.spf ? (
-            <span title="Sonderpädagogischer Förderbedarf" className="text-[8px] font-bold px-1 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">SPF</span>
+          {schueler.spf_fach ? (
+            <span title="Sonderpädagogischer Förderbedarf (in diesem Fach)" className="text-[8px] font-bold px-1 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">SPF</span>
           ) : null}
           {isDifferenziert && (
             <span

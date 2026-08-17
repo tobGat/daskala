@@ -171,11 +171,12 @@ function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
   const [merkmale, setMerkmale] = useState(() => ({
     lernschwaeche: !!schueler.lernschwaeche,
     legasthenie: !!schueler.legasthenie,
-    spf: !!schueler.spf,
   }))
   const [klassenIds, setKlassenIds] = useState(() => new Set((schueler.klassen || []).map(k => k.id)))
   const [klassenFaecher, setKlassenFaecher] = useState(null) // [{ klasse, faecher:[{id,name,alle_schueler}] }]
   const [faecherAusw, setFaecherAusw] = useState(() => new Set((schueler.faecher || []).map(f => f.id)))
+  const [spfFaecher, setSpfFaecher] = useState(() => new Set(schueler.spf_faecher || [])) // SPF je Fach
+  const [spfModal, setSpfModal] = useState(false) // Auswahl der SPF-Fächer im eigenen Modal
   const [speichert, setSpeichert] = useState(false)
 
   // Fächer der aktuell zugeordneten Klassen laden (für die Fächer-Auswahl).
@@ -212,7 +213,7 @@ function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
       nachname: nachname.trim(),
       lernschwaeche: merkmale.lernschwaeche ? 1 : 0,
       legasthenie: merkmale.legasthenie ? 1 : 0,
-      spf: merkmale.spf ? 1 : 0,
+      // spf NICHT hier – SPF ist fachbezogen und wird über spfFaecher gesetzt (Summen-Flag im Kern).
     }
     // Klassen-Diff.
     const origK = new Set((schueler.klassen || []).map(k => k.id))
@@ -232,10 +233,12 @@ function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
       details,
       klasseIds: klassenGeaendert ? [...klassenIds] : null,
       faecherChanges: { add, remove },
+      spfFaecher: [...spfFaecher],
     })
   }
 
   return (
+    <>
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && !speichert && onClose()}>
       <div className="modal-box max-w-lg">
         <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-1">Schüler:in bearbeiten</h2>
@@ -251,14 +254,36 @@ function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
             </div>
           </div>
 
-          {/* Merkmale */}
+          {/* Merkmale (LS/LEG gelten für die ganze Person; SPF fachbezogen darunter) */}
           <div>
             <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Merkmale</label>
             <div className="flex items-center gap-2">
-              {MERKMALE.map(m => (
+              {MERKMALE.filter(m => m.feld !== 'spf').map(m => (
                 <MerkmalToggle key={m.feld} an={merkmale[m.feld]} label={m.label} farbe={m.farbe} onClick={() => merkmalUmschalten(m.feld)} />
               ))}
             </div>
+          </div>
+
+          {/* SPF – je Fach: Auswahl in eigenem Modal; hier kompakte Anzeige der SPF-Fächer. */}
+          <div>
+            <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">SPF (Sonderpäd. Förderbedarf)</label>
+            {(schueler.faecher || []).length === 0 ? (
+              <p className="text-sm text-ink-400">Die Person ist noch keinem Fach zugeordnet – SPF kann erst je Fach gesetzt werden, sobald es Fächer gibt.</p>
+            ) : (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {spfFaecher.size === 0 ? (
+                  <span className="text-sm text-ink-400">Kein SPF gesetzt.</span>
+                ) : (
+                  (schueler.faecher || []).filter(f => spfFaecher.has(f.id)).map(f => (
+                    <span key={f.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" title={f.klasse_name}>{f.name}</span>
+                  ))
+                )}
+                <button type="button" onClick={() => setSpfModal(true)}
+                  className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300">
+                  {spfFaecher.size === 0 ? 'SPF-Fächer festlegen' : 'ändern'}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Klassen */}
@@ -311,6 +336,57 @@ function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
         <div className="flex justify-end gap-2 mt-5">
           <button className="btn-secondary" onClick={onClose} disabled={speichert}>Abbrechen</button>
           <button className="btn-primary" onClick={speichern} disabled={!kannSpeichern}>{speichert ? 'Speichern…' : 'Speichern'}</button>
+        </div>
+      </div>
+    </div>
+
+    {spfModal && (
+      <SpfFaecherModal
+        schueler={schueler}
+        initial={spfFaecher}
+        onClose={() => setSpfModal(false)}
+        onOk={(sel) => { setSpfFaecher(sel); setSpfModal(false) }}
+      />
+    )}
+    </>
+  )
+}
+
+// Eigenes Modal zur Auswahl der SPF-Fächer einer Person (öffnet aus dem Bearbeiten-Modal).
+// Bestätigt mit „OK" die Auswahl an das Bearbeiten-Modal (Persistenz erst beim dortigen Speichern).
+function SpfFaecherModal({ schueler, initial, onClose, onOk }) {
+  const [sel, setSel] = useState(() => new Set(initial))
+  const faecher = schueler.faecher || []
+  const toggle = (id) => setSel(prev => {
+    const n = new Set(prev)
+    if (n.has(id)) n.delete(id); else n.add(id)
+    return n
+  })
+  return (
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-sm">
+        <h3 className="text-base font-semibold text-ink-900 dark:text-white mb-1">SPF-Fächer wählen</h3>
+        <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">{schueler.vorname} {schueler.nachname}</p>
+        <div className="flex justify-between items-center text-xs text-ink-400 mb-1 px-1">
+          <span>{sel.size} von {faecher.length} Fächern</span>
+          <span className="flex gap-2">
+            <button type="button" className="hover:text-coral-600" onClick={() => setSel(new Set(faecher.map(f => f.id)))}>Alle</button>
+            <button type="button" className="hover:text-coral-600" onClick={() => setSel(new Set())}>Keine</button>
+          </span>
+        </div>
+        <div className="space-y-1 border border-paper-200 dark:border-ink-700 rounded-lg p-1 max-h-[50vh] overflow-y-auto">
+          {faecher.map(f => (
+            <label key={f.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-paper-100 dark:hover:bg-ink-800 cursor-pointer">
+              <input type="checkbox" className="accent-rose-500" checked={sel.has(f.id)} onChange={() => toggle(f.id)} />
+              <span className="text-sm text-ink-700 dark:text-paper-200 flex-1">{f.name}</span>
+              <span className="text-[10px] text-ink-400">{f.klasse_name}</span>
+            </label>
+          ))}
+        </div>
+        <p className="text-[11px] text-ink-400 mt-2">Der SPF-Badge erscheint nur in den gewählten Fächern.</p>
+        <div className="flex justify-end gap-2 mt-4">
+          <button className="btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn-primary" onClick={() => onOk(sel)}>OK</button>
         </div>
       </div>
     </div>
