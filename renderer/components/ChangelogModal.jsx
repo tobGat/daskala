@@ -13,6 +13,7 @@ export const CHANGELOG = [
     punkte: [
       'Zentrale Schüler:innen-Verwaltung: Der neue Button „Schüler:innen" (neben „Dashboard") zeigt alle Schüler:innen des Schuljahrs auf einen Blick – mit Merkmalen (Lernschwäche/Legasthenie/SPF), Klassen- und Fächer-Zuordnung. Merkmale, Namen und die Klassen-Zuordnung lassen sich hier zentral bearbeiten.',
       'Klassenübergreifende Gruppen: Schüler:innen können jetzt mehreren Klassen angehören. Lege ein Fach mit „Auswahl" an und stelle die Gruppe aus Schüler:innen beliebiger Klassen zusammen (im Dialog nach Klasse gruppiert). Neu angelegte Personen werden global gespeichert und automatisch der aktuellen Klasse zugeordnet.',
+      'Sicheres Löschen: Beim Löschen einer Klasse bleiben Schüler:innen erhalten, die noch anderen Klassen angehören – nur ihre Zuordnung zu dieser Klasse entfällt. Endgültig gelöscht werden nur Personen, die ausschließlich in dieser Klasse waren.',
     ],
   },
   {

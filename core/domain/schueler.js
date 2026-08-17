@@ -82,34 +82,43 @@ async function seedeNiveauFuerKlasse(tx, klasseId, schuelerId) {
 }
 
 async function create(db, { klasseId, vorname, nachname, fachIds = [] }) {
-  const maxR = (await db.selectOne('SELECT MAX(reihenfolge) as m FROM klassen_schueler WHERE klasse_id = ?', [klasseId]))?.m ?? 0
-  const info = await db.execute('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge, uuid) VALUES (?, ?, ?, ?, ?)', [klasseId, vorname, nachname, maxR + 1, neueUuid()])
-  const schuelerId = info.lastInsertRowid
-  // Person global anlegen + der (aktiven) Klasse als Stammklasse zuordnen.
-  await db.execute('INSERT INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse) VALUES (?, ?, ?, 1, 1)', [klasseId, schuelerId, maxR + 1])
-  // In gewählte Fächer aufnehmen: manuelle Fächer bekommen einen fach_schueler-Eintrag,
-  // „alle Schüler:innen"-Fächer schließen neue automatisch ein (nichts zu tun).
-  if (Array.isArray(fachIds) && fachIds.length) {
-    for (const fid of fachIds) {
-      const fach = await db.selectOne('SELECT alle_schueler, benotungssystem FROM faecher WHERE id = ? AND klasse_id = ?', [fid, klasseId])
-      if (!fach) continue
-      if (!fach.alle_schueler) await db.execute('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)', [fid, schuelerId])
-      if (fach.benotungssystem === 'differenziert') {
-        await db.execute('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)', [fid, schuelerId, 'AHS'])
-        await db.execute(`
+  // Atomar (analog importBatch): sonst bliebe bei Abbruch nach INSERT schueler eine verwaiste
+  // Person ohne Mitgliedschaft zurück, die in keinem Roster (jetzt über klassen_schueler) erscheint.
+  let schuelerId
+  await db.transaction(async (tx) => {
+    const maxR = (await tx.selectOne('SELECT MAX(reihenfolge) as m FROM klassen_schueler WHERE klasse_id = ?', [klasseId]))?.m ?? 0
+    const info = await tx.execute('INSERT INTO schueler (klasse_id, vorname, nachname, reihenfolge, uuid) VALUES (?, ?, ?, ?, ?)', [klasseId, vorname, nachname, maxR + 1, neueUuid()])
+    schuelerId = info.lastInsertRowid
+    // Person global anlegen + der (aktiven) Klasse als Stammklasse zuordnen.
+    await tx.execute('INSERT INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse) VALUES (?, ?, ?, 1, 1)', [klasseId, schuelerId, maxR + 1])
+    // In gewählte Fächer aufnehmen: manuelle Fächer bekommen einen fach_schueler-Eintrag,
+    // „alle Schüler:innen"-Fächer schließen neue automatisch ein (nichts zu tun).
+    if (Array.isArray(fachIds) && fachIds.length) {
+      for (const fid of fachIds) {
+        const fach = await tx.selectOne('SELECT alle_schueler, benotungssystem FROM faecher WHERE id = ? AND klasse_id = ?', [fid, klasseId])
+        if (!fach) continue
+        if (!fach.alle_schueler) await tx.execute('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)', [fid, schuelerId])
+        if (fach.benotungssystem === 'differenziert') {
+          await tx.execute('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)', [fid, schuelerId, 'AHS'])
+          await tx.execute(`
         INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
         SELECT ?, ?, ?, '1900-01-01'
         WHERE NOT EXISTS (SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?)
       `, [fid, schuelerId, 'AHS', fid, schuelerId])
+        }
       }
     }
-  }
+  })
   return schuelerId
 }
 
 // Person global „löschen" (Soft-Delete): verschwindet aus allen Klassen/Rostern, Daten bleiben.
+// Auch alle Mitgliedschaften deaktivieren, damit die Person konsistent aus jedem Fach-Roster fällt.
 async function remove(db, id) {
-  await db.execute('UPDATE schueler SET aktiv = 0 WHERE id = ?', [id])
+  await db.transaction(async (tx) => {
+    await tx.execute('UPDATE schueler SET aktiv = 0 WHERE id = ?', [id])
+    await tx.execute('UPDATE klassen_schueler SET aktiv = 0 WHERE schueler_id = ?', [id])
+  })
   return true
 }
 
@@ -117,18 +126,22 @@ async function remove(db, id) {
 // War es die Stammklasse und es bleiben andere Klassen → Stammklasse umhängen; bleibt keine
 // Mitgliedschaft → Person deaktivieren (entspricht dem alten „Löschen" bei Einzelklassen).
 async function entferneAusKlasse(db, schuelerId, klasseId) {
-  await db.execute('DELETE FROM klassen_schueler WHERE klasse_id = ? AND schueler_id = ?', [klasseId, schuelerId])
-  const rest = await db.select('SELECT klasse_id FROM klassen_schueler WHERE schueler_id = ? AND aktiv = 1', [schuelerId])
-  if (!rest.length) {
-    await db.execute('UPDATE schueler SET aktiv = 0 WHERE id = ?', [schuelerId])
-    return true
-  }
-  const person = await db.selectOne('SELECT klasse_id FROM schueler WHERE id = ?', [schuelerId])
-  if (person && person.klasse_id === klasseId) {
-    const neu = rest[0].klasse_id
-    await db.execute('UPDATE schueler SET klasse_id = ? WHERE id = ?', [neu, schuelerId])
-    await db.execute('UPDATE klassen_schueler SET ist_stammklasse = 1 WHERE schueler_id = ? AND klasse_id = ?', [schuelerId, neu])
-  }
+  // Atomar: sonst könnte ein Abbruch nach dem DELETE die Stammklasse verlieren, während
+  // schueler.klasse_id noch auf die entfernte Klasse zeigt (Invariante „genau eine Stammklasse").
+  await db.transaction(async (tx) => {
+    await tx.execute('DELETE FROM klassen_schueler WHERE klasse_id = ? AND schueler_id = ?', [klasseId, schuelerId])
+    const rest = await tx.select('SELECT klasse_id FROM klassen_schueler WHERE schueler_id = ? AND aktiv = 1', [schuelerId])
+    if (!rest.length) {
+      await tx.execute('UPDATE schueler SET aktiv = 0 WHERE id = ?', [schuelerId])
+      return
+    }
+    const person = await tx.selectOne('SELECT klasse_id FROM schueler WHERE id = ?', [schuelerId])
+    if (person && person.klasse_id === klasseId) {
+      const neu = rest[0].klasse_id
+      await tx.execute('UPDATE schueler SET klasse_id = ? WHERE id = ?', [neu, schuelerId])
+      await tx.execute('UPDATE klassen_schueler SET ist_stammklasse = 1 WHERE schueler_id = ? AND klasse_id = ?', [schuelerId, neu])
+    }
+  })
   return true
 }
 
@@ -148,6 +161,9 @@ async function setKlassen(db, deps, schuelerId, klasseIds) {
       await tx.execute('UPDATE klassen_schueler SET aktiv = 1 WHERE klasse_id = ? AND schueler_id = ?', [k, schuelerId]) // falls zuvor inaktiv
       await seedeNiveauFuerKlasse(tx, k, schuelerId)
     }
+    // Neue Zuordnung → Person (falls zuvor global soft-gelöscht) wieder aktivieren, sonst bliebe sie
+    // trotz aktiver Mitgliedschaft aus allen Rostern ausgeblendet (Roster filtern s.aktiv=1).
+    if (toAdd.length) await tx.execute('UPDATE schueler SET aktiv = 1 WHERE id = ?', [schuelerId])
     for (const k of toRemove) {
       await tx.execute('DELETE FROM klassen_schueler WHERE klasse_id = ? AND schueler_id = ?', [k, schuelerId])
     }

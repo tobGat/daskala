@@ -600,8 +600,20 @@ export default function NotenTabelle() {
     )
   }
 
-  // ── Empty State: Keine Schüler im Roster des aktiven Fachs ──
+  // ── Empty State: Keine Schüler:innen im Roster des aktiven Fachs ──
   if (sichtbareSchueler.length === 0) {
+    // Gruppen-Fach (alle_schueler=0): Klasse kann Schüler:innen haben, diesem Fach ist aber niemand zugeordnet.
+    if (aktivesFach?.alle_schueler === 0) {
+      return (
+        <div className="flex-1 flex items-center justify-center bg-paper-50 dark:bg-ink-950">
+          <div className="text-center animate-fade-up max-w-sm px-4">
+            <div className="text-5xl mb-3">👥</div>
+            <p className="text-base mb-1 text-ink-700 dark:text-paper-200 font-semibold">Keine Schüler:innen in diesem Fach</p>
+            <p className="text-sm text-ink-500">Über das Fach-Menü (Rechtsklick auf den Fach-Tab) → „Schüler:innen zuordnen…" kannst du welche hinzufügen.</p>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="flex-1 flex items-center justify-center bg-paper-50 dark:bg-ink-950">
         <div className="text-center animate-fade-up">
@@ -611,19 +623,6 @@ export default function NotenTabelle() {
           <button className="btn-primary" onClick={() => openModal('schuelerVerwalten')}>
             Schüler:innen hinzufügen
           </button>
-        </div>
-      </div>
-    )
-  }
-
-  // Klasse hat Schüler:innen, aber diesem (Gruppen-)Fach sind keine zugeordnet
-  if (sichtbareSchueler.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-paper-50 dark:bg-ink-950">
-        <div className="text-center animate-fade-up max-w-sm px-4">
-          <div className="text-5xl mb-3">👥</div>
-          <p className="text-base mb-1 text-ink-700 dark:text-paper-200 font-semibold">Keine Schüler:innen in diesem Fach</p>
-          <p className="text-sm text-ink-500">Über das Fach-Menü (Rechtsklick auf den Fach-Tab) → „Schüler:innen zuordnen…" kannst du welche hinzufügen.</p>
         </div>
       </div>
     )

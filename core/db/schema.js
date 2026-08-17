@@ -1342,9 +1342,12 @@ function applySchema(db, deps) {
     // 1:1 übernehmen. Einmalig (user_version-gesteuert), damit gelöschte Mitgliedschaften nicht
     // wieder auferstehen.
     try {
+      // WHERE klasse_id IN (…): verwaiste schueler.klasse_id (ohne passende klassen-Zeile) auslassen –
+      // sonst bräche der EINE INSERT bei foreign_keys=ON komplett ab und ließe die Roster leer.
       db.prepare(`
         INSERT OR IGNORE INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse)
         SELECT klasse_id, id, reihenfolge, aktiv, 1 FROM schueler
+        WHERE klasse_id IN (SELECT id FROM klassen)
       `).run()
     } catch (e) { deps.logError('migration:klassen-schueler-backfill', e) }
   }

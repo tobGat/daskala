@@ -224,7 +224,7 @@ async function rosterFuerFach(db, fachId, opts = {}) {
       SELECT s.*, ks.reihenfolge AS reihenfolge
       FROM schueler s
       JOIN klassen_schueler ks ON ks.schueler_id = s.id
-      WHERE ks.klasse_id = ?${inkl ? '' : ' AND ks.aktiv = 1'}
+      WHERE ks.klasse_id = ?${inkl ? '' : ' AND ks.aktiv = 1 AND s.aktiv = 1'}
       ORDER BY ks.reihenfolge, s.nachname, s.vorname
     `, [fach.klasse_id])
   }

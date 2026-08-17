@@ -11,10 +11,12 @@ const { applySchema } = require('../../core/db/schema.js')
 const { createDbAdapter } = require('../../platform/electron/db-better-sqlite3.js')
 const noten = require('../../core/services/notenberechnung.js')
 const schueler = require('../../core/domain/schueler.js')
+const klassen = require('../../core/domain/klassen.js')
 
 function baueDb() {
   const db = new Database(':memory:')
   applySchema(db, { logError: () => {} })
+  db.pragma('foreign_keys = ON') // wie im Desktop-Pfad (main.js) – CASCADE/Constraints aktiv
   const port = createDbAdapter(() => db)
   const deps = { berechneAlleFuerFach: (id) => noten.berechneAlleFuerFach(port, id) }
   const sjId = db.prepare("INSERT INTO schuljahre (bezeichnung) VALUES ('T')").run().lastInsertRowid
@@ -109,5 +111,62 @@ test('getAllImSchuljahr liefert Personen mit Klassen- und Fächer-Zuordnung', as
   const b = alle.find(s => s.id === sB)
   assert.ok(b)
   assert.deepStrictEqual(b.klassen.map(k => k.id).sort((a, c) => a - c), [k1, k2].sort((a, c) => a - c))
+  db.close()
+})
+
+test('remove deaktiviert Person + alle Mitgliedschaften → fällt aus Roster und getAll', async () => {
+  const { db, port, deps, k1, k2, f1 } = baueDb()
+  const sA = await schueler.create(port, { klasseId: k1, vorname: 'A', nachname: 'A' })
+  const sB = await schueler.create(port, { klasseId: k2, vorname: 'B', nachname: 'B' })
+  await schueler.setKlassen(port, deps, sB, [k2, k1]) // sB klassenübergreifend auch in k1
+  await schueler.remove(port, sB)
+  // sB verschwindet aus dem Fach-Roster (alle_schueler=1) und aus getAll; sA bleibt.
+  assert.deepStrictEqual(ids(await noten.rosterFuerFach(port, f1)), ids([{ id: sA }]))
+  assert.deepStrictEqual(ids(await schueler.getAll(port, k1)), ids([{ id: sA }]))
+  // Keine aktive Mitgliedschaft mehr (konsistent mit s.aktiv=0).
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM klassen_schueler WHERE schueler_id = ? AND aktiv = 1').get(sB).c, 0)
+  db.close()
+})
+
+test('Migration v4→v5 überspringt verwaiste schueler (klasse_id ohne Klasse) statt komplett abzubrechen', () => {
+  const db = new Database(':memory:')
+  db.pragma('user_version = 4')
+  db.exec("CREATE TABLE schuljahre (id INTEGER PRIMARY KEY AUTOINCREMENT, bezeichnung TEXT NOT NULL)")
+  db.exec("CREATE TABLE klassen (id INTEGER PRIMARY KEY AUTOINCREMENT, schuljahr_id INTEGER NOT NULL, name TEXT NOT NULL)")
+  db.exec("CREATE TABLE schueler (id INTEGER PRIMARY KEY AUTOINCREMENT, klasse_id INTEGER NOT NULL, vorname TEXT, nachname TEXT, reihenfolge INTEGER DEFAULT 0, aktiv INTEGER DEFAULT 1)")
+  const sj = db.prepare("INSERT INTO schuljahre (bezeichnung) VALUES ('T')").run().lastInsertRowid
+  const k = db.prepare('INSERT INTO klassen (schuljahr_id, name) VALUES (?, ?)').run(sj, '1A').lastInsertRowid
+  db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname) VALUES (?,?,?)').run(k, 'Gut', 'G')
+  db.prepare('INSERT INTO schueler (klasse_id, vorname, nachname) VALUES (?,?,?)').run(9999, 'Waise', 'W') // verwaiste klasse_id
+  db.pragma('foreign_keys = ON') // wie im Desktop-Pfad (main.js:343 vor applySchema)
+  applySchema(db, { logError: () => {} })
+  const rows = db.prepare('SELECT * FROM klassen_schueler').all()
+  assert.equal(rows.length, 1)                                  // nur der gültige Schüler wandert in die Junction
+  assert.equal(rows[0].klasse_id, k)
+  assert.equal(db.pragma('user_version', { simple: true }), 5)  // Migration lief durch (kein FK-Abbruch)
+  db.close()
+})
+
+test('klassen.remove: nur klassen-eigene Schüler:innen werden gelöscht, geteilte bleiben (Datenverlust-Schutz)', async () => {
+  const { db, port, deps, k1, k2 } = baueDb()
+  const kdeps = { raeumeFachDatenAuf: async () => {}, logError: () => {} }
+  const sA = await schueler.create(port, { klasseId: k1, vorname: 'A', nachname: 'A' })         // nur k1
+  const sC = await schueler.create(port, { klasseId: k1, vorname: 'C', nachname: 'C' })         // Stammklasse k1 …
+  await schueler.setKlassen(port, deps, sC, [k1, k2])                                            // … zusätzlich in k2
+  const sB = await schueler.create(port, { klasseId: k2, vorname: 'B', nachname: 'B' })         // nur k2
+  await klassen.remove(port, kdeps, k1)
+  // sA (nur k1) hart gelöscht:
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM schueler WHERE id = ?').get(sA).c, 0)
+  // sC (geteilt) bleibt aktiv, Stammklasse auf k2 umgehängt, keine k1-Mitgliedschaft mehr:
+  const c = db.prepare('SELECT aktiv, klasse_id FROM schueler WHERE id = ?').get(sC)
+  assert.ok(c)
+  assert.equal(c.aktiv, 1)
+  assert.equal(c.klasse_id, k2)
+  const cMemb = db.prepare('SELECT klasse_id, ist_stammklasse FROM klassen_schueler WHERE schueler_id = ?').all(sC)
+  assert.deepStrictEqual(cMemb.map((r) => r.klasse_id), [k2])
+  assert.equal(cMemb[0].ist_stammklasse, 1)
+  // sB (nur k2) unberührt; k1 weg:
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM schueler WHERE id = ?').get(sB).c, 1)
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM klassen WHERE id = ?').get(k1).c, 0)
   db.close()
 })

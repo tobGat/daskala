@@ -574,6 +574,9 @@ const useStore = create((set, get) => ({
       fachSchuelerIds: new Set(schueler.map(s => s.id)),
       currentView: 'notentabelle',
     })
+    // Roster (fachSchueler), Spalten & Einträge konsistent aus dem Kern laden – sonst bliebe
+    // fachSchueler leer und die NotenTabelle zeigte fälschlich den Empty-State.
+    if (aktivesFach) await get().ladeFachDaten(fachId)
   },
 }))
 
