@@ -64,10 +64,22 @@ export default function SchuelerZentralView() {
     })
     const { feld, richtung } = sort
     const faktor = richtung === 'desc' ? -1 : 1
-    const zweit = feld === 'nachname' ? 'vorname' : 'nachname'
+    // Sortierschlüssel je Spalte; „klasse" = Stammklasse (bzw. erste Klasse) der Person.
+    const wert = (s, f) => {
+      if (f === 'klasse') {
+        const ks = s.klassen || []
+        const stamm = ks.find(k => k.ist_stammklasse) || ks[0]
+        return stamm ? stamm.name : ''
+      }
+      return s[f] || ''
+    }
+    const cmp = (a, b, f) => wert(a, f).localeCompare(wert(b, f), 'de', { sensitivity: 'base' })
+    const sekundaer = feld === 'klasse' ? ['nachname', 'vorname'] : (feld === 'nachname' ? ['vorname'] : ['nachname'])
     return [...list].sort((a, b) => {
-      const p = (a[feld] || '').localeCompare(b[feld] || '', 'de', { sensitivity: 'base' }) * faktor
-      return p !== 0 ? p : (a[zweit] || '').localeCompare(b[zweit] || '', 'de', { sensitivity: 'base' })
+      const p = cmp(a, b, feld) * faktor
+      if (p !== 0) return p
+      for (const sf of sekundaer) { const c = cmp(a, b, sf); if (c !== 0) return c }
+      return 0
     })
   }, [alleSchueler, suche, klasseFilter, merkmalFilter, sort])
 
@@ -125,7 +137,9 @@ export default function SchuelerZentralView() {
                     <button type="button" onClick={() => sortieren('nachname')} className="text-[10px] font-bold uppercase tracking-wider hover:text-coral-600 dark:hover:text-coral-300" title="Nach Nachname sortieren">Nachname{sortPfeil('nachname')}</button>
                   </th>
                   <th className="text-left px-3 py-2">Merkmale</th>
-                  <th className="text-left px-3 py-2">Klassen</th>
+                  <th className="text-left px-3 py-2">
+                    <button type="button" onClick={() => sortieren('klasse')} className="text-[10px] font-bold uppercase tracking-wider hover:text-coral-600 dark:hover:text-coral-300" title="Nach Stammklasse sortieren">Klassen{sortPfeil('klasse')}</button>
+                  </th>
                   <th className="text-left px-3 py-2">Fächer</th>
                   <th className="text-right px-3 py-2">Aktion</th>
                 </tr>
