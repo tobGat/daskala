@@ -622,6 +622,7 @@ function registerIPC() {
   ipcMain.handle('schueler:delete', (_, id) => schuelerDomain.remove(dbPort, id))
   ipcMain.handle('schueler:entferneAusKlasse', (_, id, klasseId) => schuelerDomain.entferneAusKlasse(dbPort, id, klasseId))
   ipcMain.handle('schueler:setKlassen', (_, id, klasseIds) => schuelerDomain.setKlassen(dbPort, kernDeps, id, klasseIds))
+  ipcMain.handle('schueler:setFaecher', (_, id, changes) => schuelerDomain.setFaecher(dbPort, kernDeps, id, changes))
   ipcMain.handle('schueler:update', (_, id, data) => schuelerDomain.update(dbPort, id, data))
   ipcMain.handle('schueler:setAvatar', (_, id, avatar) => schuelerDomain.setAvatar(dbPort, id, avatar))
   ipcMain.handle('schueler:reorder', (_, klasseId, updates) => schuelerDomain.reorder(dbPort, klasseId, updates))

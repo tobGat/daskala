@@ -170,3 +170,33 @@ test('klassen.remove: nur klassen-eigene Schüler:innen werden gelöscht, geteil
   assert.equal(db.prepare('SELECT COUNT(*) c FROM klassen WHERE id = ?').get(k1).c, 0)
   db.close()
 })
+
+test('rosterFuerFach folgt der Klassen-Sortierung (nachname/vorname/manuell)', async () => {
+  const { db, port, k1, f1 } = baueDb()
+  // Anlage-Reihenfolge (= ks.reihenfolge) bewusst quer zur Alphabetik.
+  await schueler.create(port, { klasseId: k1, vorname: 'Cara', nachname: 'Berg' })
+  await schueler.create(port, { klasseId: k1, vorname: 'Bea', nachname: 'Calb' })
+  await schueler.create(port, { klasseId: k1, vorname: 'Alex', nachname: 'Auer' })
+  const vornamen = async () => (await noten.rosterFuerFach(port, f1)).map((s) => s.vorname)
+  db.prepare("UPDATE klassen SET sortierung = 'nachname' WHERE id = ?").run(k1)
+  assert.deepStrictEqual(await vornamen(), ['Alex', 'Cara', 'Bea'])   // Auer < Berg < Calb
+  db.prepare("UPDATE klassen SET sortierung = 'vorname' WHERE id = ?").run(k1)
+  assert.deepStrictEqual(await vornamen(), ['Alex', 'Bea', 'Cara'])
+  db.prepare("UPDATE klassen SET sortierung = 'manuell' WHERE id = ?").run(k1)
+  assert.deepStrictEqual(await vornamen(), ['Cara', 'Bea', 'Alex'])   // Anlage-Reihenfolge
+  db.close()
+})
+
+test('setFaecher: Person einzeln einem Gruppen-Fach zuordnen/entfernen (Voll-Fach ignoriert)', async () => {
+  const { db, port, deps, k1 } = baueDb()
+  const g = db.prepare("INSERT INTO faecher (klasse_id, name, alle_schueler) VALUES (?, 'Chor', 0)").run(k1).lastInsertRowid
+  const voll = db.prepare("INSERT INTO faecher (klasse_id, name, alle_schueler) VALUES (?, 'Turnen', 1)").run(k1).lastInsertRowid
+  const sA = await schueler.create(port, { klasseId: k1, vorname: 'A', nachname: 'A' })
+  await schueler.setFaecher(port, deps, sA, { add: [g, voll] })
+  assert.deepStrictEqual(ids(await noten.rosterFuerFach(port, g)), ids([{ id: sA }]))
+  // Voll-Fach (alle_schueler=1) erzeugt KEINEN fach_schueler-Eintrag.
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM fach_schueler WHERE fach_id = ? AND schueler_id = ?').get(voll, sA).c, 0)
+  await schueler.setFaecher(port, deps, sA, { remove: [g] })
+  assert.deepStrictEqual(ids(await noten.rosterFuerFach(port, g)), [])
+  db.close()
+})

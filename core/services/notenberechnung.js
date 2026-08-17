@@ -220,12 +220,20 @@ async function rosterFuerFach(db, fachId, opts = {}) {
     // Alle Mitglieder der Fach-Klasse (n:m über klassen_schueler). aktiv = Mitgliedschafts-Status
     // PRO Klasse; reihenfolge kommt aus der Junction. So erscheinen auch klassenübergreifend
     // zugeordnete Schüler:innen im Roster genau der Klassen, denen sie angehören.
+    // Sortierung = eingestellter Klassen-Modus (identisch zu schueler.getAll), damit die Noten-
+    // tabelle und die Klassenliste dieselbe Reihenfolge zeigen – auch für zusätzlich zugeordnete.
+    const modus = (await db.selectOne('SELECT sortierung FROM klassen WHERE id = ?', [fach.klasse_id]))?.sortierung || 'nachname'
+    const order = modus === 'vorname'
+      ? 's.vorname COLLATE NOCASE, s.nachname COLLATE NOCASE'
+      : modus === 'manuell'
+        ? 'ks.reihenfolge, s.nachname COLLATE NOCASE, s.vorname COLLATE NOCASE'
+        : 's.nachname COLLATE NOCASE, s.vorname COLLATE NOCASE'
     return db.select(`
       SELECT s.*, ks.reihenfolge AS reihenfolge
       FROM schueler s
       JOIN klassen_schueler ks ON ks.schueler_id = s.id
       WHERE ks.klasse_id = ?${inkl ? '' : ' AND ks.aktiv = 1 AND s.aktiv = 1'}
-      ORDER BY ks.reihenfolge, s.nachname, s.vorname
+      ORDER BY ${order}
     `, [fach.klasse_id])
   }
   // Gruppen-Fach (alle_schueler=0): Roster = fach_schueler (bereits klassenneutral → Mitglieder aus

@@ -153,6 +153,25 @@
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
         }
       ],
       "schueler": [],
@@ -162,7 +181,7 @@
     }
   },
   "faecher:create": {
-    "ret": 4,
+    "ret": 5,
     "state": {
       "faecher": [
         {
@@ -224,6 +243,25 @@
         },
         {
           "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
+        },
+        {
+          "id": 5,
           "klasse_id": 1,
           "name": "Englisch",
           "reihenfolge": 3,
@@ -1439,6 +1477,25 @@
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
         }
       ]
     }
@@ -1502,6 +1559,25 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
           "uuid": null
         }
       ]
@@ -1567,6 +1643,25 @@
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
         }
       ]
     }
@@ -1630,6 +1725,25 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
           "uuid": null
         }
       ]
@@ -1695,6 +1809,25 @@
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
         }
       ]
     }
@@ -1759,6 +1892,25 @@
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
         }
       ],
       "fach_schueler": [
@@ -1813,6 +1965,25 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
           "uuid": null
         }
       ]
@@ -2322,6 +2493,39 @@
       ]
     }
   },
+  "schueler:setFaecher": {
+    "ret": true,
+    "state": {
+      "fach_schueler": [
+        {
+          "fach_id": 4,
+          "schueler_id": 1
+        }
+      ],
+      "zeugnisnoten": [
+        {
+          "id": 1,
+          "fach_id": 1,
+          "schueler_id": 1,
+          "semester": 3,
+          "note_berechnet": 2,
+          "note_manuell": null,
+          "s1_eingerechnet": 1,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "fach_id": 1,
+          "schueler_id": 2,
+          "semester": 3,
+          "note_berechnet": null,
+          "note_manuell": 3,
+          "s1_eingerechnet": 1,
+          "uuid": null
+        }
+      ]
+    }
+  },
   "spalten:update": {
     "ret": true,
     "state": {
@@ -2761,17 +2965,17 @@
       "schueler_rezenz": [
         {
           "fach_id": 1,
-          "schueler_id": 1,
-          "faktor": 1.5
-        },
-        {
-          "fach_id": 1,
           "schueler_id": 2,
           "faktor": 1.5
         },
         {
           "fach_id": 1,
-          "schueler_id": 3,
+          "schueler_id": 5,
+          "faktor": 1.5
+        },
+        {
+          "fach_id": 1,
+          "schueler_id": 1,
           "faktor": 1.5
         },
         {
@@ -2781,7 +2985,7 @@
         },
         {
           "fach_id": 1,
-          "schueler_id": 5,
+          "schueler_id": 3,
           "faktor": 1.5
         }
       ]
@@ -4613,6 +4817,25 @@
         },
         {
           "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
+        },
+        {
+          "id": 5,
           "klasse_id": 5,
           "name": "Deutsch",
           "reihenfolge": 1,
@@ -4631,7 +4854,7 @@
           "uuid": "<UUID>"
         },
         {
-          "id": 5,
+          "id": 6,
           "klasse_id": 5,
           "name": "Mathematik",
           "reihenfolge": 2,

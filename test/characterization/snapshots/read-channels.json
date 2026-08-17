@@ -317,19 +317,6 @@
   ],
   "faecher:getRoster": [
     {
-      "id": 1,
-      "klasse_id": 1,
-      "vorname": "Anna",
-      "nachname": "Bauer",
-      "reihenfolge": 1,
-      "aktiv": 1,
-      "lernschwaeche": 0,
-      "legasthenie": 0,
-      "spf": 0,
-      "avatar": null,
-      "uuid": null
-    },
-    {
       "id": 2,
       "klasse_id": 1,
       "vorname": "Ben",
@@ -343,11 +330,24 @@
       "uuid": null
     },
     {
-      "id": 3,
+      "id": 5,
       "klasse_id": 1,
-      "vorname": "Clara",
-      "nachname": "Zimmermann",
-      "reihenfolge": 3,
+      "vorname": "Emma",
+      "nachname": "Auer",
+      "reihenfolge": 5,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "uuid": null
+    },
+    {
+      "id": 1,
+      "klasse_id": 1,
+      "vorname": "Anna",
+      "nachname": "Bauer",
+      "reihenfolge": 1,
       "aktiv": 1,
       "lernschwaeche": 0,
       "legasthenie": 0,
@@ -369,11 +369,11 @@
       "uuid": null
     },
     {
-      "id": 5,
+      "id": 3,
       "klasse_id": 1,
-      "vorname": "Emma",
-      "nachname": "Auer",
-      "reihenfolge": 5,
+      "vorname": "Clara",
+      "nachname": "Zimmermann",
+      "reihenfolge": 3,
       "aktiv": 1,
       "lernschwaeche": 0,
       "legasthenie": 0,
@@ -741,14 +741,23 @@
       "klasse_name": "2B",
       "klasse_farbe": "#34d399",
       "klasse_reihenfolge": 2
+    },
+    {
+      "id": 4,
+      "name": "Chor",
+      "farbe": null,
+      "klasse_id": 2,
+      "klasse_name": "2B",
+      "klasse_farbe": "#34d399",
+      "klasse_reihenfolge": 2
     }
   ],
   "faecher:getSchuelerIds": [
-    1,
     2,
-    3,
+    5,
+    1,
     4,
-    5
+    3
   ],
   "schueler:getLeistungsProfil": {
     "schueler": {

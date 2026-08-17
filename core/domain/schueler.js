@@ -181,6 +181,37 @@ async function setKlassen(db, deps, schuelerId, klasseIds) {
   return true
 }
 
+// Auswahl-Fach-Mitgliedschaften (fach_schueler) einer Person anpassen (zentrale Verwaltung).
+// add/remove betreffen NUR Gruppen-Fächer (alle_schueler=0); „ganze Klasse"-Fächer laufen über die
+// Klassen-Mitgliedschaft und werden ignoriert. Betroffene Fächer werden neu berechnet.
+async function setFaecher(db, deps, schuelerId, { add = [], remove = [] } = {}) {
+  const betroffen = new Set()
+  await db.transaction(async (tx) => {
+    for (const fid of add) {
+      const fach = await tx.selectOne('SELECT alle_schueler, benotungssystem FROM faecher WHERE id = ?', [fid])
+      if (!fach || fach.alle_schueler) continue // nur Gruppen-Fächer sind einzeln zuordenbar
+      await tx.execute('INSERT OR IGNORE INTO fach_schueler (fach_id, schueler_id) VALUES (?, ?)', [fid, schuelerId])
+      if (fach.benotungssystem === 'differenziert') {
+        await tx.execute('INSERT OR IGNORE INTO schueler_niveau (fach_id, schueler_id, niveau) VALUES (?, ?, ?)', [fid, schuelerId, 'AHS'])
+        await tx.execute(`
+          INSERT INTO schueler_niveau_historie (fach_id, schueler_id, niveau, gueltig_ab)
+          SELECT ?, ?, 'AHS', '1900-01-01'
+          WHERE NOT EXISTS (SELECT 1 FROM schueler_niveau_historie WHERE fach_id = ? AND schueler_id = ?)
+        `, [fid, schuelerId, fid, schuelerId])
+      }
+      betroffen.add(fid)
+    }
+    for (const fid of remove) {
+      const fach = await tx.selectOne('SELECT alle_schueler FROM faecher WHERE id = ?', [fid])
+      if (!fach || fach.alle_schueler) continue
+      await tx.execute('DELETE FROM fach_schueler WHERE fach_id = ? AND schueler_id = ?', [fid, schuelerId])
+      betroffen.add(fid)
+    }
+  })
+  for (const fid of betroffen) await deps.berechneAlleFuerFach(fid)
+  return true
+}
+
 async function update(db, id, data) {
   await db.execute(`UPDATE schueler SET vorname = ?, nachname = ?,
       lernschwaeche = CASE WHEN ? IS NOT NULL THEN ? ELSE lernschwaeche END,
@@ -285,4 +316,4 @@ async function getLeistungsProfil(db, deps, schuelerId) {
   return { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus, niveauHistorie }
 }
 
-module.exports = { getAll, getAllImSchuljahr, create, remove, entferneAusKlasse, setKlassen, update, setAvatar, reorder, importBatch, getLeistungsProfil }
+module.exports = { getAll, getAllImSchuljahr, create, remove, entferneAusKlasse, setKlassen, setFaecher, update, setAvatar, reorder, importBatch, getLeistungsProfil }

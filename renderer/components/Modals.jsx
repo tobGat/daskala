@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import useStore from '../store/useStore'
 import { berechneSchulferien } from '../utils/schulferien'
 import { parseSchuelerDatei } from '../utils/schuelerImport'
@@ -124,16 +124,24 @@ export function KlasseHinzufuegenModal() {
 // Auswahl der Fach-/Gruppen-Mitglieder. „Ganze Klasse" = alle_schueler=1 (die Heimatklasse des
 // Fachs). „Auswahl" = manuelle, KLASSENÜBERGREIFENDE Zusammenstellung (Personen aus beliebigen Klassen);
 // dafür wird die schuljahrweite Liste nach Klasse gruppiert angeboten (Personen mit `klassen`-Feld).
-function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt }) {
+const SchuelerAuswahl = React.memo(function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt }) {
+  const [q, setQ] = useState('')
   const toggle = (id) => setAusgewaehlt(prev => {
     const n = new Set(prev)
     if (n.has(id)) n.delete(id); else n.add(id)
     return n
   })
   // Nach Klasse gruppieren (aus s.klassen); Personen in mehreren Klassen erscheinen je Klasse.
-  const gruppen = (() => {
+  // Live-Suche (#5) filtert nach Name. Memoisiert (React.memo + useMemo), damit Tippen im
+  // Fachnamen-Feld nicht die ganze (evtl. große) Liste neu berechnet/rendert (#1).
+  const gruppen = useMemo(() => {
+    const suche = q.trim().toLowerCase()
+    const passt = (s) => !suche
+      || `${s.vorname} ${s.nachname}`.toLowerCase().includes(suche)
+      || `${s.nachname} ${s.vorname}`.toLowerCase().includes(suche)
     const byId = new Map()
     for (const s of schueler) {
+      if (!passt(s)) continue
       const ks = (s.klassen && s.klassen.length) ? s.klassen : [{ id: 0, name: '' }]
       for (const k of ks) {
         if (!byId.has(k.id)) byId.set(k.id, { klasse: k, liste: [] })
@@ -141,8 +149,12 @@ function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt 
       }
     }
     return [...byId.values()].sort((a, b) => (a.klasse.name || '').localeCompare(b.klasse.name || ''))
-  })()
-  const alleIds = schueler.map(s => s.id)
+  }, [schueler, q])
+  const sichtbareIds = useMemo(() => {
+    const set = new Set()
+    for (const g of gruppen) for (const s of g.liste) set.add(s.id)
+    return [...set]
+  }, [gruppen])
   return (
     <div className="mb-5">
       <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Schüler:innen</label>
@@ -160,16 +172,27 @@ function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt 
       </div>
       {!alle && (
         <>
+          <input
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Schüler:in suchen …"
+            className="input text-sm px-3 py-1.5 w-full mb-2"
+          />
           <div className="flex justify-between items-center text-xs text-ink-400 mb-1 px-1">
             <span>{ausgewaehlt.size} ausgewählt (klassenübergreifend möglich)</span>
             <span className="flex gap-2">
-              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(new Set(alleIds))}>Alle</button>
-              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(new Set())}>Keine</button>
+              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(prev => new Set([...prev, ...sichtbareIds]))}>Alle{q.trim() ? ' (Treffer)' : ''}</button>
+              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(prev => {
+                if (!q.trim()) return new Set()
+                const n = new Set(prev); for (const id of sichtbareIds) n.delete(id); return n
+              })}>Keine{q.trim() ? ' (Treffer)' : ''}</button>
             </span>
           </div>
           <div className="max-h-60 overflow-y-auto space-y-1 border border-paper-200 dark:border-ink-700 rounded-lg p-1">
             {schueler.length === 0 ? (
               <p className="text-sm text-ink-400 text-center py-3">Keine Schüler:innen vorhanden</p>
+            ) : gruppen.length === 0 ? (
+              <p className="text-sm text-ink-400 text-center py-3">Keine Treffer</p>
             ) : gruppen.map(g => (
               <div key={g.klasse.id}>
                 {g.klasse.name && (
@@ -193,7 +216,7 @@ function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt 
       )}
     </div>
   )
-}
+})
 
 export function FachHinzufuegenModal() {
   const { closeModal, aktiveKlasse, alleSchueler: alleSchuelerListe, ladeAlleSchueler, ladeAktiveKlassenliste } = useStore()

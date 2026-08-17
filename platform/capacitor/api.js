@@ -93,6 +93,7 @@ export function createMobileApi(dbPort) {
       create: (d) => schuelerDomain.create(dbPort, d),
       entferneAusKlasse: (id, kId) => schuelerDomain.entferneAusKlasse(dbPort, id, kId),
       setKlassen: (id, kIds) => schuelerDomain.setKlassen(dbPort, deps, id, kIds),
+      setFaecher: (id, changes) => schuelerDomain.setFaecher(dbPort, deps, id, changes),
       update: (id, d) => schuelerDomain.update(dbPort, id, d),
       reorder: (kId, updates) => schuelerDomain.reorder(dbPort, kId, updates),
       importBatch: (kId, list, fachIds) => schuelerDomain.importBatch(dbPort, kId, list, fachIds),

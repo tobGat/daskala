@@ -39,7 +39,8 @@ INSERT INTO klassen (id, schuljahr_id, name, reihenfolge, farbe, sortierung, ist
 INSERT INTO faecher (id, klasse_id, name, reihenfolge, alle_schueler, benotungssystem) VALUES
   (1, 1, 'Deutsch',     1, 1, 'standard'),
   (2, 1, 'Mathematik',  2, 1, 'standard'),
-  (3, 2, 'Musik',       1, 1, 'standard');
+  (3, 2, 'Musik',       1, 1, 'standard'),
+  (4, 2, 'Chor',        2, 0, 'standard');   -- Gruppen-/Auswahl-Fach (alle_schueler=0), klassenübergreifend
 
 -- ── Schüler:innen (Klasse 1, sortierung = nachname) ─────────────────────────
 -- Auer/Ben vor Auer/Emma (Tie-break Vorname), inaktive:r Felix wird ausgeschlossen.

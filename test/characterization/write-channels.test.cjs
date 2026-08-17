@@ -66,6 +66,8 @@ const CASES = [
   { name: 'schueler:delete', channel: 'schueler:delete', args: [6], tables: ['schueler'] },
   { name: 'schueler:entferneAusKlasse', channel: 'schueler:entferneAusKlasse', args: [5, 1], tables: ['klassen_schueler', 'schueler'] },
   { name: 'schueler:setKlassen', channel: 'schueler:setKlassen', args: [1, [1, 2]], tables: ['klassen_schueler', 'zeugnisnoten'] },
+  // Person einzeln einem Gruppen-Fach (alle_schueler=0, hier Chor/Fach 4) zuordnen (#3, klassenübergreifend).
+  { name: 'schueler:setFaecher', channel: 'schueler:setFaecher', args: [1, { add: [4] }], tables: ['fach_schueler', 'zeugnisnoten'] },
 
   // ── Spalten / Einträge / Zeugnisnoten ──────────────────────────────────────
   { name: 'spalten:update', channel: 'spalten:update', args: [1, { kuerzel: 'SA1x', datum: '2025-10-16', notiz: 'geändert' }], tables: ['spalten'] },

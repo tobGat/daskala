@@ -499,10 +499,19 @@ const useStore = create((set, get) => ({
     if (aktivesFach) await get().ladeFachDaten(aktivesFach.id)
   },
 
+  // Auswahl-Fach-Zuordnung einer Person setzen (zentrale Verwaltung, #3) und Ansichten neu laden.
+  // changes = { add: [fachId], remove: [fachId] } – nur Gruppen-Fächer.
+  setSchuelerFaecher: async (schuelerId, changes) => {
+    await window.api.schueler.setFaecher(schuelerId, changes)
+    await get().ladeAlleSchueler()
+    const { aktivesFach } = get()
+    if (aktivesFach) await get().ladeFachDaten(aktivesFach.id)
+  },
+
   // Sortier-Modus der aktiven Klasse setzen ('vorname' | 'nachname' | 'manuell')
   // und die Liste in der neuen Reihenfolge nachladen.
   setSchuelerSortierung: async (modus) => {
-    const { aktiveKlasse, klassen } = get()
+    const { aktiveKlasse, klassen, aktivesFach } = get()
     if (!aktiveKlasse) return
     await window.api.klassen.setSortierung(aktiveKlasse.id, modus)
     const schueler = await window.api.schueler.getAll(aktiveKlasse.id)
@@ -511,6 +520,8 @@ const useStore = create((set, get) => ({
       klassen: klassen.map((k) => (k.id === aktiveKlasse.id ? { ...k, sortierung: modus } : k)),
       schueler,
     })
+    // Notentabelle liest den Roster (fachSchueler); die neue Sortierung dort ebenfalls übernehmen.
+    if (aktivesFach) await get().ladeFachDaten(aktivesFach.id)
   },
 
   // ─── UI ──────────────────────────────────────────────────────────────────

@@ -142,6 +142,7 @@
   "schueler.importBatch",
   "schueler.reorder",
   "schueler.setAvatar",
+  "schueler.setFaecher",
   "schueler.setKlassen",
   "schueler.update",
   "schuelerKompetenzen.getAll",

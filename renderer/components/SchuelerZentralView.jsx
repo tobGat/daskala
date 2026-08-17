@@ -23,9 +23,10 @@ function MerkmalBadge({ an, label, farbe, onClick }) {
 }
 
 export default function SchuelerZentralView() {
-  const { alleSchueler, ladeAlleSchueler, klassen, aktuellesSchuljahr, setDetailSchueler, setSchuelerKlassen } = useStore()
+  const { alleSchueler, ladeAlleSchueler, klassen, aktuellesSchuljahr, setDetailSchueler, setSchuelerKlassen, setSchuelerFaecher } = useStore()
   const [suche, setSuche] = useState('')
   const [zuordnung, setZuordnung] = useState(null)   // { schueler } – Klassen-Zuordnungs-Dialog
+  const [faecherDialog, setFaecherDialog] = useState(null) // { schueler } – Fächer-Zuordnungs-Dialog
   const [umbenennen, setUmbenennen] = useState(null) // { id, vorname, nachname }
 
   useEffect(() => { ladeAlleSchueler() }, [aktuellesSchuljahr?.id, ladeAlleSchueler])
@@ -121,14 +122,21 @@ export default function SchuelerZentralView() {
                       </div>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex items-center gap-1 flex-wrap max-w-md">
+                      <div className="flex items-center gap-1.5 flex-wrap max-w-md">
                         {(s.faecher || []).length === 0
                           ? <span className="text-ink-400 text-xs">–</span>
-                          : (s.faecher || []).map(f => (
-                            <span key={f.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400" title={f.klasse_name}>
-                              {f.name}
-                            </span>
-                          ))}
+                          : (<>
+                            {(s.faecher || []).slice(0, 2).map(f => (
+                              <span key={f.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400" title={f.klasse_name}>
+                                {f.name}
+                              </span>
+                            ))}
+                            {(s.faecher || []).length > 2 && (
+                              <span className="text-[11px] text-ink-400" title={(s.faecher || []).slice(2).map(f => f.name).join(', ')}>+{(s.faecher || []).length - 2}</span>
+                            )}
+                          </>)}
+                        <button type="button" onClick={() => setFaecherDialog({ schueler: s })}
+                          className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300" title="Fächer-Zuordnung ändern">✎ Fächer</button>
                       </div>
                     </td>
                   </tr>
@@ -167,6 +175,96 @@ export default function SchuelerZentralView() {
           onSpeichern={async (ids) => { await setSchuelerKlassen(zuordnung.schueler.id, ids); setZuordnung(null) }}
         />
       )}
+
+      {/* Fächer-Zuordnung */}
+      {faecherDialog && (
+        <FaecherZuordnungDialog
+          schueler={faecherDialog.schueler}
+          onClose={() => setFaecherDialog(null)}
+          onSpeichern={async (changes) => { await setSchuelerFaecher(faecherDialog.schueler.id, changes); setFaecherDialog(null) }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Fächer-Zuordnung einer Person (#3/#4): je Klasse alle Fächer; „ganze Klasse"-Fächer sind
+// implizit (nicht abwählbar), „Auswahl"-Fächer per Checkbox einzeln zuordenbar.
+function FaecherZuordnungDialog({ schueler, onClose, onSpeichern }) {
+  const [klassenFaecher, setKlassenFaecher] = useState(null) // [{ klasse, faecher:[{id,name,alle_schueler}] }]
+  const [ausgewaehlt, setAusgewaehlt] = useState(() => new Set((schueler.faecher || []).map(f => f.id)))
+  const [speichert, setSpeichert] = useState(false)
+
+  useEffect(() => {
+    let abbruch = false
+    ;(async () => {
+      const ks = schueler.klassen || []
+      const rows = await Promise.all(ks.map(async k => ({ klasse: k, faecher: await window.api.faecher.getAll(k.id) })))
+      if (!abbruch) setKlassenFaecher(rows)
+    })()
+    return () => { abbruch = true }
+  }, [schueler.id])
+
+  const umschalten = (fid) => setAusgewaehlt(prev => {
+    const n = new Set(prev)
+    if (n.has(fid)) n.delete(fid); else n.add(fid)
+    return n
+  })
+
+  const speichern = async () => {
+    if (speichert || !klassenFaecher) return
+    setSpeichert(true)
+    // Nur Auswahl-Fächer (alle_schueler=0) sind zuordenbar; Diff gegen die Ausgangs-Mitgliedschaft.
+    const original = new Set((schueler.faecher || []).map(f => f.id))
+    const auswahlIds = new Set()
+    for (const row of klassenFaecher) for (const f of row.faecher) if (f.alle_schueler === 0) auswahlIds.add(f.id)
+    const add = [], remove = []
+    for (const fid of auswahlIds) {
+      const drin = ausgewaehlt.has(fid)
+      if (drin && !original.has(fid)) add.push(fid)
+      else if (!drin && original.has(fid)) remove.push(fid)
+    }
+    if (!add.length && !remove.length) { onClose(); return }
+    await onSpeichern({ add, remove })
+  }
+
+  return (
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && !speichert && onClose()}>
+      <div className="modal-box max-w-md">
+        <h3 className="text-base font-semibold text-ink-900 dark:text-white mb-1">Fächer-Zuordnung</h3>
+        <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">{schueler.vorname} {schueler.nachname}</p>
+        {klassenFaecher === null ? (
+          <p className="text-sm text-ink-400 py-6 text-center">Lade…</p>
+        ) : klassenFaecher.length === 0 ? (
+          <p className="text-sm text-ink-400 py-6 text-center">Noch keiner Klasse zugeordnet.</p>
+        ) : (
+          <div className="space-y-3 max-h-[55vh] overflow-y-auto">
+            {klassenFaecher.map(row => (
+              <div key={row.klasse.id}>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-ink-400 dark:text-ink-500 px-1 pb-1">{row.klasse.name}</div>
+                {row.faecher.length === 0 ? (
+                  <p className="text-xs text-ink-400 px-2 pb-1">Keine Fächer</p>
+                ) : row.faecher.map(f => {
+                  const ganz = f.alle_schueler !== 0
+                  const on = ganz || ausgewaehlt.has(f.id)
+                  return (
+                    <label key={f.id} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${ganz ? 'opacity-70' : 'hover:bg-paper-100 dark:hover:bg-ink-800 cursor-pointer'}`}>
+                      <input type="checkbox" className="accent-coral-500" checked={on} disabled={ganz} onChange={() => !ganz && umschalten(f.id)} />
+                      <span className="text-sm text-ink-700 dark:text-paper-200 flex-1">{f.name}</span>
+                      <span className="text-[10px] text-ink-400">{ganz ? 'ganze Klasse' : 'Auswahl'}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-[11px] text-ink-400 mt-2">„Ganze Klasse"-Fächer ergeben sich aus der Klassenzugehörigkeit und sind hier nicht abwählbar.</p>
+        <div className="flex justify-end gap-2 mt-4">
+          <button className="btn-secondary" onClick={onClose} disabled={speichert}>Abbrechen</button>
+          <button className="btn-primary" onClick={speichern} disabled={speichert || klassenFaecher === null}>{speichert ? 'Speichern…' : 'Speichern'}</button>
+        </div>
+      </div>
     </div>
   )
 }

@@ -132,6 +132,7 @@ const api = {
     delete: (id) => invoke('schueler:delete', id),
     entferneAusKlasse: (id, klasseId) => invoke('schueler:entferneAusKlasse', id, klasseId),
     setKlassen: (id, klasseIds) => invoke('schueler:setKlassen', id, klasseIds),
+    setFaecher: (id, changes) => invoke('schueler:setFaecher', id, changes),
     update: (id, data) => invoke('schueler:update', id, data),
     setAvatar: (id, avatar) => invoke('schueler:setAvatar', id, avatar),
     reorder: (klasseId, updates) => invoke('schueler:reorder', klasseId, updates),
