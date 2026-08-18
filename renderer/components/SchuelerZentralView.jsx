@@ -109,7 +109,7 @@ function renderSpalte(c, s) {
 }
 
 export default function SchuelerZentralView() {
-  const { alleSchueler, ladeAlleSchueler, klassen, aktuellesSchuljahr, setDetailSchueler, bearbeiteSchueler, zentraleSortierung: sort, setZentraleSortierung: setSort, zentraleSpalten, setZentraleSpalte } = useStore()
+  const { alleSchueler, ladeAlleSchueler, klassen, aktuellesSchuljahr, setDetailSchueler, bearbeiteSchueler, zentraleSortierung: sort, setZentraleSortierung: setSort, zentraleSpalten, setZentraleSpalte, zentraleSpaltenReihenfolge, setZentraleSpaltenReihenfolge } = useStore()
   const [suche, setSuche] = useState('')
   const [bearbeiten, setBearbeiten] = useState(null) // { schueler } – Bearbeiten-Modal
   const [neu, setNeu] = useState(false) // Neu-Anlegen-Modal
@@ -120,7 +120,23 @@ export default function SchuelerZentralView() {
   useEffect(() => { ladeAlleSchueler() }, [aktuellesSchuljahr?.id, ladeAlleSchueler])
 
   const echteKlassen = useMemo(() => (klassen || []).filter(k => !k.ist_vorlage), [klassen])
-  const sichtbareCols = useMemo(() => TABELLEN_SPALTEN.filter(c => zentraleSpalten[c.key]), [zentraleSpalten])
+  // Spalten in gemerkter Reihenfolge (Drift-sicher: neue/fehlende Keys hinten anhängen).
+  const geordneteCols = useMemo(() => {
+    const byKey = Object.fromEntries(TABELLEN_SPALTEN.map(c => [c.key, c]))
+    const inOrder = zentraleSpaltenReihenfolge.map(k => byKey[k]).filter(Boolean)
+    const rest = TABELLEN_SPALTEN.filter(c => !zentraleSpaltenReihenfolge.includes(c.key))
+    return [...inOrder, ...rest]
+  }, [zentraleSpaltenReihenfolge])
+  const sichtbareCols = useMemo(() => geordneteCols.filter(c => zentraleSpalten[c.key]), [geordneteCols, zentraleSpalten])
+  const spalteVerschieben = (key, richtung) => {
+    const keys = geordneteCols.map(c => c.key)
+    const i = keys.indexOf(key)
+    const j = i + richtung
+    if (j < 0 || j >= keys.length) return
+    const neu = [...keys]
+    ;[neu[i], neu[j]] = [neu[j], neu[i]]
+    setZentraleSpaltenReihenfolge(neu)
+  }
   const merkmalUmschalten = (feld) => setMerkmalFilter(m => ({ ...m, [feld]: !m[feld] }))
   // Klick auf eine sortierbare Spalte: gleiche Spalte → Richtung wechseln, sonst neu (aufsteigend).
   // sort/setSort kommen aus dem Store → Auswahl bleibt bis zum Neustart erhalten.
@@ -201,14 +217,17 @@ export default function SchuelerZentralView() {
           {spaltenOffen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setSpaltenOffen(false)} />
-              <div className="absolute right-0 mt-1 z-50 w-56 max-h-[60vh] overflow-y-auto bg-white dark:bg-ink-900 border border-paper-200 dark:border-ink-700 rounded-xl shadow-pop p-1">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-ink-400 px-2 py-1">Spalten anzeigen</div>
-                {TABELLEN_SPALTEN.map(c => (
-                  <label key={c.key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-paper-100 dark:hover:bg-ink-800 cursor-pointer text-sm text-ink-700 dark:text-paper-200">
+              <div className="absolute right-0 mt-1 z-50 w-60 max-h-[60vh] overflow-y-auto bg-white dark:bg-ink-900 border border-paper-200 dark:border-ink-700 rounded-xl shadow-pop p-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-ink-400 px-2 py-1">Spalten – anzeigen & anordnen</div>
+                {geordneteCols.map((c, i) => (
+                  <div key={c.key} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-paper-100 dark:hover:bg-ink-800 text-sm text-ink-700 dark:text-paper-200">
                     <input type="checkbox" className="accent-coral-500" checked={!!zentraleSpalten[c.key]} onChange={() => setZentraleSpalte(c.key, !zentraleSpalten[c.key])} />
-                    {c.label}
-                  </label>
+                    <span className="flex-1 truncate">{c.label}</span>
+                    <button type="button" disabled={i === 0} onClick={() => spalteVerschieben(c.key, -1)} className="px-1 text-ink-400 hover:text-coral-600 disabled:opacity-25" title="Nach links">▲</button>
+                    <button type="button" disabled={i === geordneteCols.length - 1} onClick={() => spalteVerschieben(c.key, 1)} className="px-1 text-ink-400 hover:text-coral-600 disabled:opacity-25" title="Nach rechts">▼</button>
+                  </div>
                 ))}
+                <p className="text-[10px] text-ink-400 px-2 py-1">Reihenfolge oben→unten = links→rechts.</p>
               </div>
             </>
           )}
@@ -491,67 +510,64 @@ function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
             </div>
           </div>
 
-          {/* Merkmale (LS/LEG gelten für die ganze Person; SPF fachbezogen darunter) */}
+          {/* Zuordnung & Merkmale – geordnete Zeilen (Label | Inhalt | Aktion), gleich ausgerichtet */}
           <div>
-            <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Merkmale</label>
-            <div className="flex items-center gap-2">
-              {MERKMALE.filter(m => m.feld !== 'spf').map(m => (
-                <MerkmalToggle key={m.feld} an={merkmale[m.feld]} label={m.label} farbe={m.farbe} onClick={() => merkmalUmschalten(m.feld)} />
-              ))}
-            </div>
-          </div>
-
-          {/* SPF – je Fach: Auswahl in eigenem Modal; hier kompakte Anzeige der SPF-Fächer. */}
-          <div>
-            <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">SPF (Sonderpäd. Förderbedarf)</label>
-            {(schueler.faecher || []).length === 0 ? (
-              <p className="text-sm text-ink-400">Die Person ist noch keinem Fach zugeordnet – SPF kann erst je Fach gesetzt werden, sobald es Fächer gibt.</p>
-            ) : (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {spfFaecher.size === 0 ? (
-                  <span className="text-sm text-ink-400">Kein SPF gesetzt.</span>
-                ) : (
-                  (schueler.faecher || []).filter(f => spfFaecher.has(f.id)).map(f => (
-                    <span key={f.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" title={f.klasse_name}>{f.name}</span>
-                  ))
-                )}
-                <button type="button" onClick={() => setSpfModal(true)}
-                  className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300">
-                  {spfFaecher.size === 0 ? 'SPF-Fächer festlegen' : 'ändern'}
-                </button>
+            <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Zuordnung & Merkmale</label>
+            <div className="rounded-xl border border-paper-200 dark:border-ink-700 divide-y divide-paper-100 dark:divide-ink-800 overflow-hidden">
+              {/* Merkmale (LS/LEG gelten für die ganze Person) */}
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <span className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-ink-400">Merkmale</span>
+                <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
+                  {MERKMALE.filter(m => m.feld !== 'spf').map(m => (
+                    <MerkmalToggle key={m.feld} an={merkmale[m.feld]} label={m.label} farbe={m.farbe} onClick={() => merkmalUmschalten(m.feld)} />
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
-
-          {/* Klassen (Auswahl im eigenen Modal) */}
-          <div>
-            <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Klassen</label>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {klassenIds.size === 0 ? (
-                <span className="text-sm text-rose-500">Mindestens eine Klasse wählen.</span>
-              ) : klassen.filter(k => klassenIds.has(k.id)).map(k => (
-                <span key={k.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-600 dark:text-paper-300">{k.name}</span>
-              ))}
-              <button type="button" onClick={() => setKlassenModal(true)} className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300">ändern</button>
-            </div>
-          </div>
-
-          {/* Fächer (Auswahl im eigenen Modal) */}
-          <div>
-            <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Fächer</label>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {(() => {
-                if (klassenFaecher === null) return <span className="text-sm text-ink-400">Lade…</span>
-                const namen = []
-                for (const row of klassenFaecher) for (const f of row.faecher) if (f.alle_schueler !== 0 || faecherAusw.has(f.id)) namen.push(f.name)
-                if (namen.length === 0) return <span className="text-sm text-ink-400">Keine Fächer</span>
-                return (<>
-                  {namen.slice(0, 4).map((n, i) => <span key={i} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400">{n}</span>)}
-                  {namen.length > 4 && <span className="text-[11px] text-ink-400">+{namen.length - 4}</span>}
-                </>)
-              })()}
-              <button type="button" onClick={() => setFaecherModal(true)} disabled={klassenFaecher === null}
-                className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300 disabled:opacity-50">ändern</button>
+              {/* SPF – fachbezogen, Auswahl im eigenen Modal */}
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <span className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-ink-400">SPF</span>
+                <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
+                  {(schueler.faecher || []).length === 0 ? (
+                    <span className="text-xs text-ink-400">Erst einem Fach zuordnen.</span>
+                  ) : spfFaecher.size === 0 ? (
+                    <span className="text-xs text-ink-400">Kein SPF gesetzt.</span>
+                  ) : (schueler.faecher || []).filter(f => spfFaecher.has(f.id)).map(f => (
+                    <span key={f.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" title={f.klasse_name}>{f.name}</span>
+                  ))}
+                </div>
+                {(schueler.faecher || []).length > 0 && (
+                  <button type="button" onClick={() => setSpfModal(true)} className="shrink-0 text-[11px] font-medium text-coral-600 hover:text-coral-700 dark:text-coral-300">ändern</button>
+                )}
+              </div>
+              {/* Klassen – Auswahl im eigenen Modal */}
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <span className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-ink-400">Klassen</span>
+                <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
+                  {klassenIds.size === 0 ? (
+                    <span className="text-xs text-rose-500">Mindestens eine wählen.</span>
+                  ) : klassen.filter(k => klassenIds.has(k.id)).map(k => (
+                    <span key={k.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-600 dark:text-paper-300">{k.name}</span>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setKlassenModal(true)} className="shrink-0 text-[11px] font-medium text-coral-600 hover:text-coral-700 dark:text-coral-300">ändern</button>
+              </div>
+              {/* Fächer – Auswahl im eigenen Modal */}
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <span className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-ink-400">Fächer</span>
+                <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
+                  {(() => {
+                    if (klassenFaecher === null) return <span className="text-xs text-ink-400">Lade…</span>
+                    const namen = []
+                    for (const row of klassenFaecher) for (const f of row.faecher) if (f.alle_schueler !== 0 || faecherAusw.has(f.id)) namen.push(f.name)
+                    if (namen.length === 0) return <span className="text-xs text-ink-400">Keine Fächer</span>
+                    return (<>
+                      {namen.slice(0, 5).map((n, i) => <span key={i} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400">{n}</span>)}
+                      {namen.length > 5 && <span className="text-[11px] text-ink-400">+{namen.length - 5}</span>}
+                    </>)
+                  })()}
+                </div>
+                <button type="button" onClick={() => setFaecherModal(true)} disabled={klassenFaecher === null} className="shrink-0 text-[11px] font-medium text-coral-600 hover:text-coral-700 dark:text-coral-300 disabled:opacity-50">ändern</button>
+              </div>
             </div>
           </div>
 

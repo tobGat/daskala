@@ -563,6 +563,9 @@ const useStore = create((set, get) => ({
   // Sichtbare (optionale) Tabellenspalten – bis zum Neustart gemerkt. Default: Merkmale/Klassen/Fächer.
   zentraleSpalten: { merkmale: true, klassen: true, faecher: true },
   setZentraleSpalte: (key, an) => set(state => ({ zentraleSpalten: { ...state.zentraleSpalten, [key]: an } })),
+  // Spalten-Reihenfolge (Array von Keys). Leer = natürliche Reihenfolge; wird beim Verschieben gefüllt.
+  zentraleSpaltenReihenfolge: [],
+  setZentraleSpaltenReihenfolge: (arr) => set({ zentraleSpaltenReihenfolge: arr }),
 
   // ─── UI ──────────────────────────────────────────────────────────────────
   setCurrentView: (view) => set({ currentView: view }),
