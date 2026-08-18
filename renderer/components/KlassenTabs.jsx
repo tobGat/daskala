@@ -38,6 +38,9 @@ export default function KlassenTabs() {
   } = useStore()
   const planungAktiv = einstellungen?.planung_aktiv === '1'
   const KLASSEN_VIEWS = ALLE_KLASSEN_VIEWS.filter(v => !v.planungOnly || planungAktiv)
+  // Klassen-Tab nur markieren, wenn eine KLASSEN-Ansicht aktiv ist. Die globalen Ansichten
+  // (Dashboard/Schüler:innen/KV) gehören keiner Klasse → dort ist kein Klassen-Tab markiert.
+  const istKlassenAnsicht = !['stundenplan', 'schueler', 'kv'].includes(currentView)
 
   const [renameId, setRenameId] = useState(null)
   const [renameWert, setRenameWert] = useState('')
@@ -199,7 +202,7 @@ export default function KlassenTabs() {
                 onDrop={e => handleTabDrop(e, k.id)}
                 onDragEnd={handleTabDragEnd}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-semibold rounded-2xl whitespace-nowrap transition-all duration-150 active:cursor-grabbing
-                  ${aktiveKlasse?.id === k.id && currentView !== 'stundenplan'
+                  ${aktiveKlasse?.id === k.id && istKlassenAnsicht
                     ? 'bg-white dark:bg-ink-800 text-ink-900 dark:text-paper-100 shadow-soft'
                     : 'text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-200 hover:bg-paper-200/70 dark:hover:bg-ink-800/70'}
                   ${dragOverKlasseId === k.id && dragKlasseId !== k.id ? 'ring-2 ring-coral-400/70' : ''}
@@ -230,7 +233,7 @@ export default function KlassenTabs() {
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: k.farbe }} />
                 )}
                 {k.name}
-                {aktiveKlasse?.id === k.id && currentView !== 'stundenplan' && KLASSEN_VIEWS.find(v => v.id === currentView) && (
+                {aktiveKlasse?.id === k.id && istKlassenAnsicht && KLASSEN_VIEWS.find(v => v.id === currentView) && (
                   <span className="text-ink-500 font-normal text-xs">
                     · {KLASSEN_VIEWS.find(v => v.id === currentView).label}
                   </span>
