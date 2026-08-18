@@ -10,6 +10,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import useStore from '../store/useStore'
 import SchuelerAvatar from './SchuelerAvatar'
+import AvatarEditorModal from './AvatarEditorModal'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { parseSchuelerDatei } from '../utils/schuelerImport'
 
@@ -442,6 +443,8 @@ export function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeicher
   const [spfModal, setSpfModal] = useState(false) // Auswahl der SPF-Fächer im eigenen Modal
   const [klassenModal, setKlassenModal] = useState(false) // Klassen-Auswahl im eigenen Modal
   const [faecherModal, setFaecherModal] = useState(false) // Fächer-Auswahl im eigenen Modal
+  const [avatarModal, setAvatarModal] = useState(false) // Avatar-Editor
+  const [avatarStand, setAvatarStand] = useState(schueler.avatar ?? null) // aktueller Avatar (Vorschau)
   const [stammdaten, setStammdaten] = useState(() => Object.fromEntries(STAMMDATEN.map(s => [s.feld, schueler[s.feld] || ''])))
   const [speichert, setSpeichert] = useState(false)
 
@@ -498,8 +501,18 @@ export function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeicher
     <>
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && !speichert && onClose()}>
       <div className="modal-box max-w-lg">
-        <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-1">Schüler:in bearbeiten</h2>
-        <p className="text-sm text-ink-500 dark:text-ink-400 mb-4">{schueler.vorname} {schueler.nachname}</p>
+        <div className="flex items-center gap-3 mb-4">
+          {/* Avatar-Bearbeitung ist ausschließlich hier möglich */}
+          <button type="button" onClick={() => setAvatarModal(true)} title="Avatar bearbeiten"
+            className="relative shrink-0 rounded-2xl focus:outline-none focus:ring-2 focus:ring-coral-400/40">
+            <SchuelerAvatar schueler={{ ...schueler, avatar: avatarStand }} size={44} className="rounded-2xl shadow-soft" />
+            <span className="absolute -bottom-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 text-[10px] shadow-soft">🎨</span>
+          </button>
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-ink-900 dark:text-white leading-tight">Schüler:in bearbeiten</h2>
+            <p className="text-sm text-ink-500 dark:text-ink-400 truncate">{schueler.vorname} {schueler.nachname}</p>
+          </div>
+        </div>
 
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
           {/* Name */}
@@ -626,6 +639,13 @@ export function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeicher
         initial={faecherAusw}
         onClose={() => setFaecherModal(false)}
         onOk={(sel) => { setFaecherAusw(sel); setFaecherModal(false) }}
+      />
+    )}
+    {avatarModal && (
+      <AvatarEditorModal
+        schueler={{ ...schueler, avatar: avatarStand }}
+        onClose={() => setAvatarModal(false)}
+        onSaved={async (wert) => { setAvatarStand(wert); await useStore.getState().aktualisiereSchuelerAnsichten() }}
       />
     )}
     </>

@@ -5,7 +5,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import useStore from '../store/useStore'
 import SchuelerKVSection from './kv/SchuelerKVSection'
 import SchuelerAvatar from './SchuelerAvatar'
-import AvatarEditorModal from './AvatarEditorModal'
 import { avatarSvg } from '../utils/avatar'
 import { niveauZurZeit, niveauOffset } from '../utils/niveau'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -542,7 +541,7 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
 
 // ─── Haupt-Modal ──────────────────────────────────────────────────────────────
 export default function SchuelerDetail() {
-  const { detailSchueler, closeDetail, aktivesFach, aktiveKlasse, ladeSchueler } = useStore()
+  const { detailSchueler, closeDetail, aktivesFach, aktiveKlasse } = useStore()
   const mobil = useIsMobile()
 
   const [profil, setProfil] = useState(null)
@@ -550,7 +549,6 @@ export default function SchuelerDetail() {
   const [selectedFachId, setSelectedFachId] = useState(null)
   const [kvAktiv, setKvAktiv] = useState(false)         // ob KV-Sektion in Sidebar gewählt ist
   const [exportLoading, setExportLoading] = useState(false)
-  const [avatarSchueler, setAvatarSchueler] = useState(null)
 
   useEffect(() => {
     if (!detailSchueler) return
@@ -596,8 +594,6 @@ export default function SchuelerDetail() {
             schueler={headerSchueler}
             size={44}
             className="rounded-2xl shadow-soft"
-            onClick={() => setAvatarSchueler(headerSchueler)}
-            title="Avatar bearbeiten"
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -821,18 +817,6 @@ export default function SchuelerDetail() {
           )}
         </div>
       </div>
-
-      {avatarSchueler && (
-        <AvatarEditorModal
-          schueler={avatarSchueler}
-          onClose={() => setAvatarSchueler(null)}
-          onSaved={async () => {
-            const data = await window.api.schueler.getLeistungsProfil(detailSchueler.id)
-            setProfil(data)
-            await ladeSchueler()   // Store-Schülerliste (Notentabelle/Sitzplan) mit aktualisieren
-          }}
-        />
-      )}
     </div>
   )
 }

@@ -109,8 +109,9 @@ export default function AvatarEditorModal({ schueler, onClose, onSaved }) {
   const speichern = async () => {
     setSaving(true)
     try {
-      await window.api.schueler.setAvatar(schueler.id, JSON.stringify({ options: opts }))
-      await onSaved?.()
+      const wert = JSON.stringify({ options: opts })
+      await window.api.schueler.setAvatar(schueler.id, wert)
+      await onSaved?.(wert)
       onClose()
     } catch (e) {
       console.error('Avatar speichern:', e)
@@ -120,7 +121,7 @@ export default function AvatarEditorModal({ schueler, onClose, onSaved }) {
   }
   const zuruecksetzen = async () => {
     setSaving(true)
-    try { await window.api.schueler.setAvatar(schueler.id, null); await onSaved?.(); onClose() }
+    try { await window.api.schueler.setAvatar(schueler.id, null); await onSaved?.(null); onClose() }
     catch (e) { console.error('Avatar zurücksetzen:', e); setSaving(false) }
   }
 

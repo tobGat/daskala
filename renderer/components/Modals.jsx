@@ -6,7 +6,6 @@ import useStore from '../store/useStore'
 import { berechneSchulferien } from '../utils/schulferien'
 import { useIsMobile } from '../hooks/useIsMobile'
 import SchuelerAvatar from './SchuelerAvatar'
-import AvatarEditorModal from './AvatarEditorModal'
 import { SchuelerBearbeitenModal } from './SchuelerZentralView'
 
 const FARB_PALETTE = [
@@ -360,7 +359,6 @@ export function SchuelerVerwaltenModal() {
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState('liste') // 'liste' | 'vorhandene'
   const [loeschenId, setLoeschenId] = useState(null)
-  const [avatarSchueler, setAvatarSchueler] = useState(null)
   // Vollständiges Bearbeiten: „Bearbeiten" öffnet dasselbe Modal wie die zentrale Verwaltung
   // (Name/Merkmale/Klassen/Fächer/SPF/Stammdaten). Keine Inline-Bearbeitung mehr in der Liste.
   const [bearbeitenPerson, setBearbeitenPerson] = useState(null)
@@ -611,12 +609,7 @@ export function SchuelerVerwaltenModal() {
                 {s.legasthenie ? <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400">LEG</span> : null}
                 {s.spf ? <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">SPF</span> : null}
                 <button
-                  title="Avatar bearbeiten"
-                  onClick={() => setAvatarSchueler(s)}
-                  className="text-xs px-1.5 py-0.5 rounded border border-paper-200 text-ink-400 dark:border-ink-600 hover:border-coral-300 hover:text-coral-600 transition-colors"
-                >🎨</button>
-                <button
-                  title="Bearbeiten (Name, Merkmale, Klassen, Fächer, Stammdaten)"
+                  title="Bearbeiten (Name, Merkmale, Klassen, Fächer, Stammdaten, Avatar)"
                   onClick={() => oeffneBearbeiten(s.id)}
                   className="text-xs px-2 py-0.5 rounded border border-paper-200 text-ink-500 dark:border-ink-600 hover:border-coral-300 hover:text-coral-600 transition-colors whitespace-nowrap"
                 >✎ Bearbeiten</button>
@@ -690,15 +683,7 @@ export function SchuelerVerwaltenModal() {
         )}
       </div>
 
-      {avatarSchueler && (
-        <AvatarEditorModal
-          schueler={avatarSchueler}
-          onClose={() => setAvatarSchueler(null)}
-          onSaved={ladeSchueler}
-        />
-      )}
-
-      {/* Vollständiges Bearbeiten – dasselbe Modal wie in der zentralen Verwaltung. */}
+      {/* Vollständiges Bearbeiten – dasselbe Modal wie in der zentralen Verwaltung (inkl. Avatar). */}
       {bearbeitenPerson && (
         <SchuelerBearbeitenModal
           schueler={bearbeitenPerson}
@@ -740,9 +725,6 @@ export function SchuelerVerwaltenModal() {
               <>
                 <button type="button" className={menuItem} onClick={() => { oeffneBearbeiten(menuSchueler.id); schliesseMenu() }}>
                   <span className="w-6 text-center">✎</span> Bearbeiten
-                </button>
-                <button type="button" className={menuItem} onClick={() => { setAvatarSchueler(menuSchueler); schliesseMenu() }}>
-                  <span className="w-6 text-center">🎨</span> Avatar bearbeiten
                 </button>
                 <div className="context-menu-separator" />
                 <button type="button" className={`${menuItem} text-red-500 dark:text-red-400`} onClick={() => setMenuConfirmDelete(true)}>
