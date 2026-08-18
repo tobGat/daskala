@@ -7,6 +7,7 @@ import { berechneSchulferien } from '../utils/schulferien'
 import { useIsMobile } from '../hooks/useIsMobile'
 import SchuelerAvatar from './SchuelerAvatar'
 import AvatarEditorModal from './AvatarEditorModal'
+import { SchuelerBearbeitenModal } from './SchuelerZentralView'
 
 const FARB_PALETTE = [
   // Indigo
@@ -355,19 +356,20 @@ export function FachSchuelerModal({ fach, onClose, onSaved }) {
 
 // ─── Schüler:innen verwalten ─────────────────────────────────────────────────
 export function SchuelerVerwaltenModal() {
-  const { closeModal, aktiveKlasse, schueler, ladeSchueler, aktuellesSchuljahr } = useStore()
+  const { closeModal, aktiveKlasse, schueler, ladeSchueler, aktuellesSchuljahr, klassen, bearbeiteSchueler } = useStore()
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState('liste') // 'liste' | 'vorhandene'
   const [loeschenId, setLoeschenId] = useState(null)
   const [avatarSchueler, setAvatarSchueler] = useState(null)
-  // Inline-Umbenennen: welche:r Schüler:in wird gerade bearbeitet + Eingabewerte.
-  const [editId, setEditId] = useState(null)
-  const [editVorname, setEditVorname] = useState('')
-  const [editNachname, setEditNachname] = useState('')
-  // „Vorhandene hinzufügen": Kandidat:innen (nicht in dieser Klasse) + Auswahl. Neue Personen
-  // werden ausschließlich in der zentralen „Schüler:innen"-Verwaltung angelegt.
+  // Vollständiges Bearbeiten: „Bearbeiten" öffnet dasselbe Modal wie die zentrale Verwaltung
+  // (Name/Merkmale/Klassen/Fächer/SPF/Stammdaten). Keine Inline-Bearbeitung mehr in der Liste.
+  const [bearbeitenPerson, setBearbeitenPerson] = useState(null)
+  const echteKlassen = (klassen || []).filter(k => !k.ist_vorlage)
+  // „Vorhandene hinzufügen": Kandidat:innen (nicht in dieser Klasse) + Auswahl + Live-Suche.
+  // Neue Personen werden ausschließlich in der zentralen „Schüler:innen"-Verwaltung angelegt.
   const [vorhandene, setVorhandene] = useState(null) // null = lädt
   const [vorhandeneSel, setVorhandeneSel] = useState(() => new Set())
+  const [vorhandeneSuche, setVorhandeneSuche] = useState('')
   const mobil = useIsMobile()
 
   // Mobil: statt Inline-Buttons (SPF/LEG/…/bearbeiten/löschen) ein Kontextmenü, das per
@@ -485,28 +487,24 @@ export function SchuelerVerwaltenModal() {
     if (aktivesFach) await ladeFachDaten(aktivesFach.id)
   }
 
-  const handleToggle = async (s, feld) => {
-    await window.api.schueler.update(s.id, {
-      vorname: s.vorname,
-      nachname: s.nachname,
-      [feld]: s[feld] ? 0 : 1,
-    })
-    await ladeSchueler()
+  // „Bearbeiten" öffnet dasselbe Modal wie die zentrale Verwaltung. getAll liefert keine
+  // Klassen-/Fächer-/SPF-Aggregation, daher die vollständige Person nachladen.
+  const oeffneBearbeiten = async (id) => {
+    setLoeschenId(null)
+    const alle = await window.api.schueler.getAllImSchuljahr(aktuellesSchuljahr.id)
+    const person = alle.find(p => p.id === id)
+    if (person) setBearbeitenPerson(person)
   }
 
-  const startBearbeiten = (s) => {
-    setLoeschenId(null)
-    setEditVorname(s.vorname ?? '')
-    setEditNachname(s.nachname ?? '')
-    setEditId(s.id)
-  }
-  const handleUmbenennen = async (s) => {
-    const v = editVorname.trim(), n = editNachname.trim()
-    if (!v || !n) return
-    await window.api.schueler.update(s.id, { vorname: v, nachname: n })
-    await ladeSchueler()
-    setEditId(null)
-  }
+  // Live-Suche über die Kandidat:innen (Name oder Klasse). Ohne Eingabe wird KEINE Liste gezeigt.
+  const vorhandeneGefiltert = (() => {
+    const q = vorhandeneSuche.trim().toLowerCase()
+    if (!q || !vorhandene) return []
+    return vorhandene.filter(s =>
+      `${s.vorname} ${s.nachname}`.toLowerCase().includes(q) ||
+      `${s.nachname} ${s.vorname}`.toLowerCase().includes(q) ||
+      (s.klassen || []).some(k => (k.name || '').toLowerCase().includes(q)))
+  })()
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && closeModal()}>
@@ -591,37 +589,7 @@ export function SchuelerVerwaltenModal() {
                 </div>
               ))
             ) : schueler.map(s => (
-              editId === s.id ? (
-              <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg">
-                <SchuelerAvatar schueler={s} size={28} />
-                <input
-                  className="input flex-1 py-1 text-sm min-w-0"
-                  value={editVorname}
-                  onChange={e => setEditVorname(e.target.value)}
-                  placeholder="Vorname"
-                  autoFocus
-                  onKeyDown={e => { if (e.key === 'Enter') handleUmbenennen(s); if (e.key === 'Escape') setEditId(null) }}
-                />
-                <input
-                  className="input flex-1 py-1 text-sm min-w-0"
-                  value={editNachname}
-                  onChange={e => setEditNachname(e.target.value)}
-                  placeholder="Nachname"
-                  onKeyDown={e => { if (e.key === 'Enter') handleUmbenennen(s); if (e.key === 'Escape') setEditId(null) }}
-                />
-                <button
-                  className="text-xs px-2 py-0.5 rounded bg-coral-600 text-white hover:bg-coral-700 transition-colors font-medium disabled:opacity-40"
-                  disabled={!editVorname.trim() || !editNachname.trim()}
-                  onClick={() => handleUmbenennen(s)}
-                  title="Speichern"
-                >✓</button>
-                <button
-                  className="text-xs px-1.5 py-0.5 rounded text-ink-400 hover:text-ink-600 transition-colors"
-                  onClick={() => setEditId(null)}
-                  title="Abbrechen"
-                >✕</button>
-              </div>
-              ) : mobil ? (
+              mobil ? (
               <div
                 key={s.id}
                 onContextMenu={e => { e.preventDefault(); setMenuConfirmDelete(false); setMenuSchuelerId(s.id) }}
@@ -637,60 +605,28 @@ export function SchuelerVerwaltenModal() {
               ) : (
               <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg">
                 <SchuelerAvatar schueler={s} size={28} />
-                <span className="text-sm text-ink-900 dark:text-white flex-1">
-                  {s.nachname} {s.vorname}
-                </span>
-                <button
-                  title="Name bearbeiten"
-                  onClick={() => startBearbeiten(s)}
-                  className="text-xs px-1.5 py-0.5 rounded border border-paper-200 text-ink-400 dark:border-ink-600 hover:border-coral-300 hover:text-coral-600 transition-colors"
-                >✎</button>
+                <span className="text-sm text-ink-900 dark:text-white flex-1 truncate">{s.nachname} {s.vorname}</span>
+                {/* Merkmale nur zur Anzeige – geändert wird im „Bearbeiten"-Fenster. */}
+                {s.lernschwaeche ? <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">LS</span> : null}
+                {s.legasthenie ? <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400">LEG</span> : null}
+                {s.spf ? <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">SPF</span> : null}
                 <button
                   title="Avatar bearbeiten"
                   onClick={() => setAvatarSchueler(s)}
                   className="text-xs px-1.5 py-0.5 rounded border border-paper-200 text-ink-400 dark:border-ink-600 hover:border-coral-300 hover:text-coral-600 transition-colors"
                 >🎨</button>
-                {loeschenId === s.id && (
+                <button
+                  title="Bearbeiten (Name, Merkmale, Klassen, Fächer, Stammdaten)"
+                  onClick={() => oeffneBearbeiten(s.id)}
+                  className="text-xs px-2 py-0.5 rounded border border-paper-200 text-ink-500 dark:border-ink-600 hover:border-coral-300 hover:text-coral-600 transition-colors whitespace-nowrap"
+                >✎ Bearbeiten</button>
+                {loeschenId === s.id ? (
                   <>
-                    <button
-                      className="text-xs px-2 py-0.5 rounded bg-red-500 text-white hover:bg-red-600 transition-colors font-medium"
-                      onClick={() => handleLoeschen(s.id)}
-                    >Entfernen</button>
-                    <button
-                      className="text-xs px-1.5 py-0.5 rounded text-ink-400 hover:text-ink-600 transition-colors"
-                      onClick={() => setLoeschenId(null)}
-                    >✕</button>
+                    <button className="text-xs px-2 py-0.5 rounded bg-red-500 text-white hover:bg-red-600 transition-colors font-medium" onClick={() => handleLoeschen(s.id)}>Entfernen</button>
+                    <button className="text-xs px-1.5 py-0.5 rounded text-ink-400 hover:text-ink-600 transition-colors" onClick={() => setLoeschenId(null)}>✕</button>
                   </>
-                )}
-                <button
-                  title="Lernschwäche"
-                  onClick={() => handleToggle(s, 'lernschwaeche')}
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
-                    s.lernschwaeche
-                      ? 'bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/40 dark:border-amber-700 dark:text-amber-400'
-                      : 'border-paper-200 text-ink-400 dark:border-ink-600 hover:border-amber-300 hover:text-amber-600'
-                  }`}
-                >LS</button>
-                <button
-                  title="Legasthenie"
-                  onClick={() => handleToggle(s, 'legasthenie')}
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
-                    s.legasthenie
-                      ? 'bg-violet-100 border-violet-300 text-violet-700 dark:bg-violet-900/40 dark:border-violet-700 dark:text-violet-400'
-                      : 'border-paper-200 text-ink-400 dark:border-ink-600 hover:border-violet-300 hover:text-violet-600'
-                  }`}
-                >LEG</button>
-                {/* SPF ist fachbezogen → wird in der zentralen „Schüler:innen"-Verwaltung je Fach gesetzt.
-                    Hier nur als schreibgeschützter Hinweis, falls in ≥1 Fach gesetzt. */}
-                {s.spf ? <span title="SPF (fachbezogen – Bearbeiten in der Schüler:innen-Verwaltung)" className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">SPF</span> : null}
-                {loeschenId !== s.id && (
-                  <button
-                    className="text-ink-600 dark:text-paper-300 dark:text-ink-600 hover:text-red-400 dark:hover:text-red-400 text-sm px-1 transition-colors"
-                    onClick={() => setLoeschenId(s.id)}
-                    title="Entfernen"
-                  >
-                    ✕
-                  </button>
+                ) : (
+                  <button className="text-ink-600 dark:text-ink-500 hover:text-red-400 dark:hover:text-red-400 text-sm px-1 transition-colors" onClick={() => setLoeschenId(s.id)} title="Aus Klasse entfernen">✕</button>
                 )}
               </div>
               )
@@ -699,36 +635,49 @@ export function SchuelerVerwaltenModal() {
           </div>
         )}
 
-        {/* Vorhandene Schüler:innen zur Klasse hinzufügen (Anlegen neuer Personen ist zentral) */}
+        {/* Vorhandene Schüler:innen zur Klasse hinzufügen – nur per Live-Suche (Anlegen ist zentral) */}
         {tab === 'vorhandene' && (
           <div className="space-y-3">
             <p className="text-sm text-ink-500 dark:text-ink-400">
               Bereits vorhandene Schüler:innen dieser Klasse zuordnen. <span className="text-ink-400">Neue Personen legst du in der zentralen „Schüler:innen"-Verwaltung an.</span>
             </p>
+            <input
+              value={vorhandeneSuche}
+              onChange={e => setVorhandeneSuche(e.target.value)}
+              placeholder="Suchen (Name oder Klasse) …"
+              className="input w-full text-sm"
+              autoFocus
+            />
             {vorhandene === null ? (
               <p className="text-sm text-ink-400 py-4 text-center">Lade…</p>
-            ) : vorhandene.length === 0 ? (
-              <p className="text-sm text-ink-400 py-4 text-center">Keine weiteren Schüler:innen im Schuljahr verfügbar.</p>
             ) : (
               <>
-                <div className="max-h-64 overflow-y-auto space-y-1 border border-paper-200 dark:border-ink-700 rounded-lg p-1">
-                  {vorhandene.map(s => {
-                    const on = vorhandeneSel.has(s.id)
-                    const stamm = (s.klassen || []).find(k => k.ist_stammklasse) || (s.klassen || [])[0]
-                    return (
-                      <button type="button" key={s.id} onClick={() => toggleVorhanden(s.id)}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${on ? 'bg-coral-50 dark:bg-coral-900/30' : 'hover:bg-paper-50 dark:hover:bg-ink-800'}`}>
-                        <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${on ? 'bg-coral-600 border-coral-600 text-white' : 'border-paper-300 dark:border-ink-600'}`}>{on ? '✓' : ''}</span>
-                        <SchuelerAvatar schueler={s} size={24} />
-                        <span className="text-sm text-ink-800 dark:text-paper-200 flex-1 truncate">{s.nachname} {s.vorname}</span>
-                        {stamm && <span className="text-[10px] text-ink-400 flex-shrink-0">{stamm.name}</span>}
-                      </button>
-                    )
-                  })}
-                </div>
-                <button className="btn-primary w-full" onClick={handleVorhandeneHinzufuegen} disabled={!vorhandeneSel.size || loading}>
-                  {loading ? 'Hinzufügen…' : (vorhandeneSel.size ? `${vorhandeneSel.size} zur Klasse hinzufügen` : 'Zur Klasse hinzufügen')}
-                </button>
+                {vorhandeneSuche.trim() === '' ? (
+                  <p className="text-sm text-ink-400 py-4 text-center">Tippe zum Suchen – es werden nur passende Schüler:innen angezeigt.</p>
+                ) : vorhandeneGefiltert.length === 0 ? (
+                  <p className="text-sm text-ink-400 py-4 text-center">Keine passenden Schüler:innen.</p>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto space-y-1 border border-paper-200 dark:border-ink-700 rounded-lg p-1">
+                    {vorhandeneGefiltert.map(s => {
+                      const on = vorhandeneSel.has(s.id)
+                      const stamm = (s.klassen || []).find(k => k.ist_stammklasse) || (s.klassen || [])[0]
+                      return (
+                        <button type="button" key={s.id} onClick={() => toggleVorhanden(s.id)}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${on ? 'bg-coral-50 dark:bg-coral-900/30' : 'hover:bg-paper-50 dark:hover:bg-ink-800'}`}>
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${on ? 'bg-coral-600 border-coral-600 text-white' : 'border-paper-300 dark:border-ink-600'}`}>{on ? '✓' : ''}</span>
+                          <SchuelerAvatar schueler={s} size={24} />
+                          <span className="text-sm text-ink-800 dark:text-paper-200 flex-1 truncate">{s.nachname} {s.vorname}</span>
+                          {stamm && <span className="text-[10px] text-ink-400 flex-shrink-0">{stamm.name}</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+                {vorhandeneSel.size > 0 && (
+                  <button className="btn-primary w-full" onClick={handleVorhandeneHinzufuegen} disabled={loading}>
+                    {loading ? 'Hinzufügen…' : `${vorhandeneSel.size} zur Klasse hinzufügen`}
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -746,6 +695,16 @@ export function SchuelerVerwaltenModal() {
           schueler={avatarSchueler}
           onClose={() => setAvatarSchueler(null)}
           onSaved={ladeSchueler}
+        />
+      )}
+
+      {/* Vollständiges Bearbeiten – dasselbe Modal wie in der zentralen Verwaltung. */}
+      {bearbeitenPerson && (
+        <SchuelerBearbeitenModal
+          schueler={bearbeitenPerson}
+          klassen={echteKlassen}
+          onClose={() => setBearbeitenPerson(null)}
+          onSpeichern={async (payload) => { await bearbeiteSchueler(bearbeitenPerson.id, payload); setBearbeitenPerson(null) }}
         />
       )}
 
@@ -779,20 +738,12 @@ export function SchuelerVerwaltenModal() {
               </>
             ) : (
               <>
-                <button type="button" className={menuItem} onClick={() => { startBearbeiten(menuSchueler); schliesseMenu() }}>
-                  <span className="w-6 text-center">✎</span> Name bearbeiten
+                <button type="button" className={menuItem} onClick={() => { oeffneBearbeiten(menuSchueler.id); schliesseMenu() }}>
+                  <span className="w-6 text-center">✎</span> Bearbeiten
                 </button>
                 <button type="button" className={menuItem} onClick={() => { setAvatarSchueler(menuSchueler); schliesseMenu() }}>
                   <span className="w-6 text-center">🎨</span> Avatar bearbeiten
                 </button>
-                <div className="context-menu-separator" />
-                <button type="button" className={menuItem} onClick={() => handleToggle(menuSchueler, 'lernschwaeche')}>
-                  <span className="w-6 text-center">{menuSchueler.lernschwaeche ? '☑' : '☐'}</span> Lernschwäche
-                </button>
-                <button type="button" className={menuItem} onClick={() => handleToggle(menuSchueler, 'legasthenie')}>
-                  <span className="w-6 text-center">{menuSchueler.legasthenie ? '☑' : '☐'}</span> Legasthenie
-                </button>
-                {/* SPF ist fachbezogen und wird in der zentralen „Schüler:innen"-Verwaltung je Fach gesetzt. */}
                 <div className="context-menu-separator" />
                 <button type="button" className={`${menuItem} text-red-500 dark:text-red-400`} onClick={() => setMenuConfirmDelete(true)}>
                   <span className="w-6 text-center">🗑</span> Aus Klasse entfernen

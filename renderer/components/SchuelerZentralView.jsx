@@ -426,8 +426,9 @@ function SchuelerNeuModal({ klassen, onClose }) {
 }
 
 // Eigenes Modal zum Bearbeiten aller Details einer Person: Name, Merkmale, Klassen- und
-// Fächer-Zuordnung – gebündelt mit EINEM „Speichern".
-function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
+// Fächer-Zuordnung, SPF, Stammdaten – gebündelt mit EINEM „Speichern". Wird sowohl in der
+// zentralen Verwaltung als auch (per „Bearbeiten") im Klassen-Modal verwendet.
+export function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
   const [vorname, setVorname] = useState(schueler.vorname || '')
   const [nachname, setNachname] = useState(schueler.nachname || '')
   const [merkmale, setMerkmale] = useState(() => ({

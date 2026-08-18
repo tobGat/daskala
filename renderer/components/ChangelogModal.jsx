@@ -24,6 +24,7 @@ export const CHANGELOG = [
       'Aufgeräumtes Bearbeiten-Fenster: Merkmale, SPF, Klassen und Fächer stehen jetzt geordnet untereinander (gleiche Ausrichtung, „ändern" rechts). Klassen und Fächer wählst du – wie SPF – in einem eigenen Auswahl-Fenster.',
       'Spalten wählen & anordnen: Über „Spalten ▾" in der Schüler:innen-Verwaltung blendest du ein, welche Informationen die Tabelle anzeigt (Merkmale, Klassen, Fächer sowie Stammdaten wie Telefon, Ort, Notfallnummer …), und änderst mit ▲/▼ ihre Reihenfolge. Die Auswahl bleibt bis zum Neustart erhalten.',
       'Anlegen zentralisiert: Neue Schüler:innen werden ausschließlich in der zentralen „Schüler:innen"-Verwaltung angelegt (einzeln oder per CSV-/Excel-Import, mit Wahl der Stammklasse). Das Schüler:innen-Modal in der Klassenansicht dient nur noch dazu, bereits vorhandene Personen der Klasse hinzuzufügen.',
+      'Klassen-Modal aufgeräumt: Merkmale u. Ä. lassen sich dort nicht mehr direkt umschalten – „✎ Bearbeiten" öffnet dasselbe Fenster wie die zentrale Verwaltung (Name, Merkmale, Klassen, Fächer, SPF, Stammdaten). Vorhandene Schüler:innen fügst du per Live-Suche hinzu: getippte Zeichen filtern sofort, es werden nur Treffer (Name oder Klasse) gelistet.',
     ],
   },
   {
