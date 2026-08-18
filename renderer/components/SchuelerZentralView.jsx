@@ -267,25 +267,25 @@ export default function SchuelerZentralView() {
               <tbody className="divide-y divide-paper-100 dark:divide-ink-800">
                 {gefiltert.map(s => (
                   <tr key={s.id} className="hover:bg-paper-50 dark:hover:bg-ink-800/40">
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2.5">
-                        <SchuelerAvatar schueler={s} size={30} className="shadow-softer shrink-0" />
+                    <td className="px-3 py-1 align-middle">
+                      <div className="flex items-center gap-2">
+                        <SchuelerAvatar schueler={s} size={24} className="shadow-softer shrink-0" />
                         <button type="button" onClick={() => setDetailSchueler(s)}
                           className="text-left text-ink-700 dark:text-paper-200 hover:text-coral-600 dark:hover:text-coral-300"
                           title="Detail-/Leistungsprofil öffnen">{s.vorname}</button>
                       </div>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-1 align-middle">
                       <button type="button" onClick={() => setDetailSchueler(s)}
                         className="text-left font-semibold text-ink-800 dark:text-paper-100 hover:text-coral-600 dark:hover:text-coral-300"
                         title="Detail-/Leistungsprofil öffnen">{s.nachname}</button>
                     </td>
                     {sichtbareCols.map(c => (
-                      <td key={c.key} className="px-3 py-2">{renderSpalte(c, s)}</td>
+                      <td key={c.key} className="px-3 py-1 align-middle">{renderSpalte(c, s)}</td>
                     ))}
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-1 text-right align-middle">
                       <button type="button" onClick={() => setBearbeiten({ schueler: s })}
-                        className="btn-secondary text-xs px-2.5 py-1 whitespace-nowrap" title="Details bearbeiten">
+                        className="btn-secondary text-xs px-2 py-0.5 whitespace-nowrap" title="Details bearbeiten">
                         ✎ Bearbeiten
                       </button>
                     </td>
