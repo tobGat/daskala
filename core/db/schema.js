@@ -80,6 +80,14 @@ const TABLE_DDL = [
       legasthenie INTEGER DEFAULT 0,
       spf INTEGER DEFAULT 0,
       avatar TEXT,
+      geburtsdatum TEXT,
+      adresse TEXT,
+      telefon TEXT,
+      email TEXT,
+      notfallnummer TEXT,
+      erziehungsberechtigte TEXT,
+      abholberechtigte TEXT,
+      anmerkungen TEXT,
       uuid TEXT,
       FOREIGN KEY (klasse_id) REFERENCES klassen(id)
     )`,
@@ -677,6 +685,15 @@ function applySchema(db, deps) {
   spalteErgaenzen('schueler', 'legasthenie', 'INTEGER DEFAULT 0')
   spalteErgaenzen('schueler', 'spf', 'INTEGER DEFAULT 0')
   spalteErgaenzen('schueler', 'avatar', 'TEXT')
+  // Stammdaten (Kontakt/Notfall/Berechtigte) – reine Spalten-Ergänzungen, kein Versions-Bump nötig.
+  spalteErgaenzen('schueler', 'geburtsdatum', 'TEXT')
+  spalteErgaenzen('schueler', 'adresse', 'TEXT')
+  spalteErgaenzen('schueler', 'telefon', 'TEXT')
+  spalteErgaenzen('schueler', 'email', 'TEXT')
+  spalteErgaenzen('schueler', 'notfallnummer', 'TEXT')
+  spalteErgaenzen('schueler', 'erziehungsberechtigte', 'TEXT')
+  spalteErgaenzen('schueler', 'abholberechtigte', 'TEXT')
+  spalteErgaenzen('schueler', 'anmerkungen', 'TEXT')
   spalteErgaenzen('klassen', 'farbe', 'TEXT')
   spalteErgaenzen('faecher', 'farbe', 'TEXT')
   spalteErgaenzen('stunden_planung', 'musizieren', 'INTEGER DEFAULT 0')

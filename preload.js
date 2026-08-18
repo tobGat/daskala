@@ -134,6 +134,7 @@ const api = {
     setKlassen: (id, klasseIds) => invoke('schueler:setKlassen', id, klasseIds),
     setFaecher: (id, changes) => invoke('schueler:setFaecher', id, changes),
     setSpfFaecher: (id, fachIds) => invoke('schueler:setSpfFaecher', id, fachIds),
+    setStammdaten: (id, data) => invoke('schueler:setStammdaten', id, data),
     update: (id, data) => invoke('schueler:update', id, data),
     setAvatar: (id, avatar) => invoke('schueler:setAvatar', id, avatar),
     reorder: (klasseId, updates) => invoke('schueler:reorder', klasseId, updates),

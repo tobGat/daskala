@@ -70,6 +70,8 @@ const CASES = [
   { name: 'schueler:setFaecher', channel: 'schueler:setFaecher', args: [1, { add: [4] }], tables: ['fach_schueler', 'zeugnisnoten'] },
   // SPF fachbezogen setzen: SPF nur in Fach 1; schueler.spf wird zum Summen-Flag (1).
   { name: 'schueler:setSpfFaecher', channel: 'schueler:setSpfFaecher', args: [1, [1]], tables: ['schueler_fach_spf', 'schueler'] },
+  // Stammdaten (Kontakt/Notfall/Berechtigte) setzen; nicht übergebene Felder → NULL.
+  { name: 'schueler:setStammdaten', channel: 'schueler:setStammdaten', args: [1, { adresse: 'Hauptstr. 1', telefon: '0660', notfallnummer: '112', erziehungsberechtigte: 'Eltern' }], tables: ['schueler'] },
 
   // ── Spalten / Einträge / Zeugnisnoten ──────────────────────────────────────
   { name: 'spalten:update', channel: 'spalten:update', args: [1, { kuerzel: 'SA1x', datum: '2025-10-16', notiz: 'geändert' }], tables: ['spalten'] },

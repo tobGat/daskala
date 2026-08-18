@@ -510,18 +510,35 @@ const useStore = create((set, get) => ({
 
   // Zentrale Verwaltung: Details (Name/Merkmale), Klassen- und Fächer-Zuordnung einer Person
   // gebündelt in EINEM Bearbeiten-Modal speichern und danach betroffene Ansichten EINMAL neu laden.
-  // payload = { details, klasseIds|null, faecherChanges:{add,remove}, spfFaecher|null }.
-  bearbeiteSchueler: async (schuelerId, { details, klasseIds = null, faecherChanges = null, spfFaecher = null }) => {
+  // payload = { details, klasseIds|null, faecherChanges:{add,remove}, spfFaecher|null, stammdaten|null }.
+  bearbeiteSchueler: async (schuelerId, { details, klasseIds = null, faecherChanges = null, spfFaecher = null, stammdaten = null }) => {
     if (details) await window.api.schueler.update(schuelerId, details)
+    if (stammdaten) await window.api.schueler.setStammdaten(schuelerId, stammdaten)
     if (klasseIds && klasseIds.length) await window.api.schueler.setKlassen(schuelerId, klasseIds)
     if (faecherChanges && ((faecherChanges.add || []).length || (faecherChanges.remove || []).length)) {
       await window.api.schueler.setFaecher(schuelerId, faecherChanges)
     }
     if (spfFaecher !== null) await window.api.schueler.setSpfFaecher(schuelerId, spfFaecher)
+    await get().aktualisiereSchuelerAnsichten()
+  },
+
+  // Nach einer Schüler:innen-Änderung alle betroffenen Ansichten neu laden (zentral + aktive Klasse/Fach).
+  aktualisiereSchuelerAnsichten: async () => {
     await get().ladeAlleSchueler()
     const { aktiveKlasse, aktivesFach } = get()
     if (aktiveKlasse) await get().ladeSchueler()
     if (aktivesFach) await get().ladeFachDaten(aktivesFach.id)
+  },
+
+  // Neue Person anlegen (nur zentrale Verwaltung). klasseId = Stammklasse.
+  erstelleSchueler: async ({ klasseId, vorname, nachname }) => {
+    await window.api.schueler.create({ klasseId, vorname, nachname })
+    await get().aktualisiereSchuelerAnsichten()
+  },
+  // Batch-Import neuer Personen (nur zentrale Verwaltung). klasseId = Stammklasse.
+  importiereSchueler: async (klasseId, liste) => {
+    await window.api.schueler.importBatch(klasseId, liste)
+    await get().aktualisiereSchuelerAnsichten()
   },
 
   // Sortier-Modus der aktiven Klasse setzen ('vorname' | 'nachname' | 'manuell')
@@ -539,6 +556,10 @@ const useStore = create((set, get) => ({
     // Notentabelle liest den Roster (fachSchueler); die neue Sortierung dort ebenfalls übernehmen.
     if (aktivesFach) await get().ladeFachDaten(aktivesFach.id)
   },
+
+  // Zentrale Schüler:innen-Verwaltung: Sortierung bis zum Neustart merken (Default: Klasse aufsteigend).
+  zentraleSortierung: { feld: 'klasse', richtung: 'asc' },
+  setZentraleSortierung: (sortierung) => set({ zentraleSortierung: sortierung }),
 
   // ─── UI ──────────────────────────────────────────────────────────────────
   setCurrentView: (view) => set({ currentView: view }),

@@ -236,6 +236,19 @@ test('Migration v<6 backfillt fachbezogenes SPF aus globalem schueler.spf (Stamm
   db.close()
 })
 
+test('setStammdaten setzt Stammdaten; getrimmt, leere Werte → NULL, nicht übergebene Felder → NULL', async () => {
+  const { db, port, k1 } = baueDb()
+  const sA = await schueler.create(port, { klasseId: k1, vorname: 'A', nachname: 'A' })
+  await schueler.setStammdaten(port, sA, { adresse: 'Weg 2', telefon: ' 0660 ', notfallnummer: '', erziehungsberechtigte: 'Eltern' })
+  const r = db.prepare('SELECT adresse, telefon, notfallnummer, erziehungsberechtigte, email FROM schueler WHERE id = ?').get(sA)
+  assert.equal(r.adresse, 'Weg 2')
+  assert.equal(r.telefon, '0660')       // getrimmt
+  assert.equal(r.notfallnummer, null)   // leer → NULL
+  assert.equal(r.erziehungsberechtigte, 'Eltern')
+  assert.equal(r.email, null)           // nicht übergeben → NULL (setStammdaten setzt alle Felder)
+  db.close()
+})
+
 test('Migration v<6: SPF-Backfill nur für belegte Fächer (nicht eingeschriebenes Gruppenfach ausgenommen)', () => {
   const db = new Database(':memory:')
   db.pragma('user_version = 5')

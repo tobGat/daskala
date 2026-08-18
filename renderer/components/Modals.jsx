@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import useStore from '../store/useStore'
 import { berechneSchulferien } from '../utils/schulferien'
-import { parseSchuelerDatei } from '../utils/schuelerImport'
 import { useIsMobile } from '../hooks/useIsMobile'
 import SchuelerAvatar from './SchuelerAvatar'
 import AvatarEditorModal from './AvatarEditorModal'
@@ -356,23 +355,19 @@ export function FachSchuelerModal({ fach, onClose, onSaved }) {
 
 // ─── Schüler:innen verwalten ─────────────────────────────────────────────────
 export function SchuelerVerwaltenModal() {
-  const { closeModal, aktiveKlasse, schueler, ladeSchueler } = useStore()
-  const [vorname, setVorname] = useState('')
-  const [nachname, setNachname] = useState('')
-  const [importListe, setImportListe] = useState([])
+  const { closeModal, aktiveKlasse, schueler, ladeSchueler, aktuellesSchuljahr } = useStore()
   const [loading, setLoading] = useState(false)
-  const [tab, setTab] = useState('liste') // 'liste' | 'hinzufuegen' | 'import'
+  const [tab, setTab] = useState('liste') // 'liste' | 'vorhandene'
   const [loeschenId, setLoeschenId] = useState(null)
   const [avatarSchueler, setAvatarSchueler] = useState(null)
   // Inline-Umbenennen: welche:r Schüler:in wird gerade bearbeitet + Eingabewerte.
   const [editId, setEditId] = useState(null)
   const [editVorname, setEditVorname] = useState('')
   const [editNachname, setEditNachname] = useState('')
-  const [faecher, setFaecher] = useState([])
-  const [ausgewaehlteFaecher, setAusgewaehlteFaecher] = useState(() => new Set())
-  const vornameRef = useRef(null)
-  const nachnameRef = useRef(null)
-  const dateiInputRef = useRef(null)
+  // „Vorhandene hinzufügen": Kandidat:innen (nicht in dieser Klasse) + Auswahl. Neue Personen
+  // werden ausschließlich in der zentralen „Schüler:innen"-Verwaltung angelegt.
+  const [vorhandene, setVorhandene] = useState(null) // null = lädt
+  const [vorhandeneSel, setVorhandeneSel] = useState(() => new Set())
   const mobil = useIsMobile()
 
   // Mobil: statt Inline-Buttons (SPF/LEG/…/bearbeiten/löschen) ein Kontextmenü, das per
@@ -441,39 +436,41 @@ export function SchuelerVerwaltenModal() {
     setReorderModus(false)
   }
 
-  // Fächer der Klasse laden; manuelle Fächer standardmäßig ausgewählt.
+  // Kandidat:innen (Schüler:innen des Schuljahrs, die dieser Klasse noch NICHT angehören) laden,
+  // sobald der „Hinzufügen"-Tab offen ist.
+  const ladeVorhandene = async () => {
+    if (!aktuellesSchuljahr || !aktiveKlasse) return
+    const alle = await window.api.schueler.getAllImSchuljahr(aktuellesSchuljahr.id)
+    setVorhandene(alle.filter(s => !(s.klassen || []).some(k => k.id === aktiveKlasse.id)))
+  }
   useEffect(() => {
-    if (!aktiveKlasse) return
-    window.api.faecher.getAll(aktiveKlasse.id).then(fs => {
-      setFaecher(fs)
-      setAusgewaehlteFaecher(new Set(fs.filter(f => !f.alle_schueler).map(f => f.id)))
-    })
-  }, [aktiveKlasse?.id])
+    if (tab !== 'vorhandene' || !aktuellesSchuljahr || !aktiveKlasse) return
+    let ab = false
+    setVorhandene(null)
+    ;(async () => { const alle = await window.api.schueler.getAllImSchuljahr(aktuellesSchuljahr.id); if (!ab) setVorhandene(alle.filter(s => !(s.klassen || []).some(k => k.id === aktiveKlasse.id))) })()
+    return () => { ab = true }
+  }, [tab, aktuellesSchuljahr?.id, aktiveKlasse?.id])
 
-  const toggleFach = (id) => setAusgewaehlteFaecher(prev => {
+  const toggleVorhanden = (id) => setVorhandeneSel(prev => {
     const next = new Set(prev)
     if (next.has(id)) next.delete(id); else next.add(id)
     return next
   })
 
-  const handleHinzufuegen = async () => {
-    if (loading) return
-    if (!vorname.trim() && !nachname.trim()) return
+  const handleVorhandeneHinzufuegen = async () => {
+    if (!vorhandeneSel.size || loading) return
     setLoading(true)
     try {
-      await window.api.schueler.create({
-        klasseId: aktiveKlasse.id,
-        vorname: vorname.trim(),
-        nachname: nachname.trim(),
-        fachIds: Array.from(ausgewaehlteFaecher),
-      })
+      for (const s of (vorhandene || [])) {
+        if (!vorhandeneSel.has(s.id)) continue
+        const ids = [...new Set([...(s.klassen || []).map(k => k.id), aktiveKlasse.id])]
+        await window.api.schueler.setKlassen(s.id, ids)
+      }
       await ladeSchueler()
-      // Aktives Fach neu laden, damit die/der neue Schüler:in dort sofort erscheint.
       const { aktivesFach, ladeFachDaten } = useStore.getState()
       if (aktivesFach) await ladeFachDaten(aktivesFach.id)
-      setVorname('')
-      setNachname('')
-      vornameRef.current?.focus()
+      setVorhandeneSel(new Set())
+      await ladeVorhandene()
     } finally {
       setLoading(false)
     }
@@ -511,70 +508,6 @@ export function SchuelerVerwaltenModal() {
     setEditId(null)
   }
 
-  const handleDateiImport = async () => {
-    // Mobil: WebView-Datei-Picker + Parsing im Renderer (kein Node-Dialog/-FS).
-    if (mobil) { dateiInputRef.current?.click(); return }
-    const filePath = await window.api.dialog.openFile([
-      { name: 'Tabellen', extensions: ['csv', 'xlsx', 'xls'] }
-    ])
-    if (!filePath) return
-    const liste = await window.api.import.schuelerFromFile(filePath)
-    setImportListe(liste)
-  }
-
-  const handleDateiGewaehlt = async (e) => {
-    const file = e.target.files?.[0]
-    e.target.value = '' // gleiche Datei erneut wählbar
-    if (!file) return
-    try {
-      const liste = await parseSchuelerDatei(file)
-      if (!liste.length) {
-        alert('Keine Schüler:innen gefunden. Erwartet werden Spalten „Vorname" und „Nachname".')
-        return
-      }
-      setImportListe(liste)
-    } catch (err) {
-      console.error('[import] Datei konnte nicht gelesen werden:', err)
-      alert('Die Datei konnte nicht gelesen werden. Bitte CSV/Excel mit Spalten „Vorname" und „Nachname".')
-    }
-  }
-
-  const handleImportSpeichern = async () => {
-    if (!importListe.length) return
-    setLoading(true)
-    await window.api.schueler.importBatch(aktiveKlasse.id, importListe, Array.from(ausgewaehlteFaecher))
-    await ladeSchueler()
-    const { aktivesFach, ladeFachDaten } = useStore.getState()
-    if (aktivesFach) await ladeFachDaten(aktivesFach.id)
-    setImportListe([])
-    setTab('liste')
-    setLoading(false)
-  }
-
-  // Fächer-Auswahl (in „Hinzufügen" und „Importieren" gleich verwendet).
-  const faecherAuswahl = faecher.length > 0 && (
-    <div>
-      <label className="block text-xs text-ink-500 mb-1.5">Zu Fächern hinzufügen</label>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-        {faecher.map(f => {
-          const alle = !!f.alle_schueler
-          const checked = alle || ausgewaehlteFaecher.has(f.id)
-          return (
-            <label
-              key={f.id}
-              className={`flex items-center gap-2 text-sm ${alle ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
-              title={alle ? 'Enthält automatisch alle Schüler:innen der Klasse' : undefined}
-            >
-              <input type="checkbox" checked={checked} disabled={alle} onChange={() => toggleFach(f.id)} />
-              <span className="text-ink-700 dark:text-paper-200 truncate">{f.name}</span>
-              {alle && <span className="text-[10px] text-ink-400 flex-shrink-0">(alle)</span>}
-            </label>
-          )
-        })}
-      </div>
-    </div>
-  )
-
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && closeModal()}>
       <div className="modal-box max-w-lg">
@@ -587,7 +520,7 @@ export function SchuelerVerwaltenModal() {
 
         {/* Tabs */}
         <div className="flex gap-1 mb-4 bg-paper-100 dark:bg-ink-800 rounded-lg p-1">
-          {[['liste', 'Liste'], ['hinzufuegen', 'Hinzufügen'], ['import', 'Importieren']].map(([val, label]) => (
+          {[['liste', 'Liste'], ['vorhandene', 'Hinzufügen']].map(([val, label]) => (
             <button
               key={val}
               className={`flex-1 py-1.5 text-sm rounded font-medium transition-colors
@@ -766,94 +699,37 @@ export function SchuelerVerwaltenModal() {
           </div>
         )}
 
-        {/* Manuell hinzufügen */}
-        {tab === 'hinzufuegen' && (
+        {/* Vorhandene Schüler:innen zur Klasse hinzufügen (Anlegen neuer Personen ist zentral) */}
+        {tab === 'vorhandene' && (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-ink-500 mb-1">Vorname</label>
-                <input
-                  ref={vornameRef}
-                  className="input"
-                  value={vorname}
-                  onChange={e => setVorname(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); nachnameRef.current?.focus() } }}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-ink-500 mb-1">Nachname</label>
-                <input
-                  ref={nachnameRef}
-                  className="input"
-                  value={nachname}
-                  onChange={e => setNachname(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleHinzufuegen() } }}
-                />
-              </div>
-            </div>
-
-            {faecherAuswahl}
-
-            <button
-              className="btn-primary w-full"
-              onClick={handleHinzufuegen}
-              disabled={loading || (!vorname.trim() && !nachname.trim())}
-            >
-              Hinzufügen
-            </button>
-            <div className="text-xs text-ink-400 text-center">
-              {schueler.length} Schüler:innen in der Klasse
-            </div>
-          </div>
-        )}
-
-        {/* Import */}
-        {tab === 'import' && (
-          <div className="space-y-3">
-            {/* Verstecktes Datei-Feld für den mobilen Picker (Desktop nutzt den Node-Dialog). */}
-            <input
-              ref={dateiInputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              className="hidden"
-              onChange={handleDateiGewaehlt}
-            />
-            {importListe.length === 0 ? (
-              <div>
-                <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">
-                  CSV oder Excel-Datei mit Spalten „Vorname" und „Nachname"
-                </p>
-                <button className="btn-secondary w-full" onClick={handleDateiImport}>
-                  Datei auswählen
-                </button>
-              </div>
+            <p className="text-sm text-ink-500 dark:text-ink-400">
+              Bereits vorhandene Schüler:innen dieser Klasse zuordnen. <span className="text-ink-400">Neue Personen legst du in der zentralen „Schüler:innen"-Verwaltung an.</span>
+            </p>
+            {vorhandene === null ? (
+              <p className="text-sm text-ink-400 py-4 text-center">Lade…</p>
+            ) : vorhandene.length === 0 ? (
+              <p className="text-sm text-ink-400 py-4 text-center">Keine weiteren Schüler:innen im Schuljahr verfügbar.</p>
             ) : (
-              <div>
-                <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-3">
-                  <p className="text-sm text-green-700 dark:text-green-400 font-medium mb-1">
-                    {importListe.length} Schüler:innen gefunden
-                  </p>
-                  <div className="max-h-40 overflow-y-auto space-y-0.5">
-                    {importListe.map((s, i) => (
-                      <p key={i} className="text-xs text-green-600 dark:text-green-500">
-                        {s.nachname} {s.vorname}
-                      </p>
-                    ))}
-                  </div>
+              <>
+                <div className="max-h-64 overflow-y-auto space-y-1 border border-paper-200 dark:border-ink-700 rounded-lg p-1">
+                  {vorhandene.map(s => {
+                    const on = vorhandeneSel.has(s.id)
+                    const stamm = (s.klassen || []).find(k => k.ist_stammklasse) || (s.klassen || [])[0]
+                    return (
+                      <button type="button" key={s.id} onClick={() => toggleVorhanden(s.id)}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${on ? 'bg-coral-50 dark:bg-coral-900/30' : 'hover:bg-paper-50 dark:hover:bg-ink-800'}`}>
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${on ? 'bg-coral-600 border-coral-600 text-white' : 'border-paper-300 dark:border-ink-600'}`}>{on ? '✓' : ''}</span>
+                        <SchuelerAvatar schueler={s} size={24} />
+                        <span className="text-sm text-ink-800 dark:text-paper-200 flex-1 truncate">{s.nachname} {s.vorname}</span>
+                        {stamm && <span className="text-[10px] text-ink-400 flex-shrink-0">{stamm.name}</span>}
+                      </button>
+                    )
+                  })}
                 </div>
-                {faecherAuswahl && <div className="mb-3">{faecherAuswahl}</div>}
-                <div className="flex gap-3">
-                  <button className="btn-secondary flex-1" onClick={() => setImportListe([])}>Verwerfen</button>
-                  <button
-                    className="btn-primary flex-1"
-                    onClick={handleImportSpeichern}
-                    disabled={loading}
-                  >
-                    {loading ? 'Importieren…' : 'Importieren'}
-                  </button>
-                </div>
-              </div>
+                <button className="btn-primary w-full" onClick={handleVorhandeneHinzufuegen} disabled={!vorhandeneSel.size || loading}>
+                  {loading ? 'Hinzufügen…' : (vorhandeneSel.size ? `${vorhandeneSel.size} zur Klasse hinzufügen` : 'Zur Klasse hinzufügen')}
+                </button>
+              </>
             )}
           </div>
         )}

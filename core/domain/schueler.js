@@ -235,6 +235,18 @@ async function setSpfFaecher(db, schuelerId, fachIds) {
   return true
 }
 
+// Stammdaten-Felder (Kontakt/Notfall/Berechtigte). Free-Text; leer → NULL.
+const STAMMDATEN_FELDER = ['geburtsdatum', 'adresse', 'telefon', 'email', 'notfallnummer', 'erziehungsberechtigte', 'abholberechtigte', 'anmerkungen']
+
+async function setStammdaten(db, id, data) {
+  const wert = (v) => { const s = v == null ? '' : String(v).trim(); return s === '' ? null : s }
+  await db.execute(
+    `UPDATE schueler SET ${STAMMDATEN_FELDER.map((f) => `${f} = ?`).join(', ')} WHERE id = ?`,
+    [...STAMMDATEN_FELDER.map((f) => wert(data ? data[f] : null)), id],
+  )
+  return true
+}
+
 async function update(db, id, data) {
   await db.execute(`UPDATE schueler SET vorname = ?, nachname = ?,
       lernschwaeche = CASE WHEN ? IS NOT NULL THEN ? ELSE lernschwaeche END,
@@ -339,4 +351,4 @@ async function getLeistungsProfil(db, deps, schuelerId) {
   return { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus, niveauHistorie }
 }
 
-module.exports = { getAll, getAllImSchuljahr, create, remove, entferneAusKlasse, setKlassen, setFaecher, setSpfFaecher, update, setAvatar, reorder, importBatch, getLeistungsProfil }
+module.exports = { getAll, getAllImSchuljahr, create, remove, entferneAusKlasse, setKlassen, setFaecher, setSpfFaecher, setStammdaten, update, setAvatar, reorder, importBatch, getLeistungsProfil }

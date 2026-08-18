@@ -145,6 +145,7 @@
   "schueler.setFaecher",
   "schueler.setKlassen",
   "schueler.setSpfFaecher",
+  "schueler.setStammdaten",
   "schueler.update",
   "schuelerKompetenzen.getAll",
   "schuelerKompetenzen.set",

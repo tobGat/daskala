@@ -635,6 +635,26 @@ export default function SchuelerDetail() {
           </button>
         </div>
 
+        {/* Stammdaten (Kontakt/Notfall/Berechtigte) – kompakt, nur falls erfasst */}
+        {(() => {
+          const s = headerSchueler || {}
+          const felder = [
+            ['🎂', s.geburtsdatum ? formatDatum(s.geburtsdatum) : '', 'Geburtsdatum'], ['📞', s.telefon, 'Telefon'], ['✉️', s.email, 'E-Mail'],
+            ['🚨', s.notfallnummer, 'Notfallnummer'], ['🏠', s.adresse, 'Adresse'],
+            ['👪', s.erziehungsberechtigte, 'Erziehungsberechtigte'], ['🚸', s.abholberechtigte, 'Abholberechtigte'], ['📝', s.anmerkungen, 'Anmerkungen'],
+          ].filter(f => f[1] && String(f[1]).trim())
+          if (!felder.length) return null
+          return (
+            <div className="flex-shrink-0 px-5 py-2 border-b border-paper-200 dark:border-ink-800 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-600 dark:text-paper-300">
+              {felder.map(([icon, val, label], i) => (
+                <span key={i} className="inline-flex items-center gap-1 max-w-[16rem] truncate" title={`${label}: ${val}`}>
+                  <span aria-hidden>{icon}</span><span className="truncate">{String(val).replace(/\s*\n\s*/g, ' · ')}</span>
+                </span>
+              ))}
+            </div>
+          )
+        })()}
+
         {/* Body: Sidebar (Fächer) + Detail */}
         <div className="flex-1 overflow-hidden flex min-h-0">
           {loading ? (

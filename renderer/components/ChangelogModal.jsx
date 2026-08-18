@@ -19,6 +19,9 @@ export const CHANGELOG = [
       'Tabelle in der Schüler:innen-Verwaltung: Vor- und Nachname stehen jetzt in eigenen Spalten; per Klick auf die Überschrift „Vorname", „Nachname" oder „Klassen" wird sortiert (auf-/absteigend; Klassen nach Stammklasse). Zusätzlich lässt sich oben nach Klasse und nach Merkmalen (LS/LEG/SPF) filtern.',
       'Live-Suche bei der Schülerauswahl: Beim Anlegen/Bearbeiten eines Fachs (Modus „Auswahl") filtert ein Suchfeld die Schüler:innen sofort. Das Fachnamen-Feld reagiert dabei wieder flüssig, auch bei vielen Schüler:innen.',
       'Sortierung durchgängig: Zusätzlich zu einer Klasse zugeordnete Schüler:innen erscheinen in der Notentabelle jetzt ebenfalls nach dem eingestellten Modus (Vor-/Nachname bzw. manuell) – nicht mehr nur am Ende.',
+      'Standard-Sortierung & Merken: Die Schüler:innen-Verwaltung ist standardmäßig nach Klasse aufsteigend sortiert; die zuletzt gewählte Sortierung bleibt bis zum Neustart erhalten.',
+      'Stammdaten je Schüler:in: Im Bearbeiten-Fenster erfasst du zentral Geburtsdatum, Adresse, Telefon, E-Mail, Notfallnummer, Erziehungs- und Abholberechtigte sowie Anmerkungen. Erfasste Kontaktdaten erscheinen kompakt im Detail-/Leistungsprofil.',
+      'Anlegen zentralisiert: Neue Schüler:innen werden ausschließlich in der zentralen „Schüler:innen"-Verwaltung angelegt (einzeln oder per CSV-/Excel-Import, mit Wahl der Stammklasse). Das Schüler:innen-Modal in der Klassenansicht dient nur noch dazu, bereits vorhandene Personen der Klasse hinzuzufügen.',
     ],
   },
   {

@@ -101,6 +101,10 @@ export async function bootstrapMobile() {
   // Spalten der LBVO-Features idempotent ergänzen (siehe MIGRATIONS v2 für die Daten-Seite).
   await spalteErgaenzenWennFehlt(dbPort, 'faecher', 'gewichtung_man', 'REAL')
   await spalteErgaenzenWennFehlt(dbPort, 'spalten', 'ma_symbole', 'TEXT')
+  // Stammdaten-Spalten für Bestands-DBs nachrüsten (Baseline erzeugt sie bei Neuinstallation).
+  for (const sp of ['geburtsdatum', 'adresse', 'telefon', 'email', 'notfallnummer', 'erziehungsberechtigte', 'abholberechtigte', 'anmerkungen']) {
+    await spalteErgaenzenWennFehlt(dbPort, 'schueler', sp, 'TEXT')
+  }
   await seedDemoWennLeer(dbPort)
   // Nach dem Seed: Junction einmalig aus schueler.klasse_id backfillen (erfasst auch Demo-Daten).
   await backfillKlassenSchuelerEinmalig(dbPort)
