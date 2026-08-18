@@ -560,6 +560,9 @@ const useStore = create((set, get) => ({
   // Zentrale Schüler:innen-Verwaltung: Sortierung bis zum Neustart merken (Default: Klasse aufsteigend).
   zentraleSortierung: { feld: 'klasse', richtung: 'asc' },
   setZentraleSortierung: (sortierung) => set({ zentraleSortierung: sortierung }),
+  // Sichtbare (optionale) Tabellenspalten – bis zum Neustart gemerkt. Default: Merkmale/Klassen/Fächer.
+  zentraleSpalten: { merkmale: true, klassen: true, faecher: true },
+  setZentraleSpalte: (key, an) => set(state => ({ zentraleSpalten: { ...state.zentraleSpalten, [key]: an } })),
 
   // ─── UI ──────────────────────────────────────────────────────────────────
   setCurrentView: (view) => set({ currentView: view }),

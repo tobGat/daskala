@@ -640,7 +640,7 @@ export default function SchuelerDetail() {
           const s = headerSchueler || {}
           const felder = [
             ['🎂', s.geburtsdatum ? formatDatum(s.geburtsdatum) : '', 'Geburtsdatum'], ['📞', s.telefon, 'Telefon'], ['✉️', s.email, 'E-Mail'],
-            ['🚨', s.notfallnummer, 'Notfallnummer'], ['🏠', s.adresse, 'Adresse'],
+            ['🚨', s.notfallnummer, 'Notfallnummer'], ['🏠', [s.strasse, [s.plz, s.ort].filter(Boolean).join(' ')].filter(Boolean).join(', '), 'Adresse'],
             ['👪', s.erziehungsberechtigte, 'Erziehungsberechtigte'], ['🚸', s.abholberechtigte, 'Abholberechtigte'], ['📝', s.anmerkungen, 'Anmerkungen'],
           ].filter(f => f[1] && String(f[1]).trim())
           if (!felder.length) return null

@@ -239,9 +239,10 @@ test('Migration v<6 backfillt fachbezogenes SPF aus globalem schueler.spf (Stamm
 test('setStammdaten setzt Stammdaten; getrimmt, leere Werte → NULL, nicht übergebene Felder → NULL', async () => {
   const { db, port, k1 } = baueDb()
   const sA = await schueler.create(port, { klasseId: k1, vorname: 'A', nachname: 'A' })
-  await schueler.setStammdaten(port, sA, { adresse: 'Weg 2', telefon: ' 0660 ', notfallnummer: '', erziehungsberechtigte: 'Eltern' })
-  const r = db.prepare('SELECT adresse, telefon, notfallnummer, erziehungsberechtigte, email FROM schueler WHERE id = ?').get(sA)
-  assert.equal(r.adresse, 'Weg 2')
+  await schueler.setStammdaten(port, sA, { strasse: 'Weg 2', plz: '1010', telefon: ' 0660 ', notfallnummer: '', erziehungsberechtigte: 'Eltern' })
+  const r = db.prepare('SELECT strasse, plz, telefon, notfallnummer, erziehungsberechtigte, email FROM schueler WHERE id = ?').get(sA)
+  assert.equal(r.strasse, 'Weg 2')
+  assert.equal(r.plz, '1010')
   assert.equal(r.telefon, '0660')       // getrimmt
   assert.equal(r.notfallnummer, null)   // leer → NULL
   assert.equal(r.erziehungsberechtigte, 'Eltern')

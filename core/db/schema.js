@@ -81,7 +81,9 @@ const TABLE_DDL = [
       spf INTEGER DEFAULT 0,
       avatar TEXT,
       geburtsdatum TEXT,
-      adresse TEXT,
+      strasse TEXT,
+      plz TEXT,
+      ort TEXT,
       telefon TEXT,
       email TEXT,
       notfallnummer TEXT,
@@ -687,7 +689,9 @@ function applySchema(db, deps) {
   spalteErgaenzen('schueler', 'avatar', 'TEXT')
   // Stammdaten (Kontakt/Notfall/Berechtigte) – reine Spalten-Ergänzungen, kein Versions-Bump nötig.
   spalteErgaenzen('schueler', 'geburtsdatum', 'TEXT')
-  spalteErgaenzen('schueler', 'adresse', 'TEXT')
+  spalteErgaenzen('schueler', 'strasse', 'TEXT')
+  spalteErgaenzen('schueler', 'plz', 'TEXT')
+  spalteErgaenzen('schueler', 'ort', 'TEXT')
   spalteErgaenzen('schueler', 'telefon', 'TEXT')
   spalteErgaenzen('schueler', 'email', 'TEXT')
   spalteErgaenzen('schueler', 'notfallnummer', 'TEXT')

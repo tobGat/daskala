@@ -44,23 +44,83 @@ const STAMMDATEN = [
   { feld: 'telefon', label: 'Telefon', type: 'text', icon: '📞' },
   { feld: 'email', label: 'E-Mail', type: 'text', icon: '✉️' },
   { feld: 'notfallnummer', label: 'Notfallnummer', type: 'text', icon: '🚨' },
-  { feld: 'adresse', label: 'Adresse', type: 'textarea', icon: '🏠' },
+  { feld: 'strasse', label: 'Straße', type: 'text', icon: '🏠' },
+  { feld: 'plz', label: 'PLZ', type: 'text', icon: '📮' },
+  { feld: 'ort', label: 'Ort', type: 'text', icon: '🏙️' },
   { feld: 'erziehungsberechtigte', label: 'Erziehungsberechtigte', type: 'textarea', icon: '👪' },
   { feld: 'abholberechtigte', label: 'Abholberechtigte', type: 'textarea', icon: '🚸' },
   { feld: 'anmerkungen', label: 'Anmerkungen', type: 'textarea', icon: '📝' },
 ]
 
+// Datums-Kurzformat für die Tabelle (de-AT).
+function gebFormat(d) {
+  if (!d) return ''
+  try { return new Date(d + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' }) } catch { return d }
+}
+
+// Optionale (an-/abwählbare) Tabellenspalten. key = Store-Schlüssel; sortFeld = Sortier-Feld (falls sortierbar).
+const TABELLEN_SPALTEN = [
+  { key: 'merkmale', label: 'Merkmale' },
+  { key: 'klassen', label: 'Klassen', sortFeld: 'klasse' },
+  { key: 'faecher', label: 'Fächer' },
+  { key: 'geburtsdatum', label: 'Geburtsdatum', wert: (s) => gebFormat(s.geburtsdatum) },
+  { key: 'telefon', label: 'Telefon', wert: (s) => s.telefon },
+  { key: 'email', label: 'E-Mail', wert: (s) => s.email },
+  { key: 'notfallnummer', label: 'Notfall', wert: (s) => s.notfallnummer },
+  { key: 'strasse', label: 'Straße', wert: (s) => s.strasse },
+  { key: 'plz', label: 'PLZ', wert: (s) => s.plz },
+  { key: 'ort', label: 'Ort', wert: (s) => s.ort },
+  { key: 'erziehungsberechtigte', label: 'Erziehungsber.', wert: (s) => s.erziehungsberechtigte },
+  { key: 'abholberechtigte', label: 'Abholber.', wert: (s) => s.abholberechtigte },
+  { key: 'anmerkungen', label: 'Anmerkungen', wert: (s) => s.anmerkungen },
+]
+
+// Zell-Inhalt einer optionalen Spalte (nur Anzeige).
+function renderSpalte(c, s) {
+  if (c.key === 'merkmale') {
+    return <div className="flex items-center gap-1">{MERKMALE.map(m => <MerkmalBadge key={m.feld} an={s[m.feld]} label={m.label} farbe={m.farbe} />)}</div>
+  }
+  if (c.key === 'klassen') {
+    return (
+      <div className="flex items-center gap-1 flex-wrap">
+        {(s.klassen || []).length === 0 ? <span className="text-ink-400 text-xs">–</span> : (s.klassen || []).map(k => (
+          <span key={k.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-600 dark:text-paper-300">
+            {k.name}{k.ist_stammklasse ? <span className="text-coral-500" title="Stammklasse"> ●</span> : null}
+          </span>
+        ))}
+      </div>
+    )
+  }
+  if (c.key === 'faecher') {
+    const fa = s.faecher || []
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap max-w-md">
+        {fa.length === 0 ? <span className="text-ink-400 text-xs">–</span> : (<>
+          {fa.slice(0, 2).map(f => <span key={f.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400" title={f.klasse_name}>{f.name}</span>)}
+          {fa.length > 2 && <span className="text-[11px] text-ink-400" title={fa.slice(2).map(f => f.name).join(', ')}>+{fa.length - 2}</span>}
+        </>)}
+      </div>
+    )
+  }
+  const v = c.wert ? c.wert(s) : s[c.key]
+  return v && String(v).trim()
+    ? <span className="block max-w-[14rem] truncate text-xs text-ink-600 dark:text-paper-300" title={String(v)}>{String(v).replace(/\s*\n\s*/g, ' · ')}</span>
+    : <span className="text-ink-300 text-xs">–</span>
+}
+
 export default function SchuelerZentralView() {
-  const { alleSchueler, ladeAlleSchueler, klassen, aktuellesSchuljahr, setDetailSchueler, bearbeiteSchueler, zentraleSortierung: sort, setZentraleSortierung: setSort } = useStore()
+  const { alleSchueler, ladeAlleSchueler, klassen, aktuellesSchuljahr, setDetailSchueler, bearbeiteSchueler, zentraleSortierung: sort, setZentraleSortierung: setSort, zentraleSpalten, setZentraleSpalte } = useStore()
   const [suche, setSuche] = useState('')
   const [bearbeiten, setBearbeiten] = useState(null) // { schueler } – Bearbeiten-Modal
   const [neu, setNeu] = useState(false) // Neu-Anlegen-Modal
+  const [spaltenOffen, setSpaltenOffen] = useState(false) // Spalten-Auswahl (Popover)
   const [klasseFilter, setKlasseFilter] = useState('') // '' = alle Klassen, sonst klasse_id (String)
   const [merkmalFilter, setMerkmalFilter] = useState(() => ({ lernschwaeche: false, legasthenie: false, spf: false }))
 
   useEffect(() => { ladeAlleSchueler() }, [aktuellesSchuljahr?.id, ladeAlleSchueler])
 
   const echteKlassen = useMemo(() => (klassen || []).filter(k => !k.ist_vorlage), [klassen])
+  const sichtbareCols = useMemo(() => TABELLEN_SPALTEN.filter(c => zentraleSpalten[c.key]), [zentraleSpalten])
   const merkmalUmschalten = (feld) => setMerkmalFilter(m => ({ ...m, [feld]: !m[feld] }))
   // Klick auf eine sortierbare Spalte: gleiche Spalte → Richtung wechseln, sonst neu (aufsteigend).
   // sort/setSort kommen aus dem Store → Auswahl bleibt bis zum Neustart erhalten.
@@ -133,6 +193,26 @@ export default function SchuelerZentralView() {
           placeholder="Suchen …"
           className="h-7 text-xs px-2.5 rounded-lg w-44 max-w-full border border-paper-300 dark:border-ink-700 bg-white dark:bg-ink-800 text-ink-800 dark:text-white placeholder:text-ink-400 dark:placeholder:text-ink-500 focus:outline-none focus:ring-2 focus:ring-coral-400/30 focus:border-coral-400"
         />
+        {/* Spalten ein-/ausblenden */}
+        <div className="relative">
+          <button type="button" onClick={() => setSpaltenOffen(o => !o)}
+            className="h-7 text-xs font-medium px-2 rounded-lg border border-paper-200 dark:border-ink-700 text-ink-500 dark:text-ink-400 hover:text-ink-700 dark:hover:text-paper-200"
+            title="Spalten ein-/ausblenden">Spalten ▾</button>
+          {spaltenOffen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setSpaltenOffen(false)} />
+              <div className="absolute right-0 mt-1 z-50 w-56 max-h-[60vh] overflow-y-auto bg-white dark:bg-ink-900 border border-paper-200 dark:border-ink-700 rounded-xl shadow-pop p-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-ink-400 px-2 py-1">Spalten anzeigen</div>
+                {TABELLEN_SPALTEN.map(c => (
+                  <label key={c.key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-paper-100 dark:hover:bg-ink-800 cursor-pointer text-sm text-ink-700 dark:text-paper-200">
+                    <input type="checkbox" className="accent-coral-500" checked={!!zentraleSpalten[c.key]} onChange={() => setZentraleSpalte(c.key, !zentraleSpalten[c.key])} />
+                    {c.label}
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Tabelle (nur Ansicht) */}
@@ -154,11 +234,13 @@ export default function SchuelerZentralView() {
                   <th className="text-left px-3 py-2">
                     <button type="button" onClick={() => sortieren('nachname')} className="text-[10px] font-bold uppercase tracking-wider hover:text-coral-600 dark:hover:text-coral-300" title="Nach Nachname sortieren">Nachname{sortPfeil('nachname')}</button>
                   </th>
-                  <th className="text-left px-3 py-2">Merkmale</th>
-                  <th className="text-left px-3 py-2">
-                    <button type="button" onClick={() => sortieren('klasse')} className="text-[10px] font-bold uppercase tracking-wider hover:text-coral-600 dark:hover:text-coral-300" title="Nach Stammklasse sortieren">Klassen{sortPfeil('klasse')}</button>
-                  </th>
-                  <th className="text-left px-3 py-2">Fächer</th>
+                  {sichtbareCols.map(c => (
+                    <th key={c.key} className="text-left px-3 py-2">
+                      {c.sortFeld ? (
+                        <button type="button" onClick={() => sortieren(c.sortFeld)} className="text-[10px] font-bold uppercase tracking-wider hover:text-coral-600 dark:hover:text-coral-300" title={`Nach ${c.label} sortieren`}>{c.label}{sortPfeil(c.sortFeld)}</button>
+                      ) : c.label}
+                    </th>
+                  ))}
                   <th className="text-right px-3 py-2">Aktion</th>
                 </tr>
               </thead>
@@ -178,40 +260,9 @@ export default function SchuelerZentralView() {
                         className="text-left font-semibold text-ink-800 dark:text-paper-100 hover:text-coral-600 dark:hover:text-coral-300"
                         title="Detail-/Leistungsprofil öffnen">{s.nachname}</button>
                     </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-1">
-                        {MERKMALE.map(m => (
-                          <MerkmalBadge key={m.feld} an={s[m.feld]} label={m.label} farbe={m.farbe} />
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {(s.klassen || []).length === 0
-                          ? <span className="text-ink-400 text-xs">–</span>
-                          : (s.klassen || []).map(k => (
-                            <span key={k.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-600 dark:text-paper-300">
-                              {k.name}{k.ist_stammklasse ? <span className="text-coral-500" title="Stammklasse"> ●</span> : null}
-                            </span>
-                          ))}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-1.5 flex-wrap max-w-md">
-                        {(s.faecher || []).length === 0
-                          ? <span className="text-ink-400 text-xs">–</span>
-                          : (<>
-                            {(s.faecher || []).slice(0, 2).map(f => (
-                              <span key={f.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400" title={f.klasse_name}>
-                                {f.name}
-                              </span>
-                            ))}
-                            {(s.faecher || []).length > 2 && (
-                              <span className="text-[11px] text-ink-400" title={(s.faecher || []).slice(2).map(f => f.name).join(', ')}>+{(s.faecher || []).length - 2}</span>
-                            )}
-                          </>)}
-                      </div>
-                    </td>
+                    {sichtbareCols.map(c => (
+                      <td key={c.key} className="px-3 py-2">{renderSpalte(c, s)}</td>
+                    ))}
                     <td className="px-3 py-2 text-right">
                       <button type="button" onClick={() => setBearbeiten({ schueler: s })}
                         className="btn-secondary text-xs px-2.5 py-1 whitespace-nowrap" title="Details bearbeiten">
@@ -369,6 +420,8 @@ function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
   const [faecherAusw, setFaecherAusw] = useState(() => new Set((schueler.faecher || []).map(f => f.id)))
   const [spfFaecher, setSpfFaecher] = useState(() => new Set(schueler.spf_faecher || [])) // SPF je Fach
   const [spfModal, setSpfModal] = useState(false) // Auswahl der SPF-Fächer im eigenen Modal
+  const [klassenModal, setKlassenModal] = useState(false) // Klassen-Auswahl im eigenen Modal
+  const [faecherModal, setFaecherModal] = useState(false) // Fächer-Auswahl im eigenen Modal
   const [stammdaten, setStammdaten] = useState(() => Object.fromEntries(STAMMDATEN.map(s => [s.feld, schueler[s.feld] || ''])))
   const [speichert, setSpeichert] = useState(false)
 
@@ -384,16 +437,6 @@ function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
   }, [schueler.id])
 
   const merkmalUmschalten = (feld) => setMerkmale(m => ({ ...m, [feld]: !m[feld] }))
-  const klasseUmschalten = (id) => setKlassenIds(prev => {
-    const n = new Set(prev)
-    if (n.has(id)) n.delete(id); else n.add(id)
-    return n
-  })
-  const fachUmschalten = (id) => setFaecherAusw(prev => {
-    const n = new Set(prev)
-    if (n.has(id)) n.delete(id); else n.add(id)
-    return n
-  })
 
   const nameOk = vorname.trim() && nachname.trim()
   const kannSpeichern = nameOk && klassenIds.size > 0 && !speichert && klassenFaecher !== null
@@ -480,50 +523,36 @@ function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
             )}
           </div>
 
-          {/* Klassen */}
+          {/* Klassen (Auswahl im eigenen Modal) */}
           <div>
             <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Klassen</label>
-            <div className="space-y-1 border border-paper-200 dark:border-ink-700 rounded-lg p-1 max-h-40 overflow-y-auto">
-              {klassen.map(k => (
-                <label key={k.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-paper-100 dark:hover:bg-ink-800 cursor-pointer">
-                  <input type="checkbox" className="accent-coral-500" checked={klassenIds.has(k.id)} onChange={() => klasseUmschalten(k.id)} />
-                  <span className="text-sm text-ink-700 dark:text-paper-200">{k.name}</span>
-                </label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {klassenIds.size === 0 ? (
+                <span className="text-sm text-rose-500">Mindestens eine Klasse wählen.</span>
+              ) : klassen.filter(k => klassenIds.has(k.id)).map(k => (
+                <span key={k.id} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-600 dark:text-paper-300">{k.name}</span>
               ))}
+              <button type="button" onClick={() => setKlassenModal(true)} className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300">ändern</button>
             </div>
-            <p className="text-[11px] text-ink-400 mt-1">Mindestens eine Klasse. Die Stammklasse (KV/Anzeige) bleibt erhalten bzw. wird umgehängt.</p>
           </div>
 
-          {/* Fächer */}
+          {/* Fächer (Auswahl im eigenen Modal) */}
           <div>
             <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Fächer</label>
-            {klassenFaecher === null ? (
-              <p className="text-sm text-ink-400 py-3 text-center">Lade…</p>
-            ) : klassenFaecher.length === 0 ? (
-              <p className="text-sm text-ink-400 py-3 text-center">Noch keiner Klasse zugeordnet.</p>
-            ) : (
-              <div className="space-y-2 border border-paper-200 dark:border-ink-700 rounded-lg p-1 max-h-48 overflow-y-auto">
-                {klassenFaecher.map(row => (
-                  <div key={row.klasse.id}>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-ink-400 dark:text-ink-500 px-2 pt-1 pb-0.5">{row.klasse.name}</div>
-                    {row.faecher.length === 0 ? (
-                      <p className="text-xs text-ink-400 px-2 pb-1">Keine Fächer</p>
-                    ) : row.faecher.map(f => {
-                      const ganz = f.alle_schueler !== 0
-                      const on = ganz || faecherAusw.has(f.id)
-                      return (
-                        <label key={f.id} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${ganz ? 'opacity-70' : 'hover:bg-paper-100 dark:hover:bg-ink-800 cursor-pointer'}`}>
-                          <input type="checkbox" className="accent-coral-500" checked={on} disabled={ganz} onChange={() => !ganz && fachUmschalten(f.id)} />
-                          <span className="text-sm text-ink-700 dark:text-paper-200 flex-1">{f.name}</span>
-                          <span className="text-[10px] text-ink-400">{ganz ? 'ganze Klasse' : 'Auswahl'}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
-            <p className="text-[11px] text-ink-400 mt-1">„Ganze Klasse"-Fächer ergeben sich aus der Klassenzugehörigkeit und sind nicht abwählbar.</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(() => {
+                if (klassenFaecher === null) return <span className="text-sm text-ink-400">Lade…</span>
+                const namen = []
+                for (const row of klassenFaecher) for (const f of row.faecher) if (f.alle_schueler !== 0 || faecherAusw.has(f.id)) namen.push(f.name)
+                if (namen.length === 0) return <span className="text-sm text-ink-400">Keine Fächer</span>
+                return (<>
+                  {namen.slice(0, 4).map((n, i) => <span key={i} className="text-[11px] px-1.5 py-0.5 rounded-full bg-paper-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400">{n}</span>)}
+                  {namen.length > 4 && <span className="text-[11px] text-ink-400">+{namen.length - 4}</span>}
+                </>)
+              })()}
+              <button type="button" onClick={() => setFaecherModal(true)} disabled={klassenFaecher === null}
+                className="text-[11px] text-coral-600 hover:text-coral-700 dark:text-coral-300 disabled:opacity-50">ändern</button>
+            </div>
           </div>
 
           {/* Stammdaten (Kontakt / Notfall / Berechtigte) */}
@@ -564,7 +593,103 @@ function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
         onOk={(sel) => { setSpfFaecher(sel); setSpfModal(false) }}
       />
     )}
+    {klassenModal && (
+      <KlassenAuswahlModal
+        schueler={schueler}
+        klassen={klassen}
+        initial={klassenIds}
+        onClose={() => setKlassenModal(false)}
+        onOk={(sel) => { setKlassenIds(sel); setKlassenModal(false) }}
+      />
+    )}
+    {faecherModal && (
+      <FaecherAuswahlModal
+        schueler={schueler}
+        klassenFaecher={klassenFaecher}
+        initial={faecherAusw}
+        onClose={() => setFaecherModal(false)}
+        onOk={(sel) => { setFaecherAusw(sel); setFaecherModal(false) }}
+      />
+    )}
     </>
+  )
+}
+
+// Eigenes Modal zur Auswahl der Klassen einer Person (öffnet aus dem Bearbeiten-Modal).
+function KlassenAuswahlModal({ schueler, klassen, initial, onClose, onOk }) {
+  const [sel, setSel] = useState(() => new Set(initial))
+  const toggle = (id) => setSel(prev => {
+    const n = new Set(prev)
+    if (n.has(id)) n.delete(id); else n.add(id)
+    return n
+  })
+  return (
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-sm">
+        <h3 className="text-base font-semibold text-ink-900 dark:text-white mb-1">Klassen wählen</h3>
+        <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">{schueler.vorname} {schueler.nachname}</p>
+        <div className="space-y-1 border border-paper-200 dark:border-ink-700 rounded-lg p-1 max-h-[55vh] overflow-y-auto">
+          {klassen.map(k => (
+            <label key={k.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-paper-100 dark:hover:bg-ink-800 cursor-pointer">
+              <input type="checkbox" className="accent-coral-500" checked={sel.has(k.id)} onChange={() => toggle(k.id)} />
+              <span className="text-sm text-ink-700 dark:text-paper-200">{k.name}</span>
+            </label>
+          ))}
+        </div>
+        <p className="text-[11px] text-ink-400 mt-2">Mindestens eine Klasse. Die erste gilt als Stammklasse (KV/Anzeige).</p>
+        <div className="flex justify-end gap-2 mt-4">
+          <button className="btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn-primary" onClick={() => onOk(sel)} disabled={!sel.size}>OK</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Eigenes Modal zur Auswahl der (Auswahl-)Fächer einer Person, nach Klasse gruppiert.
+function FaecherAuswahlModal({ schueler, klassenFaecher, initial, onClose, onOk }) {
+  const [sel, setSel] = useState(() => new Set(initial))
+  const toggle = (id) => setSel(prev => {
+    const n = new Set(prev)
+    if (n.has(id)) n.delete(id); else n.add(id)
+    return n
+  })
+  return (
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-md">
+        <h3 className="text-base font-semibold text-ink-900 dark:text-white mb-1">Fächer wählen</h3>
+        <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">{schueler.vorname} {schueler.nachname}</p>
+        {(klassenFaecher || []).length === 0 ? (
+          <p className="text-sm text-ink-400 py-4 text-center">Noch keiner Klasse zugeordnet.</p>
+        ) : (
+          <div className="space-y-2 border border-paper-200 dark:border-ink-700 rounded-lg p-1 max-h-[55vh] overflow-y-auto">
+            {(klassenFaecher || []).map(row => (
+              <div key={row.klasse.id}>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-ink-400 dark:text-ink-500 px-2 pt-1 pb-0.5">{row.klasse.name}</div>
+                {row.faecher.length === 0 ? (
+                  <p className="text-xs text-ink-400 px-2 pb-1">Keine Fächer</p>
+                ) : row.faecher.map(f => {
+                  const ganz = f.alle_schueler !== 0
+                  const on = ganz || sel.has(f.id)
+                  return (
+                    <label key={f.id} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${ganz ? 'opacity-70' : 'hover:bg-paper-100 dark:hover:bg-ink-800 cursor-pointer'}`}>
+                      <input type="checkbox" className="accent-coral-500" checked={on} disabled={ganz} onChange={() => !ganz && toggle(f.id)} />
+                      <span className="text-sm text-ink-700 dark:text-paper-200 flex-1">{f.name}</span>
+                      <span className="text-[10px] text-ink-400">{ganz ? 'ganze Klasse' : 'Auswahl'}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-[11px] text-ink-400 mt-2">„Ganze Klasse"-Fächer ergeben sich aus der Klassenzugehörigkeit und sind nicht abwählbar.</p>
+        <div className="flex justify-end gap-2 mt-4">
+          <button className="btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn-primary" onClick={() => onOk(sel)}>OK</button>
+        </div>
+      </div>
+    </div>
   )
 }
 

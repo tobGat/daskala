@@ -236,7 +236,7 @@ async function setSpfFaecher(db, schuelerId, fachIds) {
 }
 
 // Stammdaten-Felder (Kontakt/Notfall/Berechtigte). Free-Text; leer → NULL.
-const STAMMDATEN_FELDER = ['geburtsdatum', 'adresse', 'telefon', 'email', 'notfallnummer', 'erziehungsberechtigte', 'abholberechtigte', 'anmerkungen']
+const STAMMDATEN_FELDER = ['geburtsdatum', 'strasse', 'plz', 'ort', 'telefon', 'email', 'notfallnummer', 'erziehungsberechtigte', 'abholberechtigte', 'anmerkungen']
 
 async function setStammdaten(db, id, data) {
   const wert = (v) => { const s = v == null ? '' : String(v).trim(); return s === '' ? null : s }

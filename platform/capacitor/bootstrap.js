@@ -102,7 +102,7 @@ export async function bootstrapMobile() {
   await spalteErgaenzenWennFehlt(dbPort, 'faecher', 'gewichtung_man', 'REAL')
   await spalteErgaenzenWennFehlt(dbPort, 'spalten', 'ma_symbole', 'TEXT')
   // Stammdaten-Spalten für Bestands-DBs nachrüsten (Baseline erzeugt sie bei Neuinstallation).
-  for (const sp of ['geburtsdatum', 'adresse', 'telefon', 'email', 'notfallnummer', 'erziehungsberechtigte', 'abholberechtigte', 'anmerkungen']) {
+  for (const sp of ['geburtsdatum', 'strasse', 'plz', 'ort', 'telefon', 'email', 'notfallnummer', 'erziehungsberechtigte', 'abholberechtigte', 'anmerkungen']) {
     await spalteErgaenzenWennFehlt(dbPort, 'schueler', sp, 'TEXT')
   }
   await seedDemoWennLeer(dbPort)
