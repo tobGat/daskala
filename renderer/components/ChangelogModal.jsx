@@ -25,6 +25,8 @@ export const CHANGELOG = [
       'Spalten wählen & anordnen: Über „Spalten ▾" in der Schüler:innen-Verwaltung blendest du ein, welche Informationen die Tabelle anzeigt (Merkmale, Klassen, Fächer sowie Stammdaten wie Telefon, Adresse, Notfallnummer …), und änderst mit ▲/▼ ihre Reihenfolge. Standardmäßig sichtbar: Vorname, Nachname, Merkmale, Klassen, Telefon und Adresse. Auch Vor- und Nachname lassen sich per ▲/▼ verschieben (bleiben aber immer sichtbar). Die Auswahl bleibt bis zum Neustart erhalten.',
       'Anlegen zentralisiert: Neue Schüler:innen werden ausschließlich in der zentralen „Schüler:innen"-Verwaltung angelegt (einzeln oder per CSV-/Excel-Import, mit Wahl der Stammklasse). Das Schüler:innen-Modal in der Klassenansicht dient nur noch dazu, bereits vorhandene Personen der Klasse hinzuzufügen.',
       'Klassen-Modal aufgeräumt: Merkmale u. Ä. lassen sich dort nicht mehr direkt umschalten – „✎ Bearbeiten" öffnet dasselbe Fenster wie die zentrale Verwaltung (Name, Merkmale, Klassen, Fächer, SPF, Stammdaten). Vorhandene Schüler:innen fügst du per Live-Suche hinzu: getippte Zeichen filtern sofort, es werden nur Treffer (Name oder Klasse) gelistet.',
+      'Archiv wiederherstellen genauer: Beim Zurückholen eines archivierten Schuljahres werden nur die Schüler:innen wieder aktiv, die zum Zeitpunkt des Jahreswechsels aktiv waren – unterjährig entfernte Schüler:innen bleiben entfernt und werden nicht mehr versehentlich wiederbelebt.',
+      'Schneller: Die Neuberechnung der Zeugnisnoten eines Fachs lädt Aufzeichnungen und Einstellungen jetzt gebündelt statt einzeln – spürbar flotter bei großen Klassen und vielen Spalten. Das Leistungsprofil berechnet nur noch die geöffnete Person neu.',
     ],
   },
   {

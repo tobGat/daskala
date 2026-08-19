@@ -528,6 +528,8 @@ const MIGRATIONS = [
     sql: [
       "DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE kategorie = 'MAN');",
       "DELETE FROM spalten WHERE kategorie = 'MAN';",
+      // Auch die in v2 geseedete MAN-Gewichtung entfernen (sonst tote Zeile in gewichtung_global).
+      "DELETE FROM gewichtung_global WHERE kategorie = 'MAN';",
     ].join('\n\n'),
   },
 ]
@@ -1262,8 +1264,10 @@ function applySchema(db, deps) {
   insertGewichtung.run('MA', 0.20)
   insertGewichtung.run('HÜ', 0.10)
   insertGewichtung.run('CUSTOM', 0.10)
-  // Benotete Mitarbeit (MAN). INSERT OR IGNORE = idempotent, back-fillt Bestands-DBs.
-  insertGewichtung.run('MAN', 0.30)
+  // Benotete Mitarbeit (Kategorie MAN) ist mit § 4 Abs. 2 (v1.4) entfallen – MA wird selbst zur
+  // Note. KEIN Fresh-Seed mehr; eine aus früheren Versionen geseedete MAN-Gewichtung wird entfernt
+  // (idempotent, läuft bei jedem Start – analog zum MAN-Spalten-Cleanup unten).
+  db.prepare("DELETE FROM gewichtung_global WHERE kategorie = 'MAN'").run()
 
   // Duplikate in stundenzeiten bereinigen (fehlerhafter INSERT OR IGNORE ohne UNIQUE)
   db.prepare(`

@@ -13,6 +13,7 @@ const noten = require('../../core/services/notenberechnung.js')
 const schueler = require('../../core/domain/schueler.js')
 const klassen = require('../../core/domain/klassen.js')
 const jahresabschluss = require('../../core/domain/jahresabschluss.js')
+const schuljahre = require('../../core/domain/schuljahre.js')
 
 function baueDb() {
   const db = new Database(':memory:')
@@ -297,5 +298,35 @@ test('Migration v<6: SPF-Backfill nur für belegte Fächer (nicht eingeschrieben
   applySchema(db, { logError: () => {} })
   const faecherMitSpf = db.prepare('SELECT fach_id FROM schueler_fach_spf WHERE schueler_id = ? ORDER BY fach_id').all(s).map(r => r.fach_id)
   assert.deepStrictEqual(faecherMitSpf, [voll, grpMit]) // Voll-Fach + belegtes Gruppenfach; NICHT das unbelegte „Band"
+  db.close()
+})
+
+test('Archiv wiederherstellen reaktiviert nur beim Wechsel aktive Personen – kein Wiederbeleben soft-gelöschter', async () => {
+  const { db, port, sjId, k1 } = baueDb()
+  const sAktiv = await schueler.create(port, { klasseId: k1, vorname: 'Akt', nachname: 'Iv' })
+  const sSoft = await schueler.create(port, { klasseId: k1, vorname: 'Soft', nachname: 'Weg' })
+  // sSoft VOR dem Jahreswechsel soft-löschen (unterjährig ausgetreten): aktiv=0 auf Person + Mitgliedschaft.
+  db.prepare('UPDATE schueler SET aktiv = 0 WHERE id = ?').run(sSoft)
+  db.prepare('UPDATE klassen_schueler SET aktiv = 0 WHERE schueler_id = ?').run(sSoft)
+  // Jahreswechsel: nur sAktiv rückt vor (sSoft ist bereits weg → nicht in den Zuordnungen).
+  const zuordnungen = [{ schuelerId: sAktiv, alteKlasseId: k1, aktion: 'bleibt' }]
+  const klassenSel = [{ alteKlasseId: k1, neuerName: null, fachIds: null }]
+  const neuSjId = await jahresabschluss.neuesSchuljahr(port, { altesSchuljahreId: sjId, neueBezeichnung: 'NEU', klassen: klassenSel, schuelerZuordnungen: zuordnungen })
+  // Nach dem Wechsel: altes Jahr archiviert, beide alten Personen inaktiv.
+  assert.equal(db.prepare('SELECT archiviert FROM schuljahre WHERE id = ?').get(sjId).archiviert, 1)
+  assert.equal(db.prepare('SELECT aktiv FROM schueler WHERE id = ?').get(sAktiv).aktiv, 0)
+
+  const res = await schuljahre.letztesArchivWiederherstellen(port)
+  assert.equal(res.ok, true)
+  assert.equal(res.schuljahrId, sjId)
+  // sAktiv (beim Wechsel aktiv) wird reaktiviert – Person UND Mitgliedschaft:
+  assert.equal(db.prepare('SELECT aktiv FROM schueler WHERE id = ?').get(sAktiv).aktiv, 1)
+  assert.equal(db.prepare('SELECT aktiv FROM klassen_schueler WHERE schueler_id = ? AND klasse_id = ?').get(sAktiv, k1).aktiv, 1)
+  // sSoft (davor soft-gelöscht) bleibt inaktiv – NICHT wiederbelebt:
+  assert.equal(db.prepare('SELECT aktiv FROM schueler WHERE id = ?').get(sSoft).aktiv, 0)
+  assert.equal(db.prepare('SELECT aktiv FROM klassen_schueler WHERE schueler_id = ? AND klasse_id = ?').get(sSoft, k1).aktiv, 0)
+  // Das (nun ex-aktuelle) neue Jahr ist wieder archiviert und deaktiviert:
+  assert.equal(db.prepare('SELECT archiviert FROM schuljahre WHERE id = ?').get(neuSjId).archiviert, 1)
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM schueler WHERE klasse_id IN (SELECT id FROM klassen WHERE schuljahr_id=?) AND aktiv=1').get(neuSjId).c, 0)
   db.close()
 })

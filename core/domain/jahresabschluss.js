@@ -25,6 +25,21 @@ async function neuesSchuljahr(db, { altesSchuljahreId, neueBezeichnung, klassen 
     const fachIdMapping = {}
     const schuelerIdMapping = {}
 
+    // Pre-Wechsel-Zustand des alten Jahres festhalten (VOR jeder Deaktivierung): welche Personen und
+    // Mitgliedschaften waren beim Archivieren aktiv? „Archiv wiederherstellen" (schuljahre.js)
+    // reaktiviert dann gezielt nur diese – und belebt keine davor soft-gelöschten (aktiv=0)
+    // Schüler:innen wieder. Schlüssel-Konvention `archiv_reaktivierung_<schuljahrId>` (s. schuljahre.js).
+    const aktiveSchuelerVorher = (await tx.select(
+      'SELECT id FROM schueler WHERE aktiv = 1 AND klasse_id IN (SELECT id FROM klassen WHERE schuljahr_id = ?)',
+      [altesSchuljahreId]
+    )).map((r) => r.id)
+    const aktiveMitgliederVorher = (await tx.select(
+      'SELECT ks.klasse_id, ks.schueler_id FROM klassen_schueler ks JOIN klassen k ON ks.klasse_id = k.id WHERE ks.aktiv = 1 AND k.schuljahr_id = ?',
+      [altesSchuljahreId]
+    )).map((r) => [r.klasse_id, r.schueler_id])
+    await tx.execute('INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES (?, ?)',
+      [`archiv_reaktivierung_${altesSchuljahreId}`, JSON.stringify({ schueler: aktiveSchuelerVorher, mitglieder: aktiveMitgliederVorher })])
+
     // Auswahl der vorzurückenden Klassen/Fächer. Fehlt "klassen" (Alt-Aufrufer) → alle Klassen, alle Fächer.
     let auswahl = klassen
     if (!auswahl) {

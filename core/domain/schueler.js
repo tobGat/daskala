@@ -4,7 +4,8 @@
 // Kern-Domäne: Schüler:innen (Personen) + n:m-Klassenmitgliedschaft über klassen_schueler.
 // `schueler.klasse_id` bleibt in Phase 1 als „Stammklasse" (KV/Anzeige/Export); die Mitgliedschaft
 // (reihenfolge/aktiv pro Klasse) lebt in klassen_schueler. Async DbPort.
-// deps = { berechneAlleFuerFach } (für getLeistungsProfil + setKlassen/Neuberechnung).
+// deps = { berechneAlleFuerFach (setKlassen/setFaecher-Neuberechnung), berechneZeugnisnote
+// (getLeistungsProfil: nur die angezeigte Person neu berechnen) }.
 
 const { neueUuid } = require('../db/uuid')
 
@@ -323,8 +324,24 @@ async function getLeistungsProfil(db, deps, schuelerId) {
       ORDER BY f.reihenfolge
     `, [schueler.klasse_id, schuelerId])
 
-  // Zeugnisnoten aktuell berechnen (S1, S2 und Endnote), damit das Profil immer aktuelle Werte zeigt
-  for (const fach of faecher) await deps.berechneAlleFuerFach(fach.id)
+  // Zeugnisnote je Fach aktuell berechnen – nur für DIESE Person (nicht den ganzen Roster jedes
+  // Fachs: das Profil zeigt eine einzelne Person; die übrigen Noten hält der normale Schreibpfad
+  // aktuell). Ergebnis in denselben Slot (semester=3) schreiben wie berechneAlleFuerFach.
+  await db.transaction(async (tx) => {
+    for (const fach of faecher) {
+      const { note } = await deps.berechneZeugnisnote(fach.id, schuelerId)
+      if (note !== null) {
+        await tx.execute(`
+          INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet, uuid)
+          VALUES (?, ?, 3, ?, 1, ?)
+          ON CONFLICT(fach_id, schueler_id, semester)
+          DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
+        `, [fach.id, schuelerId, note, neueUuid()])
+      } else {
+        await tx.execute('UPDATE zeugnisnoten SET note_berechnet = NULL, s1_eingerechnet = 1 WHERE fach_id = ? AND schueler_id = ? AND semester = 3', [fach.id, schuelerId])
+      }
+    }
+  })
 
   const zeugnisnoten = await db.select('SELECT * FROM zeugnisnoten WHERE schueler_id = ?', [schuelerId])
   const eintraege = await db.select(`

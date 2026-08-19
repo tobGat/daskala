@@ -443,6 +443,7 @@
       "abholberechtigte": null,
       "anmerkungen": null,
       "uuid": null,
+      "ks_reihenfolge": 2,
       "spf_fach": 0
     },
     {
@@ -467,6 +468,7 @@
       "abholberechtigte": null,
       "anmerkungen": null,
       "uuid": null,
+      "ks_reihenfolge": 5,
       "spf_fach": 0
     },
     {
@@ -491,6 +493,7 @@
       "abholberechtigte": null,
       "anmerkungen": null,
       "uuid": null,
+      "ks_reihenfolge": 1,
       "spf_fach": 0
     },
     {
@@ -515,6 +518,7 @@
       "abholberechtigte": null,
       "anmerkungen": null,
       "uuid": null,
+      "ks_reihenfolge": 4,
       "spf_fach": 0
     },
     {
@@ -539,6 +543,7 @@
       "abholberechtigte": null,
       "anmerkungen": null,
       "uuid": null,
+      "ks_reihenfolge": 3,
       "spf_fach": 0
     }
   ],

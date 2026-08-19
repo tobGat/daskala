@@ -686,6 +686,10 @@ async function archivOds(db, deps, schuljahrId) {
   for (const klasse of klassen) {
     const faecher = await db.select('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name', [klasse.id])
     for (const fach of faecher) {
+      // Roster zuerst: Fächer ohne Roster (auch klassenübergreifende Gruppen) überspringen –
+      // sonst entsteht ein leeres Blatt mit nur der Kopfzeile (wie in allSchuelerOds/archivPdf).
+      const roster = await deps.rosterFuerFach(fach.id, { inklInaktiv: true })
+      if (!roster.length) continue
       const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge', [fach.id])
       const eintraege = await db.select('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)', [fach.id])
       const zeugnisnoten = await db.select('SELECT * FROM zeugnisnoten WHERE fach_id = ?', [fach.id])
@@ -705,7 +709,7 @@ async function archivOds(db, deps, schuljahrId) {
 
       const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum : ''}`), 'ZN']
       const rows = [header]
-      for (const s of await deps.rosterFuerFach(fach.id, { inklInaktiv: true })) {
+      for (const s of roster) {
         const row = [`${s.nachname} ${s.vorname}`]
         for (const sp of spalten) row.push(entryMap[`${sp.id}_${s.id}`] ?? '')
         row.push(znMap[`${s.id}_3`] ?? '')

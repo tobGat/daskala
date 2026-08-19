@@ -58,9 +58,12 @@ async function backfillKlassenSchuelerEinmalig(dbPort) {
   try {
     const flag = await dbPort.select("SELECT wert FROM einstellungen WHERE schluessel = 'migr_v5_klassen_schueler'")
     if (flag.length) return
+    // WHERE-Guard wie im Desktop-Backfill (schema.js): verwaiste schueler.klasse_id (auf eine
+    // gelöschte Klasse zeigend) erzeugt sonst eine Junction-Zeile mit ungültiger klasse_id.
     await dbPort.execute(`
       INSERT OR IGNORE INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse)
       SELECT klasse_id, id, reihenfolge, aktiv, 1 FROM schueler
+      WHERE klasse_id IN (SELECT id FROM klassen)
     `)
     await dbPort.execute("INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES ('migr_v5_klassen_schueler', '1')")
   } catch (e) {

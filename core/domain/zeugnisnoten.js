@@ -4,7 +4,7 @@
 // Kern-Domäne: Zeugnisnote (berechnet + manuell). Es gibt EINE durchgehende Note je
 // (Fach, Schüler:in) – der laufende Jahresstand aus allen Aufzeichnungen beider Semester.
 // Gespeichert im Slot semester=3 (Slots 1/2 werden nicht mehr verwendet).
-// Async DbPort; deps = { berechneZeugnisnote, pushUndo, rosterIdsFuerFach }.
+// Async DbPort; deps = { berechneZeugnisnote, pushUndo, berechneAlleFuerFach }.
 
 const { neueUuid } = require('../db/uuid')
 
@@ -67,24 +67,12 @@ async function clearManuell(db, deps, fachId, schuelerId) {
 }
 
 async function berechneFach(db, deps, fachId) {
-  // Eine durchgehende Jahresnote je Schüler:in neu berechnen.
-  const fach = await db.selectOne('SELECT * FROM faecher WHERE id = ?', [fachId])
+  // Eine durchgehende Jahresnote je Schüler:in neu berechnen. Roster-Laden, Batch-Berechnung und
+  // UPSERT/Clear leben zentral im Kern-Service (berechneAlleFuerFach) – hier nur delegieren, damit
+  // es genau EINE Implementierung (inkl. N+1-freiem Eintrags-Laden) gibt.
+  const fach = await db.selectOne('SELECT id FROM faecher WHERE id = ?', [fachId])
   if (!fach) return false
-  const schueler = (await deps.rosterIdsFuerFach(fachId)).map((id) => ({ id }))
-  const UPSERT = `
-      INSERT INTO zeugnisnoten (fach_id, schueler_id, semester, note_berechnet, s1_eingerechnet, uuid)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(fach_id, schueler_id, semester)
-      DO UPDATE SET note_berechnet = excluded.note_berechnet, s1_eingerechnet = excluded.s1_eingerechnet
-    `
-  const UPDATE_ONLY = 'UPDATE zeugnisnoten SET note_berechnet = ?, s1_eingerechnet = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?'
-  await db.transaction(async (tx) => {
-    for (const s of schueler) {
-      const { note } = await deps.berechneZeugnisnote(fachId, s.id)
-      if (note !== null) await tx.execute(UPSERT, [fachId, s.id, NOTE_SEMESTER, note, 1, neueUuid()])
-      else await tx.execute(UPDATE_ONLY, [null, 1, fachId, s.id, NOTE_SEMESTER])
-    }
-  })
+  await deps.berechneAlleFuerFach(fachId)
   return true
 }
 
