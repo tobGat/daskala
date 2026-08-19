@@ -265,7 +265,7 @@ export default function SchuelerZentralView() {
                   <th className="text-right px-3 py-2">Aktion</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-paper-100 dark:divide-ink-800">
+              <tbody className="divide-y divide-paper-200 dark:divide-ink-700">
                 {gefiltert.map(s => (
                   <tr key={s.id} className="hover:bg-paper-50 dark:hover:bg-ink-800/40">
                     <td className="px-3 py-1 align-middle">
