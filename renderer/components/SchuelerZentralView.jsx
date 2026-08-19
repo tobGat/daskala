@@ -60,8 +60,11 @@ function gebFormat(d) {
   try { return new Date(d + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' }) } catch { return d }
 }
 
-// Optionale (an-/abwählbare) Tabellenspalten. key = Store-Schlüssel; sortFeld = Sortier-Feld (falls sortierbar).
+// Tabellenspalten. key = Store-Schlüssel; sortFeld = Sortier-Feld (falls sortierbar);
+// fest = immer sichtbar (nur Reihenfolge änderbar, nicht abwählbar). Vor-/Nachname sind fest.
 const TABELLEN_SPALTEN = [
+  { key: 'vorname', label: 'Vorname', sortFeld: 'vorname', fest: true },
+  { key: 'nachname', label: 'Nachname', sortFeld: 'nachname', fest: true },
   { key: 'merkmale', label: 'Merkmale' },
   { key: 'klassen', label: 'Klassen', sortFeld: 'klasse' },
   { key: 'faecher', label: 'Fächer' },
@@ -75,8 +78,19 @@ const TABELLEN_SPALTEN = [
   { key: 'anmerkungen', label: 'Anmerkungen', wert: (s) => s.anmerkungen },
 ]
 
-// Zell-Inhalt einer optionalen Spalte (nur Anzeige).
-function renderSpalte(c, s) {
+// Zell-Inhalt einer Spalte (nur Anzeige). onDetail öffnet das Leistungsprofil (Vor-/Nachname).
+function renderSpalte(c, s, onDetail) {
+  if (c.key === 'vorname') {
+    return (
+      <div className="flex items-center gap-2">
+        <SchuelerAvatar schueler={s} size={24} className="shadow-softer shrink-0" />
+        <button type="button" onClick={() => onDetail(s)} className="text-left text-ink-700 dark:text-paper-200 hover:text-coral-600 dark:hover:text-coral-300" title="Detail-/Leistungsprofil öffnen">{s.vorname}</button>
+      </div>
+    )
+  }
+  if (c.key === 'nachname') {
+    return <button type="button" onClick={() => onDetail(s)} className="text-left font-semibold text-ink-800 dark:text-paper-100 hover:text-coral-600 dark:hover:text-coral-300" title="Detail-/Leistungsprofil öffnen">{s.nachname}</button>
+  }
   if (c.key === 'merkmale') {
     return <div className="flex items-center gap-1">{MERKMALE.map(m => <MerkmalBadge key={m.feld} an={s[m.feld]} label={m.label} farbe={m.farbe} />)}</div>
   }
@@ -127,7 +141,7 @@ export default function SchuelerZentralView() {
     const rest = TABELLEN_SPALTEN.filter(c => !zentraleSpaltenReihenfolge.includes(c.key))
     return [...inOrder, ...rest]
   }, [zentraleSpaltenReihenfolge])
-  const sichtbareCols = useMemo(() => geordneteCols.filter(c => zentraleSpalten[c.key]), [geordneteCols, zentraleSpalten])
+  const sichtbareCols = useMemo(() => geordneteCols.filter(c => c.fest || zentraleSpalten[c.key]), [geordneteCols, zentraleSpalten])
   const spalteVerschieben = (key, richtung) => {
     const keys = geordneteCols.map(c => c.key)
     const i = keys.indexOf(key)
@@ -221,7 +235,9 @@ export default function SchuelerZentralView() {
                 <div className="text-[10px] font-bold uppercase tracking-wider text-ink-400 px-2 py-1">Spalten – anzeigen & anordnen</div>
                 {geordneteCols.map((c, i) => (
                   <div key={c.key} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-paper-100 dark:hover:bg-ink-800 text-sm text-ink-700 dark:text-paper-200">
-                    <input type="checkbox" className="accent-coral-500" checked={!!zentraleSpalten[c.key]} onChange={() => setZentraleSpalte(c.key, !zentraleSpalten[c.key])} />
+                    <input type="checkbox" className="accent-coral-500 disabled:opacity-60" checked={c.fest || !!zentraleSpalten[c.key]} disabled={c.fest}
+                      onChange={() => !c.fest && setZentraleSpalte(c.key, !zentraleSpalten[c.key])}
+                      title={c.fest ? 'Immer sichtbar (nur Reihenfolge änderbar)' : undefined} />
                     <span className="flex-1 truncate">{c.label}</span>
                     <button type="button" disabled={i === 0} onClick={() => spalteVerschieben(c.key, -1)} className="px-1 text-ink-400 hover:text-coral-600 disabled:opacity-25" title="Nach links">▲</button>
                     <button type="button" disabled={i === geordneteCols.length - 1} onClick={() => spalteVerschieben(c.key, 1)} className="px-1 text-ink-400 hover:text-coral-600 disabled:opacity-25" title="Nach rechts">▼</button>
@@ -247,12 +263,6 @@ export default function SchuelerZentralView() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 bg-paper-100 dark:bg-ink-800/60">
-                  <th className="text-left px-3 py-2">
-                    <button type="button" onClick={() => sortieren('vorname')} className="text-[10px] font-bold uppercase tracking-wider hover:text-coral-600 dark:hover:text-coral-300" title="Nach Vorname sortieren">Vorname{sortPfeil('vorname')}</button>
-                  </th>
-                  <th className="text-left px-3 py-2">
-                    <button type="button" onClick={() => sortieren('nachname')} className="text-[10px] font-bold uppercase tracking-wider hover:text-coral-600 dark:hover:text-coral-300" title="Nach Nachname sortieren">Nachname{sortPfeil('nachname')}</button>
-                  </th>
                   {sichtbareCols.map(c => (
                     <th key={c.key} className="text-left px-3 py-2">
                       {c.sortFeld ? (
@@ -266,21 +276,8 @@ export default function SchuelerZentralView() {
               <tbody className="divide-y divide-paper-200 dark:divide-ink-700">
                 {gefiltert.map(s => (
                   <tr key={s.id} className="hover:bg-paper-50 dark:hover:bg-ink-800/40">
-                    <td className="px-3 py-1 align-middle">
-                      <div className="flex items-center gap-2">
-                        <SchuelerAvatar schueler={s} size={24} className="shadow-softer shrink-0" />
-                        <button type="button" onClick={() => setDetailSchueler(s)}
-                          className="text-left text-ink-700 dark:text-paper-200 hover:text-coral-600 dark:hover:text-coral-300"
-                          title="Detail-/Leistungsprofil öffnen">{s.vorname}</button>
-                      </div>
-                    </td>
-                    <td className="px-3 py-1 align-middle">
-                      <button type="button" onClick={() => setDetailSchueler(s)}
-                        className="text-left font-semibold text-ink-800 dark:text-paper-100 hover:text-coral-600 dark:hover:text-coral-300"
-                        title="Detail-/Leistungsprofil öffnen">{s.nachname}</button>
-                    </td>
                     {sichtbareCols.map(c => (
-                      <td key={c.key} className="px-3 py-1 align-middle">{renderSpalte(c, s)}</td>
+                      <td key={c.key} className="px-3 py-1 align-middle">{renderSpalte(c, s, setDetailSchueler)}</td>
                     ))}
                     <td className="px-3 py-1 text-right align-middle">
                       <button type="button" onClick={() => setBearbeiten({ schueler: s })}
