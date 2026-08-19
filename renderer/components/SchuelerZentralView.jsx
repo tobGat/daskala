@@ -14,9 +14,10 @@ import AvatarEditorModal from './AvatarEditorModal'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { parseSchuelerDatei } from '../utils/schuelerImport'
 
-// Merkmal-Badge – reine Anzeige (Tabelle). Aktiv = farbig, sonst gedämpft.
+// Merkmal-Badge – reine Anzeige (Tabelle). Aktiv = kräftig farbig, inaktiv = deutlich blasser,
+// damit der Unterschied auf einen Blick erkennbar ist.
 function MerkmalBadge({ an, label, farbe }) {
-  const aus = 'bg-paper-200 text-ink-400 dark:bg-ink-700 dark:text-ink-500'
+  const aus = 'bg-transparent text-ink-300 dark:text-ink-700 opacity-80'
   return (
     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${an ? farbe : aus}`}
       title={an ? `${label} aktiv` : `${label} nicht gesetzt`}>{label}</span>
