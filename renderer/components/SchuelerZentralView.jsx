@@ -81,12 +81,9 @@ const TABELLEN_SPALTEN = [
 // Zell-Inhalt einer Spalte (nur Anzeige). onDetail öffnet das Leistungsprofil (Vor-/Nachname).
 function renderSpalte(c, s, onDetail) {
   if (c.key === 'vorname') {
-    return (
-      <div className="flex items-center gap-2">
-        <SchuelerAvatar schueler={s} size={24} className="shadow-softer shrink-0" />
-        <button type="button" onClick={() => onDetail(s)} className="text-left text-ink-700 dark:text-paper-200 hover:text-coral-600 dark:hover:text-coral-300" title="Detail-/Leistungsprofil öffnen">{s.vorname}</button>
-      </div>
-    )
+    // Avatar wird NICHT hier gerendert, sondern in einer festen Führungsspalte (immer ganz vorne,
+    // unabhängig von der Spaltenreihenfolge – auch wenn Vorname erst die zweite Spalte ist).
+    return <button type="button" onClick={() => onDetail(s)} className="text-left text-ink-700 dark:text-paper-200 hover:text-coral-600 dark:hover:text-coral-300" title="Detail-/Leistungsprofil öffnen">{s.vorname}</button>
   }
   if (c.key === 'nachname') {
     return <button type="button" onClick={() => onDetail(s)} className="text-left font-semibold text-ink-800 dark:text-paper-100 hover:text-coral-600 dark:hover:text-coral-300" title="Detail-/Leistungsprofil öffnen">{s.nachname}</button>
@@ -263,6 +260,8 @@ export default function SchuelerZentralView() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 bg-paper-100 dark:bg-ink-800/60">
+                  {/* Feste Führungsspalte für den Avatar – immer ganz vorne, nicht abwählbar/verschiebbar. */}
+                  <th className="px-3 py-2 w-px"><span className="sr-only">Avatar</span></th>
                   {sichtbareCols.map(c => (
                     <th key={c.key} className="text-left px-3 py-2">
                       {c.sortFeld ? (
@@ -276,6 +275,12 @@ export default function SchuelerZentralView() {
               <tbody className="divide-y divide-paper-200 dark:divide-ink-700">
                 {gefiltert.map(s => (
                   <tr key={s.id} className="hover:bg-paper-50 dark:hover:bg-ink-800/40">
+                    {/* Avatar fest als erste Zelle – öffnet (wie der Name) das Detail-/Leistungsprofil. */}
+                    <td className="px-3 py-1 align-middle w-px">
+                      <button type="button" onClick={() => setDetailSchueler(s)} title="Detail-/Leistungsprofil öffnen" className="block">
+                        <SchuelerAvatar schueler={s} size={24} className="shadow-softer shrink-0" />
+                      </button>
+                    </td>
                     {sichtbareCols.map(c => (
                       <td key={c.key} className="px-3 py-1 align-middle">{renderSpalte(c, s, setDetailSchueler)}</td>
                     ))}
