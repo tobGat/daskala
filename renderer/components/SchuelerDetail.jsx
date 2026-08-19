@@ -288,21 +288,10 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
     }, 500)
   }
 
-  // Kompetenzen pro Fach laden
-  const [kompBereiche, setKompBereiche] = useState([])
+  // Kompetenzen pro Fach – Sektion ist derzeit deaktiviert (unten `false && …`); daher KEIN
+  // IPC-Laden pro Fachwechsel (spart zwei Roundtrips). State bleibt leer, bis die Sektion aktiv wird.
+  const [kompBereiche] = useState([])
   const [kompSk, setKompSk] = useState({})
-  useEffect(() => {
-    (async () => {
-      const [kb, skArr] = await Promise.all([
-        window.api.kompetenzbereiche.getAll(fach.id),
-        window.api.schuelerKompetenzen.getAll(fach.id),
-      ])
-      setKompBereiche(kb)
-      const map = {}
-      skArr.forEach(sk => { map[`${sk.kompetenzbereich_id}_${sk.schueler_id}`] = sk })
-      setKompSk(map)
-    })()
-  }, [fach.id])
 
   const setKompetenz = async (kbId, niveau) => {
     await window.api.schuelerKompetenzen.set(kbId, schueler.id, niveau, null)
@@ -552,14 +541,17 @@ export default function SchuelerDetail() {
 
   useEffect(() => {
     if (!detailSchueler) return
+    let abbruch = false   // schnelles Umschalten auf eine andere Person: veraltetes Ergebnis verwerfen
     setLoading(true)
     window.api.schueler.getLeistungsProfil(detailSchueler.id).then(data => {
+      if (abbruch) return
       setProfil(data)
       // Initial wähle aktives Fach (falls Teil dieser Klasse) oder das erste
       const initial = data?.faecher?.find(f => f.id === aktivesFach?.id) ?? data?.faecher?.[0]
       setSelectedFachId(initial?.id ?? null)
       setLoading(false)
     })
+    return () => { abbruch = true }
   }, [detailSchueler])
 
   useEffect(() => {

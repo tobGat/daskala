@@ -445,10 +445,8 @@ export function SchuelerVerwaltenModal() {
   }
   useEffect(() => {
     if (tab !== 'vorhandene' || !aktuellesSchuljahr || !aktiveKlasse) return
-    let ab = false
     setVorhandene(null)
-    ;(async () => { const alle = await window.api.schueler.getAllImSchuljahr(aktuellesSchuljahr.id); if (!ab) setVorhandene(alle.filter(s => !(s.klassen || []).some(k => k.id === aktiveKlasse.id))) })()
-    return () => { ab = true }
+    ladeVorhandene()   // gemeinsame Quelle (auch nach dem Hinzufügen genutzt) – kein Duplikat
   }, [tab, aktuellesSchuljahr?.id, aktiveKlasse?.id])
 
   const toggleVorhanden = (id) => setVorhandeneSel(prev => {

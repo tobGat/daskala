@@ -444,16 +444,17 @@ export function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeicher
   const [stammdaten, setStammdaten] = useState(() => Object.fromEntries(STAMMDATEN.map(s => [s.feld, schueler[s.feld] || ''])))
   const [speichert, setSpeichert] = useState(false)
 
-  // Fächer der aktuell zugeordneten Klassen laden (für die Fächer-Auswahl).
+  // Fächer der AKTUELL gewählten Klassen laden (nicht nur der Ursprungsklassen), damit eine im
+  // Klassen-Modal geänderte Zuordnung sofort ihre Auswahl-Fächer zeigt.
   useEffect(() => {
     let abbruch = false
     ;(async () => {
-      const ks = schueler.klassen || []
-      const rows = await Promise.all(ks.map(async k => ({ klasse: k, faecher: await window.api.faecher.getAll(k.id) })))
+      const ausgewaehlteKlassen = klassen.filter(k => klassenIds.has(k.id))
+      const rows = await Promise.all(ausgewaehlteKlassen.map(async k => ({ klasse: k, faecher: await window.api.faecher.getAll(k.id) })))
       if (!abbruch) setKlassenFaecher(rows)
     })()
     return () => { abbruch = true }
-  }, [schueler.id])
+  }, [klassenIds, klassen])
 
   const merkmalUmschalten = (feld) => setMerkmale(m => ({ ...m, [feld]: !m[feld] }))
 

@@ -12,6 +12,7 @@ const { createDbAdapter } = require('../../platform/electron/db-better-sqlite3.j
 const noten = require('../../core/services/notenberechnung.js')
 const schueler = require('../../core/domain/schueler.js')
 const klassen = require('../../core/domain/klassen.js')
+const jahresabschluss = require('../../core/domain/jahresabschluss.js')
 
 function baueDb() {
   const db = new Database(':memory:')
@@ -144,6 +145,34 @@ test('Migration v4→v5 überspringt verwaiste schueler (klasse_id ohne Klasse) 
   assert.equal(rows.length, 1)                                  // nur der gültige Schüler wandert in die Junction
   assert.equal(rows[0].klasse_id, k)
   assert.equal(db.pragma('user_version', { simple: true }), 6)  // Migration lief durch (kein FK-Abbruch)
+  db.close()
+})
+
+test('Jahreswechsel überträgt Personendaten/Fach-Gewichtung/SPF und dedupliziert klassenübergreifende Person', async () => {
+  const { db, port, deps, sjId, k1, k2, f1 } = baueDb()
+  db.prepare("UPDATE faecher SET farbe='#abc', gewichtung_sa=0.5, gewichtung_t=0.3, gewichtung_ma=0.2, gewichtung_custom=0 WHERE id=?").run(f1)
+  const sA = await schueler.create(port, { klasseId: k1, vorname: 'A', nachname: 'A' })
+  await schueler.setKlassen(port, deps, sA, [k1, k2])   // klassenübergreifend (Stammklasse k1)
+  db.prepare("UPDATE schueler SET lernschwaeche=1, avatar='AV', notfallnummer='112', strasse='Weg 1', plz='1010', ort='Wien' WHERE id=?").run(sA)
+  await schueler.setSpfFaecher(port, sA, [f1])
+  const zuordnungen = [{ schuelerId: sA, alteKlasseId: k1, aktion: 'bleibt' }, { schuelerId: sA, alteKlasseId: k2, aktion: 'bleibt' }]
+  const klassenSel = [{ alteKlasseId: k1, neuerName: null, fachIds: null }, { alteKlasseId: k2, neuerName: null, fachIds: null }]
+  const neuSjId = await jahresabschluss.neuesSchuljahr(port, { altesSchuljahreId: sjId, neueBezeichnung: 'NEU', klassen: klassenSel, schuelerZuordnungen: zuordnungen })
+  const neu = db.prepare('SELECT * FROM schueler WHERE klasse_id IN (SELECT id FROM klassen WHERE schuljahr_id=?) AND aktiv=1').all(neuSjId)
+  assert.equal(neu.length, 1)                               // dedupliziert: nur EINE neue Person
+  const p = neu[0]
+  assert.equal(p.lernschwaeche, 1)                          // Merkmale übertragen
+  assert.equal(p.avatar, 'AV')                              // Avatar übertragen
+  assert.equal(p.notfallnummer, '112')                     // Stammdaten übertragen
+  assert.equal(p.strasse, 'Weg 1')
+  assert.equal(p.spf, 1)                                    // SPF-Summenflag abgeleitet
+  const memb = db.prepare('SELECT ist_stammklasse FROM klassen_schueler WHERE schueler_id=?').all(p.id)
+  assert.equal(memb.length, 2)                              // beide Klassen
+  assert.equal(memb.filter(m => m.ist_stammklasse === 1).length, 1)   // genau eine Stammklasse
+  const nf = db.prepare("SELECT farbe, gewichtung_sa FROM faecher WHERE klasse_id IN (SELECT id FROM klassen WHERE schuljahr_id=?) AND name='D'").get(neuSjId)
+  assert.equal(nf.farbe, '#abc')
+  assert.equal(nf.gewichtung_sa, 0.5)                      // Fach-Gewichtung/Farbe übernommen
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM schueler_fach_spf WHERE schueler_id=?').get(p.id).c, 1)   // SPF remappt
   db.close()
 })
 

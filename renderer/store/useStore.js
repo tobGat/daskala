@@ -197,7 +197,7 @@ const useStore = create((set, get) => ({
     if (neueAktive) {
       await get().setAktiveKlasse(neueAktive)
     } else {
-      set({ aktiveKlasse: null, faecher: [], aktivesFach: null, schueler: [], spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchuelerIds: new Set() })
+      set({ aktiveKlasse: null, faecher: [], aktivesFach: null, schueler: [], spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchueler: [], fachSchuelerIds: new Set() })
     }
   },
 
@@ -212,7 +212,7 @@ const useStore = create((set, get) => ({
     if (aktivesFach) {
       await get().setAktivesFach(aktivesFach)
     } else {
-      set({ aktivesFach: null, spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchuelerIds: new Set() })
+      set({ aktivesFach: null, spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchueler: [], fachSchuelerIds: new Set() })
     }
   },
 
@@ -225,7 +225,7 @@ const useStore = create((set, get) => ({
         vorlagenModus: true,
         klassen: vorlagen,
         aktiveKlasse: null, faecher: [], aktivesFach: null,
-        schueler: [], spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchuelerIds: new Set(),
+        schueler: [], spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchueler: [], fachSchuelerIds: new Set(),
         currentView: 'jahresplanung',
       })
       if (vorlagen[0]) await get().setAktiveKlasse(vorlagen[0])
@@ -246,7 +246,7 @@ const useStore = create((set, get) => ({
         ? vorlagen.find(k => k.id === aktiveKlasse.id) ?? vorlagen[0]
         : vorlagen[0]
       if (neueAktive) await get().setAktiveKlasse(neueAktive)
-      else set({ aktiveKlasse: null, faecher: [], aktivesFach: null, fachSchuelerIds: new Set() })
+      else set({ aktiveKlasse: null, faecher: [], aktivesFach: null, fachSchueler: [], fachSchuelerIds: new Set() })
     } else if (aktuellesSchuljahr) {
       await get().ladeKlassen(aktuellesSchuljahr.id)
     }
@@ -280,7 +280,7 @@ const useStore = create((set, get) => ({
     set({ faecher })
     const ziel = (aktivesFach && faecher.find(f => f.id === aktivesFach.id)) || faecher[0] || null
     if (ziel) await get().setAktivesFach(ziel)
-    else set({ aktivesFach: null, spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchuelerIds: new Set() })
+    else set({ aktivesFach: null, spalten: [], eintraege: {}, kommentare: {}, zeugnisnoten: {}, fachSchueler: [], fachSchuelerIds: new Set() })
   },
 
   ladeFachDaten: async (fachId) => {
@@ -487,25 +487,6 @@ const useStore = create((set, get) => ({
     if (!aktuellesSchuljahr) { set({ alleSchueler: [] }); return }
     const alleSchueler = await window.api.schueler.getAllImSchuljahr(aktuellesSchuljahr.id)
     set({ alleSchueler })
-  },
-
-  // Klassen-Zuordnung einer Person setzen (zentrale Verwaltung) und betroffene Ansichten neu laden.
-  setSchuelerKlassen: async (schuelerId, klasseIds) => {
-    await window.api.schueler.setKlassen(schuelerId, klasseIds)
-    await get().ladeAlleSchueler()
-    // Aktive Klasse könnte betroffen sein (Mitglied hinzugefügt/entfernt) → Klassenliste + Fach neu laden.
-    const { aktiveKlasse, aktivesFach } = get()
-    if (aktiveKlasse) await get().ladeSchueler()
-    if (aktivesFach) await get().ladeFachDaten(aktivesFach.id)
-  },
-
-  // Auswahl-Fach-Zuordnung einer Person setzen (zentrale Verwaltung, #3) und Ansichten neu laden.
-  // changes = { add: [fachId], remove: [fachId] } – nur Gruppen-Fächer.
-  setSchuelerFaecher: async (schuelerId, changes) => {
-    await window.api.schueler.setFaecher(schuelerId, changes)
-    await get().ladeAlleSchueler()
-    const { aktivesFach } = get()
-    if (aktivesFach) await get().ladeFachDaten(aktivesFach.id)
   },
 
   // Zentrale Verwaltung: Details (Name/Merkmale), Klassen- und Fächer-Zuordnung einer Person
