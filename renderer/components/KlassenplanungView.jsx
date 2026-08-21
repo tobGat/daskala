@@ -380,8 +380,9 @@ export default function KlassenplanungView() {
       </div>
       )}
 
-      {/* Spalten-Layout */}
-      <div className="flex-1 overflow-hidden flex">
+      {/* Spalten-Layout: Spalten behalten eine lesbare Mindestbreite; passen nicht alle nebeneinander
+          (mehrere Parallelklassen), wird horizontal gescrollt. Vertikal scrollt jede Spalte intern. */}
+      <div className="flex-1 overflow-x-auto overflow-y-hidden flex">
         {laden && slots.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-ink-400 text-sm">Laden...</div>
         ) : sichtbareListe.length === 0 ? (
@@ -479,7 +480,7 @@ function FachSpalte({ fach, farbe, wochen, istErste, istReferenz, parallelDaten,
 
   return (
     <div
-      className={`flex-1 min-w-0 flex flex-col overflow-hidden
+      className={`flex-1 min-w-[300px] flex flex-col overflow-hidden
         ${!istErste ? 'border-l border-paper-200 dark:border-ink-800' : ''}
         ${istReferenz ? 'bg-paper-50/50 dark:bg-ink-900/30' : ''}
       `}
@@ -488,7 +489,7 @@ function FachSpalte({ fach, farbe, wochen, istErste, istReferenz, parallelDaten,
       <div className={`flex-shrink-0 px-4 py-2 border-b flex items-center gap-2 ${
         istReferenz ? 'border-dashed border-paper-300 dark:border-ink-700' : farbe.headerBorder
       }`}>
-        <h3 className={`text-sm font-semibold truncate ${
+        <h3 className={`text-sm font-semibold truncate min-w-0 ${
           istReferenz ? 'text-ink-500 dark:text-ink-400' : farbe.header
         }`}>
           {fach.name}

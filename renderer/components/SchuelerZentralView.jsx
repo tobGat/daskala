@@ -195,7 +195,7 @@ export default function SchuelerZentralView() {
         </h1>
         <button type="button" onClick={() => setNeu(true)}
           className="text-xs font-semibold px-2.5 h-7 rounded-lg bg-coral-600 text-white hover:bg-coral-700 transition-colors"
-          title="Neue:n Schüler:in anlegen">+ Neu</button>
+          title="Neue:n Schüler:in anlegen">+ Hinzufügen</button>
         {/* Filter: Merkmale */}
         <div className="flex items-center gap-1 ml-auto">
           {MERKMALE.map(m => (

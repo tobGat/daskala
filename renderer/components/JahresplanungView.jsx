@@ -879,6 +879,50 @@ export default function JahresplanungView() {
     }
   }
 
+  // Leere JSON-Vorlage zum Download – gleiches Schema wie der Import (importVonDatei) erwartet
+  // bzw. wie die KI-Anleitung ausgibt (Einstellungen → KI-Unterstützung). Zwei Beispiel-Abschnitte
+  // zeigen alle Felder; die Lehrkraft kann sie füllen oder einem Chatbot als Muster geben.
+  const [vorlageLaeuft, setVorlageLaeuft] = useState(false)
+  const handleVorlageDownload = async () => {
+    const bez = aktuellesSchuljahr?.bezeichnung ?? ''
+    const startJahr = parseInt(bez.split('/')[0]) || new Date().getFullYear()
+    const vorlage = {
+      typ: 'daskala-jahresplanung',
+      version: 1,
+      abschnitte: [
+        {
+          titel: 'Beispiel-Abschnitt 1',
+          inhalt: 'Themen, Stoff und Notizen. Aufzählungen mit "- " je Zeile.',
+          lernziele: '- Erstes Lernziel\n- Zweites Lernziel',
+          kompetenzen: '- Kompetenz aus dem Lehrplan\n- weitere Kompetenz',
+          farbe: '#6366f1',
+          datum_von: `${startJahr}-09-15`,
+          datum_bis: `${startJahr}-10-10`,
+        },
+        {
+          titel: 'Beispiel-Abschnitt 2',
+          inhalt: 'Nächstes Thema. Datumsfelder sind optional – auf null setzen, um sie im Kalender selbst zu platzieren.',
+          lernziele: '- Lernziel',
+          kompetenzen: '- Kompetenz',
+          farbe: '#22c55e',
+          datum_von: `${startJahr}-10-13`,
+          datum_bis: `${startJahr}-11-14`,
+        },
+      ],
+    }
+    setVorlageLaeuft(true)
+    try {
+      const name = `daskala-jahresplanung-vorlage${bez ? '_' + bez.replace('/', '-') : ''}.json`
+      const ok = await window.api.datei.speichereText(JSON.stringify(vorlage, null, 2), name, [{ name: 'JSON', extensions: ['json'] }])
+      if (ok) pushToast('Vorlage gespeichert.', 'success')
+    } catch (e) {
+      console.error('Vorlage-Download:', e)
+      pushToast('Vorlage konnte nicht gespeichert werden.', 'error')
+    } finally {
+      setVorlageLaeuft(false)
+    }
+  }
+
   const panelOffen = istNeu || selektiert !== null
 
   // Mobil ohne Kalender: nach Datum sortieren (geplante zuerst, undatierte ans Ende).
@@ -1291,6 +1335,13 @@ export default function JahresplanungView() {
                   {kiImportLaeuft ? 'Importiere…' : 'JSON-Datei wählen…'}
                 </span>
                 <span className="text-xs text-ink-400">vom Chatbot</span>
+              </button>
+              <button
+                onClick={handleVorlageDownload}
+                disabled={vorlageLaeuft}
+                className="mt-1.5 text-[11px] text-coral-600 dark:text-coral-400 hover:underline disabled:opacity-60"
+              >
+                {vorlageLaeuft ? 'Speichere…' : '↓ JSON-Vorlage herunterladen'}
               </button>
               <p className="text-[10px] text-ink-400 mt-1">Anleitung dazu: Einstellungen → KI-Unterstützung.</p>
             </div>

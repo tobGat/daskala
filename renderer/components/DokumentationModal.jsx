@@ -137,6 +137,7 @@ const DOKU = [
         'Diese .md-Datei einem Chatbot geben. Er fragt zuerst nach Fach, Inhalten, Schwerpunkten und Materialien (Dateien kannst du im Chat hochladen) und erstellt daraus die Planung.',
         'Die vom Chatbot gelieferte JSON als Datei speichern.',
         'In der Jahresplanung das Ziel-Fach wählen → „Importieren" → „Aus Datei (KI-Planung)" → die JSON wählen. Die Abschnitte werden angehängt.',
+        'Alternativ dort „↓ JSON-Vorlage herunterladen": speichert eine leere Beispiel-Datei im richtigen Format – zum selbst Ausfüllen oder als Muster für den Chatbot.',
       ] },
       { tipp: 'Die Datumsangaben lassen sich nach dem Import im Kalender frei anpassen; ohne Datum bleiben Abschnitte „nicht eingeplant", bis du sie platzierst.' },
     ],
