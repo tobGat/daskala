@@ -7,6 +7,7 @@
 // Klassenliste + Notentabelle (Spike-Ziel); nicht abgebildete Methoden liefern
 // einen protokollierenden No-op zurück, damit die App nicht abstürzt.
 
+import { version as APP_VERSION } from '../../package.json'
 import einstellungenDomain from '../../core/domain/einstellungen'
 import schuljahreDomain from '../../core/domain/schuljahre'
 import klassenDomain from '../../core/domain/klassen'
@@ -80,6 +81,8 @@ export function createMobileApi(dbPort) {
       getAll: (kId) => faecherDomain.getAll(dbPort, kId),
       getAllImSchuljahr: (sjId) => faecherDomain.getAllImSchuljahr(dbPort, sjId),
       getSchuelerIds: (fId) => faecherDomain.getSchuelerIds(dbPort, deps, fId),
+      getRoster: (fId) => deps.rosterFuerFach(fId),
+      setSchueler: (fId, d) => faecherDomain.setSchueler(dbPort, deps, fId, d),
       create: (d) => faecherDomain.create(dbPort, deps, d),
       setBenotungssystem: (id, s) => faecherDomain.setBenotungssystem(dbPort, deps, id, s),
       // Gewichtung pro Fach (SA/Test/Individuell/Mitarbeit); Mitarbeit = gewichtung_ma.
@@ -88,8 +91,16 @@ export function createMobileApi(dbPort) {
     }),
     schueler: dp('schueler', {
       getAll: (kId) => schuelerDomain.getAll(dbPort, kId),
+      getAllImSchuljahr: (sjId) => schuelerDomain.getAllImSchuljahr(dbPort, sjId),
       create: (d) => schuelerDomain.create(dbPort, d),
+      entferneAusKlasse: (id, kId) => schuelerDomain.entferneAusKlasse(dbPort, id, kId),
+      setKlassen: (id, kIds) => schuelerDomain.setKlassen(dbPort, deps, id, kIds),
+      setFaecher: (id, changes) => schuelerDomain.setFaecher(dbPort, deps, id, changes),
+      setSpfFaecher: (id, fachIds) => schuelerDomain.setSpfFaecher(dbPort, id, fachIds),
+      setStammdaten: (id, d) => schuelerDomain.setStammdaten(dbPort, id, d),
+      setAvatar: (id, a) => schuelerDomain.setAvatar(dbPort, id, a),
       update: (id, d) => schuelerDomain.update(dbPort, id, d),
+      reorder: (kId, updates) => schuelerDomain.reorder(dbPort, kId, updates),
       importBatch: (kId, list, fachIds) => schuelerDomain.importBatch(dbPort, kId, list, fachIds),
       getLeistungsProfil: (id) => schuelerDomain.getLeistungsProfil(dbPort, deps, id),
     }),
@@ -220,10 +231,11 @@ export function createMobileApi(dbPort) {
     sperre: dp('sperre', {
       status: async () => ({ aktiv: false, gesperrt: false }),
     }),
-    // App-Version: skalarer Wert – der []-Fallback würde beim Changelog-Vergleich in
+    // App-Version: aus package.json (Build-Zeit), damit Changelog/Einstellungen die echte
+    // Version zeigen. Skalarer Wert – der []-Fallback würde beim Changelog-Vergleich in
     // einstellungen.set(...) als Parameter landen (SQLite kann [] nicht binden).
     app: dp('app', {
-      version: async () => '1.2.1',
+      version: async () => APP_VERSION,
     }),
   }
 

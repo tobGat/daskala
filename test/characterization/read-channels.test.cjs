@@ -27,6 +27,8 @@ const CASES = [
   { channel: 'klassen:getAll',          args: [1] },     // Schuljahr 1, ohne Vorlagenklasse
   { channel: 'klassen:getVorlagen',     args: [] },      // nur Vorlagenklassen
   { channel: 'schueler:getAll',         args: [1] },     // Klasse 1, sortiert nach Nachname, ohne inaktive
+  { channel: 'schueler:getAllImSchuljahr', args: [1] },  // alle Schüler:innen des Schuljahrs (zentrale Verwaltung)
+  { channel: 'faecher:getRoster',       args: [1] },     // volle Roster-Zeilen (Fach 1)
   { channel: 'zeugnisnoten:getAll',     args: [1] },     // Fach 1 (Deutsch)
   { channel: 'notizen:get',             args: [1, 1] },  // Schüler 1 × Fach 1
   { channel: 'gewichtungGlobal:getAll', args: [] },

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import useStore from '../store/useStore'
 import { berechneSchulferien } from '../utils/schulferien'
-import { parseSchuelerDatei } from '../utils/schuelerImport'
 import { useIsMobile } from '../hooks/useIsMobile'
 import SchuelerAvatar from './SchuelerAvatar'
-import AvatarEditorModal from './AvatarEditorModal'
+import { SchuelerBearbeitenModal } from './SchuelerZentralView'
 
 const FARB_PALETTE = [
   // Indigo
@@ -121,17 +120,45 @@ export function KlasseHinzufuegenModal() {
 
 // ─── Fach hinzufügen ──────────────────────────────────────────────────────────
 // Gemeinsame Alle/Auswahl-Schülerauswahl (Fach anlegen & Fach-Zuordnung bearbeiten)
-function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt }) {
+// Auswahl der Fach-/Gruppen-Mitglieder. „Ganze Klasse" = alle_schueler=1 (die Heimatklasse des
+// Fachs). „Auswahl" = manuelle, KLASSENÜBERGREIFENDE Zusammenstellung (Personen aus beliebigen Klassen);
+// dafür wird die schuljahrweite Liste nach Klasse gruppiert angeboten (Personen mit `klassen`-Feld).
+const SchuelerAuswahl = React.memo(function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt }) {
+  const [q, setQ] = useState('')
   const toggle = (id) => setAusgewaehlt(prev => {
     const n = new Set(prev)
     if (n.has(id)) n.delete(id); else n.add(id)
     return n
   })
+  // Nach Klasse gruppieren (aus s.klassen); Personen in mehreren Klassen erscheinen je Klasse.
+  // Live-Suche (#5) filtert nach Name. Memoisiert (React.memo + useMemo), damit Tippen im
+  // Fachnamen-Feld nicht die ganze (evtl. große) Liste neu berechnet/rendert (#1).
+  const gruppen = useMemo(() => {
+    const suche = q.trim().toLowerCase()
+    const passt = (s) => !suche
+      || `${s.vorname} ${s.nachname}`.toLowerCase().includes(suche)
+      || `${s.nachname} ${s.vorname}`.toLowerCase().includes(suche)
+    const byId = new Map()
+    for (const s of schueler) {
+      if (!passt(s)) continue
+      const ks = (s.klassen && s.klassen.length) ? s.klassen : [{ id: 0, name: '' }]
+      for (const k of ks) {
+        if (!byId.has(k.id)) byId.set(k.id, { klasse: k, liste: [] })
+        byId.get(k.id).liste.push(s)
+      }
+    }
+    return [...byId.values()].sort((a, b) => (a.klasse.name || '').localeCompare(b.klasse.name || ''))
+  }, [schueler, q])
+  const sichtbareIds = useMemo(() => {
+    const set = new Set()
+    for (const g of gruppen) for (const s of g.liste) set.add(s.id)
+    return [...set]
+  }, [gruppen])
   return (
     <div className="mb-5">
       <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-2">Schüler:innen</label>
       <div className="flex gap-2 mb-2">
-        {[[true, 'Alle Schüler:innen'], [false, 'Auswahl']].map(([val, label]) => (
+        {[[true, 'Ganze Klasse'], [false, 'Auswahl']].map(([val, label]) => (
           <button key={String(val)} type="button" onClick={() => setAlle(val)}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
               alle === val
@@ -144,36 +171,55 @@ function SchuelerAuswahl({ schueler, alle, setAlle, ausgewaehlt, setAusgewaehlt 
       </div>
       {!alle && (
         <>
+          <input
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Schüler:in suchen …"
+            className="input text-sm px-3 py-1.5 w-full mb-2"
+          />
           <div className="flex justify-between items-center text-xs text-ink-400 mb-1 px-1">
-            <span>{ausgewaehlt.size} von {schueler.length} ausgewählt</span>
+            <span>{ausgewaehlt.size} ausgewählt (klassenübergreifend möglich)</span>
             <span className="flex gap-2">
-              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(new Set(schueler.map(s => s.id)))}>Alle</button>
-              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(new Set())}>Keine</button>
+              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(prev => new Set([...prev, ...sichtbareIds]))}>Alle{q.trim() ? ' (Treffer)' : ''}</button>
+              <button type="button" className="hover:text-coral-600" onClick={() => setAusgewaehlt(prev => {
+                if (!q.trim()) return new Set()
+                const n = new Set(prev); for (const id of sichtbareIds) n.delete(id); return n
+              })}>Keine{q.trim() ? ' (Treffer)' : ''}</button>
             </span>
           </div>
-          <div className="max-h-52 overflow-y-auto space-y-0.5 border border-paper-200 dark:border-ink-700 rounded-lg p-1">
+          <div className="max-h-60 overflow-y-auto space-y-1 border border-paper-200 dark:border-ink-700 rounded-lg p-1">
             {schueler.length === 0 ? (
-              <p className="text-sm text-ink-400 text-center py-3">Keine Schüler:innen in der Klasse</p>
-            ) : schueler.map(s => {
-              const on = ausgewaehlt.has(s.id)
-              return (
-                <button type="button" key={s.id} onClick={() => toggle(s.id)}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${on ? 'bg-coral-50 dark:bg-coral-900/30' : 'hover:bg-paper-50 dark:hover:bg-ink-800'}`}>
-                  <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${on ? 'bg-coral-600 border-coral-600 text-white' : 'border-paper-300 dark:border-ink-600'}`}>{on ? '✓' : ''}</span>
-                  <SchuelerAvatar schueler={s} size={24} />
-                  <span className="text-sm text-ink-800 dark:text-paper-200 flex-1 truncate">{s.nachname} {s.vorname}</span>
-                </button>
-              )
-            })}
+              <p className="text-sm text-ink-400 text-center py-3">Keine Schüler:innen vorhanden</p>
+            ) : gruppen.length === 0 ? (
+              <p className="text-sm text-ink-400 text-center py-3">Keine Treffer</p>
+            ) : gruppen.map(g => (
+              <div key={g.klasse.id}>
+                {g.klasse.name && (
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-ink-400 dark:text-ink-500 px-2 pt-1.5 pb-0.5">{g.klasse.name}</div>
+                )}
+                {g.liste.map(s => {
+                  const on = ausgewaehlt.has(s.id)
+                  return (
+                    <button type="button" key={`${g.klasse.id}_${s.id}`} onClick={() => toggle(s.id)}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${on ? 'bg-coral-50 dark:bg-coral-900/30' : 'hover:bg-paper-50 dark:hover:bg-ink-800'}`}>
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${on ? 'bg-coral-600 border-coral-600 text-white' : 'border-paper-300 dark:border-ink-600'}`}>{on ? '✓' : ''}</span>
+                      <SchuelerAvatar schueler={s} size={24} />
+                      <span className="text-sm text-ink-800 dark:text-paper-200 flex-1 truncate">{s.nachname} {s.vorname}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
           </div>
         </>
       )}
     </div>
   )
-}
+})
 
 export function FachHinzufuegenModal() {
-  const { closeModal, aktiveKlasse, schueler, ladeAktiveKlassenliste } = useStore()
+  const { closeModal, aktiveKlasse, alleSchueler: alleSchuelerListe, ladeAlleSchueler, ladeAktiveKlassenliste } = useStore()
+  useEffect(() => { ladeAlleSchueler() }, [ladeAlleSchueler])
   const [name, setName] = useState('')
   const [farbe, setFarbe] = useState(null)
   const [benotungssystem, setBenotungssystem] = useState('standard')
@@ -239,7 +285,7 @@ export function FachHinzufuegenModal() {
           </div>
         </div>
         <SchuelerAuswahl
-          schueler={schueler}
+          schueler={alleSchuelerListe}
           alle={alleSchueler}
           setAlle={setAlleSchueler}
           ausgewaehlt={ausgewaehlt}
@@ -258,12 +304,13 @@ export function FachHinzufuegenModal() {
 
 // ─── Fach-Zuordnung nachträglich bearbeiten (prop-getrieben, aus dem Fach-Kontextmenü) ──
 export function FachSchuelerModal({ fach, onClose, onSaved }) {
-  const { schueler } = useStore()
+  const { alleSchueler: alleSchuelerListe, ladeAlleSchueler } = useStore()
   const [alle, setAlle] = useState(fach.alle_schueler !== 0)
   const [ausgewaehlt, setAusgewaehlt] = useState(() => new Set())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  useEffect(() => { ladeAlleSchueler() }, [ladeAlleSchueler])
   useEffect(() => {
     window.api.faecher.getSchuelerIds(fach.id).then(ids => {
       if (fach.alle_schueler === 0) { setAlle(false); setAusgewaehlt(new Set(ids)) }
@@ -293,7 +340,7 @@ export function FachSchuelerModal({ fach, onClose, onSaved }) {
         {loading ? (
           <p className="text-sm text-ink-400 py-6 text-center">Lade…</p>
         ) : (
-          <SchuelerAuswahl schueler={schueler} alle={alle} setAlle={setAlle} ausgewaehlt={ausgewaehlt} setAusgewaehlt={setAusgewaehlt} />
+          <SchuelerAuswahl schueler={alleSchuelerListe} alle={alle} setAlle={setAlle} ausgewaehlt={ausgewaehlt} setAusgewaehlt={setAusgewaehlt} />
         )}
         <div className="flex gap-3">
           <button className="btn-secondary flex-1" onClick={onClose} disabled={saving}>Abbrechen</button>
@@ -308,23 +355,19 @@ export function FachSchuelerModal({ fach, onClose, onSaved }) {
 
 // ─── Schüler:innen verwalten ─────────────────────────────────────────────────
 export function SchuelerVerwaltenModal() {
-  const { closeModal, aktiveKlasse, schueler, ladeSchueler } = useStore()
-  const [vorname, setVorname] = useState('')
-  const [nachname, setNachname] = useState('')
-  const [importListe, setImportListe] = useState([])
+  const { closeModal, aktiveKlasse, schueler, ladeSchueler, aktuellesSchuljahr, klassen, bearbeiteSchueler } = useStore()
   const [loading, setLoading] = useState(false)
-  const [tab, setTab] = useState('liste') // 'liste' | 'hinzufuegen' | 'import'
+  const [tab, setTab] = useState('liste') // 'liste' | 'vorhandene'
   const [loeschenId, setLoeschenId] = useState(null)
-  const [avatarSchueler, setAvatarSchueler] = useState(null)
-  // Inline-Umbenennen: welche:r Schüler:in wird gerade bearbeitet + Eingabewerte.
-  const [editId, setEditId] = useState(null)
-  const [editVorname, setEditVorname] = useState('')
-  const [editNachname, setEditNachname] = useState('')
-  const [faecher, setFaecher] = useState([])
-  const [ausgewaehlteFaecher, setAusgewaehlteFaecher] = useState(() => new Set())
-  const vornameRef = useRef(null)
-  const nachnameRef = useRef(null)
-  const dateiInputRef = useRef(null)
+  // Vollständiges Bearbeiten: „Bearbeiten" öffnet dasselbe Modal wie die zentrale Verwaltung
+  // (Name/Merkmale/Klassen/Fächer/SPF/Stammdaten). Keine Inline-Bearbeitung mehr in der Liste.
+  const [bearbeitenPerson, setBearbeitenPerson] = useState(null)
+  const echteKlassen = (klassen || []).filter(k => !k.ist_vorlage)
+  // „Vorhandene hinzufügen": Kandidat:innen (nicht in dieser Klasse) + Auswahl + Live-Suche.
+  // Neue Personen werden ausschließlich in der zentralen „Schüler:innen"-Verwaltung angelegt.
+  const [vorhandene, setVorhandene] = useState(null) // null = lädt
+  const [vorhandeneSel, setVorhandeneSel] = useState(() => new Set())
+  const [vorhandeneSuche, setVorhandeneSuche] = useState('')
   const mobil = useIsMobile()
 
   // Mobil: statt Inline-Buttons (SPF/LEG/…/bearbeiten/löschen) ein Kontextmenü, das per
@@ -388,140 +431,76 @@ export function SchuelerVerwaltenModal() {
     })
   }
   const handleReihenfolgeSpeichern = async () => {
-    await window.api.schueler.reorder(reihenfolgeListe.map((s, i) => ({ id: s.id, reihenfolge: i })))
+    await window.api.schueler.reorder(aktiveKlasse.id, reihenfolgeListe.map((s, i) => ({ id: s.id, reihenfolge: i })))
     await ladeSchueler()
     setReorderModus(false)
   }
 
-  // Fächer der Klasse laden; manuelle Fächer standardmäßig ausgewählt.
+  // Kandidat:innen (Schüler:innen des Schuljahrs, die dieser Klasse noch NICHT angehören) laden,
+  // sobald der „Hinzufügen"-Tab offen ist.
+  const ladeVorhandene = async () => {
+    if (!aktuellesSchuljahr || !aktiveKlasse) return
+    const alle = await window.api.schueler.getAllImSchuljahr(aktuellesSchuljahr.id)
+    setVorhandene(alle.filter(s => !(s.klassen || []).some(k => k.id === aktiveKlasse.id)))
+  }
   useEffect(() => {
-    if (!aktiveKlasse) return
-    window.api.faecher.getAll(aktiveKlasse.id).then(fs => {
-      setFaecher(fs)
-      setAusgewaehlteFaecher(new Set(fs.filter(f => !f.alle_schueler).map(f => f.id)))
-    })
-  }, [aktiveKlasse?.id])
+    if (tab !== 'vorhandene' || !aktuellesSchuljahr || !aktiveKlasse) return
+    setVorhandene(null)
+    ladeVorhandene()   // gemeinsame Quelle (auch nach dem Hinzufügen genutzt) – kein Duplikat
+  }, [tab, aktuellesSchuljahr?.id, aktiveKlasse?.id])
 
-  const toggleFach = (id) => setAusgewaehlteFaecher(prev => {
+  const toggleVorhanden = (id) => setVorhandeneSel(prev => {
     const next = new Set(prev)
     if (next.has(id)) next.delete(id); else next.add(id)
     return next
   })
 
-  const handleHinzufuegen = async () => {
-    if (loading) return
-    if (!vorname.trim() && !nachname.trim()) return
+  const handleVorhandeneHinzufuegen = async () => {
+    if (!vorhandeneSel.size || loading) return
     setLoading(true)
     try {
-      await window.api.schueler.create({
-        klasseId: aktiveKlasse.id,
-        vorname: vorname.trim(),
-        nachname: nachname.trim(),
-        fachIds: Array.from(ausgewaehlteFaecher),
-      })
+      for (const s of (vorhandene || [])) {
+        if (!vorhandeneSel.has(s.id)) continue
+        const ids = [...new Set([...(s.klassen || []).map(k => k.id), aktiveKlasse.id])]
+        await window.api.schueler.setKlassen(s.id, ids)
+      }
       await ladeSchueler()
-      // Aktives Fach neu laden, damit die/der neue Schüler:in dort sofort erscheint.
       const { aktivesFach, ladeFachDaten } = useStore.getState()
       if (aktivesFach) await ladeFachDaten(aktivesFach.id)
-      setVorname('')
-      setNachname('')
-      vornameRef.current?.focus()
+      setVorhandeneSel(new Set())
+      await ladeVorhandene()
     } finally {
       setLoading(false)
     }
   }
 
+  // Klassen-Modal: „Löschen" = aus DIESER Klasse entfernen (Mitgliedschaft). Ist es die einzige
+  // Klasse der Person, deaktiviert der Kern die Person (wie bisher). Andere Klassen bleiben.
   const handleLoeschen = async (id) => {
-    await window.api.schueler.delete(id)
-    await ladeSchueler()
-  }
-
-  const handleToggle = async (s, feld) => {
-    await window.api.schueler.update(s.id, {
-      vorname: s.vorname,
-      nachname: s.nachname,
-      [feld]: s[feld] ? 0 : 1,
-    })
-    await ladeSchueler()
-  }
-
-  const startBearbeiten = (s) => {
-    setLoeschenId(null)
-    setEditVorname(s.vorname ?? '')
-    setEditNachname(s.nachname ?? '')
-    setEditId(s.id)
-  }
-  const handleUmbenennen = async (s) => {
-    const v = editVorname.trim(), n = editNachname.trim()
-    if (!v || !n) return
-    await window.api.schueler.update(s.id, { vorname: v, nachname: n })
-    await ladeSchueler()
-    setEditId(null)
-  }
-
-  const handleDateiImport = async () => {
-    // Mobil: WebView-Datei-Picker + Parsing im Renderer (kein Node-Dialog/-FS).
-    if (mobil) { dateiInputRef.current?.click(); return }
-    const filePath = await window.api.dialog.openFile([
-      { name: 'Tabellen', extensions: ['csv', 'xlsx', 'xls'] }
-    ])
-    if (!filePath) return
-    const liste = await window.api.import.schuelerFromFile(filePath)
-    setImportListe(liste)
-  }
-
-  const handleDateiGewaehlt = async (e) => {
-    const file = e.target.files?.[0]
-    e.target.value = '' // gleiche Datei erneut wählbar
-    if (!file) return
-    try {
-      const liste = await parseSchuelerDatei(file)
-      if (!liste.length) {
-        alert('Keine Schüler:innen gefunden. Erwartet werden Spalten „Vorname" und „Nachname".')
-        return
-      }
-      setImportListe(liste)
-    } catch (err) {
-      console.error('[import] Datei konnte nicht gelesen werden:', err)
-      alert('Die Datei konnte nicht gelesen werden. Bitte CSV/Excel mit Spalten „Vorname" und „Nachname".')
-    }
-  }
-
-  const handleImportSpeichern = async () => {
-    if (!importListe.length) return
-    setLoading(true)
-    await window.api.schueler.importBatch(aktiveKlasse.id, importListe, Array.from(ausgewaehlteFaecher))
+    await window.api.schueler.entferneAusKlasse(id, aktiveKlasse.id)
     await ladeSchueler()
     const { aktivesFach, ladeFachDaten } = useStore.getState()
     if (aktivesFach) await ladeFachDaten(aktivesFach.id)
-    setImportListe([])
-    setTab('liste')
-    setLoading(false)
   }
 
-  // Fächer-Auswahl (in „Hinzufügen" und „Importieren" gleich verwendet).
-  const faecherAuswahl = faecher.length > 0 && (
-    <div>
-      <label className="block text-xs text-ink-500 mb-1.5">Zu Fächern hinzufügen</label>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-        {faecher.map(f => {
-          const alle = !!f.alle_schueler
-          const checked = alle || ausgewaehlteFaecher.has(f.id)
-          return (
-            <label
-              key={f.id}
-              className={`flex items-center gap-2 text-sm ${alle ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
-              title={alle ? 'Enthält automatisch alle Schüler:innen der Klasse' : undefined}
-            >
-              <input type="checkbox" checked={checked} disabled={alle} onChange={() => toggleFach(f.id)} />
-              <span className="text-ink-700 dark:text-paper-200 truncate">{f.name}</span>
-              {alle && <span className="text-[10px] text-ink-400 flex-shrink-0">(alle)</span>}
-            </label>
-          )
-        })}
-      </div>
-    </div>
-  )
+  // „Bearbeiten" öffnet dasselbe Modal wie die zentrale Verwaltung. getAll liefert keine
+  // Klassen-/Fächer-/SPF-Aggregation, daher die vollständige Person nachladen.
+  const oeffneBearbeiten = async (id) => {
+    setLoeschenId(null)
+    const alle = await window.api.schueler.getAllImSchuljahr(aktuellesSchuljahr.id)
+    const person = alle.find(p => p.id === id)
+    if (person) setBearbeitenPerson(person)
+  }
+
+  // Live-Suche über die Kandidat:innen (Name oder Klasse). Ohne Eingabe wird KEINE Liste gezeigt.
+  const vorhandeneGefiltert = (() => {
+    const q = vorhandeneSuche.trim().toLowerCase()
+    if (!q || !vorhandene) return []
+    return vorhandene.filter(s =>
+      `${s.vorname} ${s.nachname}`.toLowerCase().includes(q) ||
+      `${s.nachname} ${s.vorname}`.toLowerCase().includes(q) ||
+      (s.klassen || []).some(k => (k.name || '').toLowerCase().includes(q)))
+  })()
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && closeModal()}>
@@ -535,7 +514,7 @@ export function SchuelerVerwaltenModal() {
 
         {/* Tabs */}
         <div className="flex gap-1 mb-4 bg-paper-100 dark:bg-ink-800 rounded-lg p-1">
-          {[['liste', 'Liste'], ['hinzufuegen', 'Hinzufügen'], ['import', 'Importieren']].map(([val, label]) => (
+          {[['liste', 'Liste'], ['vorhandene', 'Hinzufügen']].map(([val, label]) => (
             <button
               key={val}
               className={`flex-1 py-1.5 text-sm rounded font-medium transition-colors
@@ -606,37 +585,7 @@ export function SchuelerVerwaltenModal() {
                 </div>
               ))
             ) : schueler.map(s => (
-              editId === s.id ? (
-              <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg">
-                <SchuelerAvatar schueler={s} size={28} />
-                <input
-                  className="input flex-1 py-1 text-sm min-w-0"
-                  value={editVorname}
-                  onChange={e => setEditVorname(e.target.value)}
-                  placeholder="Vorname"
-                  autoFocus
-                  onKeyDown={e => { if (e.key === 'Enter') handleUmbenennen(s); if (e.key === 'Escape') setEditId(null) }}
-                />
-                <input
-                  className="input flex-1 py-1 text-sm min-w-0"
-                  value={editNachname}
-                  onChange={e => setEditNachname(e.target.value)}
-                  placeholder="Nachname"
-                  onKeyDown={e => { if (e.key === 'Enter') handleUmbenennen(s); if (e.key === 'Escape') setEditId(null) }}
-                />
-                <button
-                  className="text-xs px-2 py-0.5 rounded bg-coral-600 text-white hover:bg-coral-700 transition-colors font-medium disabled:opacity-40"
-                  disabled={!editVorname.trim() || !editNachname.trim()}
-                  onClick={() => handleUmbenennen(s)}
-                  title="Speichern"
-                >✓</button>
-                <button
-                  className="text-xs px-1.5 py-0.5 rounded text-ink-400 hover:text-ink-600 transition-colors"
-                  onClick={() => setEditId(null)}
-                  title="Abbrechen"
-                >✕</button>
-              </div>
-              ) : mobil ? (
+              mobil ? (
               <div
                 key={s.id}
                 onContextMenu={e => { e.preventDefault(); setMenuConfirmDelete(false); setMenuSchuelerId(s.id) }}
@@ -652,66 +601,23 @@ export function SchuelerVerwaltenModal() {
               ) : (
               <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-paper-50 dark:bg-ink-800 rounded-lg">
                 <SchuelerAvatar schueler={s} size={28} />
-                <span className="text-sm text-ink-900 dark:text-white flex-1">
-                  {s.nachname} {s.vorname}
-                </span>
+                <span className="text-sm text-ink-900 dark:text-white flex-1 truncate">{s.nachname} {s.vorname}</span>
+                {/* Merkmale nur zur Anzeige – geändert wird im „Bearbeiten"-Fenster. */}
+                {s.lernschwaeche ? <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">LS</span> : null}
+                {s.legasthenie ? <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400">LEG</span> : null}
+                {s.spf ? <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">SPF</span> : null}
                 <button
-                  title="Name bearbeiten"
-                  onClick={() => startBearbeiten(s)}
-                  className="text-xs px-1.5 py-0.5 rounded border border-paper-200 text-ink-400 dark:border-ink-600 hover:border-coral-300 hover:text-coral-600 transition-colors"
-                >✎</button>
-                <button
-                  title="Avatar bearbeiten"
-                  onClick={() => setAvatarSchueler(s)}
-                  className="text-xs px-1.5 py-0.5 rounded border border-paper-200 text-ink-400 dark:border-ink-600 hover:border-coral-300 hover:text-coral-600 transition-colors"
-                >🎨</button>
-                {loeschenId === s.id && (
+                  title="Bearbeiten (Name, Merkmale, Klassen, Fächer, Stammdaten, Avatar)"
+                  onClick={() => oeffneBearbeiten(s.id)}
+                  className="text-xs px-2 py-0.5 rounded border border-paper-200 text-ink-500 dark:border-ink-600 hover:border-coral-300 hover:text-coral-600 transition-colors whitespace-nowrap"
+                >✎ Bearbeiten</button>
+                {loeschenId === s.id ? (
                   <>
-                    <button
-                      className="text-xs px-2 py-0.5 rounded bg-red-500 text-white hover:bg-red-600 transition-colors font-medium"
-                      onClick={() => handleLoeschen(s.id)}
-                    >Entfernen</button>
-                    <button
-                      className="text-xs px-1.5 py-0.5 rounded text-ink-400 hover:text-ink-600 transition-colors"
-                      onClick={() => setLoeschenId(null)}
-                    >✕</button>
+                    <button className="text-xs px-2 py-0.5 rounded bg-red-500 text-white hover:bg-red-600 transition-colors font-medium" onClick={() => handleLoeschen(s.id)}>Entfernen</button>
+                    <button className="text-xs px-1.5 py-0.5 rounded text-ink-400 hover:text-ink-600 transition-colors" onClick={() => setLoeschenId(null)}>✕</button>
                   </>
-                )}
-                <button
-                  title="Lernschwäche"
-                  onClick={() => handleToggle(s, 'lernschwaeche')}
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
-                    s.lernschwaeche
-                      ? 'bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/40 dark:border-amber-700 dark:text-amber-400'
-                      : 'border-paper-200 text-ink-400 dark:border-ink-600 hover:border-amber-300 hover:text-amber-600'
-                  }`}
-                >LS</button>
-                <button
-                  title="Legasthenie"
-                  onClick={() => handleToggle(s, 'legasthenie')}
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
-                    s.legasthenie
-                      ? 'bg-violet-100 border-violet-300 text-violet-700 dark:bg-violet-900/40 dark:border-violet-700 dark:text-violet-400'
-                      : 'border-paper-200 text-ink-400 dark:border-ink-600 hover:border-violet-300 hover:text-violet-600'
-                  }`}
-                >LEG</button>
-                <button
-                  title="Sonderpädagogischer Förderbedarf"
-                  onClick={() => handleToggle(s, 'spf')}
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
-                    s.spf
-                      ? 'bg-rose-100 border-rose-300 text-rose-700 dark:bg-rose-900/40 dark:border-rose-700 dark:text-rose-400'
-                      : 'border-paper-200 text-ink-400 dark:border-ink-600 hover:border-rose-300 hover:text-rose-600'
-                  }`}
-                >SPF</button>
-                {loeschenId !== s.id && (
-                  <button
-                    className="text-ink-600 dark:text-paper-300 dark:text-ink-600 hover:text-red-400 dark:hover:text-red-400 text-sm px-1 transition-colors"
-                    onClick={() => setLoeschenId(s.id)}
-                    title="Entfernen"
-                  >
-                    ✕
-                  </button>
+                ) : (
+                  <button className="text-ink-600 dark:text-ink-500 hover:text-red-400 dark:hover:text-red-400 text-sm px-1 transition-colors" onClick={() => setLoeschenId(s.id)} title="Aus Klasse entfernen">✕</button>
                 )}
               </div>
               )
@@ -720,94 +626,50 @@ export function SchuelerVerwaltenModal() {
           </div>
         )}
 
-        {/* Manuell hinzufügen */}
-        {tab === 'hinzufuegen' && (
+        {/* Vorhandene Schüler:innen zur Klasse hinzufügen – nur per Live-Suche (Anlegen ist zentral) */}
+        {tab === 'vorhandene' && (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-ink-500 mb-1">Vorname</label>
-                <input
-                  ref={vornameRef}
-                  className="input"
-                  value={vorname}
-                  onChange={e => setVorname(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); nachnameRef.current?.focus() } }}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-ink-500 mb-1">Nachname</label>
-                <input
-                  ref={nachnameRef}
-                  className="input"
-                  value={nachname}
-                  onChange={e => setNachname(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleHinzufuegen() } }}
-                />
-              </div>
-            </div>
-
-            {faecherAuswahl}
-
-            <button
-              className="btn-primary w-full"
-              onClick={handleHinzufuegen}
-              disabled={loading || (!vorname.trim() && !nachname.trim())}
-            >
-              Hinzufügen
-            </button>
-            <div className="text-xs text-ink-400 text-center">
-              {schueler.length} Schüler:innen in der Klasse
-            </div>
-          </div>
-        )}
-
-        {/* Import */}
-        {tab === 'import' && (
-          <div className="space-y-3">
-            {/* Verstecktes Datei-Feld für den mobilen Picker (Desktop nutzt den Node-Dialog). */}
+            <p className="text-sm text-ink-500 dark:text-ink-400">
+              Bereits vorhandene Schüler:innen dieser Klasse zuordnen. <span className="text-ink-400">Neue Personen legst du in der zentralen „Schüler:innen"-Verwaltung an.</span>
+            </p>
             <input
-              ref={dateiInputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              className="hidden"
-              onChange={handleDateiGewaehlt}
+              value={vorhandeneSuche}
+              onChange={e => setVorhandeneSuche(e.target.value)}
+              placeholder="Suchen (Name oder Klasse) …"
+              className="input w-full text-sm"
+              autoFocus
             />
-            {importListe.length === 0 ? (
-              <div>
-                <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">
-                  CSV oder Excel-Datei mit Spalten „Vorname" und „Nachname"
-                </p>
-                <button className="btn-secondary w-full" onClick={handleDateiImport}>
-                  Datei auswählen
-                </button>
-              </div>
+            {vorhandene === null ? (
+              <p className="text-sm text-ink-400 py-4 text-center">Lade…</p>
             ) : (
-              <div>
-                <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-3">
-                  <p className="text-sm text-green-700 dark:text-green-400 font-medium mb-1">
-                    {importListe.length} Schüler:innen gefunden
-                  </p>
-                  <div className="max-h-40 overflow-y-auto space-y-0.5">
-                    {importListe.map((s, i) => (
-                      <p key={i} className="text-xs text-green-600 dark:text-green-500">
-                        {s.nachname} {s.vorname}
-                      </p>
-                    ))}
+              <>
+                {vorhandeneSuche.trim() === '' ? (
+                  <p className="text-sm text-ink-400 py-4 text-center">Tippe zum Suchen – es werden nur passende Schüler:innen angezeigt.</p>
+                ) : vorhandeneGefiltert.length === 0 ? (
+                  <p className="text-sm text-ink-400 py-4 text-center">Keine passenden Schüler:innen.</p>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto space-y-1 border border-paper-200 dark:border-ink-700 rounded-lg p-1">
+                    {vorhandeneGefiltert.map(s => {
+                      const on = vorhandeneSel.has(s.id)
+                      const stamm = (s.klassen || []).find(k => k.ist_stammklasse) || (s.klassen || [])[0]
+                      return (
+                        <button type="button" key={s.id} onClick={() => toggleVorhanden(s.id)}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${on ? 'bg-coral-50 dark:bg-coral-900/30' : 'hover:bg-paper-50 dark:hover:bg-ink-800'}`}>
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${on ? 'bg-coral-600 border-coral-600 text-white' : 'border-paper-300 dark:border-ink-600'}`}>{on ? '✓' : ''}</span>
+                          <SchuelerAvatar schueler={s} size={24} />
+                          <span className="text-sm text-ink-800 dark:text-paper-200 flex-1 truncate">{s.nachname} {s.vorname}</span>
+                          {stamm && <span className="text-[10px] text-ink-400 flex-shrink-0">{stamm.name}</span>}
+                        </button>
+                      )
+                    })}
                   </div>
-                </div>
-                {faecherAuswahl && <div className="mb-3">{faecherAuswahl}</div>}
-                <div className="flex gap-3">
-                  <button className="btn-secondary flex-1" onClick={() => setImportListe([])}>Verwerfen</button>
-                  <button
-                    className="btn-primary flex-1"
-                    onClick={handleImportSpeichern}
-                    disabled={loading}
-                  >
-                    {loading ? 'Importieren…' : 'Importieren'}
+                )}
+                {vorhandeneSel.size > 0 && (
+                  <button className="btn-primary w-full" onClick={handleVorhandeneHinzufuegen} disabled={loading}>
+                    {loading ? 'Hinzufügen…' : `${vorhandeneSel.size} zur Klasse hinzufügen`}
                   </button>
-                </div>
-              </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -819,11 +681,13 @@ export function SchuelerVerwaltenModal() {
         )}
       </div>
 
-      {avatarSchueler && (
-        <AvatarEditorModal
-          schueler={avatarSchueler}
-          onClose={() => setAvatarSchueler(null)}
-          onSaved={ladeSchueler}
+      {/* Vollständiges Bearbeiten – dasselbe Modal wie in der zentralen Verwaltung (inkl. Avatar). */}
+      {bearbeitenPerson && (
+        <SchuelerBearbeitenModal
+          schueler={bearbeitenPerson}
+          klassen={echteKlassen}
+          onClose={() => setBearbeitenPerson(null)}
+          onSpeichern={async (payload) => { await bearbeiteSchueler(bearbeitenPerson.id, payload); setBearbeitenPerson(null) }}
         />
       )}
 
@@ -857,21 +721,8 @@ export function SchuelerVerwaltenModal() {
               </>
             ) : (
               <>
-                <button type="button" className={menuItem} onClick={() => { startBearbeiten(menuSchueler); schliesseMenu() }}>
-                  <span className="w-6 text-center">✎</span> Name bearbeiten
-                </button>
-                <button type="button" className={menuItem} onClick={() => { setAvatarSchueler(menuSchueler); schliesseMenu() }}>
-                  <span className="w-6 text-center">🎨</span> Avatar bearbeiten
-                </button>
-                <div className="context-menu-separator" />
-                <button type="button" className={menuItem} onClick={() => handleToggle(menuSchueler, 'lernschwaeche')}>
-                  <span className="w-6 text-center">{menuSchueler.lernschwaeche ? '☑' : '☐'}</span> Lernschwäche
-                </button>
-                <button type="button" className={menuItem} onClick={() => handleToggle(menuSchueler, 'legasthenie')}>
-                  <span className="w-6 text-center">{menuSchueler.legasthenie ? '☑' : '☐'}</span> Legasthenie
-                </button>
-                <button type="button" className={menuItem} onClick={() => handleToggle(menuSchueler, 'spf')}>
-                  <span className="w-6 text-center">{menuSchueler.spf ? '☑' : '☐'}</span> Sonderpäd. Förderbedarf (SPF)
+                <button type="button" className={menuItem} onClick={() => { oeffneBearbeiten(menuSchueler.id); schliesseMenu() }}>
+                  <span className="w-6 text-center">✎</span> Bearbeiten
                 </button>
                 <div className="context-menu-separator" />
                 <button type="button" className={`${menuItem} text-red-500 dark:text-red-400`} onClick={() => setMenuConfirmDelete(true)}>

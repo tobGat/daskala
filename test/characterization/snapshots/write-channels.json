@@ -153,6 +153,25 @@
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
         }
       ],
       "schueler": [],
@@ -162,7 +181,7 @@
     }
   },
   "faecher:create": {
-    "ret": 4,
+    "ret": 5,
     "state": {
       "faecher": [
         {
@@ -224,6 +243,25 @@
         },
         {
           "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
+        },
+        {
+          "id": 5,
           "klasse_id": 1,
           "name": "Englisch",
           "reihenfolge": 3,
@@ -259,6 +297,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -272,6 +320,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -285,6 +343,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -298,6 +366,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -311,6 +389,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -324,6 +412,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -337,7 +435,68 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": "<UUID>"
+        }
+      ],
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 5,
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 7,
+          "reihenfolge": 7,
+          "aktiv": 1,
+          "ist_stammklasse": 1
         }
       ],
       "fach_schueler": []
@@ -861,6 +1020,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -874,6 +1043,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -887,6 +1066,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -900,6 +1089,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -913,6 +1112,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -926,7 +1135,61 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
+        }
+      ],
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 5,
+          "reihenfolge": 5,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
         }
       ]
     }
@@ -1344,6 +1607,25 @@
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
         }
       ]
     }
@@ -1407,6 +1689,25 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
           "uuid": null
         }
       ]
@@ -1472,6 +1773,25 @@
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
         }
       ]
     }
@@ -1535,6 +1855,25 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
           "uuid": null
         }
       ]
@@ -1600,6 +1939,25 @@
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
         }
       ]
     }
@@ -1664,6 +2022,25 @@
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
         }
       ],
       "fach_schueler": [
@@ -1719,6 +2096,25 @@
           "benotungssystem": "standard",
           "alle_schueler": 1,
           "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
         }
       ]
     }
@@ -1738,6 +2134,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -1751,6 +2157,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -1764,6 +2180,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -1777,6 +2203,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -1790,6 +2226,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -1803,6 +2249,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         }
       ]
@@ -1823,6 +2279,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": "DSK1|test",
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -1836,6 +2302,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -1849,6 +2325,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -1862,6 +2348,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -1875,6 +2371,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -1888,6 +2394,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         }
       ]
@@ -1896,84 +2412,48 @@
   "schueler:reorder": {
     "ret": true,
     "state": {
-      "schueler": [
+      "klassen_schueler": [
         {
-          "id": 1,
           "klasse_id": 1,
-          "vorname": "Anna",
-          "nachname": "Bauer",
+          "schueler_id": 1,
           "reihenfolge": 9,
           "aktiv": 1,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         },
         {
-          "id": 2,
           "klasse_id": 1,
-          "vorname": "Ben",
-          "nachname": "Auer",
+          "schueler_id": 2,
           "reihenfolge": 1,
           "aktiv": 1,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         },
         {
-          "id": 3,
           "klasse_id": 1,
-          "vorname": "Clara",
-          "nachname": "Zimmermann",
+          "schueler_id": 3,
           "reihenfolge": 3,
           "aktiv": 1,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         },
         {
-          "id": 4,
           "klasse_id": 1,
-          "vorname": "David",
-          "nachname": "Müller",
+          "schueler_id": 4,
           "reihenfolge": 4,
           "aktiv": 1,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         },
         {
-          "id": 5,
           "klasse_id": 1,
-          "vorname": "Emma",
-          "nachname": "Auer",
+          "schueler_id": 5,
           "reihenfolge": 5,
           "aktiv": 1,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         },
         {
-          "id": 6,
           "klasse_id": 1,
-          "vorname": "Felix",
-          "nachname": "Xaver",
+          "schueler_id": 6,
           "reihenfolge": 6,
           "aktiv": 0,
-          "lernschwaeche": 0,
-          "legasthenie": 0,
-          "spf": 0,
-          "avatar": null,
-          "uuid": null
+          "ist_stammklasse": 1
         }
       ]
     }
@@ -1993,6 +2473,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -2006,6 +2496,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -2019,6 +2519,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -2032,6 +2542,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -2045,6 +2565,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -2058,6 +2588,605 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        }
+      ]
+    }
+  },
+  "schueler:entferneAusKlasse": {
+    "ret": true,
+    "state": {
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        }
+      ],
+      "schueler": [
+        {
+          "id": 1,
+          "klasse_id": 1,
+          "vorname": "Anna",
+          "nachname": "Bauer",
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "klasse_id": 1,
+          "vorname": "Ben",
+          "nachname": "Auer",
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 3,
+          "klasse_id": 1,
+          "vorname": "Clara",
+          "nachname": "Zimmermann",
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 1,
+          "vorname": "David",
+          "nachname": "Müller",
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 5,
+          "klasse_id": 1,
+          "vorname": "Emma",
+          "nachname": "Auer",
+          "reihenfolge": 5,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 6,
+          "klasse_id": 1,
+          "vorname": "Felix",
+          "nachname": "Xaver",
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        }
+      ]
+    }
+  },
+  "schueler:setKlassen": {
+    "ret": true,
+    "state": {
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 5,
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 2,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 0
+        }
+      ],
+      "zeugnisnoten": [
+        {
+          "id": 1,
+          "fach_id": 1,
+          "schueler_id": 1,
+          "semester": 3,
+          "note_berechnet": 2,
+          "note_manuell": null,
+          "s1_eingerechnet": 1,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "fach_id": 1,
+          "schueler_id": 2,
+          "semester": 3,
+          "note_berechnet": null,
+          "note_manuell": 3,
+          "s1_eingerechnet": 1,
+          "uuid": null
+        }
+      ]
+    }
+  },
+  "schueler:setFaecher": {
+    "ret": true,
+    "state": {
+      "fach_schueler": [
+        {
+          "fach_id": 4,
+          "schueler_id": 1
+        }
+      ],
+      "zeugnisnoten": [
+        {
+          "id": 1,
+          "fach_id": 1,
+          "schueler_id": 1,
+          "semester": 3,
+          "note_berechnet": 2,
+          "note_manuell": null,
+          "s1_eingerechnet": 1,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "fach_id": 1,
+          "schueler_id": 2,
+          "semester": 3,
+          "note_berechnet": null,
+          "note_manuell": 3,
+          "s1_eingerechnet": 1,
+          "uuid": null
+        }
+      ]
+    }
+  },
+  "schueler:setSpfFaecher": {
+    "ret": true,
+    "state": {
+      "schueler_fach_spf": [
+        {
+          "schueler_id": 1,
+          "fach_id": 1
+        }
+      ],
+      "schueler": [
+        {
+          "id": 1,
+          "klasse_id": 1,
+          "vorname": "Anna",
+          "nachname": "Bauer",
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 1,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "klasse_id": 1,
+          "vorname": "Ben",
+          "nachname": "Auer",
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 3,
+          "klasse_id": 1,
+          "vorname": "Clara",
+          "nachname": "Zimmermann",
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 1,
+          "vorname": "David",
+          "nachname": "Müller",
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 5,
+          "klasse_id": 1,
+          "vorname": "Emma",
+          "nachname": "Auer",
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 6,
+          "klasse_id": 1,
+          "vorname": "Felix",
+          "nachname": "Xaver",
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        }
+      ]
+    }
+  },
+  "schueler:setStammdaten": {
+    "ret": true,
+    "state": {
+      "schueler": [
+        {
+          "id": 1,
+          "klasse_id": 1,
+          "vorname": "Anna",
+          "nachname": "Bauer",
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": "Hauptstr. 1",
+          "plz": "1010",
+          "ort": "Wien",
+          "telefon": "0660",
+          "email": null,
+          "notfallnummer": "112",
+          "erziehungsberechtigte": "Eltern",
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "klasse_id": 1,
+          "vorname": "Ben",
+          "nachname": "Auer",
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 3,
+          "klasse_id": 1,
+          "vorname": "Clara",
+          "nachname": "Zimmermann",
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 1,
+          "vorname": "David",
+          "nachname": "Müller",
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 5,
+          "klasse_id": 1,
+          "vorname": "Emma",
+          "nachname": "Auer",
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": null
+        },
+        {
+          "id": 6,
+          "klasse_id": 1,
+          "vorname": "Felix",
+          "nachname": "Xaver",
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "lernschwaeche": 0,
+          "legasthenie": 0,
+          "spf": 0,
+          "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         }
       ]
@@ -2502,17 +3631,17 @@
       "schueler_rezenz": [
         {
           "fach_id": 1,
-          "schueler_id": 1,
-          "faktor": 1.5
-        },
-        {
-          "fach_id": 1,
           "schueler_id": 2,
           "faktor": 1.5
         },
         {
           "fach_id": 1,
-          "schueler_id": 3,
+          "schueler_id": 5,
+          "faktor": 1.5
+        },
+        {
+          "fach_id": 1,
+          "schueler_id": 1,
           "faktor": 1.5
         },
         {
@@ -2522,7 +3651,7 @@
         },
         {
           "fach_id": 1,
-          "schueler_id": 5,
+          "schueler_id": 3,
           "faktor": 1.5
         }
       ]
@@ -3921,6 +5050,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -3934,6 +5073,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -3947,6 +5096,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -3960,6 +5119,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -3973,6 +5142,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -3986,6 +5165,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -3999,7 +5188,17 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
-          "uuid": null
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": "<UUID>"
         },
         {
           "id": 8,
@@ -4012,7 +5211,75 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
-          "uuid": null
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
+          "uuid": "<UUID>"
+        }
+      ],
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 5,
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 7,
+          "reihenfolge": 7,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 8,
+          "reihenfolge": 8,
+          "aktiv": 1,
+          "ist_stammklasse": 1
         }
       ],
       "fach_schueler": []
@@ -4296,6 +5563,25 @@
         },
         {
           "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "uuid": null
+        },
+        {
+          "id": 5,
           "klasse_id": 5,
           "name": "Deutsch",
           "reihenfolge": 1,
@@ -4314,7 +5600,7 @@
           "uuid": "<UUID>"
         },
         {
-          "id": 5,
+          "id": 6,
           "klasse_id": 5,
           "name": "Mathematik",
           "reihenfolge": 2,
@@ -4345,6 +5631,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -4358,6 +5654,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -4371,6 +5677,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -4384,6 +5700,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -4397,6 +5723,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -4410,6 +5746,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": null
         },
         {
@@ -4423,6 +5769,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": "<UUID>"
         },
         {
@@ -4436,6 +5792,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": "<UUID>"
         },
         {
@@ -4449,6 +5815,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": "<UUID>"
         },
         {
@@ -4462,6 +5838,16 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": "<UUID>"
         },
         {
@@ -4475,7 +5861,96 @@
           "legasthenie": 0,
           "spf": 0,
           "avatar": null,
+          "geburtsdatum": null,
+          "strasse": null,
+          "plz": null,
+          "ort": null,
+          "telefon": null,
+          "email": null,
+          "notfallnummer": null,
+          "erziehungsberechtigte": null,
+          "abholberechtigte": null,
+          "anmerkungen": null,
           "uuid": "<UUID>"
+        }
+      ],
+      "klassen_schueler": [
+        {
+          "klasse_id": 1,
+          "schueler_id": 1,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 2,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 3,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 4,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 5,
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 1,
+          "schueler_id": 6,
+          "reihenfolge": 6,
+          "aktiv": 0,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 5,
+          "schueler_id": 7,
+          "reihenfolge": 1,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 5,
+          "schueler_id": 8,
+          "reihenfolge": 2,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 5,
+          "schueler_id": 9,
+          "reihenfolge": 3,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 5,
+          "schueler_id": 10,
+          "reihenfolge": 4,
+          "aktiv": 1,
+          "ist_stammklasse": 1
+        },
+        {
+          "klasse_id": 5,
+          "schueler_id": 11,
+          "reihenfolge": 5,
+          "aktiv": 1,
+          "ist_stammklasse": 1
         }
       ]
     }

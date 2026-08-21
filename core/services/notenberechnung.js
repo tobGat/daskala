@@ -84,13 +84,27 @@ function gewichteterSchnitt(werte, faktor) {
   return summe / gew
 }
 
-// Eine durchgehende Note (Zeugnisnote / laufender Jahresstand) aus ALLEN Aufzeichnungen
-// beider Semester. Rezenz (§ 20) wirkt kontinuierlich über das ganze Jahr; es gibt keine
-// getrennten Semesternoten und keine Semestergewichtung mehr.
-async function berechneZeugnisnote(db, fachId, schuelerId) {
+// Fach-invariante Daten EINMAL laden. Für die Batch-Berechnung (berechneAlleFuerFach)
+// entfällt so der Refetch von fach/gewichtung_global/spalten/rezenz_faktor pro Schüler:in.
+async function ladeFachKontext(db, fachId) {
   const fach = await db.selectOne('SELECT * FROM faecher WHERE id = ?', [fachId])
-  if (!fach) return { note: null }
+  if (!fach) return null
+  // Gewichte der NOTE-BILDENDEN Kategorien (SA, Test, Individuell, Mitarbeitsnote).
+  const globaleGewichtung = {}
+  ;(await db.select('SELECT * FROM gewichtung_global'))
+    .forEach((r) => { globaleGewichtung[r.kategorie] = r.gewichtung })
+  const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ?', [fachId])
+  // Globaler Rezenz-Standard (§ 20) aus den Einstellungen; pro Schüler:in ggf. überschrieben.
+  const rezenzGlobal = parseFloat((await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'rezenz_faktor'"))?.wert ?? '1')
+  return { fach, globaleGewichtung, spalten, rezenzGlobal }
+}
 
+// Eine durchgehende Note aus vorbereitetem Fach-Kontext + Wert-Lookup je Spalte.
+// getWert(spalteId) → gespeicherter Eintrag (undefined/'' wenn keiner). db nur für per-Person-Reads
+// (Niveau/Gewichtung/Rezenz/MA-Note). Rezenz (§ 20) wirkt kontinuierlich über das ganze Jahr; es
+// gibt keine getrennten Semesternoten und keine Semestergewichtung mehr.
+async function berechneNoteAusKontext(db, ctx, schuelerId, getWert) {
+  const { fach, globaleGewichtung, spalten, rezenzGlobal } = ctx
   const istDifferenziert = fach.benotungssystem === 'differenziert'
 
   // Niveau-Historie laden (nur bei differenzierten Fächern relevant)
@@ -101,9 +115,9 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
       SELECT niveau, gueltig_ab FROM schueler_niveau_historie
       WHERE fach_id = ? AND schueler_id = ?
       ORDER BY gueltig_ab DESC, id DESC
-    `, [fachId, schuelerId])
+    `, [fach.id, schuelerId])
     niveauFallback = (await db.selectOne(
-      'SELECT niveau FROM schueler_niveau WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId]
+      'SELECT niveau FROM schueler_niveau WHERE fach_id = ? AND schueler_id = ?', [fach.id, schuelerId]
     ))?.niveau ?? 'AHS'
   }
   // Undatierte note-bildende Spalten werden konsistent als "aelteste" behandelt (wie in der
@@ -114,12 +128,8 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
     : 0
   const aktuellerOffset = istDifferenziert ? niveauOffset(niveauFallback) : 0
 
-  // Gewichte der NOTE-BILDENDEN Kategorien (SA, Test, Individuell, Mitarbeitsnote).
-  const globaleGewichtung = {}
-  ;(await db.select('SELECT * FROM gewichtung_global'))
-    .forEach((r) => { globaleGewichtung[r.kategorie] = r.gewichtung })
   // Individuelle Gewichtung pro (Fach, Schüler:in) hat Vorrang vor Fach- und globaler Gewichtung.
-  const perStudentGew = await db.selectOne('SELECT gewichtung_sa, gewichtung_t, gewichtung_custom, gewichtung_ma FROM schueler_gewichtung WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId])
+  const perStudentGew = await db.selectOne('SELECT gewichtung_sa, gewichtung_t, gewichtung_custom, gewichtung_ma FROM schueler_gewichtung WHERE fach_id = ? AND schueler_id = ?', [fach.id, schuelerId])
   const gew = {
     SA: perStudentGew?.gewichtung_sa ?? fach.gewichtung_sa ?? globaleGewichtung['SA'] ?? 0.4,
     T: perStudentGew?.gewichtung_t ?? fach.gewichtung_t ?? globaleGewichtung['T'] ?? 0.3,
@@ -129,13 +139,9 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
   }
 
   // Rezenz-Gewichtung (§ 20 LBVO): individueller Faktor pro (Fach, Schüler:in), sonst globaler
-  // Standard aus den Einstellungen. 1 = reiner Durchschnitt.
-  const perStudentRezenz = (await db.selectOne('SELECT faktor FROM schueler_rezenz WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId]))?.faktor
-  const rezenzFaktor = perStudentRezenz != null
-    ? perStudentRezenz
-    : parseFloat((await db.selectOne("SELECT wert FROM einstellungen WHERE schluessel = 'rezenz_faktor'"))?.wert ?? '1')
-
-  const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ?', [fachId])
+  // Standard aus dem Kontext. 1 = reiner Durchschnitt.
+  const perStudentRezenz = (await db.selectOne('SELECT faktor FROM schueler_rezenz WHERE fach_id = ? AND schueler_id = ?', [fach.id, schuelerId]))?.faktor
+  const rezenzFaktor = perStudentRezenz != null ? perStudentRezenz : rezenzGlobal
 
   // Basisnote aus Noten (SA/T/Individuell/Mitarbeit, intern inkl. Niveau-Offset).
   const basisWerte = { SA: [], T: [], CUSTOM: [], MA: [] }
@@ -145,7 +151,7 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
   const maTeilnoten = []
 
   for (const spalte of spalten) {
-    const wert = (await db.selectOne('SELECT wert FROM eintraege WHERE spalte_id = ? AND schueler_id = ?', [spalte.id, schuelerId]))?.wert ?? ''
+    const wert = getWert(spalte.id) ?? ''
     if (!wert) continue
 
     if (spalte.kategorie === 'MA') {
@@ -168,7 +174,7 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
   // Ein Aggregatwert, der wie eine echte Note mit gewichtung_ma in den Schnitt eingeht.
   // Eine manuell gesetzte Mitarbeitsnote (§ 4 Abs. 2 – Gesamtbeurteilung) überschreibt den
   // berechneten Schnitt (intern gespeichert, inkl. Niveau-Offset).
-  const maManuell = (await db.selectOne('SELECT note FROM schueler_ma_note WHERE fach_id = ? AND schueler_id = ?', [fachId, schuelerId]))?.note
+  const maManuell = (await db.selectOne('SELECT note FROM schueler_ma_note WHERE fach_id = ? AND schueler_id = ?', [fach.id, schuelerId]))?.note
   if (maManuell != null) {
     basisWerte.MA.push({ n: maManuell, datum: null, semester: 0, reihenfolge: 0 })
   } else if (maTeilnoten.length > 0) {
@@ -198,6 +204,20 @@ async function berechneZeugnisnote(db, fachId, schuelerId) {
   return { note: Math.round(noteIntern * 100) / 100 }
 }
 
+// Eine durchgehende Note (Zeugnisnote / laufender Jahresstand) einer Person aus ALLEN
+// Aufzeichnungen beider Semester. Lädt Fach-Kontext + die Einträge dieser Person in EINER
+// Abfrage (statt einer pro Spalte) und delegiert an den gemeinsamen Kern.
+async function berechneZeugnisnote(db, fachId, schuelerId) {
+  const ctx = await ladeFachKontext(db, fachId)
+  if (!ctx) return { note: null }
+  const eintragProSpalte = new Map()
+  ;(await db.select(
+    'SELECT e.spalte_id, e.wert FROM eintraege e JOIN spalten s ON e.spalte_id = s.id WHERE s.fach_id = ? AND e.schueler_id = ?',
+    [fachId, schuelerId]
+  )).forEach((r) => eintragProSpalte.set(r.spalte_id, r.wert))
+  return berechneNoteAusKontext(db, ctx, schuelerId, (spalteId) => eintragProSpalte.get(spalteId))
+}
+
 // Alle Fächer im angegebenen Schuljahr neu berechnen
 async function berechneAlleFuerSchuljahr(db, schuljahrId) {
   if (!schuljahrId) return
@@ -217,14 +237,41 @@ async function rosterFuerFach(db, fachId, opts = {}) {
   if (!fach) return []
   const inkl = opts.inklInaktiv === true
   if (fach.alle_schueler) {
-    return db.select(`SELECT * FROM schueler WHERE klasse_id = ?${inkl ? '' : ' AND aktiv = 1'} ORDER BY reihenfolge, nachname, vorname`, [fach.klasse_id])
+    // Alle Mitglieder der Fach-Klasse (n:m über klassen_schueler). aktiv = Mitgliedschafts-Status
+    // PRO Klasse; reihenfolge kommt aus der Junction. So erscheinen auch klassenübergreifend
+    // zugeordnete Schüler:innen im Roster genau der Klassen, denen sie angehören.
+    // Sortierung = eingestellter Klassen-Modus (identisch zu schueler.getAll), damit die Noten-
+    // tabelle und die Klassenliste dieselbe Reihenfolge zeigen – auch für zusätzlich zugeordnete.
+    const modus = (await db.selectOne('SELECT sortierung FROM klassen WHERE id = ?', [fach.klasse_id]))?.sortierung || 'nachname'
+    const order = modus === 'vorname'
+      ? 's.vorname COLLATE NOCASE, s.nachname COLLATE NOCASE'
+      : modus === 'manuell'
+        ? 'ks.reihenfolge, s.nachname COLLATE NOCASE, s.vorname COLLATE NOCASE'
+        : 's.nachname COLLATE NOCASE, s.vorname COLLATE NOCASE'
+    // ks.reihenfolge als ks_reihenfolge (nicht als reihenfolge) – sonst kollidiert der Spaltenname
+    // mit s.reihenfolge aus s.* und der zurückgegebene Wert hinge von der Spaltenreihenfolge ab
+    // (analog main.js). Die Roster-Sortierung nutzt ks.reihenfolge direkt im ORDER BY.
+    // spf_fach: SPF gilt fachbezogen (schueler_fach_spf); überschreibt das globale schueler.spf für
+    // die Anzeige in genau diesem Fach (Notentabelle-Badge).
+    return db.select(`
+      SELECT s.*, ks.reihenfolge AS ks_reihenfolge,
+        EXISTS (SELECT 1 FROM schueler_fach_spf sfs WHERE sfs.schueler_id = s.id AND sfs.fach_id = ?) AS spf_fach
+      FROM schueler s
+      JOIN klassen_schueler ks ON ks.schueler_id = s.id
+      WHERE ks.klasse_id = ?${inkl ? '' : ' AND ks.aktiv = 1 AND s.aktiv = 1'}
+      ORDER BY ${order}
+    `, [fachId, fach.klasse_id])
   }
+  // Gruppen-Fach (alle_schueler=0): Roster = fach_schueler (bereits klassenneutral → Mitglieder aus
+  // beliebigen Klassen möglich). aktiv-Filter auf die Person.
   return db.select(`
-    SELECT s.* FROM schueler s
+    SELECT s.*,
+      EXISTS (SELECT 1 FROM schueler_fach_spf sfs WHERE sfs.schueler_id = s.id AND sfs.fach_id = ?) AS spf_fach
+    FROM schueler s
     JOIN fach_schueler fs ON fs.schueler_id = s.id
     WHERE fs.fach_id = ?${inkl ? '' : ' AND s.aktiv = 1'}
     ORDER BY s.reihenfolge, s.nachname, s.vorname
-  `, [fachId])
+  `, [fachId, fachId])
 }
 async function rosterIdsFuerFach(db, fachId, opts = {}) {
   return (await rosterFuerFach(db, fachId, opts)).map((s) => s.id)
@@ -241,16 +288,28 @@ const ZN_UPSERT = `
 const ZN_UPDATE_ONLY = 'UPDATE zeugnisnoten SET note_berechnet = ?, s1_eingerechnet = ? WHERE fach_id = ? AND schueler_id = ? AND semester = ?'
 
 // Alle Zeugnisnoten für ein Fach neu berechnen: eine durchgehende Jahresnote je Schüler:in.
+// Fach-Kontext und ALLE Einträge des Fachs werden einmalig geladen (Map schueler_id → spalte_id →
+// wert); der Kern rechnet je Person aus diesem Speicher – kein Refetch, kein N+1 pro Spalte.
 async function berechneAlleFuerFach(db, fachId) {
-  const fach = await db.selectOne('SELECT klasse_id FROM faecher WHERE id = ?', [fachId])
-  if (!fach) return
-  const schueler = (await rosterIdsFuerFach(db, fachId)).map((id) => ({ id }))
-  if (!schueler.length) return
+  const roster = await rosterIdsFuerFach(db, fachId)
+  if (!roster.length) return
   await db.transaction(async (tx) => {
-    for (const s of schueler) {
-      const { note } = await berechneZeugnisnote(tx, fachId, s.id)
-      if (note !== null) await tx.execute(ZN_UPSERT, [fachId, s.id, NOTE_SEMESTER, note, 1, neueUuid()])
-      else await tx.execute(ZN_UPDATE_ONLY, [null, 1, fachId, s.id, NOTE_SEMESTER])
+    const ctx = await ladeFachKontext(tx, fachId)
+    if (!ctx) return
+    const eintraegeProPerson = new Map()
+    ;(await tx.select(
+      'SELECT e.schueler_id, e.spalte_id, e.wert FROM eintraege e JOIN spalten s ON e.spalte_id = s.id WHERE s.fach_id = ?',
+      [fachId]
+    )).forEach((r) => {
+      let m = eintraegeProPerson.get(r.schueler_id)
+      if (!m) { m = new Map(); eintraegeProPerson.set(r.schueler_id, m) }
+      m.set(r.spalte_id, r.wert)
+    })
+    for (const sid of roster) {
+      const eMap = eintraegeProPerson.get(sid)
+      const { note } = await berechneNoteAusKontext(tx, ctx, sid, (spalteId) => eMap && eMap.get(spalteId))
+      if (note !== null) await tx.execute(ZN_UPSERT, [fachId, sid, NOTE_SEMESTER, note, 1, neueUuid()])
+      else await tx.execute(ZN_UPDATE_ONLY, [null, 1, fachId, sid, NOTE_SEMESTER])
     }
   })
 }

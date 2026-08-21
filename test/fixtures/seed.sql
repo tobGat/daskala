@@ -39,7 +39,8 @@ INSERT INTO klassen (id, schuljahr_id, name, reihenfolge, farbe, sortierung, ist
 INSERT INTO faecher (id, klasse_id, name, reihenfolge, alle_schueler, benotungssystem) VALUES
   (1, 1, 'Deutsch',     1, 1, 'standard'),
   (2, 1, 'Mathematik',  2, 1, 'standard'),
-  (3, 2, 'Musik',       1, 1, 'standard');
+  (3, 2, 'Musik',       1, 1, 'standard'),
+  (4, 2, 'Chor',        2, 0, 'standard');   -- Gruppen-/Auswahl-Fach (alle_schueler=0), klassenübergreifend
 
 -- ── Schüler:innen (Klasse 1, sortierung = nachname) ─────────────────────────
 -- Auer/Ben vor Auer/Emma (Tie-break Vorname), inaktive:r Felix wird ausgeschlossen.
@@ -50,6 +51,15 @@ INSERT INTO schueler (id, klasse_id, vorname, nachname, reihenfolge, aktiv) VALU
   (4, 1, 'David', 'Müller',     4, 1),
   (5, 1, 'Emma',  'Auer',       5, 1),
   (6, 1, 'Felix', 'Xaver',      6, 0);
+
+-- ── Klassen-Mitgliedschaft (n:m) – spiegelt die Stammklasse-Zuordnung oben ──────────
+INSERT INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse) VALUES
+  (1, 1, 1, 1, 1),
+  (1, 2, 2, 1, 1),
+  (1, 3, 3, 1, 1),
+  (1, 4, 4, 1, 1),
+  (1, 5, 5, 1, 1),
+  (1, 6, 6, 0, 1);
 
 -- ── Spalten (Fach 1 = Deutsch) ──────────────────────────────────────────────
 INSERT INTO spalten (id, fach_id, semester, kategorie, kuerzel, datum, reihenfolge) VALUES

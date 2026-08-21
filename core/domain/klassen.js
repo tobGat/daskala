@@ -37,7 +37,12 @@ async function getDeleteStats(db, deps, id) {
   const klasse = await db.selectOne('SELECT * FROM klassen WHERE id = ?', [id])
   if (!klasse) return null
   const fachCount = (await db.selectOne('SELECT COUNT(*) AS c FROM faecher WHERE klasse_id = ?', [id])).c
-  const schuelerCount = (await db.selectOne('SELECT COUNT(*) AS c FROM schueler WHERE klasse_id = ?', [id])).c
+  // Nur Personen, die AUSSCHLIESSLICH dieser Klasse angehören, werden tatsächlich gelöscht (n:m).
+  const schuelerCount = (await db.selectOne(`
+      SELECT COUNT(*) AS c FROM schueler s
+      WHERE (s.klasse_id = ? OR EXISTS (SELECT 1 FROM klassen_schueler ks WHERE ks.schueler_id = s.id AND ks.klasse_id = ?))
+        AND NOT EXISTS (SELECT 1 FROM klassen_schueler ks2 WHERE ks2.schueler_id = s.id AND ks2.klasse_id <> ?)
+    `, [id, id, id])).c
   const noteCount = (await db.selectOne(`
       SELECT COUNT(*) AS c FROM eintraege e
       JOIN spalten s ON e.spalte_id = s.id
@@ -62,7 +67,14 @@ async function getDeleteStats(db, deps, id) {
 async function remove(db, deps, id) {
   await db.transaction(async (tx) => {
     const fachIds = (await tx.select('SELECT id FROM faecher WHERE klasse_id = ?', [id])).map((r) => r.id)
-    const schuelerIds = (await tx.select('SELECT id FROM schueler WHERE klasse_id = ?', [id])).map((r) => r.id)
+    // n:m: NUR Personen hart löschen, die AUSSCHLIESSLICH dieser Klasse angehören. Geteilte
+    // (auch in anderen Klassen) bleiben erhalten – sonst vernichtete das schueler_id-basierte
+    // Löschen + ON DELETE CASCADE auch ihre Daten in ANDEREN Klassen (stiller Datenverlust).
+    const schuelerIds = (await tx.select(`
+      SELECT s.id FROM schueler s
+      WHERE (s.klasse_id = ? OR EXISTS (SELECT 1 FROM klassen_schueler ks WHERE ks.schueler_id = s.id AND ks.klasse_id = ?))
+        AND NOT EXISTS (SELECT 1 FROM klassen_schueler ks2 WHERE ks2.schueler_id = s.id AND ks2.klasse_id <> ?)
+    `, [id, id, id])).map((r) => r.id)
 
     // Fach-bezogene Nicht-CASCADE-Daten (Noten, Verlauf, Spalten, Zeugnis, Notizen, Stundenplan)
     await deps.raeumeFachDatenAuf(fachIds)
@@ -75,8 +87,28 @@ async function remove(db, deps, id) {
       try { await tx.execute(`DELETE FROM eintraege_verlauf WHERE schueler_id IN (${schuelerPh})`, schuelerIds) } catch (e) { deps.logError('klassen:delete eintraege_verlauf(schueler)', e) }
     }
 
+    // Geteilte Personen mit Stammklasse = dieser Klasse: Stammklasse auf eine überlebende Klasse
+    // umhängen (schueler.klasse_id hat kein CASCADE, würde sonst auf die gelöschte Klasse zeigen).
+    const geteilt = await tx.select(`
+      SELECT s.id FROM schueler s
+      WHERE s.klasse_id = ?
+        AND EXISTS (SELECT 1 FROM klassen_schueler ks WHERE ks.schueler_id = s.id AND ks.klasse_id <> ?)
+    `, [id, id])
+    for (const g of geteilt) {
+      const neu = await tx.selectOne('SELECT klasse_id FROM klassen_schueler WHERE schueler_id = ? AND klasse_id <> ? ORDER BY aktiv DESC, klasse_id LIMIT 1', [g.id, id])
+      if (neu) {
+        await tx.execute('UPDATE schueler SET klasse_id = ? WHERE id = ?', [neu.klasse_id, g.id])
+        await tx.execute('UPDATE klassen_schueler SET ist_stammklasse = 1 WHERE schueler_id = ? AND klasse_id = ?', [g.id, neu.klasse_id])
+      }
+    }
+
+    // Mitgliedschaften dieser Klasse explizit lösen (geteilte Personen verlieren nur die hiesige).
+    await tx.execute('DELETE FROM klassen_schueler WHERE klasse_id = ?', [id])
+    if (schuelerIds.length > 0) {
+      const schuelerPh = schuelerIds.map(() => '?').join(',')
+      await tx.execute(`DELETE FROM schueler WHERE id IN (${schuelerPh})`, schuelerIds)
+    }
     await tx.execute('DELETE FROM faecher WHERE klasse_id = ?', [id])
-    await tx.execute('DELETE FROM schueler WHERE klasse_id = ?', [id])
     await tx.execute('DELETE FROM klassen WHERE id = ?', [id])
   })
   return true

@@ -538,10 +538,9 @@ async function allSchuelerOds(db, deps) {
 
   for (const klasse of klassen) {
     const faecher = await db.select('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name', [klasse.id])
-    const schueler = await db.select('SELECT * FROM schueler WHERE klasse_id = ? AND aktiv = 1 ORDER BY reihenfolge, nachname, vorname', [klasse.id])
-    if (!schueler.length) continue
-
     for (const fach of faecher) {
+      const roster = await deps.rosterFuerFach(fach.id)
+      if (!roster.length) continue // Fach ohne Roster (auch klassenübergreifende Gruppen) überspringen
       const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge', [fach.id])
       const eintraege = await db.select('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)', [fach.id])
       const zeugnisnoten = await db.select('SELECT * FROM zeugnisnoten WHERE fach_id = ?', [fach.id])
@@ -561,7 +560,7 @@ async function allSchuelerOds(db, deps) {
 
       const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum.slice(5).replace('-', '.') : ''}`), 'ZN']
       const rows = [header]
-      for (const s of await deps.rosterFuerFach(fach.id)) {
+      for (const s of roster) {
         const badges = [s.lernschwaeche ? 'LS' : null, s.legasthenie ? 'LEG' : null].filter(Boolean)
         const name = `${s.nachname} ${s.vorname}${badges.length ? ' [' + badges.join(' ') + ']' : ''}`
         const row = [name, ...spalten.map(sp => entryMap[`${sp.id}_${s.id}`] ?? ''), znMap[`${s.id}_3`] ?? '']
@@ -573,6 +572,7 @@ async function allSchuelerOds(db, deps) {
     }
   }
 
+  if (wb.SheetNames.length === 0) return false // kein Fach mit Roster → leeres Workbook würde werfen
   XLSX.writeFile(wb, filePath, { bookType: 'ods' })
   return true
 }
@@ -604,10 +604,9 @@ async function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '', in
 
   for (const klasse of klassen) {
     const faecher = await db.select('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name', [klasse.id])
-    const schueler = await db.select(`SELECT * FROM schueler WHERE klasse_id = ?${inklInaktiv ? '' : ' AND aktiv = 1'} ORDER BY reihenfolge, nachname, vorname`, [klasse.id])
-    if (!schueler.length) continue
-
     for (const fach of faecher) {
+      const roster = await deps.rosterFuerFach(fach.id, { inklInaktiv })
+      if (!roster.length) continue // Fach ohne Roster überspringen (statt Skip über die Stammklasse)
       const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge', [fach.id])
       const eintraege = await db.select('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)', [fach.id])
       const zeugnisnoten = await db.select('SELECT * FROM zeugnisnoten WHERE fach_id = ?', [fach.id])
@@ -630,7 +629,7 @@ async function baueNotenUebersichtHtml(db, deps, schuljahr, titelPrefix = '', in
       ).join('')}<th>ZN</th></tr>`
 
       let tbody = ''
-      for (const s of await deps.rosterFuerFach(fach.id, { inklInaktiv })) {
+      for (const s of roster) {
         const lsBadge = s.lernschwaeche ? '<span class="badge">LS</span>' : ''
         const legBadge = s.legasthenie ? '<span class="badge leg">LEG</span>' : ''
         const cells = spalten.map(sp => `<td>${escHtml(entryMap[`${sp.id}_${s.id}`] ?? '')}</td>`).join('')
@@ -687,6 +686,10 @@ async function archivOds(db, deps, schuljahrId) {
   for (const klasse of klassen) {
     const faecher = await db.select('SELECT * FROM faecher WHERE klasse_id = ? ORDER BY reihenfolge, name', [klasse.id])
     for (const fach of faecher) {
+      // Roster zuerst: Fächer ohne Roster (auch klassenübergreifende Gruppen) überspringen –
+      // sonst entsteht ein leeres Blatt mit nur der Kopfzeile (wie in allSchuelerOds/archivPdf).
+      const roster = await deps.rosterFuerFach(fach.id, { inklInaktiv: true })
+      if (!roster.length) continue
       const spalten = await db.select('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge', [fach.id])
       const eintraege = await db.select('SELECT * FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE fach_id = ?)', [fach.id])
       const zeugnisnoten = await db.select('SELECT * FROM zeugnisnoten WHERE fach_id = ?', [fach.id])
@@ -706,7 +709,7 @@ async function archivOds(db, deps, schuljahrId) {
 
       const header = ['Name', ...spalten.map(s => `${s.kuerzel}${s.datum ? ' ' + s.datum : ''}`), 'ZN']
       const rows = [header]
-      for (const s of await deps.rosterFuerFach(fach.id, { inklInaktiv: true })) {
+      for (const s of roster) {
         const row = [`${s.nachname} ${s.vorname}`]
         for (const sp of spalten) row.push(entryMap[`${sp.id}_${s.id}`] ?? '')
         row.push(znMap[`${s.id}_3`] ?? '')

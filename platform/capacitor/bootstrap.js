@@ -51,6 +51,45 @@ async function spalteErgaenzenWennFehlt(dbPort, tabelle, spalte, definition) {
   }
 }
 
+// Einmaliger Backfill der Klassen-Mitgliedschaft (n:m) aus der alten schueler.klasse_id-Bindung.
+// MUSS flag-geschützt sein: die MIGRATIONS laufen bei JEDEM Start, ein unbedingtes INSERT würde
+// später gelöschte Mitgliedschaften bei jedem Start wieder auferstehen lassen.
+async function backfillKlassenSchuelerEinmalig(dbPort) {
+  try {
+    const flag = await dbPort.select("SELECT wert FROM einstellungen WHERE schluessel = 'migr_v5_klassen_schueler'")
+    if (flag.length) return
+    // WHERE-Guard wie im Desktop-Backfill (schema.js): verwaiste schueler.klasse_id (auf eine
+    // gelöschte Klasse zeigend) erzeugt sonst eine Junction-Zeile mit ungültiger klasse_id.
+    await dbPort.execute(`
+      INSERT OR IGNORE INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse)
+      SELECT klasse_id, id, reihenfolge, aktiv, 1 FROM schueler
+      WHERE klasse_id IN (SELECT id FROM klassen)
+    `)
+    await dbPort.execute("INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES ('migr_v5_klassen_schueler', '1')")
+  } catch (e) {
+    console.error('[daskala:mobile] migration:klassen_schueler', e)
+  }
+}
+
+// Einmaliger Backfill für fachbezogenes SPF (v6): globale SPF-Schüler:innen erhalten SPF für alle
+// Fächer ihrer Stammklasse. Flag-geschützt (MIGRATIONS laufen bei jedem Start).
+async function backfillSpfFaecherEinmalig(dbPort) {
+  try {
+    const flag = await dbPort.select("SELECT wert FROM einstellungen WHERE schluessel = 'migr_v6_spf_faecher'")
+    if (flag.length) return
+    await dbPort.execute(`
+      INSERT OR IGNORE INTO schueler_fach_spf (schueler_id, fach_id)
+      SELECT s.id, f.id FROM schueler s
+      JOIN faecher f ON f.klasse_id = s.klasse_id
+      WHERE s.spf = 1
+        AND (f.alle_schueler = 1 OR EXISTS (SELECT 1 FROM fach_schueler fs WHERE fs.fach_id = f.id AND fs.schueler_id = s.id))
+    `)
+    await dbPort.execute("INSERT OR REPLACE INTO einstellungen (schluessel, wert) VALUES ('migr_v6_spf_faecher', '1')")
+  } catch (e) {
+    console.error('[daskala:mobile] migration:spf_faecher', e)
+  }
+}
+
 export async function bootstrapMobile() {
   markiereMobil()
   const conn = await oeffneVerbindung()
@@ -65,6 +104,13 @@ export async function bootstrapMobile() {
   // Spalten der LBVO-Features idempotent ergänzen (siehe MIGRATIONS v2 für die Daten-Seite).
   await spalteErgaenzenWennFehlt(dbPort, 'faecher', 'gewichtung_man', 'REAL')
   await spalteErgaenzenWennFehlt(dbPort, 'spalten', 'ma_symbole', 'TEXT')
+  // Stammdaten-Spalten für Bestands-DBs nachrüsten (Baseline erzeugt sie bei Neuinstallation).
+  for (const sp of ['geburtsdatum', 'strasse', 'plz', 'ort', 'telefon', 'email', 'notfallnummer', 'erziehungsberechtigte', 'abholberechtigte', 'anmerkungen']) {
+    await spalteErgaenzenWennFehlt(dbPort, 'schueler', sp, 'TEXT')
+  }
   await seedDemoWennLeer(dbPort)
+  // Nach dem Seed: Junction einmalig aus schueler.klasse_id backfillen (erfasst auch Demo-Daten).
+  await backfillKlassenSchuelerEinmalig(dbPort)
+  await backfillSpfFaecherEinmalig(dbPort)
   window.api = createMobileApi(dbPort)
 }

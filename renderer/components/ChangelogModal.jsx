@@ -8,6 +8,30 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.6.0',
+    datum: '2026-08-21',
+    punkte: [
+      'Zentrale Schüler:innen-Verwaltung: Der neue Button „Schüler:innen" (neben „Dashboard") zeigt alle Schüler:innen des Schuljahrs auf einen Blick – mit Merkmalen (Lernschwäche/Legasthenie/SPF), Klassen- und Fächer-Zuordnung. Die Tabelle dient der Ansicht; bearbeitet wird über „✎ Bearbeiten" am Zeilenende in einem eigenen Fenster (Name, Merkmale, Klassen- und Fächer-Zuordnung gebündelt).',
+      'Klassenübergreifende Gruppen: Schüler:innen können jetzt mehreren Klassen angehören. Lege ein Fach mit „Auswahl" an und stelle die Gruppe aus Schüler:innen beliebiger Klassen zusammen (im Dialog nach Klasse gruppiert). Neu angelegte Personen werden global gespeichert und automatisch der aktuellen Klasse zugeordnet.',
+      'Sicheres Löschen: Beim Löschen einer Klasse bleiben Schüler:innen erhalten, die noch anderen Klassen angehören – nur ihre Zuordnung zu dieser Klasse entfällt. Endgültig gelöscht werden nur Personen, die ausschließlich in dieser Klasse waren.',
+      'Fächer je Person: Im Bearbeiten-Fenster lassen sich einzelne „Auswahl"-Fächer (nach Klasse gruppiert) an- und abwählen; „ganze Klasse"-Fächer ergeben sich automatisch aus der Klassenzugehörigkeit. Die Fächer-Spalte in der Tabelle ist kompakt (erste Fächer + „+N").',
+      'SPF je Fach: Sonderpädagogischer Förderbedarf gilt jetzt fachbezogen. Im Bearbeiten-Fenster wählst du, in welchen Fächern ein Kind SPF hat – der SPF-Badge erscheint dann nur in diesen Fächern (z. B. in der Notentabelle). Bestehende SPF-Kennzeichnungen werden auf alle Fächer der Stammklasse übernommen und können danach verfeinert werden.',
+      'Tabelle in der Schüler:innen-Verwaltung: Vor- und Nachname stehen jetzt in eigenen Spalten; per Klick auf die Überschrift „Vorname", „Nachname" oder „Klassen" wird sortiert (auf-/absteigend; Klassen nach Stammklasse). Zusätzlich lässt sich oben nach Klasse und nach Merkmalen (LS/LEG/SPF) filtern.',
+      'Live-Suche bei der Schülerauswahl: Beim Anlegen/Bearbeiten eines Fachs (Modus „Auswahl") filtert ein Suchfeld die Schüler:innen sofort. Das Fachnamen-Feld reagiert dabei wieder flüssig, auch bei vielen Schüler:innen.',
+      'Sortierung durchgängig: Zusätzlich zu einer Klasse zugeordnete Schüler:innen erscheinen in der Notentabelle jetzt ebenfalls nach dem eingestellten Modus (Vor-/Nachname bzw. manuell) – nicht mehr nur am Ende.',
+      'Standard-Sortierung & Merken: Die Schüler:innen-Verwaltung ist standardmäßig nach Klasse aufsteigend sortiert; die zuletzt gewählte Sortierung bleibt bis zum Neustart erhalten.',
+      'Stammdaten je Schüler:in: Im Bearbeiten-Fenster erfasst du zentral Geburtsdatum, Adresse (Straße, PLZ, Ort), Telefon, E-Mail, Notfallnummer, Erziehungs- und Abholberechtigte sowie Anmerkungen. Erfasste Kontaktdaten erscheinen kompakt im Detail-/Leistungsprofil.',
+      'Aufgeräumtes Bearbeiten-Fenster: Merkmale, SPF, Klassen und Fächer stehen jetzt geordnet untereinander (gleiche Ausrichtung, „ändern" rechts). Klassen und Fächer wählst du – wie SPF – in einem eigenen Auswahl-Fenster. Den Avatar änderst du über das Avatar-Bild oben links – und ausschließlich hier (aus Klassenliste und Detail-Profil wurde die direkte Avatar-Bearbeitung entfernt).',
+      'Spalten wählen & anordnen: Über „Spalten ▾" in der Schüler:innen-Verwaltung blendest du ein, welche Informationen die Tabelle anzeigt (Merkmale, Klassen, Fächer sowie Stammdaten wie Telefon, Adresse, Notfallnummer …), und änderst mit ▲/▼ ihre Reihenfolge. Standardmäßig sichtbar: Vorname, Nachname, Merkmale, Klassen, Telefon und Adresse. Auch Vor- und Nachname lassen sich per ▲/▼ verschieben (bleiben aber immer sichtbar). Die Auswahl bleibt bis zum Neustart erhalten.',
+      'Anlegen zentralisiert: Neue Schüler:innen werden ausschließlich in der zentralen „Schüler:innen"-Verwaltung angelegt (einzeln oder per CSV-/Excel-Import, mit Wahl der Stammklasse). Das Schüler:innen-Modal in der Klassenansicht dient nur noch dazu, bereits vorhandene Personen der Klasse hinzuzufügen.',
+      'Klassen-Modal aufgeräumt: Merkmale u. Ä. lassen sich dort nicht mehr direkt umschalten – „✎ Bearbeiten" öffnet dasselbe Fenster wie die zentrale Verwaltung (Name, Merkmale, Klassen, Fächer, SPF, Stammdaten). Vorhandene Schüler:innen fügst du per Live-Suche hinzu: getippte Zeichen filtern sofort, es werden nur Treffer (Name oder Klasse) gelistet.',
+      'Archiv wiederherstellen genauer: Beim Zurückholen eines archivierten Schuljahres werden nur die Schüler:innen wieder aktiv, die zum Zeitpunkt des Jahreswechsels aktiv waren – unterjährig entfernte Schüler:innen bleiben entfernt und werden nicht mehr versehentlich wiederbelebt.',
+      'Schneller: Die Neuberechnung der Zeugnisnoten eines Fachs lädt Aufzeichnungen und Einstellungen jetzt gebündelt statt einzeln – spürbar flotter bei großen Klassen und vielen Spalten. Das Leistungsprofil berechnet nur noch die geöffnete Person neu.',
+      'Detailplanung mit mehreren Parallelklassen: Über „+ Parallel" lassen sich jetzt beliebig viele Parallelklassen gleichzeitig als Spalten einblenden (z. B. Deutsch 1a neben 1b und 1c). Die Spalten behalten eine lesbare Mindestbreite; passen nicht alle nebeneinander, kann man horizontal scrollen.',
+      'Jahresplanung-Import: Im „Importieren"-Fenster gibt es unter „Aus Datei (KI-Planung)" nun „↓ JSON-Vorlage herunterladen" – eine leere Beispiel-Datei im richtigen Format zum selbst Ausfüllen oder als Muster für einen Chatbot.',
+    ],
+  },
+  {
     version: '1.5.0',
     datum: '2026-08-16',
     punkte: [

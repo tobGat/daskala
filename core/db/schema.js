@@ -8,7 +8,7 @@
 
 // Aktuelle Schema-Version. Erhoehen bei neuer EINMALIGER Migration (Daten-Umbau/Rebuild);
 // reine Spalten-Ergaenzungen laufen idempotent ueber spalteErgaenzen().
-const SCHEMA_VERSION = 4
+const SCHEMA_VERSION = 6
 
 // ─── Schema als Daten (Portierung Phase 2.3) ─────────────────────────────────
 //
@@ -80,6 +80,16 @@ const TABLE_DDL = [
       legasthenie INTEGER DEFAULT 0,
       spf INTEGER DEFAULT 0,
       avatar TEXT,
+      geburtsdatum TEXT,
+      strasse TEXT,
+      plz TEXT,
+      ort TEXT,
+      telefon TEXT,
+      email TEXT,
+      notfallnummer TEXT,
+      erziehungsberechtigte TEXT,
+      abholberechtigte TEXT,
+      anmerkungen TEXT,
       uuid TEXT,
       FOREIGN KEY (klasse_id) REFERENCES klassen(id)
     )`,
@@ -197,6 +207,28 @@ const TABLE_DDL = [
       PRIMARY KEY (fach_id, schueler_id),
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE,
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
+  // Klassen-Mitgliedschaft (n:m): eine Schüler:in kann mehreren Klassen angehören.
+  // reihenfolge/aktiv gelten PRO Klasse; ist_stammklasse = KV-/Anzeige-Default (≤1 pro Schuljahr).
+  // Identität über den PK (klasse_id, schueler_id) bzw. die Entitäts-UUIDs – keine eigene uuid nötig.
+  `CREATE TABLE IF NOT EXISTS klassen_schueler (
+      klasse_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      reihenfolge INTEGER DEFAULT 0,
+      aktiv INTEGER DEFAULT 1,
+      ist_stammklasse INTEGER DEFAULT 0,
+      PRIMARY KEY (klasse_id, schueler_id),
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )`,
+  // SPF (sonderpädagogischer Förderbedarf) PRO Fach: eine Person kann SPF nur in bestimmten Fächern
+  // haben. Vorhandene Zeile = SPF in diesem Fach. schueler.spf bleibt als Summen-Flag (≥1 Fach).
+  `CREATE TABLE IF NOT EXISTS schueler_fach_spf (
+      schueler_id INTEGER NOT NULL,
+      fach_id INTEGER NOT NULL,
+      PRIMARY KEY (schueler_id, fach_id),
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
     )`,
   `CREATE TABLE IF NOT EXISTS schueler_niveau (
       fach_id INTEGER NOT NULL,
@@ -448,6 +480,10 @@ const INDEX_DDL = [
       ON kv_aktenvermerke (klasse_id, datum DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_kv_fehlstunden_schueler
       ON kv_fehlstunden (schueler_id, datum)`,
+  `CREATE INDEX IF NOT EXISTS idx_klassen_schueler_schueler
+      ON klassen_schueler (schueler_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_schueler_fach_spf_fach
+      ON schueler_fach_spf (fach_id)`,
   // UUID-Weiche (Phase 2.4): geräteübergreifend eindeutige Identität je Entität
   // für ein späteres Zusammenführen. UNIQUE-Index; mehrere NULL sind in SQLite
   // erlaubt, daher stören noch nicht befüllte Zeilen die Eindeutigkeit nicht.
@@ -492,6 +528,8 @@ const MIGRATIONS = [
     sql: [
       "DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE kategorie = 'MAN');",
       "DELETE FROM spalten WHERE kategorie = 'MAN';",
+      // Auch die in v2 geseedete MAN-Gewichtung entfernen (sonst tote Zeile in gewichtung_global).
+      "DELETE FROM gewichtung_global WHERE kategorie = 'MAN';",
     ].join('\n\n'),
   },
 ]
@@ -651,6 +689,17 @@ function applySchema(db, deps) {
   spalteErgaenzen('schueler', 'legasthenie', 'INTEGER DEFAULT 0')
   spalteErgaenzen('schueler', 'spf', 'INTEGER DEFAULT 0')
   spalteErgaenzen('schueler', 'avatar', 'TEXT')
+  // Stammdaten (Kontakt/Notfall/Berechtigte) – reine Spalten-Ergänzungen, kein Versions-Bump nötig.
+  spalteErgaenzen('schueler', 'geburtsdatum', 'TEXT')
+  spalteErgaenzen('schueler', 'strasse', 'TEXT')
+  spalteErgaenzen('schueler', 'plz', 'TEXT')
+  spalteErgaenzen('schueler', 'ort', 'TEXT')
+  spalteErgaenzen('schueler', 'telefon', 'TEXT')
+  spalteErgaenzen('schueler', 'email', 'TEXT')
+  spalteErgaenzen('schueler', 'notfallnummer', 'TEXT')
+  spalteErgaenzen('schueler', 'erziehungsberechtigte', 'TEXT')
+  spalteErgaenzen('schueler', 'abholberechtigte', 'TEXT')
+  spalteErgaenzen('schueler', 'anmerkungen', 'TEXT')
   spalteErgaenzen('klassen', 'farbe', 'TEXT')
   spalteErgaenzen('faecher', 'farbe', 'TEXT')
   spalteErgaenzen('stunden_planung', 'musizieren', 'INTEGER DEFAULT 0')
@@ -732,6 +781,34 @@ function applySchema(db, deps) {
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
     )
   `)
+
+  // Klassen-Mitgliedschaft (n:m) – Schüler:in kann mehreren Klassen angehören. reihenfolge/aktiv
+  // pro Klasse, ist_stammklasse = KV-/Anzeige-Default. Backfill aus schueler.klasse_id unten (v<5).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS klassen_schueler (
+      klasse_id INTEGER NOT NULL,
+      schueler_id INTEGER NOT NULL,
+      reihenfolge INTEGER DEFAULT 0,
+      aktiv INTEGER DEFAULT 1,
+      ist_stammklasse INTEGER DEFAULT 0,
+      PRIMARY KEY (klasse_id, schueler_id),
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE CASCADE,
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_klassen_schueler_schueler ON klassen_schueler (schueler_id)`)
+
+  // SPF pro Fach (v<6): SPF gilt nur in ausgewählten Fächern. schueler.spf bleibt Summen-Flag.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schueler_fach_spf (
+      schueler_id INTEGER NOT NULL,
+      fach_id INTEGER NOT NULL,
+      PRIMARY KEY (schueler_id, fach_id),
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_schueler_fach_spf_fach ON schueler_fach_spf (fach_id)`)
 
   // Schüler-Niveau pro Fach (AHS/ST-Differenzierung) — aktueller Stand
   db.exec(`
@@ -1187,8 +1264,10 @@ function applySchema(db, deps) {
   insertGewichtung.run('MA', 0.20)
   insertGewichtung.run('HÜ', 0.10)
   insertGewichtung.run('CUSTOM', 0.10)
-  // Benotete Mitarbeit (MAN). INSERT OR IGNORE = idempotent, back-fillt Bestands-DBs.
-  insertGewichtung.run('MAN', 0.30)
+  // Benotete Mitarbeit (Kategorie MAN) ist mit § 4 Abs. 2 (v1.4) entfallen – MA wird selbst zur
+  // Note. KEIN Fresh-Seed mehr; eine aus früheren Versionen geseedete MAN-Gewichtung wird entfernt
+  // (idempotent, läuft bei jedem Start – analog zum MAN-Spalten-Cleanup unten).
+  db.prepare("DELETE FROM gewichtung_global WHERE kategorie = 'MAN'").run()
 
   // Duplikate in stundenzeiten bereinigen (fehlerhafter INSERT OR IGNORE ohne UNIQUE)
   db.prepare(`
@@ -1303,6 +1382,37 @@ function applySchema(db, deps) {
       db.prepare("DELETE FROM eintraege WHERE spalte_id IN (SELECT id FROM spalten WHERE kategorie = 'MAN')").run()
       db.prepare("DELETE FROM spalten WHERE kategorie = 'MAN'").run()
     } catch (e) { deps.logError('migration:man-entfernen', e) }
+  }
+
+  if (schemaVersion < 5) {
+    // Klassen-Mitgliedschaft n:m: bestehende 1:1-Bindung (schueler.klasse_id) in die neue Junction
+    // backfillen – je Bestands-Schüler:in genau eine Zeile mit ist_stammklasse=1. reihenfolge/aktiv
+    // 1:1 übernehmen. Einmalig (user_version-gesteuert), damit gelöschte Mitgliedschaften nicht
+    // wieder auferstehen.
+    try {
+      // WHERE klasse_id IN (…): verwaiste schueler.klasse_id (ohne passende klassen-Zeile) auslassen –
+      // sonst bräche der EINE INSERT bei foreign_keys=ON komplett ab und ließe die Roster leer.
+      db.prepare(`
+        INSERT OR IGNORE INTO klassen_schueler (klasse_id, schueler_id, reihenfolge, aktiv, ist_stammklasse)
+        SELECT klasse_id, id, reihenfolge, aktiv, 1 FROM schueler
+        WHERE klasse_id IN (SELECT id FROM klassen)
+      `).run()
+    } catch (e) { deps.logError('migration:klassen-schueler-backfill', e) }
+  }
+
+  if (schemaVersion < 6) {
+    // SPF wird fachbezogen: bestehende global-SPF-Schüler:innen (schueler.spf=1) erhalten einen
+    // SPF-Eintrag für alle Fächer ihrer Stammklasse – so bleibt der Badge dort erhalten, wo er
+    // vorher erschien. Danach kann pro Kind je Fach verfeinert werden. Einmalig (user_version).
+    try {
+      db.prepare(`
+        INSERT OR IGNORE INTO schueler_fach_spf (schueler_id, fach_id)
+        SELECT s.id, f.id FROM schueler s
+        JOIN faecher f ON f.klasse_id = s.klasse_id
+        WHERE s.spf = 1
+          AND (f.alle_schueler = 1 OR EXISTS (SELECT 1 FROM fach_schueler fs WHERE fs.fach_id = f.id AND fs.schueler_id = s.id))
+      `).run()
+    } catch (e) { deps.logError('migration:spf-fach-backfill', e) }
   }
 
   // Alle einmaligen Migrationen dieser Version sind durchlaufen → Schema-Version festschreiben.

@@ -144,6 +144,7 @@ export default function MobileBottomNav() {
   // Ziele fürs „Mehr"-Sheet – nur App-Ebene. Klassenbezogene Funktionen (Planung,
   // KV, Sitzplan) und das Anlegen von Klasse/Fach gehören nicht hierher.
   const mehrZiele = [
+    { icon: '🙋', label: 'Schüler:innen', active: currentView === 'schueler', onClick: () => geheZu('schueler') },
     { icon: '⚙️', label: 'Einstellungen', onClick: () => modal('einstellungen') },
     { icon: '📤', label: 'Exportieren', onClick: () => modal('exportieren') },
     (planungAktiv || vorlagenModus) && {

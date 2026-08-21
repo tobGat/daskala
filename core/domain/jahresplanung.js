@@ -25,7 +25,8 @@ async function update(db, deps, id, d) {
   await db.execute('UPDATE jahresplanung_abschnitte SET titel=?, inhalt=?, lernziele=?, kompetenzen=?, datum_von=?, datum_bis=?, farbe=? WHERE id=?', [d.titel, d.inhalt ?? '', d.lernziele ?? '', d.kompetenzen ?? '', d.datumVon ?? null, d.datumBis ?? null, d.farbe ?? null, id])
   let ordnerWarnung = null
   const root = await materialien.materialRoot(db)
-  if (root && alt && alt.material_ordner && d.titel != null && d.titel !== alt.titel) {
+  // deps.fs/mat gibt es nur im Desktop-Bündel (jpDeps); mobil (kernDeps) fehlen sie → Ordner-Umzug überspringen.
+  if (root && alt && alt.material_ordner && d.titel != null && d.titel !== alt.titel && deps.fs) {
     const h = await materialien.abschnittHierarchie(db, alt.fach_id)
     if (h) {
       const baseDir = materialien.fachDir(root, h)

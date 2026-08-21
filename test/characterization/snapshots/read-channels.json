@@ -88,7 +88,18 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "ist_stammklasse": 1
     },
     {
       "id": 5,
@@ -101,7 +112,18 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "ist_stammklasse": 1
     },
     {
       "id": 1,
@@ -114,7 +136,18 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "ist_stammklasse": 1
     },
     {
       "id": 4,
@@ -127,7 +160,18 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "ist_stammklasse": 1
     },
     {
       "id": 3,
@@ -140,7 +184,367 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
-      "uuid": null
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "ist_stammklasse": 1
+    }
+  ],
+  "schueler:getAllImSchuljahr": [
+    {
+      "id": 2,
+      "klasse_id": 1,
+      "vorname": "Ben",
+      "nachname": "Auer",
+      "reihenfolge": 2,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "klassen": [
+        {
+          "id": 1,
+          "name": "1A",
+          "farbe": "#fb6936",
+          "ist_stammklasse": 1
+        }
+      ],
+      "faecher": [
+        {
+          "id": 1,
+          "name": "Deutsch",
+          "klasse_name": "1A"
+        },
+        {
+          "id": 2,
+          "name": "Mathematik",
+          "klasse_name": "1A"
+        }
+      ],
+      "spf_faecher": []
+    },
+    {
+      "id": 5,
+      "klasse_id": 1,
+      "vorname": "Emma",
+      "nachname": "Auer",
+      "reihenfolge": 5,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "klassen": [
+        {
+          "id": 1,
+          "name": "1A",
+          "farbe": "#fb6936",
+          "ist_stammklasse": 1
+        }
+      ],
+      "faecher": [
+        {
+          "id": 1,
+          "name": "Deutsch",
+          "klasse_name": "1A"
+        },
+        {
+          "id": 2,
+          "name": "Mathematik",
+          "klasse_name": "1A"
+        }
+      ],
+      "spf_faecher": []
+    },
+    {
+      "id": 1,
+      "klasse_id": 1,
+      "vorname": "Anna",
+      "nachname": "Bauer",
+      "reihenfolge": 1,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "klassen": [
+        {
+          "id": 1,
+          "name": "1A",
+          "farbe": "#fb6936",
+          "ist_stammklasse": 1
+        }
+      ],
+      "faecher": [
+        {
+          "id": 1,
+          "name": "Deutsch",
+          "klasse_name": "1A"
+        },
+        {
+          "id": 2,
+          "name": "Mathematik",
+          "klasse_name": "1A"
+        }
+      ],
+      "spf_faecher": []
+    },
+    {
+      "id": 4,
+      "klasse_id": 1,
+      "vorname": "David",
+      "nachname": "Müller",
+      "reihenfolge": 4,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "klassen": [
+        {
+          "id": 1,
+          "name": "1A",
+          "farbe": "#fb6936",
+          "ist_stammklasse": 1
+        }
+      ],
+      "faecher": [
+        {
+          "id": 1,
+          "name": "Deutsch",
+          "klasse_name": "1A"
+        },
+        {
+          "id": 2,
+          "name": "Mathematik",
+          "klasse_name": "1A"
+        }
+      ],
+      "spf_faecher": []
+    },
+    {
+      "id": 3,
+      "klasse_id": 1,
+      "vorname": "Clara",
+      "nachname": "Zimmermann",
+      "reihenfolge": 3,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "klassen": [
+        {
+          "id": 1,
+          "name": "1A",
+          "farbe": "#fb6936",
+          "ist_stammklasse": 1
+        }
+      ],
+      "faecher": [
+        {
+          "id": 1,
+          "name": "Deutsch",
+          "klasse_name": "1A"
+        },
+        {
+          "id": 2,
+          "name": "Mathematik",
+          "klasse_name": "1A"
+        }
+      ],
+      "spf_faecher": []
+    }
+  ],
+  "faecher:getRoster": [
+    {
+      "id": 2,
+      "klasse_id": 1,
+      "vorname": "Ben",
+      "nachname": "Auer",
+      "reihenfolge": 2,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "ks_reihenfolge": 2,
+      "spf_fach": 0
+    },
+    {
+      "id": 5,
+      "klasse_id": 1,
+      "vorname": "Emma",
+      "nachname": "Auer",
+      "reihenfolge": 5,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "ks_reihenfolge": 5,
+      "spf_fach": 0
+    },
+    {
+      "id": 1,
+      "klasse_id": 1,
+      "vorname": "Anna",
+      "nachname": "Bauer",
+      "reihenfolge": 1,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "ks_reihenfolge": 1,
+      "spf_fach": 0
+    },
+    {
+      "id": 4,
+      "klasse_id": 1,
+      "vorname": "David",
+      "nachname": "Müller",
+      "reihenfolge": 4,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "ks_reihenfolge": 4,
+      "spf_fach": 0
+    },
+    {
+      "id": 3,
+      "klasse_id": 1,
+      "vorname": "Clara",
+      "nachname": "Zimmermann",
+      "reihenfolge": 3,
+      "aktiv": 1,
+      "lernschwaeche": 0,
+      "legasthenie": 0,
+      "spf": 0,
+      "avatar": null,
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
+      "uuid": null,
+      "ks_reihenfolge": 3,
+      "spf_fach": 0
     }
   ],
   "zeugnisnoten:getAll": [
@@ -502,14 +906,23 @@
       "klasse_name": "2B",
       "klasse_farbe": "#34d399",
       "klasse_reihenfolge": 2
+    },
+    {
+      "id": 4,
+      "name": "Chor",
+      "farbe": null,
+      "klasse_id": 2,
+      "klasse_name": "2B",
+      "klasse_farbe": "#34d399",
+      "klasse_reihenfolge": 2
     }
   ],
   "faecher:getSchuelerIds": [
-    1,
     2,
-    3,
+    5,
+    1,
     4,
-    5
+    3
   ],
   "schueler:getLeistungsProfil": {
     "schueler": {
@@ -523,6 +936,16 @@
       "legasthenie": 0,
       "spf": 0,
       "avatar": null,
+      "geburtsdatum": null,
+      "strasse": null,
+      "plz": null,
+      "ort": null,
+      "telefon": null,
+      "email": null,
+      "notfallnummer": null,
+      "erziehungsberechtigte": null,
+      "abholberechtigte": null,
+      "anmerkungen": null,
       "uuid": null
     },
     "faecher": [

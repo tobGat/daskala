@@ -5,7 +5,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import useStore from '../store/useStore'
 import SchuelerKVSection from './kv/SchuelerKVSection'
 import SchuelerAvatar from './SchuelerAvatar'
-import AvatarEditorModal from './AvatarEditorModal'
 import { avatarSvg } from '../utils/avatar'
 import { niveauZurZeit, niveauOffset } from '../utils/niveau'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -289,21 +288,10 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
     }, 500)
   }
 
-  // Kompetenzen pro Fach laden
-  const [kompBereiche, setKompBereiche] = useState([])
+  // Kompetenzen pro Fach – Sektion ist derzeit deaktiviert (unten `false && …`); daher KEIN
+  // IPC-Laden pro Fachwechsel (spart zwei Roundtrips). State bleibt leer, bis die Sektion aktiv wird.
+  const [kompBereiche] = useState([])
   const [kompSk, setKompSk] = useState({})
-  useEffect(() => {
-    (async () => {
-      const [kb, skArr] = await Promise.all([
-        window.api.kompetenzbereiche.getAll(fach.id),
-        window.api.schuelerKompetenzen.getAll(fach.id),
-      ])
-      setKompBereiche(kb)
-      const map = {}
-      skArr.forEach(sk => { map[`${sk.kompetenzbereich_id}_${sk.schueler_id}`] = sk })
-      setKompSk(map)
-    })()
-  }, [fach.id])
 
   const setKompetenz = async (kbId, niveau) => {
     await window.api.schuelerKompetenzen.set(kbId, schueler.id, niveau, null)
@@ -542,7 +530,7 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
 
 // ─── Haupt-Modal ──────────────────────────────────────────────────────────────
 export default function SchuelerDetail() {
-  const { detailSchueler, closeDetail, aktivesFach, aktiveKlasse, ladeSchueler } = useStore()
+  const { detailSchueler, closeDetail, aktivesFach, aktiveKlasse } = useStore()
   const mobil = useIsMobile()
 
   const [profil, setProfil] = useState(null)
@@ -550,18 +538,20 @@ export default function SchuelerDetail() {
   const [selectedFachId, setSelectedFachId] = useState(null)
   const [kvAktiv, setKvAktiv] = useState(false)         // ob KV-Sektion in Sidebar gewählt ist
   const [exportLoading, setExportLoading] = useState(false)
-  const [avatarSchueler, setAvatarSchueler] = useState(null)
 
   useEffect(() => {
     if (!detailSchueler) return
+    let abbruch = false   // schnelles Umschalten auf eine andere Person: veraltetes Ergebnis verwerfen
     setLoading(true)
     window.api.schueler.getLeistungsProfil(detailSchueler.id).then(data => {
+      if (abbruch) return
       setProfil(data)
       // Initial wähle aktives Fach (falls Teil dieser Klasse) oder das erste
       const initial = data?.faecher?.find(f => f.id === aktivesFach?.id) ?? data?.faecher?.[0]
       setSelectedFachId(initial?.id ?? null)
       setLoading(false)
     })
+    return () => { abbruch = true }
   }, [detailSchueler])
 
   useEffect(() => {
@@ -596,8 +586,6 @@ export default function SchuelerDetail() {
             schueler={headerSchueler}
             size={44}
             className="rounded-2xl shadow-soft"
-            onClick={() => setAvatarSchueler(headerSchueler)}
-            title="Avatar bearbeiten"
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -634,6 +622,26 @@ export default function SchuelerDetail() {
             </svg>
           </button>
         </div>
+
+        {/* Stammdaten (Kontakt/Notfall/Berechtigte) – kompakt, nur falls erfasst */}
+        {(() => {
+          const s = headerSchueler || {}
+          const felder = [
+            ['🎂', s.geburtsdatum ? formatDatum(s.geburtsdatum) : '', 'Geburtsdatum'], ['📞', s.telefon, 'Telefon'], ['✉️', s.email, 'E-Mail'],
+            ['🚨', s.notfallnummer, 'Notfallnummer'], ['🏠', [s.strasse, [s.plz, s.ort].filter(Boolean).join(' ')].filter(Boolean).join(', '), 'Adresse'],
+            ['👪', s.erziehungsberechtigte, 'Erziehungsberechtigte'], ['🚸', s.abholberechtigte, 'Abholberechtigte'], ['📝', s.anmerkungen, 'Anmerkungen'],
+          ].filter(f => f[1] && String(f[1]).trim())
+          if (!felder.length) return null
+          return (
+            <div className="flex-shrink-0 px-5 py-2 border-b border-paper-200 dark:border-ink-800 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-600 dark:text-paper-300">
+              {felder.map(([icon, val, label], i) => (
+                <span key={i} className="inline-flex items-center gap-1 max-w-[16rem] truncate" title={`${label}: ${val}`}>
+                  <span aria-hidden>{icon}</span><span className="truncate">{String(val).replace(/\s*\n\s*/g, ' · ')}</span>
+                </span>
+              ))}
+            </div>
+          )
+        })()}
 
         {/* Body: Sidebar (Fächer) + Detail */}
         <div className="flex-1 overflow-hidden flex min-h-0">
@@ -801,18 +809,6 @@ export default function SchuelerDetail() {
           )}
         </div>
       </div>
-
-      {avatarSchueler && (
-        <AvatarEditorModal
-          schueler={avatarSchueler}
-          onClose={() => setAvatarSchueler(null)}
-          onSaved={async () => {
-            const data = await window.api.schueler.getLeistungsProfil(detailSchueler.id)
-            setProfil(data)
-            await ladeSchueler()   // Store-Schülerliste (Notentabelle/Sitzplan) mit aktualisieren
-          }}
-        />
-      )}
     </div>
   )
 }
