@@ -8,6 +8,13 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.6.1',
+    datum: '2026-08-24',
+    punkte: [
+      'Vorlagen-Modus: Das „Importieren"-Fenster ist jetzt auch in der Vorlagenansicht erreichbar – inkl. „Aus Datei (KI-Planung)" mit „JSON-Datei wählen" und „↓ JSON-Vorlage herunterladen". So lassen sich Vorlagen-Jahresplanungen per Chatbot-JSON befüllen.',
+    ],
+  },
+  {
     version: '1.6.0',
     datum: '2026-08-21',
     punkte: [
