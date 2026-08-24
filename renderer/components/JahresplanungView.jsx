@@ -950,7 +950,7 @@ export default function JahresplanungView() {
         <span className="text-xs text-ink-400">
           {aktivesFach.name} · Schuljahr {schuljahr}
         </span>
-        {vorlagenModus ? (
+        {vorlagenModus && (
           <button
             className="btn-primary text-xs ml-auto"
             onClick={openAnwendenModal}
@@ -959,14 +959,15 @@ export default function JahresplanungView() {
           >
             Planung auf Fächer anwenden
           </button>
-        ) : (
-          <button
-            className="btn-secondary text-xs ml-auto"
-            onClick={handleImportOeffnen}
-          >
-            Importieren
-          </button>
         )}
+        {/* Importieren (inkl. KI-JSON-Datei) – auch im Vorlagen-Modus verfügbar, damit sich
+            Vorlagen-Planungen per Chatbot-JSON befüllen lassen. */}
+        <button
+          className={`btn-secondary text-xs${vorlagenModus ? '' : ' ml-auto'}`}
+          onClick={handleImportOeffnen}
+        >
+          Importieren
+        </button>
         <button
           className="btn-secondary text-xs"
           onClick={handleExport}
