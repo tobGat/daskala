@@ -695,10 +695,11 @@ export default function JahresplanungView() {
   // Zeitraum aus den Formularfeldern (Beginn/Ende manuell eingebbar – auf allen Plattformen).
   // Desktop kann den Zeitraum zusätzlich per Drag/Resize im Kalender setzen.
   const formDatum = () => {
-    const dv = formDatumVon || null
+    let dv = formDatumVon || null
     let db = formDatumBis || null
-    if (dv && !db) db = dv
-    if (dv && db && db < dv) db = dv
+    if (dv && !db) db = dv          // nur Beginn → 1-Tages-Abschnitt
+    if (db && !dv) dv = db          // nur Ende → 1-Tages-Abschnitt (kein unsichtbarer Rest)
+    if (dv && db && db < dv) db = dv // Ende vor Beginn → auf Beginn ziehen
     return { datumVon: dv, datumBis: db }
   }
 
@@ -1105,7 +1106,7 @@ export default function JahresplanungView() {
                         className="flex-1 min-w-0 text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
                       />
                     </div>
-                    {formDatumVon && (
+                    {(formDatumVon || formDatumBis) && (
                       <button onClick={() => { setFormDatumVon(''); setFormDatumBis('') }} className="mt-1 text-[11px] text-ink-400 hover:text-red-500 transition-colors">
                         Zeitraum entfernen
                       </button>
