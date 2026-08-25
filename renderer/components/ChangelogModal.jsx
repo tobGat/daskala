@@ -8,6 +8,14 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.6.2',
+    datum: '2026-08-25',
+    punkte: [
+      'Jahresplanung – Abschnitte beidseitig ziehen: Ein Abschnitt lässt sich im Kalender jetzt nicht nur am Ende, sondern auch am Anfang breiter oder schmaler ziehen (zweiter Griff an der linken Kante). Eine Vorschau zeigt beim Ziehen, welche Tage dazukommen bzw. wegfallen.',
+      'Jahresplanung – Datum manuell eingeben: Beginn und Ende eines Abschnitts lassen sich beim Erstellen und Bearbeiten direkt über zwei Datumsfelder eingeben (auf allen Geräten). „Zeitraum entfernen" setzt den Abschnitt wieder auf „nicht eingeplant". Ein gleichzeitiges Ziehen im Kalender hält die Felder synchron.',
+    ],
+  },
+  {
     version: '1.6.1',
     datum: '2026-08-24',
     punkte: [
