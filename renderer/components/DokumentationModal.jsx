@@ -105,6 +105,7 @@ const DOKU = [
       'In der Jahresplanung gliederst du das Schuljahr in Abschnitte und ziehst sie per Drag-&-Drop in den Kalender.',
       { h: 'Abschnitte' },
       'Über „+ Neuer Abschnitt" legst du Titel, Farbe, Inhalt, Lernziele und Kompetenzen (Lehrplan) an. Ein Klick auf einen Abschnitt öffnet das Bearbeiten-Modal. Fährst du mit der Maus über einen Abschnitt, wird der Kalender leicht abgeblendet und ein großer Tooltip zeigt mittig die Details (Zeitraum, Inhalt, Lernziele, Kompetenzen).',
+      'Den Zeitraum setzt du wahlweise über die Felder „Beginn" und „Ende" im Bearbeiten-Modal oder direkt im Kalender: Abschnitt an einen Tag ziehen zum Einplanen und an den beiden Rändern (Anfang wie Ende) breiter oder schmaler ziehen.',
       { h: 'Materialien' },
       'Zu jedem Abschnitt kannst du Dokumente (werden in einen echten Ordner kopiert) und Links (mit Anzeigename/Beschreibung) hinterlegen. Der Wurzelordner wird beim ersten Mal abgefragt und ist in den Einstellungen änderbar.',
       { ul: [

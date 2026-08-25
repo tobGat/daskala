@@ -46,7 +46,7 @@ function dauerText(von, bis) {
 }
 
 // ─── Monats-Kalender (rechte Seite) ──────────────────────────────────────────
-function MonatKalender({ year, month, abschnitte, aktivesFach, dragOverDate, onDrop, onDragOverDay, onDragLeaveDay, onAbschnittKlick, resizingId, onResizeStart, schulferien }) {
+function MonatKalender({ year, month, abschnitte, aktivesFach, dragOverDate, onDrop, onDragOverDay, onDragLeaveDay, onAbschnittKlick, resizingId, resizingEdge, onResizeStart, schulferien }) {
   const ersterTag = new Date(year, month, 1)
   const letzterTag = new Date(year, month + 1, 0)
   const startDow = (ersterTag.getDay() + 6) % 7
@@ -62,29 +62,23 @@ function MonatKalender({ year, month, abschnitte, aktivesFach, dragOverDate, onD
     wochen.push(woche)
   }
 
-  // Bei Resize: Vorschau-Bereich berechnen
+  // Bei Resize: Vorschau-Grenzen je nach gezogener Kante (Start = vorne / Ende = hinten).
   const resizingAbschnitt = resizingId ? abschnitte.find(a => a.id === resizingId) : null
-  const previewVon = resizingAbschnitt?.datum_von ?? null
-  const previewBis = (resizingAbschnitt && dragOverDate && dragOverDate >= previewVon) ? dragOverDate : null
+  const origVon = resizingAbschnitt?.datum_von ?? null
+  const origBis = resizingAbschnitt?.datum_bis ?? null
+  let previewVon = origVon, previewBis = origBis, previewAktiv = false
+  if (resizingAbschnitt && dragOverDate) {
+    if (resizingEdge === 'start') {
+      if (dragOverDate <= origBis) { previewVon = dragOverDate; previewAktiv = true }
+    } else {
+      if (dragOverDate >= origVon) { previewBis = dragOverDate; previewAktiv = true }
+    }
+  }
 
   const getAbschnittFuerTag = (d) => {
     if (!d) return null
     const dateStr = toDateStr(year, month, d)
     return abschnitte.find(a => a.datum_von && a.datum_bis && dateStr >= a.datum_von && dateStr <= a.datum_bis) ?? null
-  }
-
-  // Vorschau-Status für einen Tag bestimmen
-  const getPreviewStatus = (dateStr) => {
-    if (!resizingAbschnitt || !previewBis || !dateStr) return null
-    const origVon = resizingAbschnitt.datum_von
-    const origBis = resizingAbschnitt.datum_bis
-    const inOriginal = dateStr >= origVon && dateStr <= origBis
-    const inPreview = dateStr >= previewVon && dateStr <= previewBis
-
-    if (inPreview && !inOriginal) return 'extend'    // neu dazu (Verlängerung)
-    if (inOriginal && !inPreview) return 'shrink'     // wird entfernt (Verkürzung)
-    if (inPreview && dateStr === previewBis) return 'new-end' // neues Ende
-    return null
   }
 
   const getFarbe = (a) => a.farbe ?? aktivesFach?.farbe ?? '#6366f1'
@@ -107,33 +101,43 @@ function MonatKalender({ year, month, abschnitte, aktivesFach, dragOverDate, onD
             {woche.map((d, di) => {
               const abschnitt = getAbschnittFuerTag(d)
               const dateStr = d ? toDateStr(year, month, d) : null
-              const preview = getPreviewStatus(dateStr)
-              const istResizing = abschnitt && resizingId === abschnitt?.id
+              const istResizing = !!abschnitt && resizingId === abschnitt.id
 
-              // Bei Resize: virtuelle Start/Ende basierend auf Vorschau
-              const effektivBis = (istResizing && previewBis) ? previewBis : abschnitt?.datum_bis
-              const farbe = abschnitt ? getFarbe(abschnitt) : (preview === 'extend' && resizingAbschnitt ? getFarbe(resizingAbschnitt) : null)
+              // Vorschau-Klassifizierung für den gerade skalierten Abschnitt.
+              let istExtend = false, istShrink = false
+              if (resizingAbschnitt && previewAktiv && dateStr) {
+                const inOriginal = dateStr >= origVon && dateStr <= origBis
+                const inPreview = dateStr >= previewVon && dateStr <= previewBis
+                istExtend = inPreview && !inOriginal    // neu dazu (Verlängerung)
+                istShrink = inOriginal && !inPreview     // fällt weg (Verkürzung)
+              }
 
-              const istStart = abschnitt && dateStr === abschnitt.datum_von
-              const istEnde = abschnitt && dateStr === effektivBis
-              const istOrigEnde = abschnitt && dateStr === abschnitt.datum_bis
+              const farbe = abschnitt ? getFarbe(abschnitt) : (istExtend && resizingAbschnitt ? getFarbe(resizingAbschnitt) : null)
+              const previewFarbe = resizingAbschnitt ? getFarbe(resizingAbschnitt) : null
+
+              // Optische linke/rechte Kante (Vorschau-Grenzen beim Resize, sonst Original des Tages-Abschnitts).
+              const gehoertZuResize = istResizing || istExtend
+              const eLinks = gehoertZuResize ? previewVon : abschnitt?.datum_von
+              const eRechts = gehoertZuResize ? previewBis : abschnitt?.datum_bis
+              const istLinks = !!dateStr && !istShrink && (istExtend || !!abschnitt) && dateStr === eLinks
+              const istRechts = !!dateStr && !istShrink && (istExtend || !!abschnitt) && dateStr === eRechts
+
               const istWochenende = di >= 5
               const ferien = d && schulferien ? ferienFuerTag(dateStr, schulferien) : null
               const istDragOver = d && dateStr === dragOverDate && !resizingId
-              const istErsteSichtbareWochenstelle = abschnitt && (
-                istStart ||
-                (di === 0 && d && dateStr > abschnitt.datum_von)
+
+              // Marker der neu gezogenen Kante (Anfang bzw. Ende).
+              const istNeuerStart = !!resizingAbschnitt && previewAktiv && resizingEdge === 'start' && dateStr === previewVon
+              const istNeuesEnde = !!resizingAbschnitt && previewAktiv && resizingEdge !== 'start' && dateStr === previewBis
+
+              // Resize-Griffe an den ORIGINAL-Kanten.
+              const istOrigStart = abschnitt && dateStr === abschnitt.datum_von
+              const istOrigEnde = abschnitt && dateStr === abschnitt.datum_bis
+              const istErsteSichtbareWochenstelle = abschnitt && !istShrink && (
+                dateStr === abschnitt.datum_von || (di === 0 && d && dateStr > abschnitt.datum_von)
               )
 
-              // Vorschau-Styles
-              const isExtendPreview = preview === 'extend'
-              const isShrinkPreview = preview === 'shrink'
-              const isNewEnd = preview === 'new-end'
-              const previewFarbe = resizingAbschnitt ? getFarbe(resizingAbschnitt) : null
-
-              // Bestimme ob dieser Tag im Resize-Abschnitt (erweitert) liegt
-              const inPreviewRange = istResizing && previewBis && dateStr && dateStr >= previewVon && dateStr <= previewBis
-              const previewEnd = inPreviewRange && dateStr === previewBis
+              const rundung = (li, re, r) => (li && re) ? r : li ? `${r} 0 0 ${r}` : re ? `0 ${r} ${r} 0` : '0'
 
               return (
                 <div
@@ -154,82 +158,73 @@ function MonatKalender({ year, month, abschnitte, aktivesFach, dragOverDate, onD
                     ${!d ? 'pointer-events-none' : 'cursor-pointer'}
                     ${istWochenende ? 'opacity-60' : ''}
                     ${ferien && !abschnitt ? 'bg-rose-50 dark:bg-rose-950/30' : ''}
-                    ${!abschnitt && !isExtendPreview && !ferien && d && !istDragOver ? 'hover:bg-paper-100 dark:hover:bg-ink-800 rounded' : ''}
+                    ${!abschnitt && !istExtend && !ferien && d && !istDragOver ? 'hover:bg-paper-100 dark:hover:bg-ink-800 rounded' : ''}
                     ${istDragOver && !abschnitt ? 'ring-2 ring-coral-400 ring-inset rounded bg-coral-50 dark:bg-coral-900/30' : ''}
-                    ${isShrinkPreview ? 'opacity-40' : ''}
+                    ${istShrink ? 'opacity-40' : ''}
                   `}
                   style={{
                     // Bestehender Abschnitt (nicht geschrumpft)
-                    ...(abschnitt && d && !isShrinkPreview ? {
+                    ...(abschnitt && d && !istShrink ? {
                       backgroundColor: farbe + '33',
-                      borderRadius: istStart && previewEnd ? '6px'
-                        : istStart ? '6px 0 0 6px'
-                        : previewEnd && istResizing ? '0 6px 6px 0'
-                        : istEnde && !istResizing ? '0 6px 6px 0'
-                        : istStart && istEnde ? '6px'
-                        : '0',
+                      borderRadius: rundung(istLinks, istRechts, '6px'),
                     } : {}),
                     // Geschrumpfter Bereich: durchgestrichen-Optik
-                    ...(isShrinkPreview && d ? {
+                    ...(istShrink && d ? {
                       backgroundColor: previewFarbe + '15',
                       borderRadius: '0',
                     } : {}),
                     // Erweiterungs-Vorschau
-                    ...(isExtendPreview && d ? {
+                    ...(istExtend && d ? {
                       backgroundColor: previewFarbe + '25',
-                      borderRadius: isNewEnd ? '0 6px 6px 0' : '0',
+                      borderRadius: rundung(istLinks, istRechts, '6px'),
                       outline: `1px dashed ${previewFarbe}80`,
                       outlineOffset: '-1px',
                     } : {}),
                   }}
                   title={abschnitt ? abschnitt.titel : ferien ? ferien.name : ''}
                 >
-                  {/* Abschnitts-Balken – Originalbereich */}
-                  {abschnitt && d && !isShrinkPreview && (
+                  {/* Abschnitts-Balken – Bestand */}
+                  {abschnitt && d && !istShrink && (
                     <div
                       className="absolute inset-x-0 bottom-1 h-1 pointer-events-none"
                       style={{
                         backgroundColor: farbe,
-                        borderRadius: istStart && previewEnd ? '4px'
-                          : istStart ? '4px 0 0 4px'
-                          : previewEnd && istResizing ? '0 4px 4px 0'
-                          : istEnde && !istResizing ? '0 4px 4px 0'
-                          : '0',
-                        marginLeft: istStart ? '2px' : '0',
-                        marginRight: (previewEnd && istResizing) || (istEnde && !istResizing) ? '2px' : '0',
+                        borderRadius: rundung(istLinks, istRechts, '4px'),
+                        marginLeft: istLinks ? '2px' : '0',
+                        marginRight: istRechts ? '2px' : '0',
                       }}
                     />
                   )}
-                  {/* Geschrumpfter Bereich: gestrichelte Linie */}
-                  {isShrinkPreview && d && (
+                  {/* Verkürzung: gestrichelte Linie */}
+                  {istShrink && d && (
                     <div
                       className="absolute inset-x-0 bottom-1 h-1 pointer-events-none"
                       style={{
                         backgroundImage: `repeating-linear-gradient(90deg, ${previewFarbe}60 0 3px, transparent 3px 6px)`,
-                        borderRadius: dateStr === resizingAbschnitt?.datum_bis ? '0 4px 4px 0' : '0',
-                        marginRight: dateStr === resizingAbschnitt?.datum_bis ? '2px' : '0',
+                        borderRadius: '0',
                       }}
                     />
                   )}
-                  {/* Erweiterungs-Vorschau: gestrichelter Balken */}
-                  {isExtendPreview && d && (
+                  {/* Verlängerung: gestrichelter Balken */}
+                  {istExtend && d && (
                     <div
                       className="absolute inset-x-0 bottom-1 h-1 pointer-events-none"
                       style={{
                         backgroundImage: `repeating-linear-gradient(90deg, ${previewFarbe} 0 3px, transparent 3px 6px)`,
-                        borderRadius: isNewEnd ? '0 4px 4px 0' : '0',
-                        marginRight: isNewEnd ? '2px' : '0',
+                        borderRadius: rundung(istLinks, istRechts, '4px'),
+                        marginLeft: istLinks ? '2px' : '0',
+                        marginRight: istRechts ? '2px' : '0',
                       }}
                     />
                   )}
-                  {/* Neues-Ende-Marker */}
-                  {isNewEnd && d && (
-                    <div
-                      className="absolute right-0 top-0 bottom-0 w-0.5 pointer-events-none z-20"
-                      style={{ backgroundColor: previewFarbe }}
-                    />
+                  {/* Marker der neuen Kante */}
+                  {istNeuesEnde && d && (
+                    <div className="absolute right-0 top-0 bottom-0 w-0.5 pointer-events-none z-20" style={{ backgroundColor: previewFarbe }} />
                   )}
-                  {/* Resize-Handle am Ende des Abschnitts */}
+                  {istNeuerStart && d && (
+                    <div className="absolute left-0 top-0 bottom-0 w-0.5 pointer-events-none z-20" style={{ backgroundColor: previewFarbe }} />
+                  )}
+                  {/* Resize-Griff am Ende */}
                   {istOrigEnde && d && (!resizingId || resizingId === abschnitt.id) && (
                     <div
                       draggable
@@ -237,34 +232,54 @@ function MonatKalender({ year, month, abschnitte, aktivesFach, dragOverDate, onD
                       onClick={(e) => e.stopPropagation()}
                       onDragStart={(e) => {
                         e.stopPropagation()
-                        e.dataTransfer.setData('text/plain', `resize:${abschnitt.id}`)
+                        e.dataTransfer.setData('text/plain', `resize-ende:${abschnitt.id}`)
                         e.dataTransfer.effectAllowed = 'move'
                         const c = document.createElement('canvas')
                         c.width = 1; c.height = 1
                         e.dataTransfer.setDragImage(c, 0, 0)
-                        onResizeStart(abschnitt.id)
+                        onResizeStart(abschnitt.id, 'ende')
                       }}
                       className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize z-30"
-                      title="Ziehen zum Verlängern/Verkürzen"
+                      title="Ziehen zum Verlängern/Verkürzen (Ende)"
                     >
-                      <div className="absolute right-0.5 top-1 bottom-1 w-1 rounded-full bg-current opacity-0 hover:opacity-40 transition-opacity"
-                        style={{ color: farbe }} />
+                      <div className="absolute right-0.5 top-1 bottom-1 w-1 rounded-full bg-current opacity-0 hover:opacity-40 transition-opacity" style={{ color: farbe }} />
+                    </div>
+                  )}
+                  {/* Resize-Griff am Anfang */}
+                  {istOrigStart && d && (!resizingId || resizingId === abschnitt.id) && (
+                    <div
+                      draggable
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      onDragStart={(e) => {
+                        e.stopPropagation()
+                        e.dataTransfer.setData('text/plain', `resize-start:${abschnitt.id}`)
+                        e.dataTransfer.effectAllowed = 'move'
+                        const c = document.createElement('canvas')
+                        c.width = 1; c.height = 1
+                        e.dataTransfer.setDragImage(c, 0, 0)
+                        onResizeStart(abschnitt.id, 'start')
+                      }}
+                      className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize z-30"
+                      title="Ziehen zum Verlängern/Verkürzen (Anfang)"
+                    >
+                      <div className="absolute left-0.5 top-1 bottom-1 w-1 rounded-full bg-current opacity-0 hover:opacity-40 transition-opacity" style={{ color: farbe }} />
                     </div>
                   )}
                   {d && (
                     <span className={`text-[11px] relative z-10 w-5 h-5 flex items-center justify-center rounded-full
-                      ${abschnitt || isExtendPreview
+                      ${abschnitt || istExtend
                         ? 'text-ink-700 dark:text-paper-200 font-medium'
                         : ferien
                           ? 'text-rose-400 dark:text-rose-500'
                           : 'text-ink-600 dark:text-ink-400'
                       }
-                      ${isShrinkPreview ? 'line-through text-ink-400' : ''}`}
+                      ${istShrink ? 'line-through text-ink-400' : ''}`}
                     >
                       {d}
                     </span>
                   )}
-                  {istErsteSichtbareWochenstelle && !isShrinkPreview && (
+                  {istErsteSichtbareWochenstelle && (
                     <span
                       className="absolute left-0.5 top-0 text-[8px] font-semibold leading-none truncate pointer-events-none z-20"
                       style={{ color: farbe, maxWidth: '100%' }}
@@ -504,6 +519,7 @@ export default function JahresplanungView() {
   const [dragOverDate, setDragOverDate] = useState(null)
   const [dragAbschnittId, setDragAbschnittId] = useState(null)
   const [resizingId, setResizingId] = useState(null)
+  const [resizingEdge, setResizingEdge] = useState('ende') // 'start' | 'ende'
 
   // Drag & Drop (Listen-Reorder)
   const [listDragId, setListDragId] = useState(null)
@@ -676,8 +692,9 @@ export default function JahresplanungView() {
     setLoeschenBestaetigung(false)
   }
 
-  // Mobil kommt das Datum aus den Modal-Feldern; Desktop weiterhin per Drag/Kalender.
-  const mobilDatum = () => {
+  // Zeitraum aus den Formularfeldern (Beginn/Ende manuell eingebbar – auf allen Plattformen).
+  // Desktop kann den Zeitraum zusätzlich per Drag/Resize im Kalender setzen.
+  const formDatum = () => {
     const dv = formDatumVon || null
     let db = formDatumBis || null
     if (dv && !db) db = dv
@@ -688,8 +705,7 @@ export default function JahresplanungView() {
   const handleSpeichern = async () => {
     if (!aktivesFach) return
     if (istNeu) {
-      // Desktop: ohne Datum (per Drag gesetzt); Mobil: Datum aus den Modal-Feldern.
-      const { datumVon, datumBis } = mobil ? mobilDatum() : { datumVon: null, datumBis: null }
+      const { datumVon, datumBis } = formDatum()
       await window.api.jahresplanung.create({
         fachId: aktivesFach.id,
         titel: formTitel.trim(),
@@ -701,7 +717,7 @@ export default function JahresplanungView() {
         farbe: formFarbe,
       })
     } else if (selektiert) {
-      const { datumVon, datumBis } = mobil ? mobilDatum() : { datumVon: selektiert.datum_von, datumBis: selektiert.datum_bis }
+      const { datumVon, datumBis } = formDatum()
       const res = await window.api.jahresplanung.update(selektiert.id, {
         titel: formTitel.trim(),
         inhalt: formInhalt,
@@ -725,22 +741,6 @@ export default function JahresplanungView() {
     panelSchliessen()
   }
 
-  // Abschnitt aus Kalender entfernen (Daten löschen, nicht den Abschnitt selbst)
-  const handleAusKalenderEntfernen = async () => {
-    if (!selektiert) return
-    await window.api.jahresplanung.update(selektiert.id, {
-      titel: selektiert.titel,
-      inhalt: selektiert.inhalt,
-      lernziele: selektiert.lernziele,
-      kompetenzen: selektiert.kompetenzen,
-      datumVon: null,
-      datumBis: null,
-      farbe: selektiert.farbe,
-    })
-    await ladeAbschnitte()
-    panelSchliessen()
-  }
-
   // ─── Drag & Drop: Abschnitt → Kalender ──────────────────────────────────
   const handleDragStart = (e, abschnitt) => {
     setDragAbschnittId(abschnitt.id)
@@ -756,27 +756,46 @@ export default function JahresplanungView() {
     // Wir löschen nicht sofort – onDragOver vom nächsten Tag überschreibt
   }
 
+  // Ist der betroffene Abschnitt gerade im Panel geöffnet, die Datumsfelder
+  // mitziehen – sonst würde ein anschließendes Speichern den Kalender-Drag zurücksetzen.
+  const syncPanelDatum = (id, datumVon, datumBis) => {
+    if (selektiert?.id !== id) return
+    setSelektiert(prev => (prev ? { ...prev, datum_von: datumVon, datum_bis: datumBis } : prev))
+    setFormDatumVon(datumVon ?? '')
+    setFormDatumBis(datumBis ?? '')
+  }
+
   const handleDrop = async (dateStr, e) => {
     setDragOverDate(null)
 
     // dataTransfer auslesen um Resize vs. normalen Drop zu unterscheiden
     const transferData = e?.dataTransfer?.getData('text/plain') ?? ''
 
-    // Resize-Drop
-    if (transferData.startsWith('resize:') || resizingId) {
+    // Resize-Drop (Anfang oder Ende ziehen)
+    if (transferData.startsWith('resize') || resizingId) {
       const id = resizingId || parseInt(transferData.split(':')[1])
       const abschnitt = abschnitte.find(a => a.id === id)
-      if (abschnitt && dateStr >= abschnitt.datum_von) {
-        await window.api.jahresplanung.update(id, {
-          titel: abschnitt.titel,
-          inhalt: abschnitt.inhalt,
-          lernziele: abschnitt.lernziele,
-          kompetenzen: abschnitt.kompetenzen,
-          datumVon: abschnitt.datum_von,
-          datumBis: dateStr,
-          farbe: abschnitt.farbe,
-        })
-        await ladeAbschnitte()
+      if (abschnitt) {
+        let datumVon = abschnitt.datum_von
+        let datumBis = abschnitt.datum_bis
+        if (resizingEdge === 'start') {
+          if (dateStr <= abschnitt.datum_bis) datumVon = dateStr   // Anfang nach vorne/hinten
+        } else {
+          if (dateStr >= abschnitt.datum_von) datumBis = dateStr   // Ende nach hinten/vorne
+        }
+        if (datumVon !== abschnitt.datum_von || datumBis !== abschnitt.datum_bis) {
+          await window.api.jahresplanung.update(id, {
+            titel: abschnitt.titel,
+            inhalt: abschnitt.inhalt,
+            lernziele: abschnitt.lernziele,
+            kompetenzen: abschnitt.kompetenzen,
+            datumVon,
+            datumBis,
+            farbe: abschnitt.farbe,
+          })
+          await ladeAbschnitte()
+          syncPanelDatum(id, datumVon, datumBis)
+        }
       }
       setResizingId(null)
       setDragAbschnittId(null)
@@ -803,6 +822,7 @@ export default function JahresplanungView() {
       farbe: abschnitt.farbe,
     })
     await ladeAbschnitte()
+    syncPanelDatum(abschnitt.id, dateStr, datumBis)
     setDragAbschnittId(null)
   }
 
@@ -1066,46 +1086,34 @@ export default function JahresplanungView() {
                     />
                   </div>
 
-                  {/* Zeitraum: mobil editierbar (Beginn–Ende), Desktop read-only aus dem Kalender */}
-                  {mobil ? (
-                    <div>
-                      <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Zeitraum</label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="date"
-                          value={formDatumVon}
-                          onChange={e => setFormDatumVon(e.target.value)}
-                          className="flex-1 min-w-0 text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
-                        />
-                        <span className="text-ink-400 flex-shrink-0" aria-hidden>–</span>
-                        <input
-                          type="date"
-                          value={formDatumBis}
-                          min={formDatumVon || undefined}
-                          onChange={e => setFormDatumBis(e.target.value)}
-                          className="flex-1 min-w-0 text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
-                        />
-                      </div>
-                      {formDatumVon && (
-                        <button onClick={() => { setFormDatumVon(''); setFormDatumBis('') }} className="mt-1 text-[11px] text-ink-400 hover:text-red-500 transition-colors">
-                          Zeitraum entfernen
-                        </button>
-                      )}
+                  {/* Zeitraum: Beginn–Ende manuell eingebbar (alle Plattformen); Desktop zusätzlich per Drag im Kalender */}
+                  <div>
+                    <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Zeitraum</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={formDatumVon}
+                        onChange={e => setFormDatumVon(e.target.value)}
+                        className="flex-1 min-w-0 text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
+                      />
+                      <span className="text-ink-400 flex-shrink-0" aria-hidden>–</span>
+                      <input
+                        type="date"
+                        value={formDatumBis}
+                        min={formDatumVon || undefined}
+                        onChange={e => setFormDatumBis(e.target.value)}
+                        className="flex-1 min-w-0 text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
+                      />
                     </div>
-                  ) : (
-                    selektiert?.datum_von && (
-                      <div className="flex items-center justify-between gap-2 text-xs bg-coral-50/70 dark:bg-coral-900/20 border border-coral-100 dark:border-coral-900/40 rounded-lg px-3 py-2">
-                        <span className="text-ink-600 dark:text-paper-300">📅 {formatDatum(selektiert.datum_von)} – {formatDatum(selektiert.datum_bis)}</span>
-                        <button
-                          onClick={handleAusKalenderEntfernen}
-                          className="text-[11px] text-ink-400 hover:text-red-500 transition-colors flex-shrink-0"
-                          title="Aus dem Kalender entfernen"
-                        >
-                          Entfernen
-                        </button>
-                      </div>
-                    )
-                  )}
+                    {formDatumVon && (
+                      <button onClick={() => { setFormDatumVon(''); setFormDatumBis('') }} className="mt-1 text-[11px] text-ink-400 hover:text-red-500 transition-colors">
+                        Zeitraum entfernen
+                      </button>
+                    )}
+                    {!mobil && (
+                      <p className="mt-1 text-[11px] text-ink-400">Oder den Abschnitt im Kalender ziehen bzw. an den Rändern verschieben.</p>
+                    )}
+                  </div>
 
                   {/* Farbe */}
                   <div>
@@ -1295,7 +1303,8 @@ export default function JahresplanungView() {
                   onDragLeaveDay={handleDragLeaveDay}
                   onAbschnittKlick={abschnittWaehlen}
                   resizingId={resizingId}
-                  onResizeStart={(id) => setResizingId(id)}
+                  resizingEdge={resizingEdge}
+                  onResizeStart={(id, edge) => { setResizingId(id); setResizingEdge(edge) }}
                   schulferien={schulferien}
                 />
               ))}
