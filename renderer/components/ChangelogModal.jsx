@@ -8,6 +8,13 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.6.3',
+    datum: '2026-08-27',
+    punkte: [
+      'Erweiterte In-App-Dokumentation: neue Abschnitte „Sitzplan", „Detailplanung (Unterrichtsplanung pro Woche)", „Klassenvorstand (KV)" und „Dashboard: ToDos & Termine" beschreiben nun auch diese Bereiche. Zusätzlich mehrere Aktualisierungen bestehender Abschnitte (u. a. Anlege-Button „+ Hinzufügen", SPF-Auswahl über ein eigenes Fenster, eigene Mitarbeits-Symbole auch bei der zweistufigen Skala, präzisierte Export-Hinweise).',
+    ],
+  },
+  {
     version: '1.6.2',
     datum: '2026-08-25',
     punkte: [
