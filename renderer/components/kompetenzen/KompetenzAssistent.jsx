@@ -2,13 +2,13 @@
 // Copyright (C) 2026 Tobias Gatterbauer
 //
 // Schritt-für-Schritt-Assistent zum Erfassen der Kompetenz-Niveaus einer:s Schüler:in in einem Fach.
-// Ein Durchlauf = eine Erhebung (Zeitpunkt). Bewertet wird je TEILKOMPETENZ auf Niveau 0–3 (Beschriftung aus
-// den Niveaustufen des Rasters); die einzelnen Kann-Beschreibungen dienen als Niveau-Anker/Hilfe.
+// Ein Durchlauf = eine Erhebung (Zeitpunkt). Bewertet wird JEDE Kann-Beschreibung (Item): pro Item wählst du
+// das erreichte Niveau, wobei die Optionen die echten Raster-Formulierungen zeigen (mit der Niveaustufen-
+// Bezeichnung als Label, z. B. „unter Anleitung"). Gegliedert je Kompetenzbereich → Teilkompetenz.
 import React, { useState } from 'react'
 
 const heute = () => new Date().toISOString().slice(0, 10)
 
-// Kompakter Fortschritts-Balken (variable Schrittzahl).
 function Fortschritt({ aktuell, anzahl }) {
   return (
     <div className="mb-4">
@@ -25,17 +25,26 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
   const [datum, setDatum] = useState(heute())
   const [titel, setTitel] = useState('')
   const [raster, setRaster] = useState(null)
-  const [werte, setWerte] = useState({}) // { [bereichIdx]: { [teilkompIdx]: { niveau, notiz } } }
-  const [offeneHilfe, setOffeneHilfe] = useState(() => new Set())
+  const [werte, setWerte] = useState({}) // { [bi]: { [ti]: { [ii]: niveau } } }
   const [laden, setLaden] = useState(false)
   const [fehler, setFehler] = useState('')
   const [speichern, setSpeichern] = useState(false)
 
   const bereiche = raster?.bereiche ?? []
-  const niveauLabel = (n) => {
-    if (n === 0) return 'noch nicht erfasst'
-    const ns = (raster?.niveaustufen ?? []).find(x => x.niveau === n)
-    return ns ? ns.bezeichnung : `Niveau ${n}`
+  const bezeichnung = (k) => (raster?.niveaustufen ?? []).find(x => x.niveau === k)?.bezeichnung || `Niveau ${k}`
+
+  // Auswahl-Optionen eines Items: entweder die drei Niveau-Formulierungen (mit Bezeichnung als Label)
+  // oder – bei 1-Niveau-Stufen (Item ist reiner Text) – eine „erreicht"-Option.
+  const optionenVonItem = (it) => {
+    const hatNiveaus = it.niveau1 != null || it.niveau2 != null || it.niveau3 != null
+    if (!hatNiveaus) return [{ k: 1, label: 'erreicht', text: it.text || '', standard: null }]
+    const out = []
+    for (const k of [1, 2, 3]) {
+      const t = it['niveau' + k]
+      if (!t) continue
+      out.push({ k, label: bezeichnung(k), text: t, standard: k === 1 ? (it.niveau1_standard || null) : null })
+    }
+    return out
   }
 
   const rasterLaden = async () => {
@@ -45,9 +54,15 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
       const r = await window.api.kompetenzKatalog.getRaster(fach.name, schulstufe)
       if (!r || !r.bereiche?.length) { setFehler('Für diese Schulstufe ist kein Raster hinterlegt.'); setLaden(false); return }
       setRaster(r)
-      setWerte(Object.fromEntries(r.bereiche.map((b, bi) =>
-        [bi, Object.fromEntries((b.kategorien ?? []).map((k, ti) => [ti, { niveau: 0, notiz: '' }]))]
-      )))
+      const init = {}
+      r.bereiche.forEach((b, bi) => {
+        init[bi] = {}
+        ;(b.kategorien ?? []).forEach((k, ti) => {
+          init[bi][ti] = {}
+          ;(k.items ?? []).forEach((_, ii) => { init[bi][ti][ii] = 0 })
+        })
+      })
+      setWerte(init)
       setSchritt(1)
     } catch {
       setFehler('Raster konnte nicht geladen werden.')
@@ -56,13 +71,10 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
     }
   }
 
-  const setNiveau = (bi, ti, niveau) => setWerte(w => ({ ...w, [bi]: { ...w[bi], [ti]: { ...w[bi]?.[ti], niveau } } }))
-  const setNotiz = (bi, ti, notiz) => setWerte(w => ({ ...w, [bi]: { ...w[bi], [ti]: { ...w[bi]?.[ti], notiz } } }))
-  const toggleHilfe = (key) => setOffeneHilfe(prev => {
-    const n = new Set(prev)
-    if (n.has(key)) n.delete(key); else n.add(key)
-    return n
-  })
+  const getNiveau = (bi, ti, ii) => werte[bi]?.[ti]?.[ii] ?? 0
+  const setNiveau = (bi, ti, ii, k) => setWerte(w => ({
+    ...w, [bi]: { ...w[bi], [ti]: { ...w[bi]?.[ti], [ii]: k } },
+  }))
   const weiter = () => setSchritt(s => s + 1)
   const zurueck = () => { setFehler(''); setSchritt(s => s - 1) }
 
@@ -70,16 +82,13 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
     setSpeichern(true); setFehler('')
     try {
       const alleWerte = []
-      bereiche.forEach((b, bi) => (b.kategorien ?? []).forEach((k, ti) => {
+      bereiche.forEach((b, bi) => (b.kategorien ?? []).forEach((k, ti) => (k.items ?? []).forEach((_, ii) => {
         alleWerte.push({
-          bereich_idx: bi,
-          teilkompetenz_idx: ti,
-          bereich_name: b.name,
-          teilkompetenz_name: k.name,
-          niveau: werte[bi]?.[ti]?.niveau ?? 0,
-          notiz: werte[bi]?.[ti]?.notiz?.trim() || null,
+          bereich_idx: bi, teilkompetenz_idx: ti, item_idx: ii,
+          bereich_name: b.name, teilkompetenz_name: k.name,
+          niveau: getNiveau(bi, ti, ii), notiz: null,
         })
-      }))
+      })))
       await window.api.kompetenzErhebungen.speichern({
         schuelerId: schueler.id, fachId: fach.id, schulstufe, datum, titel: titel.trim() || null, werte: alleWerte,
       })
@@ -95,21 +104,18 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
   const aktBereichIdx = schritt >= 1 && schritt <= bereiche.length ? schritt - 1 : null
   const aktBereich = aktBereichIdx != null ? bereiche[aktBereichIdx] : null
 
-  // Kann-Beschreibungen eines Items als Zeilen (Niveau-Anker) aufbereiten.
-  const itemZeilen = (it) => {
-    if (it.text) return [it.text]
-    return [
-      it.niveau1 && `1: ${it.niveau1}`,
-      it.niveau1_standard && `1 (Standard): ${it.niveau1_standard}`,
-      it.niveau2 && `2: ${it.niveau2}`,
-      it.niveau3 && `3: ${it.niveau3}`,
-    ].filter(Boolean)
+  // Zähler für die Zusammenfassung: wie viele Kann-Beschreibungen sind erfasst (Niveau > 0)?
+  const zaehle = (bi) => {
+    let gesamt = 0, erfasst = 0
+    ;(bereiche[bi]?.kategorien ?? []).forEach((k, ti) => (k.items ?? []).forEach((_, ii) => {
+      gesamt++; if (getNiveau(bi, ti, ii) > 0) erfasst++
+    }))
+    return { gesamt, erfasst }
   }
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box max-w-2xl w-[92vw] flex flex-col max-h-[88vh]">
-        {/* Kopf */}
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Kompetenzen-Assistent</h2>
@@ -120,14 +126,14 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
 
         {schritt > 0 && <Fortschritt aktuell={schritt} anzahl={anzahlSchritte} />}
 
-        {/* Körper */}
         <div className="flex-1 overflow-y-auto px-0.5">
           {/* Schritt 0: Intro */}
           {schritt === 0 && (
             <div className="space-y-4">
               <p className="text-sm text-ink-600 dark:text-paper-300">
-                Erfasse den aktuellen Kompetenzstand je Teilkompetenz. Der Durchlauf wird als Erhebung mit Datum gespeichert –
-                du kannst ihn im Schuljahr beliebig oft wiederholen und die Entwicklung im Netzdiagramm verfolgen.
+                Erfasse den aktuellen Stand jeder Kann-Beschreibung. Pro Beschreibung wählst du das erreichte Niveau.
+                Der Durchlauf wird als Erhebung mit Datum gespeichert – beliebig oft pro Jahr wiederholbar, die Entwicklung
+                erscheint im Netzdiagramm.
               </p>
               <div>
                 <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Datum</label>
@@ -157,85 +163,75 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
             </div>
           )}
 
-          {/* Schritt 1..N: je Kompetenzbereich, darin je Teilkompetenz */}
+          {/* Schritt 1..N: je Kompetenzbereich → Teilkompetenzen → Kann-Beschreibungen */}
           {aktBereich && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-ink-400">Kompetenzbereich {schritt}/{bereiche.length}</p>
                 <h3 className="text-base font-semibold text-ink-900 dark:text-white">{aktBereich.name}</h3>
                 {aktBereich.basis && <p className="text-xs text-ink-500 dark:text-ink-400 mt-0.5">{aktBereich.basis}</p>}
+                <p className="text-[11px] text-ink-400 mt-1">Wähle je Kann-Beschreibung das erreichte Niveau (oder „noch nicht").</p>
               </div>
 
-              {(aktBereich.kategorien ?? []).map((k, ti) => {
-                const w = werte[aktBereichIdx]?.[ti] ?? { niveau: 0, notiz: '' }
-                const hilfeKey = `${aktBereichIdx}:${ti}`
-                const hilfeOffen = offeneHilfe.has(hilfeKey)
-                return (
-                  <div key={ti} className="border border-paper-200 dark:border-ink-800 rounded-xl p-3 space-y-2">
-                    <p className="text-sm font-medium text-ink-800 dark:text-paper-100">{k.name}</p>
-                    <div className="flex gap-1.5">
-                      {[0, 1, 2, 3].map(n => {
-                        const aktiv = w.niveau === n
-                        return (
-                          <button key={n} onClick={() => setNiveau(aktBereichIdx, ti, n)}
-                            className={`flex-1 h-10 rounded-lg text-sm font-bold transition-all active:scale-95 ${aktiv
-                              ? (n === 0 ? 'bg-ink-400 text-white' : 'bg-coral-500 text-white shadow-soft')
-                              : 'bg-paper-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400 hover:bg-paper-200 dark:hover:bg-ink-700'}`}>
-                            {n === 0 ? '·' : n}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    <p className="text-xs text-ink-600 dark:text-paper-300 text-center">{niveauLabel(w.niveau)}</p>
-
-                    <button onClick={() => toggleHilfe(hilfeKey)} className="text-xs font-medium text-coral-600 dark:text-coral-400 hover:underline">
-                      {hilfeOffen ? '▾ Kann-Beschreibungen ausblenden' : '▸ Kann-Beschreibungen anzeigen'}
-                    </button>
-                    {hilfeOffen && (
-                      <ul className="bg-paper-50 dark:bg-ink-900/40 border border-paper-100 dark:border-ink-800 rounded-lg p-2.5 space-y-1.5 max-h-48 overflow-y-auto">
-                        {(k.items ?? []).map((it, ii) => (
-                          <li key={ii} className="text-[11px] text-ink-500 dark:text-ink-400 leading-snug">
-                            {itemZeilen(it).map((z, zi) => <span key={zi} className="block">{z}</span>)}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-
-                    <textarea rows={2} value={w.notiz ?? ''} onChange={e => setNotiz(aktBereichIdx, ti, e.target.value)}
-                      className="w-full text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 placeholder-ink-400 resize-none focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
-                      placeholder="Notiz (optional)…" />
-                  </div>
-                )
-              })}
+              {(aktBereich.kategorien ?? []).map((k, ti) => (
+                <div key={ti} className="space-y-2">
+                  <p className="text-sm font-semibold text-ink-800 dark:text-paper-100 border-b border-paper-100 dark:border-ink-800 pb-1">{k.name}</p>
+                  {(k.items ?? []).map((it, ii) => {
+                    const gewaehlt = getNiveau(aktBereichIdx, ti, ii)
+                    const optionen = optionenVonItem(it)
+                    return (
+                      <div key={ii} className="rounded-lg border border-paper-200 dark:border-ink-800 p-2 space-y-1">
+                        {optionen.map(opt => {
+                          const aktiv = gewaehlt === opt.k
+                          return (
+                            <button key={opt.k} onClick={() => setNiveau(aktBereichIdx, ti, ii, aktiv ? 0 : opt.k)}
+                              className={`w-full text-left rounded-md px-2.5 py-1.5 flex gap-2 items-start transition-colors ${aktiv
+                                ? 'bg-coral-50 dark:bg-coral-900/30 ring-1 ring-coral-300 dark:ring-coral-700'
+                                : 'hover:bg-paper-100 dark:hover:bg-ink-800'}`}>
+                              <span className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold ${aktiv ? 'bg-coral-500 border-coral-500 text-white' : 'border-paper-300 dark:border-ink-600 text-ink-400'}`}>
+                                {aktiv ? opt.k : ''}
+                              </span>
+                              <span className="text-[12px] leading-snug">
+                                <span className={`font-semibold ${aktiv ? 'text-coral-700 dark:text-coral-300' : 'text-ink-600 dark:text-paper-300'}`}>{opt.label}: </span>
+                                <span className="text-ink-600 dark:text-paper-300">kann {opt.text}</span>
+                                {opt.standard && <span className="block text-[11px] text-ink-400 italic">Standard (MS): kann {opt.standard}</span>}
+                              </span>
+                            </button>
+                          )
+                        })}
+                        <button onClick={() => setNiveau(aktBereichIdx, ti, ii, 0)}
+                          className={`text-[11px] px-2.5 ${gewaehlt === 0 ? 'text-ink-500 font-medium' : 'text-ink-400 hover:text-ink-600'}`}>
+                          · noch nicht erfasst
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
           )}
 
           {/* Letzter Schritt: Zusammenfassung */}
           {schritt === bereiche.length + 1 && bereiche.length > 0 && (
-            <div className="space-y-3">
-              <p className="text-sm text-ink-600 dark:text-paper-300">Zusammenfassung – prüfe die Niveaus und speichere die Erhebung.</p>
-              {bereiche.map((b, bi) => (
-                <div key={bi}>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-1">{b.name}</p>
-                  <div className="border border-paper-200 dark:border-ink-800 rounded-lg divide-y divide-paper-100 dark:divide-ink-800">
-                    {(b.kategorien ?? []).map((k, ti) => (
-                      <div key={ti} className="flex items-center justify-between gap-2 px-3 py-1.5">
-                        <span className="text-sm text-ink-700 dark:text-paper-200 truncate">{k.name}</span>
-                        <span className="text-xs text-ink-500 dark:text-ink-400 flex-shrink-0">
-                          <span className="font-bold text-coral-600 dark:text-coral-400">{werte[bi]?.[ti]?.niveau ?? 0}</span> · {niveauLabel(werte[bi]?.[ti]?.niveau ?? 0)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-2">
+              <p className="text-sm text-ink-600 dark:text-paper-300">Zusammenfassung – erfasste Kann-Beschreibungen je Bereich. Speichern legt die Erhebung an.</p>
+              <div className="border border-paper-200 dark:border-ink-800 rounded-lg divide-y divide-paper-100 dark:divide-ink-800">
+                {bereiche.map((b, bi) => {
+                  const { gesamt, erfasst } = zaehle(bi)
+                  return (
+                    <div key={bi} className="flex items-center justify-between gap-2 px-3 py-2">
+                      <span className="text-sm text-ink-700 dark:text-paper-200 truncate">{b.name}</span>
+                      <span className="text-xs text-ink-500 dark:text-ink-400 flex-shrink-0"><span className="font-bold text-coral-600 dark:text-coral-400">{erfasst}</span>/{gesamt} erfasst</span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 
           {fehler && <p className="text-red-500 text-sm mt-3">{fehler}</p>}
         </div>
 
-        {/* Fußzeile */}
         <div className="flex gap-3 pt-4 mt-2 border-t border-paper-100 dark:border-ink-800">
           {schritt === 0 ? (
             <>

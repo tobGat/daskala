@@ -650,6 +650,7 @@
           {
             "bereich_idx": 0,
             "teilkompetenz_idx": 0,
+            "item_idx": 0,
             "bereich_name": "Lesen",
             "teilkompetenz_name": "Lesefertigkeit",
             "niveau": 1,
@@ -658,6 +659,7 @@
           {
             "bereich_idx": 1,
             "teilkompetenz_idx": 0,
+            "item_idx": 0,
             "bereich_name": "Schreiben",
             "teilkompetenz_name": "Verfassen",
             "niveau": 2,
@@ -675,6 +677,7 @@
           {
             "bereich_idx": 0,
             "teilkompetenz_idx": 0,
+            "item_idx": 0,
             "bereich_name": "Lesen",
             "teilkompetenz_name": "Lesefertigkeit",
             "niveau": 2,
@@ -683,6 +686,7 @@
           {
             "bereich_idx": 1,
             "teilkompetenz_idx": 0,
+            "item_idx": 0,
             "bereich_name": "Schreiben",
             "teilkompetenz_name": "Verfassen",
             "niveau": 3,

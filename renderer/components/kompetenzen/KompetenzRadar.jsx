@@ -2,9 +2,10 @@
 // Copyright (C) 2026 Tobias Gatterbauer
 //
 // Netzdiagramm (Radar) der Kompetenz-Niveaus. Achsen = Kompetenzbereiche (aus den Erhebungsdaten abgeleitet),
-// Wert = Ø der Teilkompetenz-Niveaus des Bereichs. Zeitstrahl-Schieber über die Erhebungen; Polygon-Übergang
-// animiert (requestAnimationFrame – eine CSS-transition auf points interpoliert der Browser nicht). Darunter eine
-// ausklappbare Detailliste (je Bereich seine Teilkompetenzen mit Niveau). Reines Inline-SVG im Stil von NotenChart.
+// Wert = Ø der Kann-Beschreibungs-Niveaus des Bereichs. Skala 0..maxNiveau (aus den Niveaustufen des Rasters).
+// Zeitstrahl-Schieber über die Erhebungen; Polygon-Übergang animiert (requestAnimationFrame – eine CSS-transition
+// auf points interpoliert der Browser nicht). Darunter eine ausklappbare Detailliste (je Bereich → Teilkompetenz
+// mit Ø-Niveau). Reines Inline-SVG im Stil von NotenChart.
 import React, { useEffect, useRef, useState } from 'react'
 
 function formatDatum(s) {
@@ -21,6 +22,8 @@ const kurz = (s, n = 16) => {
 const FARBE = '#fb6936' // coral (SA-Farbe im NotenChart)
 
 export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
+  const maxNiveau = niveaustufen.length || 1
+
   // Achsen aus den Daten ableiten: distinct (bereich_idx, bereich_name), nach bereich_idx sortiert.
   const axisMap = new Map()
   erhebungen.forEach(e => (e.werte ?? []).forEach(w => { if (!axisMap.has(w.bereich_idx)) axisMap.set(w.bereich_idx, w.bereich_name) }))
@@ -40,13 +43,11 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
   animRef.current = anim
   const rafRef = useRef(null)
 
-  // Bei geänderter Erhebungszahl auf die neueste springen.
   useEffect(() => { setIdx(Math.max(0, erhebungen.length - 1)) }, [erhebungen.length])
 
   const ziel = erhebungen[idx] ? zielFor(idx) : achsen.map(() => 0)
   const zielKey = ziel.map(v => v.toFixed(3)).join(',')
   useEffect(() => {
-    // Startwerte auf Achsenlänge bringen (behebt Leer-Bug, wenn Daten erst nach dem Mount eintreffen).
     const start = animRef.current.length === ziel.length ? animRef.current : ziel.map(() => 0)
     const t0 = performance.now()
     const dauer = 320
@@ -69,29 +70,36 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
     )
   }
 
-  const niveauLabel = (n) => {
-    if (n === 0) return 'noch nicht erfasst'
-    const ns = niveaustufen.find(x => x.niveau === n)
-    return ns ? ns.bezeichnung : `Niveau ${n}`
-  }
-
   const W = 400, H = 320, cx = 200, cy = 150, maxR = 100
   const winkel = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / N
   const punkt = (niveau, i, r = null) => {
-    const rr = r ?? (Math.max(0, Math.min(3, niveau)) / 3) * maxR
+    const rr = r ?? (Math.max(0, Math.min(maxNiveau, niveau)) / maxNiveau) * maxR
     const a = winkel(i)
     return [cx + rr * Math.cos(a), cy + rr * Math.sin(a)]
   }
   const polyPunkte = (vals) => vals.map((v, i) => punkt(v, i).map(z => z.toFixed(1)).join(',')).join(' ')
-  const ringPunkte = (level) => achsen.map((_, i) => punkt(0, i, (level / 3) * maxR).map(z => z.toFixed(1)).join(',')).join(' ')
+  const ringPunkte = (level) => achsen.map((_, i) => punkt(0, i, (level / maxNiveau) * maxR).map(z => z.toFixed(1)).join(',')).join(' ')
+  const ringe = Array.from({ length: maxNiveau }, (_, k) => k + 1)
 
   const aktuelle = erhebungen[idx]
+
+  // Detailliste: je Bereich → Teilkompetenzen (Ø der Item-Niveaus) für die gewählte Erhebung.
+  const detailBereiche = achsen.map(a => {
+    const rows = (aktuelle?.werte ?? []).filter(w => w.bereich_idx === a.idx)
+    const byTk = new Map()
+    rows.forEach(w => {
+      if (!byTk.has(w.teilkompetenz_idx)) byTk.set(w.teilkompetenz_idx, { name: w.teilkompetenz_name, sum: 0, count: 0 })
+      const o = byTk.get(w.teilkompetenz_idx); o.sum += w.niveau; o.count++
+    })
+    const teil = [...byTk.entries()].sort((x, y) => x[0] - y[0]).map(([ti, o]) => ({ ti, name: o.name, avg: o.count ? o.sum / o.count : 0 }))
+    return { ...a, avg: avg(aktuelle, a.idx), teil }
+  })
 
   return (
     <div className="bg-paper-50 dark:bg-ink-900/40 border border-paper-200 dark:border-ink-800 rounded-xl p-3">
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
-        {[1, 2, 3].map(level => (
-          <polygon key={level} points={ringPunkte(level)} fill="none" stroke="#cfc9c2" strokeWidth={level === 3 ? 1 : 0.5} strokeOpacity={0.7} />
+        {ringe.map(level => (
+          <polygon key={level} points={ringPunkte(level)} fill="none" stroke="#cfc9c2" strokeWidth={level === maxNiveau ? 1 : 0.5} strokeOpacity={0.7} />
         ))}
         {achsen.map((a, i) => {
           const [ex, ey] = punkt(0, i, maxR)
@@ -107,21 +115,27 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
             </g>
           )
         })}
-        {[1, 2, 3].map(level => (
-          <text key={level} x={cx + 4} y={cy - (level / 3) * maxR + 3} fontSize={8} fill="#a59c91">{level}</text>
+        {ringe.map(level => (
+          <text key={level} x={cx + 4} y={cy - (level / maxNiveau) * maxR + 3} fontSize={8} fill="#a59c91">{level}</text>
         ))}
         <polygon points={polyPunkte(anim)} fill="rgba(251,105,54,0.18)" stroke={FARBE} strokeWidth={2} strokeLinejoin="round" />
         {anim.map((v, i) => {
           const [x, y] = punkt(v, i)
-          const echt = avg(aktuelle, achsen[i].idx)
           return (
             <g key={achsen[i].idx}>
-              <title>{`${achsen[i].name} · Ø ${echt.toFixed(1)}`}</title>
+              <title>{`${achsen[i].name} · Ø ${avg(aktuelle, achsen[i].idx).toFixed(1)}`}</title>
               <circle cx={x} cy={y} r={3.5} fill={FARBE} stroke="white" strokeWidth={1.2} />
             </g>
           )
         })}
       </svg>
+
+      {/* Niveau-Legende (Raster-Begriffe) */}
+      {niveaustufen.length > 0 && (
+        <p className="text-[10px] text-ink-400 text-center px-2">
+          {niveaustufen.map(n => `${n.niveau} = ${n.bezeichnung}`).join(' · ')}
+        </p>
+      )}
 
       {/* Zeitstrahl */}
       <div className="px-1 pt-1">
@@ -143,27 +157,19 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
         </button>
         {detailOffen && (
           <div className="mt-2 space-y-3">
-            {achsen.map(a => {
-              const teil = (aktuelle?.werte ?? []).filter(w => w.bereich_idx === a.idx).sort((x, y) => x.teilkompetenz_idx - y.teilkompetenz_idx)
-              return (
-                <div key={a.idx}>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-1">{a.name} <span className="text-ink-400">· Ø {avg(aktuelle, a.idx).toFixed(1)}</span></p>
-                  <div className="border border-paper-200 dark:border-ink-800 rounded-lg divide-y divide-paper-100 dark:divide-ink-800">
-                    {teil.map(w => (
-                      <div key={w.teilkompetenz_idx} className="flex items-start justify-between gap-2 px-2.5 py-1.5">
-                        <span className="text-xs text-ink-700 dark:text-paper-200">
-                          {w.teilkompetenz_name}
-                          {w.notiz ? <span className="block text-[11px] text-ink-400 italic">{w.notiz}</span> : null}
-                        </span>
-                        <span className="text-[11px] text-ink-500 dark:text-ink-400 flex-shrink-0 text-right">
-                          <span className="font-bold text-coral-600 dark:text-coral-400">{w.niveau}</span> · {niveauLabel(w.niveau)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+            {detailBereiche.map(b => (
+              <div key={b.idx}>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-1">{b.name} <span className="text-ink-400">· Ø {b.avg.toFixed(1)}</span></p>
+                <div className="border border-paper-200 dark:border-ink-800 rounded-lg divide-y divide-paper-100 dark:divide-ink-800">
+                  {b.teil.map(t => (
+                    <div key={t.ti} className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+                      <span className="text-xs text-ink-700 dark:text-paper-200 truncate">{t.name}</span>
+                      <span className="text-[11px] text-ink-500 dark:text-ink-400 flex-shrink-0">Ø <span className="font-bold text-coral-600 dark:text-coral-400">{t.avg.toFixed(1)}</span></span>
+                    </div>
+                  ))}
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -6,11 +6,10 @@
 // Die Funktionen sind async, damit sie sich wie die übrigen Domain-/IPC-Aufrufe verhalten.
 const KATALOG = require('../data/kompetenzraster')
 
-// Default-Niveaustufen für Raster ohne eigene Angabe (Schulstufe 1–2 im PDF ohne Niveau-Split).
+// Default-Niveaustufe für Raster ohne eigene Angabe (Schulstufe 1–2 haben im PDF nur EIN Niveau):
+// eine einzige "erreicht"-Stufe – keine erfundenen Mehrstufen-Bezeichnungen.
 const DEFAULT_NIVEAUSTUFEN = [
-  { niveau: 1, bezeichnung: 'Grundstufe' },
-  { niveau: 2, bezeichnung: 'erweitert' },
-  { niveau: 3, bezeichnung: 'gefestigt' },
+  { niveau: 1, bezeichnung: 'erreicht' },
 ]
 
 // Fachname → Katalog-Schlüssel (unscharf, damit z. B. „Deutsch 1a" passt). Erweiterbar.

@@ -2,8 +2,8 @@
 // Copyright (C) 2026 Tobias Gatterbauer
 //
 // Kompetenz-Erhebungen: pro Schüler:in und Fach werden zu mehreren Zeitpunkten ("Erhebungen") Niveaus
-// je TEILKOMPETENZ erfasst (Verlauf übers Jahr, Netzdiagramm mit Aggregation je Kompetenzbereich).
-// Die Werte sind positionsbasiert (bereich_idx/teilkompetenz_idx aus dem Raster) und zusätzlich selbst-
+// je KANN-BESCHREIBUNG (Item) erfasst (Verlauf übers Jahr, Netzdiagramm mit Aggregation je Kompetenzbereich).
+// Die Werte sind positionsbasiert (bereich_idx/teilkompetenz_idx/item_idx aus dem Raster) und zusätzlich selbst-
 // beschreibend (bereich_name/teilkompetenz_name), damit Anzeige/Aggregation ohne DB-Katalog auskommen.
 // Alle Funktionen erhalten den async DbPort als erstes Argument.
 
@@ -14,11 +14,11 @@ async function getProfil(db, schuelerId, fachId) {
     [schuelerId, fachId]
   )
   const werteRows = await db.select(
-    `SELECT w.erhebung_id, w.bereich_idx, w.teilkompetenz_idx, w.bereich_name, w.teilkompetenz_name, w.niveau, w.notiz
+    `SELECT w.erhebung_id, w.bereich_idx, w.teilkompetenz_idx, w.item_idx, w.bereich_name, w.teilkompetenz_name, w.niveau, w.notiz
        FROM kompetenz_erhebung_werte w
        JOIN kompetenz_erhebungen e ON e.id = w.erhebung_id
       WHERE e.schueler_id = ? AND e.fach_id = ?
-      ORDER BY w.bereich_idx, w.teilkompetenz_idx`,
+      ORDER BY w.bereich_idx, w.teilkompetenz_idx, w.item_idx`,
     [schuelerId, fachId]
   )
   const werteByErhebung = {}
@@ -27,6 +27,7 @@ async function getProfil(db, schuelerId, fachId) {
     werteByErhebung[w.erhebung_id].push({
       bereich_idx: w.bereich_idx,
       teilkompetenz_idx: w.teilkompetenz_idx,
+      item_idx: w.item_idx,
       bereich_name: w.bereich_name,
       teilkompetenz_name: w.teilkompetenz_name,
       niveau: w.niveau,
@@ -56,9 +57,9 @@ async function speichern(db, { schuelerId, fachId, schulstufe, datum, titel, wer
     for (const w of werte ?? []) {
       await tx.execute(
         `INSERT INTO kompetenz_erhebung_werte
-           (erhebung_id, bereich_idx, teilkompetenz_idx, bereich_name, teilkompetenz_name, niveau, notiz)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [erhebungId, w.bereich_idx, w.teilkompetenz_idx, w.bereich_name, w.teilkompetenz_name, w.niveau ?? 0, w.notiz ?? null]
+           (erhebung_id, bereich_idx, teilkompetenz_idx, item_idx, bereich_name, teilkompetenz_name, niveau, notiz)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [erhebungId, w.bereich_idx, w.teilkompetenz_idx, w.item_idx, w.bereich_name, w.teilkompetenz_name, w.niveau ?? 0, w.notiz ?? null]
       )
     }
     return erhebungId
@@ -75,12 +76,12 @@ async function update(db, erhebungId, { datum, titel, werte }) {
     for (const w of werte ?? []) {
       await tx.execute(
         `INSERT INTO kompetenz_erhebung_werte
-           (erhebung_id, bereich_idx, teilkompetenz_idx, bereich_name, teilkompetenz_name, niveau, notiz)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(erhebung_id, bereich_idx, teilkompetenz_idx)
+           (erhebung_id, bereich_idx, teilkompetenz_idx, item_idx, bereich_name, teilkompetenz_name, niveau, notiz)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(erhebung_id, bereich_idx, teilkompetenz_idx, item_idx)
            DO UPDATE SET niveau = excluded.niveau, notiz = excluded.notiz,
                          bereich_name = excluded.bereich_name, teilkompetenz_name = excluded.teilkompetenz_name`,
-        [erhebungId, w.bereich_idx, w.teilkompetenz_idx, w.bereich_name, w.teilkompetenz_name, w.niveau ?? 0, w.notiz ?? null]
+        [erhebungId, w.bereich_idx, w.teilkompetenz_idx, w.item_idx, w.bereich_name, w.teilkompetenz_name, w.niveau ?? 0, w.notiz ?? null]
       )
     }
     return true
