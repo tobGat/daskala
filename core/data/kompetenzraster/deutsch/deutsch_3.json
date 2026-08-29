@@ -1,0 +1,148 @@
+{
+  "fach": "Deutsch",
+  "schulstufe": 3,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Deutsch_3-Schulstufe-Kompetenzraster__1__460999ac.pdf",
+  "status": "vollständig (5 von 5 Seiten)",
+  "niveaustufen": [
+    { "niveau": 1, "bezeichnung": "unter Anleitung" },
+    { "niveau": 2, "bezeichnung": "zunehmend selbstständig" },
+    { "niveau": 3, "bezeichnung": "selbstständig" }
+  ],
+  "kompetenzbereiche": [
+    {
+      "name": "(Recht-)Schreiben und Sprachbetrachtung",
+      "kategorien": [
+        {
+          "name": "(Recht-)Schreiben",
+          "items": [
+            { "niveau1": "beim Ab- und Aufschreiben generelle Rechtschreibregeln unter Anleitung erkennen und verbalisieren sowie in Analogie auf vorgegebene Wörter, Phrasen und Sätze übertragen.", "niveau2": "beim Ab- und Aufschreiben generelle Rechtschreibregeln selbstständig erkennen, verbalisieren und auf andere Wörter, Phrasen und Sätze übertragen.", "niveau3": "generelle Rechtschreibregeln erkennen und beim freien Schreiben anwenden." },
+            { "niveau1": "unter Anleitung die Strategie des Ableitens und Verlängerns bei erarbeiteten Einzelwörtern anwenden.", "niveau2": "die Strategie des Ableitens und Verlängerns bei neuen Wörtern anwenden.", "niveau3": "selbstständig die Strategie des Ableitens und Verlängerns beim freien Schreiben nutzen." },
+            { "niveau1": "erarbeitete Wörter als Mitsprechwörter, Merkwörter und Nachdenkwörter kategorisieren.", "niveau2": "bei erarbeiteten Wörtern Mitsprech-, Nachdenk- und/oder ausgewählte Merkstellen erkennen, begründen und beim freien Schreiben berücksichtigen.", "niveau3": "bei Wörtern die Mitsprech-, Nachdenk- und/oder Merkstellen erkennen, begründen und beim freien Schreiben bei den dazugehörigen Wortformen berücksichtigen." },
+            { "niveau1": "beim freien Schreiben unter Anleitung ein vertrautes Medium als Rechtschreibhilfe für das Überprüfen und Korrigieren von vorgegebenen Wörtern einsetzen.", "niveau2": "beim freien Schreiben unterschiedliche vorgegebene Medien als Rechtschreibhilfe für das Überprüfen und Korrigieren von vorgegebenen Wörtern einsetzen.", "niveau3": "beim freien Schreiben selbstständig Medien als Rechtschreibhilfe für das Überprüfen und Korrigieren von Wörtern auswählen und einsetzen." }
+          ]
+        },
+        {
+          "name": "Sprachbetrachtung",
+          "items": [
+            { "niveau1": "unter Anleitung aus Wörtern verschiedener Wortarten sinnvolle Zusammensetzungen bilden bzw. auflösen und die dabei erzeugte Bedeutung erfassen.", "niveau2": "unter Anleitung aus Wörtern verschiedener Wortarten sinnvolle Zusammensetzungen und Ableitungen bilden bzw. auflösen und die dabei erzeugte Bedeutung erfassen.", "niveau3": "aus Wörtern verschiedener Wortarten selbstständig Zusammensetzungen und Ableitungen bilden bzw. auflösen, die dabei erzeugte Bedeutung erfassen und ihre Bildung reflektieren." },
+            { "niveau1": "unter Anleitung erarbeitete Wörter nach vorgegebenen Wortbausteinen/Morphemen ordnen.", "niveau2": "erarbeitete Wörter nach vorgegebenen Wortbausteinen/Morphemen ordnen.", "niveau3": "verschiedene Wörter nach Wortbausteinen/Morphemen selbstständig ordnen." },
+            { "niveau1": "unter Anleitung mithilfe von Proben erarbeitete Wörter den Wortarten Nomen/Substantiv, Verb und Adjektiv zuordnen.", "niveau2": "Wörter unter Verwendung der Fachbegriffe den Wortarten Nomen/Substantiv, Verb und Adjektiv zuordnen und mithilfe von Proben begründen.", "niveau3": "unter Verwendung der Fachbegriffe neue Wörter der Wortarten Nomen/Substantiv, Verb und Adjektiv finden und mithilfe von Proben begründen." },
+            { "niveau1": "einzelne Satzglieder von vollständigen Sätzen unterscheiden.", "niveau2": "die Satzglieder eines Satzes mithilfe der Verschiebeprobe kennzeichnen.", "niveau3": "erkannte Satzglieder ersetzen und/oder weglassen." },
+            { "niveau1": "auf Basis des identifizierten Verbes und geübter Signalwörter Aussagen den drei Zeitstufen (Vergangenes, Gegenwärtiges, Zukünftiges) zuordnen.", "niveau2": "bei schriftlichen und mündlichen Aussagen die entsprechende Zeitform/das Tempus erkennen und die Verbformen ggf. verändern.", "niveau3": "für schriftliche und mündliche Aussagen die passende Zeitform wählen und beibehalten." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Verfassen von Texten",
+      "kategorien": [
+        {
+          "name": "Planen",
+          "items": [
+            { "niveau1": "unter Anleitung für konzeptionell schriftliche Texte Ideen zu vertrauten Themen sammeln und im Hinblick auf das Schreibziel, auf die Adressaten und Adressatinnen und auf grundlegende Merkmale des vorgegebenen Textmusters vorbereiten.", "niveau2": "unter Anleitung für konzeptionell schriftliche Texte Ideen zu freien und vorgegebenen Themen sammeln und im Hinblick auf das Schreibziel, auf die Adressaten und Adressatinnen und auf das vorgegebene Textmuster vorbereiten.", "niveau3": "für konzeptionell schriftliche Texte Ideen zu freien und vorgegebenen Themen sammeln und im Hinblick auf das Schreibziel, auf die Adressaten und Adressatinnen und auf das Textmuster vorbereiten und sprachliche und gestalterische Mittel sammeln und notieren." }
+          ]
+        },
+        {
+          "name": "Verfassen",
+          "items": [
+            { "niveau1": "einfache Sätze und vorgegebene Textelemente zu einem überwiegend sinnvollen und zusammenhängenden Text verbinden und die Zusammenhänge durch einfache geübte sprachliche Mittel ausdrücken.", "niveau2": "Sätze und Textelemente zu einem überwiegend sinnvollen und zusammenhängenden Text verbinden und die Zusammenhänge durch geübte sprachliche Mittel ausdrücken.", "niveau3": "Sätze und Textelemente fast durchgängig zu einem sinnvollen und zusammenhängenden Text verbinden und die Zusammenhänge durch angemessene sprachliche Mittel ausdrücken." },
+            { "niveau1": "an einem vorgegebenen Textmuster orientiert einen Text überwiegend verständlich und flüssig verfassen.", "niveau2": "ein vorgegebenes Textmuster weitgehend einhalten und einen Text überwiegend verständlich und flüssig verfassen.", "niveau3": "ein vertrautes Textmuster weitgehend einhalten und einen Text verständlich und in Ansätzen adressatenorientiert flüssig verfassen." }
+          ]
+        },
+        {
+          "name": "Überarbeiten",
+          "items": [
+            { "niveau1": "unter Anleitung und mit Hilfestellung vorgegebene Texte zu einzelnen vorgegebenen Kriterien der Verständlichkeit und Sprachrichtigkeit in analoger und/oder digitaler Form überprüfen und überarbeiten.", "niveau2": "unter Anleitung und mit Hilfestellung vorgegebene Texte zu vorgegebenen Kriterien der Verständlichkeit, des Aufbaus und der Sprachrichtigkeit in analoger und/oder digitaler Form überprüfen und überarbeiten.", "niveau3": "unter Anleitung und mit Hilfestellung vorgegebene Texte zu vorgegebenen Kriterien der Verständlichkeit, des Aufbaus, der sprachlichen Gestaltung, der Wirkung und der Sprachrichtigkeit in analoger und/oder digitaler Form überprüfen und überarbeiten." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "kategorien": [
+        {
+          "name": "Lesefertigkeit",
+          "items": [
+            { "niveau1": "beim Erlesen von längeren Wörtern größere sublexikalische Einheiten durch visuelle Unterstützung für das Lesen nutzen.", "niveau2": "beim Erlesen von längeren Wörtern größere sublexikalische Einheiten selbstständig für das Lesen nutzen.", "niveau3": null },
+            { "niveau1": "durch das Erweitern des orthografischen Inputlexikons (Sichtwortschatzes) beim wiederholten Lesen eine Steigerung der Lesegeschwindigkeit zeigen.", "niveau2": "eine durchschnittliche Lesegeschwindigkeit (entsprechend aktuellen Empfehlungen, z. B. SLS oder iKMPLUS) zeigen.", "niveau3": "eine überdurchschnittliche Lesegeschwindigkeit (entsprechend aktuellen Empfehlungen, z. B. SLS oder iKMPLUS) zeigen." },
+            { "niveau1": "die Lesegenauigkeit bei ungeübten Texten in einer vertrauten Schriftart zeigen.", "niveau2": "die Lesegenauigkeit bei ungeübten Texten in unterschiedlichen Schriftarten zeigen.", "niveau3": null },
+            { "niveau1": "auf Basis von Hinweisen semantische bzw. grammatische Verlesungen korrigieren.", "niveau2": "semantische bzw. grammatische Verlesungen überwiegend selbstständig korrigieren.", "niveau3": "semantische bzw. grammatische Verlesungen selbstständig korrigieren." },
+            { "niveau1": "in vorbereiteten Sätzen/Absätzen zusammenhängende Wortgruppen betont und sinngestaltend (z. B. verschiedene Geschwindigkeiten, Lautstärken, Stimmlagen, emotionale Färbungen, …) vorlesen.", "niveau2": "in vorbereiteten Texten zusammenhängende Wortgruppen betont und sinngestaltend vorlesen.", "niveau3": "in Texten zusammenhängende Wortgruppen selbstständig betont und sinngestaltend vorlesen." }
+          ]
+        },
+        {
+          "name": "Leseverstehen",
+          "items": [
+            { "niveau1": "in einem Text durch gezielte Fragestellungen mehrere explizit genannte Informationen wiederfinden.", "niveau2": "in einem Text mehrere explizit genannte Informationen wiederfinden und mit Vorwissen in Beziehung setzen.", "niveau3": "explizit genannte Informationen aus verschiedenen Texten wiederfinden und mit dem Vorwissen in Beziehung setzen." },
+            { "niveau1": "auf der Ebene von Absätzen angeleitet mithilfe von vorgegebenen Strategien lokale Kohärenz bilden.", "niveau2": "auf der Ebene von Absätzen selbstständig lokale Kohärenz bilden.", "niveau3": null },
+            { "niveau1": "mithilfe von erarbeiteten Schlüsselwörtern den Inhalt eines Textes erschließen.", "niveau2": "mithilfe von identifizierten Schlüsselwörtern den Inhalt eines Textes erschließen.", "niveau3": "mit Hilfestellung auf Basis des impliziten und expliziten Textverstehens Schlussfolgerungen ziehen und Texte interpretieren (z. B. Beweggründe nachvollziehen etc.)." },
+            { "niveau1": "mithilfe von vorgegebenen Strategien angeleitet globale Kohärenz bilden, d. h. die Grundaussage eines Textes erfassen.", "niveau2": "vorgegebene Fragen zur Bildung der globalen Kohärenz des Textes selbstständig beantworten.", "niveau3": "durch das Bilden der globalen Kohärenz neues Wissen aufbauen." },
+            { "niveau1": null, "niveau2": null, "niveau3": "mit Hilfestellung formale Merkmale wahrnehmen und deren Wirkung beschreiben." },
+            { "niveau1": null, "niveau2": null, "niveau3": "mit Hilfestellung gestalterische Mittel in Texten erkennen, wie etwa Erzählperspektive, Figurenrepertoire etc." },
+            { "niveau1": null, "niveau2": null, "niveau3": "mit Hilfestellung einfache außertextuelle Bezüge sowie Gattungs- und Genrewissen, wie etwa Merkmale von Fabeln, Märchen, Sagen, Parabeln etc., für das Textverstehen nutzen." },
+            { "niveau1": "die eigene Meinung zum Gelesenen äußern.", "niveau2": "die Meinung zur Wirkung des Gelesenen äußern und begründen.", "niveau3": "die Meinung zur Wirkung des Gelesenen äußern und differenziert begründen." }
+          ]
+        },
+        {
+          "name": "Subjekt- und Sozialebene",
+          "items": [
+            { "niveau1": "die Bedeutung des Lesens verschiedener Textsorten auch im außerschulischen Kontext erkennen und nennen.", "niveau2": "die Bedeutung des Lesens verschiedener Textsorten für sich selbst und im eigenen Umfeld erkennen und reflektieren.", "niveau3": null },
+            { "niveau1": null, "niveau2": "eine der Textsorte entsprechende Rezeptionshaltung einnehmen.", "niveau3": "eine der Textsorte entsprechende Rezeptionshaltung einnehmen und kritisch Stellung beziehen." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Zuhören",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            { "niveau1": "bei Verständnisschwierigkeiten die Zuhörstrategie des Nachfragens anwenden.", "niveau2": null, "niveau3": null }
+          ]
+        },
+        {
+          "name": "Hörverstehen (sowohl multimodale als auch multimediale Texte)",
+          "items": [
+            { "niveau1": "zum Verständnis auf das vorbereitete Vorwissen zurückgreifen.", "niveau2": "zum Verständnis selbstständig auf das Vorwissen zurückgreifen.", "niveau3": "zum Verständnis das Vorwissen und das entnommene Wissen verknüpfen und gegebenenfalls Inkonsistenzen erkennen." },
+            { "niveau1": null, "niveau2": "die Aufmerksamkeit auf das Gehörte richten, nach Vorgabe Informationen erkennen und Wesentliches zusammenfassen.", "niveau3": "die Aufmerksamkeit auf das Gehörte richten, Informationen erkennen und Wesentliches zusammenfassen." },
+            { "niveau1": "durch gezielte Fragestellungen explizit genannte Informationen aus einem Text wiedergeben.", "niveau2": "explizit genannte Informationen einem Text entnehmen und mit Vorwissen in Beziehung setzen.", "niveau3": "explizit genannte Informationen aus verschiedenen Quellen entnehmen, vergleichen und mit Vorwissen in Beziehung setzen." },
+            { "niveau1": "bei konzeptionell schriftlichen und medial mündlichen Abschnitten mithilfe von vorgegebenen Strategien lokale Kohärenz bilden.", "niveau2": "bei konzeptionell schriftlichen und medial mündlichen Abschnitten selbstständig lokale Kohärenz bilden.", "niveau3": null },
+            { "niveau1": "mithilfe von vorgegebenen Strategien globale Kohärenz bilden, d. h. die Grundaussage eines Textes erfassen.", "niveau2": "Fragen zum Gesamtzusammenhang des Textes selbstständig beantworten.", "niveau3": "die gebildete globale Kohärenz mit Vorwissen in Beziehung setzen." },
+            { "niveau1": "die Besonderheiten der medialen Mündlichkeit nennen.", "niveau2": null, "niveau3": null },
+            { "niveau1": "mit Hilfestellung benennen, was das Zuhören erleichtert und erschwert.", "niveau2": "Störfaktoren beim Zuhören erkennen und Möglichkeiten zu deren Behebung finden.", "niveau3": "Störfaktoren beim Zuhören vorwegnehmen bzw. umgehen." }
+          ]
+        },
+        {
+          "name": "Subjekt- und Sozialebene (sowohl multimodale als auch multimediale Texte)",
+          "items": [
+            { "niveau1": "auf Nachfrage die eigene Meinung zum Gehörten äußern.", "niveau2": "auf Nachfrage die Wirkung des Gehörten begründen und die eigene Meinung äußern.", "niveau3": "eigeninitiativ die Wirkung des Gehörten begründen und die eigene Meinung äußern." },
+            { "niveau1": "eine dem multimodal vermittelten Text entsprechende Rezeptionshaltung einnehmen.", "niveau2": "eine dem multimodal vermittelten Text entsprechende Rezeptionshaltung einnehmen und kritisch Stellung beziehen.", "niveau3": null }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            { "niveau1": "in geübten Situationen das geeignete Sprachregister unter anderem hinsichtlich der Standardsprache auswählen.", "niveau2": "in bekannten Situationen das geeignete Sprachregister unter anderem hinsichtlich der Standardsprache auswählen.", "niveau3": "in unbekannten Situationen das geeignete Sprachregister unter anderem hinsichtlich der Standardsprache auswählen." },
+            { "niveau1": "sich in einem vorbereiteten Redebeitrag mit Unterstützung nachvollziehbar sprachlich ausdrücken.", "niveau2": "sich in einem vorbereiteten Redebeitrag nachvollziehbar sprachlich ausdrücken.", "niveau3": "sich in einem Redebeitrag in unterschiedlichen Situationen nachvollziehbar sprachlich ausdrücken." },
+            { "niveau1": "Redebeiträge in geübten Situationen mit nonverbalen Mitteln unterstützen.", "niveau2": "Redebeiträge in bekannten Situationen mit nonverbalen Mitteln unterstützen.", "niveau3": "Redebeiträge in unbekannten Situationen mit nonverbalen Mitteln unterstützen." }
+          ]
+        },
+        {
+          "name": "Diskurstypen",
+          "items": [
+            { "niveau1": "geübte normierte Textmuster in angeleiteten monologischen und dialogischen Situationen angemessen einsetzen.", "niveau2": "normierte Textmuster in konkreten monologischen und dialogischen Situationen angemessen einsetzen.", "niveau3": null },
+            { "niveau1": "vorbereitet unter Verwendung geübter Ausdrucksformen und Textmuster lokal und global kohärente Redebeiträge produzieren/formulieren.", "niveau2": "unter Verwendung bekannter Ausdrucksformen und Textmuster lokal und global kohärente Redebeiträge produzieren/formulieren.", "niveau3": "unter Verwendung vielfältiger Ausdrucksformen und Textmuster lokal und global kohärente Redebeiträge produzieren/formulieren." }
+          ]
+        }
+      ]
+    }
+  ]
+}

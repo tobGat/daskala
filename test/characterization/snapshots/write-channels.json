@@ -3823,6 +3823,194 @@
       ]
     }
   },
+  "kompetenzErhebungen:speichern": {
+    "ret": 3,
+    "state": {
+      "kompetenzbereiche": [
+        {
+          "id": 1,
+          "fach_id": 1,
+          "titel": "Lesen",
+          "beschreibung": "Sinnerfassend lesen",
+          "reihenfolge": 1
+        },
+        {
+          "id": 2,
+          "fach_id": 1,
+          "titel": "Schreiben",
+          "beschreibung": "Texte verfassen",
+          "reihenfolge": 2
+        },
+        {
+          "id": 3,
+          "fach_id": 1,
+          "titel": "Zuhören",
+          "beschreibung": null,
+          "reihenfolge": 2
+        }
+      ],
+      "kompetenz_erhebungen": [
+        {
+          "id": 1,
+          "schueler_id": 1,
+          "fach_id": 1,
+          "schulstufe": 3,
+          "datum": "2025-10-15",
+          "titel": "Herbst",
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "schueler_id": 1,
+          "fach_id": 1,
+          "schulstufe": 3,
+          "datum": "2026-02-10",
+          "titel": "Winter",
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 3,
+          "schueler_id": 1,
+          "fach_id": 1,
+          "schulstufe": 3,
+          "datum": "2026-01-15",
+          "titel": "Mitte",
+          "erstellt_am": "<TS>"
+        }
+      ],
+      "kompetenz_erhebung_werte": [
+        {
+          "id": 1,
+          "erhebung_id": 1,
+          "kompetenzbereich_id": 1,
+          "niveau": 1,
+          "notiz": null
+        },
+        {
+          "id": 2,
+          "erhebung_id": 1,
+          "kompetenzbereich_id": 2,
+          "niveau": 2,
+          "notiz": "ok"
+        },
+        {
+          "id": 3,
+          "erhebung_id": 2,
+          "kompetenzbereich_id": 1,
+          "niveau": 2,
+          "notiz": null
+        },
+        {
+          "id": 4,
+          "erhebung_id": 2,
+          "kompetenzbereich_id": 2,
+          "niveau": 3,
+          "notiz": null
+        },
+        {
+          "id": 5,
+          "erhebung_id": 3,
+          "kompetenzbereich_id": 1,
+          "niveau": 2,
+          "notiz": null
+        },
+        {
+          "id": 6,
+          "erhebung_id": 3,
+          "kompetenzbereich_id": 3,
+          "niveau": 1,
+          "notiz": "x"
+        }
+      ]
+    }
+  },
+  "kompetenzErhebungen:update": {
+    "ret": true,
+    "state": {
+      "kompetenz_erhebungen": [
+        {
+          "id": 1,
+          "schueler_id": 1,
+          "fach_id": 1,
+          "schulstufe": 3,
+          "datum": "2026-01-20",
+          "titel": "upd",
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "schueler_id": 1,
+          "fach_id": 1,
+          "schulstufe": 3,
+          "datum": "2026-02-10",
+          "titel": "Winter",
+          "erstellt_am": "<TS>"
+        }
+      ],
+      "kompetenz_erhebung_werte": [
+        {
+          "id": 1,
+          "erhebung_id": 1,
+          "kompetenzbereich_id": 1,
+          "niveau": 3,
+          "notiz": null
+        },
+        {
+          "id": 2,
+          "erhebung_id": 1,
+          "kompetenzbereich_id": 2,
+          "niveau": 2,
+          "notiz": "ok"
+        },
+        {
+          "id": 3,
+          "erhebung_id": 2,
+          "kompetenzbereich_id": 1,
+          "niveau": 2,
+          "notiz": null
+        },
+        {
+          "id": 4,
+          "erhebung_id": 2,
+          "kompetenzbereich_id": 2,
+          "niveau": 3,
+          "notiz": null
+        }
+      ]
+    }
+  },
+  "kompetenzErhebungen:delete": {
+    "ret": true,
+    "state": {
+      "kompetenz_erhebungen": [
+        {
+          "id": 2,
+          "schueler_id": 1,
+          "fach_id": 1,
+          "schulstufe": 3,
+          "datum": "2026-02-10",
+          "titel": "Winter",
+          "erstellt_am": "<TS>"
+        }
+      ],
+      "kompetenz_erhebung_werte": [
+        {
+          "id": 3,
+          "erhebung_id": 2,
+          "kompetenzbereich_id": 1,
+          "niveau": 2,
+          "notiz": null
+        },
+        {
+          "id": 4,
+          "erhebung_id": 2,
+          "kompetenzbereich_id": 2,
+          "niveau": 3,
+          "notiz": null
+        }
+      ]
+    }
+  },
   "stundenzeiten:update": {
     "ret": true,
     "state": {

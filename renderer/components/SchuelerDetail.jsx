@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import useStore from '../store/useStore'
 import SchuelerKVSection from './kv/SchuelerKVSection'
+import KompetenzSection from './kompetenzen/KompetenzSection'
 import SchuelerAvatar from './SchuelerAvatar'
 import { avatarSvg } from '../utils/avatar'
 import { niveauZurZeit, niveauOffset } from '../utils/niveau'
@@ -288,19 +289,6 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
     }, 500)
   }
 
-  // Kompetenzen pro Fach – Sektion ist derzeit deaktiviert (unten `false && …`); daher KEIN
-  // IPC-Laden pro Fachwechsel (spart zwei Roundtrips). State bleibt leer, bis die Sektion aktiv wird.
-  const [kompBereiche] = useState([])
-  const [kompSk, setKompSk] = useState({})
-
-  const setKompetenz = async (kbId, niveau) => {
-    await window.api.schuelerKompetenzen.set(kbId, schueler.id, niveau, null)
-    setKompSk(prev => ({
-      ...prev,
-      [`${kbId}_${schueler.id}`]: { kompetenzbereich_id: kbId, schueler_id: schueler.id, niveau, notiz: null, aktualisiert: new Date().toISOString() }
-    }))
-  }
-
   // Stats
   // Positiv: + / 😄 / 🙂 ; negativ: − / 🙁 / 😞 ; ~ (neutral) zählt zu keiner Seite (2-/3-/4-stufig).
   const maEintr = fachEintraege.filter(e => e.kategorie === 'MA' && e.wert)
@@ -422,47 +410,8 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
         <EintraegeTabelle eintraege={fachEintraege} />
       </section>
 
-      {/* Kompetenzen – vorübergehend ausgeblendet, bis die Funktion vollständig eingebettet ist */}
-      {/* eslint-disable-next-line no-constant-binary-expression */}
-      {false && kompBereiche.length > 0 && (
-        <section>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-2">Kompetenzen</p>
-          <div className="bg-paper-50 dark:bg-ink-900/40 border border-paper-200 dark:border-ink-800 rounded-xl p-3 space-y-1.5">
-            {kompBereiche.map(kb => {
-              const sk = kompSk[`${kb.id}_${schueler.id}`]
-              const niveau = sk?.niveau ?? 0
-              return (
-                <div key={kb.id} className="flex items-center gap-2">
-                  <span className="text-xs text-ink-700 dark:text-paper-300 flex-1 truncate" title={kb.beschreibung || kb.titel}>
-                    {kb.titel}
-                  </span>
-                  <div className="flex gap-0.5">
-                    {[
-                      [0, '·', 'Nicht erfasst',       'bg-paper-200 dark:bg-ink-700 text-ink-500'],
-                      [1, 'G', 'Grundniveau',         'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'],
-                      [2, 'E', 'Erweitertes Niveau',  'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-400'],
-                      [3, 'V', 'Vertieftes Niveau',   'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'],
-                    ].map(([n, label, title, activeCls]) => (
-                      <button
-                        key={n}
-                        className={`w-6 h-6 rounded-lg text-xs font-bold transition-all active:scale-90 ${
-                          niveau === n
-                            ? activeCls
-                            : 'text-ink-400 hover:bg-paper-200 dark:hover:bg-ink-800'
-                        }`}
-                        onClick={() => setKompetenz(kb.id, n)}
-                        title={title}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
+      {/* Kompetenzen (Assistent + Netzdiagramm) – nur für Fächer mit Raster */}
+      <KompetenzSection schueler={schueler} fach={fach} />
 
       {/* Notizen */}
       <section>

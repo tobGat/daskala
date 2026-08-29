@@ -21,6 +21,8 @@ const gewichtungSchuelerDomain = require('./core/domain/gewichtungSchueler')
 const faecherDomain = require('./core/domain/faecher')
 const schuelerDomain = require('./core/domain/schueler')
 const kompetenzenDomain = require('./core/domain/kompetenzen')
+const kompetenzKatalog = require('./core/domain/kompetenzKatalog')
+const kompetenzErhebungenDomain = require('./core/domain/kompetenzErhebungen')
 const spaltenDomain = require('./core/domain/spalten')
 const eintraegeDomain = require('./core/domain/eintraege')
 const zeugnisnotenDomain = require('./core/domain/zeugnisnoten')
@@ -614,6 +616,17 @@ function registerIPC() {
   // ─── Schüler:innen-Kompetenzen ─────────────────────────────────────────────
   ipcMain.handle('schuelerKompetenzen:getAll', (_, fachId) => kompetenzenDomain.schuelerGetAll(dbPort, fachId))
   ipcMain.handle('schuelerKompetenzen:set', (_, kompetenzbereichId, schuelerId, niveau, notiz) => kompetenzenDomain.schuelerSet(dbPort, kompetenzbereichId, schuelerId, niveau, notiz))
+
+  // ─── Kompetenz-Katalog (Raster) ────────────────────────────────────────────
+  ipcMain.handle('kompetenzKatalog:hatRaster', (_, fach) => kompetenzKatalog.hatRaster(fach))
+  ipcMain.handle('kompetenzKatalog:listSchulstufen', (_, fach) => kompetenzKatalog.listSchulstufen(fach))
+  ipcMain.handle('kompetenzKatalog:getRaster', (_, fach, stufe) => kompetenzKatalog.getRaster(fach, stufe))
+
+  // ─── Kompetenz-Erhebungen (Zeitpunkte + Werte) ─────────────────────────────
+  ipcMain.handle('kompetenzErhebungen:getProfil', (_, schuelerId, fachId) => kompetenzErhebungenDomain.getProfil(dbPort, schuelerId, fachId))
+  ipcMain.handle('kompetenzErhebungen:speichern', (_, payload) => kompetenzErhebungenDomain.speichern(dbPort, payload))
+  ipcMain.handle('kompetenzErhebungen:update', (_, id, data) => kompetenzErhebungenDomain.update(dbPort, id, data))
+  ipcMain.handle('kompetenzErhebungen:delete', (_, id) => kompetenzErhebungenDomain.remove(dbPort, id))
 
   // Schüler:innen. Reihenfolge richtet sich nach der pro Klasse gewählten Sortierung.
   ipcMain.handle('schueler:getAll', (_, klasseId) => schuelerDomain.getAll(dbPort, klasseId))

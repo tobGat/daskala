@@ -638,6 +638,47 @@
       "aktualisiert": "2025-10-01"
     }
   ],
+  "kompetenzErhebungen:getProfil": {
+    "bereiche": [
+      {
+        "id": 1,
+        "titel": "Lesen",
+        "beschreibung": "Sinnerfassend lesen",
+        "reihenfolge": 1
+      },
+      {
+        "id": 2,
+        "titel": "Schreiben",
+        "beschreibung": "Texte verfassen",
+        "reihenfolge": 2
+      }
+    ],
+    "erhebungen": [
+      {
+        "id": 1,
+        "schulstufe": 3,
+        "datum": "2025-10-15",
+        "titel": "Herbst",
+        "erstellt_am": "2025-10-15 08:00:00",
+        "werte": {
+          "1": 1,
+          "2": 2
+        }
+      },
+      {
+        "id": 2,
+        "schulstufe": 3,
+        "datum": "2026-02-10",
+        "titel": "Winter",
+        "erstellt_am": "2026-02-10 08:00:00",
+        "werte": {
+          "1": 2,
+          "2": 3
+        }
+      }
+    ],
+    "letzteSchulstufe": 3
+  },
   "stundenzeiten:getAll": [
     {
       "id": 1,

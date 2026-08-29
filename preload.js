@@ -226,6 +226,19 @@ const api = {
     set: (kompetenzbereichId, schuelerId, niveau, notiz) => invoke('schuelerKompetenzen:set', kompetenzbereichId, schuelerId, niveau, notiz),
   },
 
+  kompetenzKatalog: {
+    hatRaster: (fach) => invoke('kompetenzKatalog:hatRaster', fach),
+    listSchulstufen: (fach) => invoke('kompetenzKatalog:listSchulstufen', fach),
+    getRaster: (fach, stufe) => invoke('kompetenzKatalog:getRaster', fach, stufe),
+  },
+
+  kompetenzErhebungen: {
+    getProfil: (schuelerId, fachId) => invoke('kompetenzErhebungen:getProfil', schuelerId, fachId),
+    speichern: (payload) => invoke('kompetenzErhebungen:speichern', payload),
+    update: (id, data) => invoke('kompetenzErhebungen:update', id, data),
+    delete: (id) => invoke('kompetenzErhebungen:delete', id),
+  },
+
   customFerien: {
     getAll: (schuljahrId) => invoke('customFerien:getAll', schuljahrId),
     save: (schuljahrId, ferien) => invoke('customFerien:save', schuljahrId, ferien),

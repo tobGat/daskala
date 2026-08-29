@@ -1,0 +1,127 @@
+{
+  "fach": "Deutsch",
+  "schulstufe": 2,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Deutsch_2-Schulstufe-Kompetenzraster_698cc072.pdf",
+  "status": "vollständig (3 von 3 Seiten)",
+  "kompetenzbereiche": [
+    {
+      "name": "(Recht-)Schreiben und Sprachbetrachtung",
+      "kategorien": [
+        {
+          "name": "(Recht-)Schreiben",
+          "items": [
+            "alle Grapheme in einer den österreichischen Schulschriften angenäherten Form in Groß- und Kleinschreibung graphomotorisch flüssig umsetzen",
+            "erarbeitete Wörter (auch mit Konsonantenverbindungen) orthographisch richtig schreiben",
+            "noch nicht erarbeitete Wörter entsprechend den Phonem-Graphem-Korrespondenzen auch beim Verfassen von Texten lautgetreu schreiben",
+            "bei erarbeiteten konkreten Nomen die Großschreibung anwenden",
+            "die Großschreibung am Satzanfang anwenden sowie das Satzende mit einem Punkt markieren",
+            "die Technik des richtigen Ab- und Aufschreibens (Lesen – Merken – Verdecken – Aufschreiben – Vergleichen) anwenden und dabei vorgegebene Regelhaftigkeiten (z. B. wiederkehrende Morpheme) erkennen und verbalisieren",
+            "vorgegebene Wörter in einer übersichtlichen, alphabetisch sortierten Wörterliste finden"
+          ]
+        },
+        {
+          "name": "Sprachbetrachtung",
+          "items": [
+            "erarbeitete deklinierte Nomen/Substantive und Adjektive sowie konjugierte Verben im Präsens der entsprechenden Grundform zuordnen",
+            "erarbeitete Wörter einer Wortfamilie der entsprechenden Grundform/dem Stamm-Morphem zuordnen",
+            "bei schriftlich und gleichzeitig mündlich vorgegebenen Wörtern erarbeitete Wortbausteine/Morpheme hinzufügen oder weglassen und die Bedeutungsveränderung klären",
+            "bei geübten Wörtern die Wortarten Nomen/Substantiv, Verb, Adjektiv und Artikel mithilfe von Proben erkennen",
+            "erarbeitete Aussage-, Frage- und Aufforderungssätze mit korrekter Verbstellung bilden und die dazu passende Interpunktion setzen"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Verfassen von Texten",
+      "kategorien": [
+        {
+          "name": "Planen",
+          "items": [
+            "anhand von Schreibanlässen aus der eigenen Lebenswelt Ideen sammeln und diese situationsbezogen für die Planung des intendierten und bekannten Text-/Erzählmusters nutzen"
+          ]
+        },
+        {
+          "name": "Verfassen",
+          "items": [
+            "anhand einfacher Satzmuster die gesammelten Ideen selbstständig schriftlich und/oder mündlich formulieren",
+            "entsprechend dem bekannten Text-/Erzählmuster einfache Texte für andere nachvollziehbar formulieren"
+          ]
+        },
+        {
+          "name": "Überarbeiten",
+          "items": [
+            "schriftlich Verfasstes nach dem Schreiben mithilfe von genau vorgegebenen inhaltlichen und/oder sprachlichen Rückmeldungen (auch mit Hilfsmitteln) überprüfen und bei Bedarf berichtigen"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "kategorien": [
+        {
+          "name": "Lesefertigkeit",
+          "items": [
+            "automatisiert für alle Grapheme in einer vertrauten Schriftart die Graphem-Phonem-Korrespondenz in angemessener Geschwindigkeit benennen",
+            "unbekannte Wörter und Pseudowörter mit mehrgliedrigen Graphemen inklusive Doppelkonsonanten und Konsonantenhäufungen phonologisch rekodieren",
+            "auf Basis des erabeiteten Sichtwortschatzes eine altersadäquate Lesegeschwindigkeit gemäß aktuellen Standardisierungen (z. B. SLS) zeigen",
+            "die Lesegenauigkeit bei unbekannten einfachen (auf Verständlichkeitsparametern basierenden) Texten zeigen",
+            "beim Lesen von Sätzen und Texten unbekannte Wörter und Phrasen identifizieren"
+          ]
+        },
+        {
+          "name": "Leseverstehen",
+          "items": [
+            "offensichtliche lokale Kohärenzen erkennen, d. h. zwischen einzelnen Wörtern, Wortgruppen oder zwei aufeinanderfolgenden Sätzen einen inhaltlichen Zusammenhang herstellen",
+            "mithilfe von erarbeiteten Schlüsselwörtern unter Berücksichtigung der grammatikalischen Strukturen den Inhalt eines Absatzes/Textabschnittes/Textes erschließen",
+            "in einem Absatz/Text durch vorgegebene Fragestellungen explizit angegebene Informationen identifizieren",
+            "zu einem einfachen Text (basierend auf Verständlichkeitsparametern) unter Anleitung die eigene Meinung äußern"
+          ]
+        },
+        {
+          "name": "Subjekt- und Sozialebene",
+          "items": [
+            "(Vor-)Gelesenes unter Anleitung mit der eigenen Lebenswelt in Verbindung bringen",
+            "nach eigenem Interesse unter Anleitung Bücher und Medien auswählen und nützen"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Zuhören",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            "gezielt selektiv hören"
+          ]
+        },
+        {
+          "name": "Hörverstehen",
+          "items": [
+            "beim Zuhören unter Rückgriff auf das aufbereitete Vorwissen zwischen bekannten und unbekannten Informationen unterscheiden",
+            "einem Hörtext bzw. Gespräch aufmerksam folgen sowie Verstehen und Nichtverstehen zum Ausdruck bringen"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            "in verschiedenen Gesprächssituationen und zu unterschiedlichen Themen in einer der Standardvarietät der deutschen Sprache angenäherten Form verständlich artikuliert sprechen"
+          ]
+        },
+        {
+          "name": "Diskurstypen",
+          "items": [
+            "in vertrauten Situationen die grundlegenden Kommunikationsregeln und die dazu passenden alltäglichen Phrasen anwenden"
+          ]
+        }
+      ]
+    }
+  ]
+}

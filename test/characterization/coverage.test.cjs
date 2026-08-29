@@ -45,6 +45,9 @@ const EXCLUDED = {
   'update:installieren': 'system', 'wetter:getWoche': 'netzwerk', 'wetter:sucheOrt': 'netzwerk',
   // Spezialfall: umfangreicher Schuljahreswechsel – eigener Test geplant (Phase 1)
   'jahresabschluss:neuesSchuljahr': 'spezialfall-todo',
+  // Kompetenz-Katalog: statische Referenzdaten (JSON), kein DB-Zugriff
+  'kompetenzKatalog:hatRaster': 'referenz', 'kompetenzKatalog:listSchulstufen': 'referenz',
+  'kompetenzKatalog:getRaster': 'referenz',
 }
 
 const kanaeleAus = (datei) => [...fs.readFileSync(path.join(__dirname, datei), 'utf8')

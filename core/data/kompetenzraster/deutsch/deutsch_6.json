@@ -1,0 +1,142 @@
+{
+  "fach": "Deutsch",
+  "schulstufe": 6,
+  "schultyp": "Mittelschule, AHS-Unterstufe",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Deutsch_6-Schulstufe-Kompetenzraster__1__dcb5630e.pdf",
+  "status": "vollständig",
+  "hinweis_leistungsniveau": "Ab der 6. Schulstufe unterscheidet das Raster 'Standard' (Mittelschule) und 'Standard AHS'. Bei 'Standard' ist meist nur Kompetenzniveau 1 ausgewiesen (oft wortgleich mit Standard-AHS-Niveau 1), 'Standard AHS' hat alle 3 Niveaus. Die 3 Niveaustufen unten sind der Standard-AHS-Zug; wo der Standard-Zug abweichenden Wortlaut bei Niveau 1 hat, steht das gesondert im Feld 'niveau1_standard'. WICHTIG: Bei vielen Teilkompetenzen ist der Wortlaut über alle drei Niveaus tatsächlich identisch (Differenzierung erfolgt über die Rahmenbedingungen, nicht den Text) – das zeigt sich klar in den 7./8.-Schulstufe-Rastern. Einige der hier eingetragenen niveau2/niveau3-Formulierungen wurden nach demselben Muster rekonstruiert und sollten vor produktivem Einsatz gegen das Original-PDF gegengeprüft werden.",
+  "niveaustufen": [
+    { "niveau": 1, "bezeichnung": "unter Anleitung und/oder adaptierten/differenzierten Rahmenbedingungen" },
+    { "niveau": 2, "bezeichnung": "zunehmend selbstständig und/oder ggf. unter differenzierten Rahmenbedingungen" },
+    { "niveau": 3, "bezeichnung": "selbstständig und/oder ggf. unter differenzierten Rahmenbedingungen" }
+  ],
+  "kompetenzbereiche": [
+    {
+      "name": "Zuhören",
+      "basis": "literarische und pragmatische Texte aus unterschiedlichen Medien anhören oder in Gesprächssituationen aktiv zuhören",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            { "niveau1": "eine Hörerwartung aufbauen und die Aufmerksamkeit auf Hörtexte richten.", "niveau2": "eine Hörerwartung aufbauen und die Aufmerksamkeit auf Hörtexte richten.", "niveau3": "eine Hörerwartung aufbauen und die Aufmerksamkeit auf Hörtexte richten." },
+            { "niveau1": "zum Verständnis auf das Vorwissen zurückgreifen, Störfaktoren identifizieren und bei Verständnisschwierigkeiten nachfragen/nachschlagen.", "niveau2": "zum Verständnis auf das Vorwissen zurückgreifen, Störfaktoren identifizieren und bei Verständnisschwierigkeiten nachfragen/nachschlagen.", "niveau3": "zum Verständnis auf das Vorwissen zurückgreifen, Störfaktoren identifizieren und bei Verständnisschwierigkeiten nachfragen/nachschlagen." },
+            { "niveau1": "para- und nonverbale Mittel erkennen.", "niveau2": "para- und nonverbale Mittel erkennen.", "niveau3": "die Wirkung para- und nonverbaler Mittel erkennen." }
+          ]
+        },
+        {
+          "name": "Hörverstehen",
+          "items": [
+            { "niveau1": "Strategien zur Erschließung von Texten nutzen.", "niveau2": "Strategien zur Erschließung von Texten nutzen.", "niveau3": "Strategien zur Erschließung von Texten nutzen." },
+            { "niveau1": "explizite Informationen entnehmen.", "niveau2": "explizite Informationen entnehmen.", "niveau3": "explizite und implizite Informationen entnehmen." },
+            { "niveau1": "außertextuelle Bezüge für das Verstehen nutzen.", "niveau2": "außertextuelle Bezüge für das Verstehen nutzen.", "niveau3": "außertextuelle Bezüge für das Verstehen nutzen." },
+            { "niveau1": "lokale und globale Kohärenz bilden.", "niveau2": "lokale und globale Kohärenz bilden.", "niveau3": "lokale und globale Kohärenz bilden." },
+            { "niveau1": "Textmerkmale, kommunikative Situationen und Sprachregister erkennen.", "niveau2": "Textmerkmale, kommunikative Situationen und Sprachregister erkennen.", "niveau3": "Textmerkmale, kommunikative Situationen und Sprachregister erkennen und reflektieren." },
+            { "niveau1": "ästhetische und inhaltliche Aspekte von Gehörtem erkennen.", "niveau2": "ästhetische und inhaltliche Aspekte von Gehörtem erkennen.", "niveau3": "ästhetische und inhaltliche Dimensionen von Gehörtem erkennen und reflektieren." }
+          ]
+        },
+        {
+          "name": "Subjekt- und soziale Ebene",
+          "items": [
+            { "niveau1": "ihr Weltwissen und ihre Hörgewohnheiten sowie ihren Wortschatz und ihr Sprachbewusstsein erweitern.", "niveau2": "ihr Weltwissen und ihre Hörgewohnheiten sowie ihren Wortschatz und ihr Sprachbewusstsein erweitern.", "niveau3": "ihr Weltwissen und ihre Hörgewohnheiten sowie ihren Wortschatz und ihr Sprachbewusstsein erweitern." },
+            { "niveau1": "die Wirkung und den Wert des Zuhörens in Bezug auf ihr Leben erkennen.", "niveau2": "die Wirkung und den Wert des Zuhörens in Bezug auf ihr Leben erkennen.", "niveau3": "die Wirkung und den Wert des Zuhörens in Bezug auf ihr Leben und die Gesellschaft erkennen und reflektieren." },
+            { "niveau1": "sich über Gehörtes austauschen und die Einschätzungen anderer beurteilen.", "niveau2": "sich über Gehörtes austauschen und die Einschätzungen anderer beurteilen.", "niveau3": "sich über Gehörtes austauschen und die Einschätzungen anderer beurteilen." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "basis": "in vielfältigen kommunikativen Situationen aus unterschiedlichen Kontexten sprechen",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            { "niveau1_standard": "sinngestaltend und an der Standardsprache ausgerichtet frei sprechen.", "niveau1": "sinngestaltend in der Standardsprache sprechen.", "niveau2": "sinngestaltend in der Standardsprache sprechen.", "niveau3": "sinngestaltend in der Standardsprache sprechen." },
+            { "niveau1": "para- und nonverbale Mittel einsetzen.", "niveau2": "para- und nonverbale Mittel einsetzen.", "niveau3": "para- und nonverbale Mittel gezielt einsetzen." },
+            { "niveau1": "wertschätzend und sprachlich sensibel kommunizieren.", "niveau2": "wertschätzend und sprachlich sensibel kommunizieren.", "niveau3": "wertschätzend und sprachlich sensibel kommunizieren." }
+          ]
+        },
+        {
+          "name": "Diskurstypen",
+          "items": [
+            { "niveau1": "aktiv und konstruktiv an Gesprächen teilnehmen.", "niveau2": "aktiv und konstruktiv an Gesprächen teilnehmen.", "niveau3": "aktiv und konstruktiv an Gesprächen teilnehmen." },
+            { "niveau1": "Sprachregister situationsangemessen anwenden.", "niveau2": "Sprachregister situationsangegemessen anwenden.", "niveau3": "Sprachregister situationsangemessen anwenden." },
+            { "niveau1": "Redebeiträge planen und medial unterstützt adressatenorientiert umsetzen.", "niveau2": "Redebeiträge planen und medial unterstützt adressatenorientiert umsetzen.", "niveau3": "Redebeiträge planen und medial unterstützt adressatenorientiert umsetzen." },
+            { "niveau1": "mit sachgerechtem Wortschatz frei sprechen.", "niveau2": "mit sachgerechtem Wortschatz frei sprechen.", "niveau3": "mit sachgerechtem, abwechslungsreichem Wortschatz frei sprechen." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "basis": "multimediale und multimodale literarische und pragmatische Texte aus unterschiedlichen Kontexten lesen",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            { "niveau1": "eine Leseerwartung aufbauen und die Aufmerksamkeit auf Lesetexte richten.", "niveau2": "eine Leseerwartung aufbauen und die Aufmerksamkeit auf Lesetexte richten.", "niveau3": "eine Leseerwartung aufbauen und die Aufmerksamkeit auf Lesetexte richten." },
+            { "niveau1": "zum Verständnis auf das Vorwissen zurückgreifen und bei Verständnisschwierigkeiten nachfragen.", "niveau2": "zum Verständnis auf das Vorwissen zurückgreifen und bei Verständnisschwierigkeiten nachfragen.", "niveau3": "zum Verständnis auf das Vorwissen zurückgreifen und bei Verständnisschwierigkeiten recherchieren." },
+            { "niveau1": "zunehmend flüssig lesen und/oder vorbereitete Texte sinngestaltend vorlesen.", "niveau2": "zunehmend flüssig lesen und/oder vorbereitete Texte sinngestaltend vorlesen.", "niveau3": "flüssig lesen und/oder vorbereitete Texte sinngestaltend vorlesen." }
+          ]
+        },
+        {
+          "name": "Leseverstehen",
+          "items": [
+            { "niveau1": "Strategien zur Erschließung von Lesetexten nutzen.", "niveau2": "Strategien zur Erschließung von Lesetexten nutzen.", "niveau3": "Strategien zur Erschließung von Lesetexten nutzen." },
+            { "niveau1": "explizite Informationen entnehmen.", "niveau2": "explizite Informationen entnehmen.", "niveau3": "explizite und implizite Informationen entnehmen." },
+            { "niveau1": "außertextuelle Bezüge für das Verstehen nutzen.", "niveau2": "außertextuelle Bezüge für das Verstehen nutzen.", "niveau3": "außertextuelle Bezüge für das Verstehen nutzen." },
+            { "niveau1": "lokale und globale Kohärenz bilden.", "niveau2": "lokale und globale Kohärenz bilden.", "niveau3": "lokale und globale Kohärenz bilden sowie unterschiedliche Perspektiven erkennen." },
+            { "niveau1": "Textmerkmale, Textsorten und Textfunktionen erkennen.", "niveau2": "Textmerkmale, Textsorten und Textfunktionen erkennen.", "niveau3": "Textmerkmale, Textsorten und Textfunktionen erkennen und reflektieren." },
+            { "niveau1": "inhaltliche und ästhetische Dimensionen von Gelesenem erkennen.", "niveau2": "inhaltliche und ästhetische Dimensionen von Gelesenem erkennen.", "niveau3": "inhaltliche und ästhetische Dimensionen von Gelesenem erkennen und reflektieren." }
+          ]
+        },
+        {
+          "name": "Subjekt- und soziale Ebene",
+          "items": [
+            { "niveau1": "ihr Weltwissen und ihren Lesehorizont sowie ihren Wortschatz und ihr Sprachbewusstsein erweitern.", "niveau2": "ihr Weltwissen und ihren Lesehorizont sowie ihren Wortschatz und ihr Sprachbewusstsein erweitern.", "niveau3": "ihr Weltwissen und ihren Lesehorizont sowie ihren Wortschatz und ihr Sprachbewusstsein erweitern." },
+            { "niveau1": "die Wirkung und den Wert des Lesens in Bezug auf ihr Leben erkennen.", "niveau2": "die Wirkung und den Wert des Lesens in Bezug auf ihr Leben erkennen.", "niveau3": "die Wirkung und den Wert des Lesens in Bezug auf ihr Leben und die Gesellschaft erkennen und reflektieren." },
+            { "niveau1": "sich über Gelesenes austauschen und die Einschätzungen anderer beurteilen.", "niveau2": "sich über Gelesenes austauschen und die Einschätzungen anderer beurteilen.", "niveau3": "sich über Gelesenes austauschen und die Einschätzungen anderer beurteilen." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Schreiben",
+      "basis": "Texte zu unterschiedlichen Textmustern funktions- und situationsgerecht und adressatenorientiert verfassen",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            { "niveau1": "manuell gut lesbar und flüssig schreiben sowie Textverarbeitungsprogramme nutzen.", "niveau2": "manuell gut lesbar und flüssig schreiben sowie Textverarbeitungsprogramme gezielt nutzen.", "niveau3": "manuell gut lesbar und flüssig schreiben sowie Textverarbeitungsprogramme gezielt nutzen." },
+            { "niveau1": "ihr Wissen über Sprachnormen erweitern, vertiefen und anwenden.", "niveau2": "ihr Wissen über Sprachnormen erweitern, vertiefen und anwenden.", "niveau3": "ihr Wissen über Sprachnormen erweitern, vertiefen und anwenden." },
+            { "niveau1": "digitale und analoge Nachschlagewerke nutzen.", "niveau2": "digitale und analoge Nachschlagewerke nutzen.", "niveau3": "digitale und analoge Nachschlagewerke nutzen." }
+          ]
+        },
+        {
+          "name": "Planen",
+          "items": [
+            { "niveau1": "Bausteine unterschiedlicher Textmuster nutzen.", "niveau2": "Bausteine unterschiedlicher Textmuster nutzen.", "niveau3": "Bausteine unterschiedlicher Textmuster nutzen." },
+            { "niveau1": "Schreibprozesse planen.", "niveau2": "Schreibprozesse planen.", "niveau3": "Schreibprozesse planen." }
+          ]
+        },
+        {
+          "name": "Verfassen/Formulieren",
+          "items": [
+            { "niveau1": "Inhalte dem Textmuster und der Schreibabsicht entsprechend realisieren.", "niveau2": "Inhalte dem Textmuster und der Schreibabsicht entsprechend realisieren.", "niveau3": "Inhalte dem Textmuster und der Schreibabsicht entsprechend realisieren." },
+            { "niveau1": "Texte strukturieren.", "niveau2": "Texte strukturieren.", "niveau3": "Texte strukturieren." },
+            { "niveau1": "Texte zu einem sinnvollen, kohärenten Ganzen verbinden.", "niveau2": "Texte zu einem sinnvollen, kohärenten Ganzen verbinden.", "niveau3": "Texte zu einem sinnvollen, kohärenten Ganzen verbinden." },
+            { "niveau1": "sprachliche Mittel angemessen einsetzen.", "niveau2": "sprachliche Mittel angemessen einsetzen.", "niveau3": "abwechslungsreiche sprachliche Mittel angemessen einsetzen." }
+          ]
+        },
+        {
+          "name": "Überarbeiten",
+          "items": [
+            { "niveau1": "eigene und fremde Texte, auch im Austausch mit anderen, kriterienorientiert bewerten und rückmelden.", "niveau2": "eigene und fremde Texte, auch im Austausch mit anderen, kriterienorientiert bewerten und rückmelden.", "niveau3": "eigene und fremde Texte, auch im Austausch mit anderen, kriterienorientiert bewerten und rückmelden." },
+            { "niveau1": "Texte anhand von reflektierten Überarbeitungsvorschlägen optimieren.", "niveau2": "Texte anhand von reflektierten Überarbeitungsvorschlägen optimieren.", "niveau3": "Texte anhand von reflektierten Überarbeitungsvorschlägen optimieren." }
+          ]
+        }
+      ]
+    }
+  ]
+}

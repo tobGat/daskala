@@ -22,6 +22,8 @@ import rezenzDomain from '../../core/domain/rezenz'
 import maNoteDomain from '../../core/domain/maNote'
 import gewichtungSchuelerDomain from '../../core/domain/gewichtungSchueler'
 import kompetenzenDomain from '../../core/domain/kompetenzen'
+import kompetenzKatalog from '../../core/domain/kompetenzKatalog'
+import kompetenzErhebungenDomain from '../../core/domain/kompetenzErhebungen'
 import gewichtungDomain from '../../core/domain/gewichtung'
 import todosDomain from '../../core/domain/todos'
 import termineDomain from '../../core/domain/termine'
@@ -167,6 +169,17 @@ export function createMobileApi(dbPort) {
     schuelerKompetenzen: dp('schuelerKompetenzen', {
       getAll: (fId) => kompetenzenDomain.schuelerGetAll(dbPort, fId),
       set: (kb, s, n, no) => kompetenzenDomain.schuelerSet(dbPort, kb, s, n, no),
+    }),
+    kompetenzKatalog: dp('kompetenzKatalog', {
+      hatRaster: (f) => kompetenzKatalog.hatRaster(f),
+      listSchulstufen: (f) => kompetenzKatalog.listSchulstufen(f),
+      getRaster: (f, s) => kompetenzKatalog.getRaster(f, s),
+    }),
+    kompetenzErhebungen: dp('kompetenzErhebungen', {
+      getProfil: (sId, fId) => kompetenzErhebungenDomain.getProfil(dbPort, sId, fId),
+      speichern: (p) => kompetenzErhebungenDomain.speichern(dbPort, p),
+      update: (id, d) => kompetenzErhebungenDomain.update(dbPort, id, d),
+      delete: (id) => kompetenzErhebungenDomain.remove(dbPort, id),
     }),
     todos: dp('todos', {
       getAll: (sjId) => todosDomain.getAll(dbPort, sjId),
