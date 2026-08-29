@@ -332,12 +332,14 @@ const TABLE_DDL = [
   `CREATE TABLE IF NOT EXISTS kompetenz_erhebung_werte (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       erhebung_id INTEGER NOT NULL,
-      kompetenzbereich_id INTEGER NOT NULL,
+      bereich_idx INTEGER NOT NULL,
+      teilkompetenz_idx INTEGER NOT NULL,
+      bereich_name TEXT NOT NULL,
+      teilkompetenz_name TEXT NOT NULL,
       niveau INTEGER NOT NULL DEFAULT 0,
       notiz TEXT,
-      UNIQUE(erhebung_id, kompetenzbereich_id),
-      FOREIGN KEY (erhebung_id) REFERENCES kompetenz_erhebungen(id) ON DELETE CASCADE,
-      FOREIGN KEY (kompetenzbereich_id) REFERENCES kompetenzbereiche(id) ON DELETE CASCADE
+      UNIQUE(erhebung_id, bereich_idx, teilkompetenz_idx),
+      FOREIGN KEY (erhebung_id) REFERENCES kompetenz_erhebungen(id) ON DELETE CASCADE
     )`,
   `CREATE TABLE IF NOT EXISTS supplierstunden (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -978,16 +980,27 @@ function applySchema(db, deps) {
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
     )
   `)
+  // Dev-Umstellung (Feature unveröffentlicht): alte werte-Form (kompetenzbereich_id) auf die neue
+  // teilkompetenz-basierte Form bringen. Verwirft bisherige Test-Erhebungen (kein Release betroffen).
+  {
+    const wInfo = db.prepare('PRAGMA table_info(kompetenz_erhebung_werte)').all()
+    if (wInfo.length && !wInfo.some(c => c.name === 'bereich_idx')) {
+      db.exec('DROP TABLE IF EXISTS kompetenz_erhebung_werte')
+      db.exec('DELETE FROM kompetenz_erhebungen')
+    }
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS kompetenz_erhebung_werte (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       erhebung_id INTEGER NOT NULL,
-      kompetenzbereich_id INTEGER NOT NULL,
+      bereich_idx INTEGER NOT NULL,
+      teilkompetenz_idx INTEGER NOT NULL,
+      bereich_name TEXT NOT NULL,
+      teilkompetenz_name TEXT NOT NULL,
       niveau INTEGER NOT NULL DEFAULT 0,
       notiz TEXT,
-      UNIQUE(erhebung_id, kompetenzbereich_id),
-      FOREIGN KEY (erhebung_id) REFERENCES kompetenz_erhebungen(id) ON DELETE CASCADE,
-      FOREIGN KEY (kompetenzbereich_id) REFERENCES kompetenzbereiche(id) ON DELETE CASCADE
+      UNIQUE(erhebung_id, bereich_idx, teilkompetenz_idx),
+      FOREIGN KEY (erhebung_id) REFERENCES kompetenz_erhebungen(id) ON DELETE CASCADE
     )
   `)
   db.exec(`CREATE INDEX IF NOT EXISTS idx_komp_erhebungen_lookup ON kompetenz_erhebungen (schueler_id, fach_id, datum)`)

@@ -2,8 +2,8 @@
 // Copyright (C) 2026 Tobias Gatterbauer
 //
 // Schritt-für-Schritt-Assistent zum Erfassen der Kompetenz-Niveaus einer:s Schüler:in in einem Fach.
-// Ein Durchlauf = eine Erhebung (Zeitpunkt). Bewertet wird je Kompetenzbereich auf Niveau 0–3
-// (Beschriftung aus den Niveaustufen des Rasters); Teilkompetenzen dienen als Hilfetext.
+// Ein Durchlauf = eine Erhebung (Zeitpunkt). Bewertet wird je TEILKOMPETENZ auf Niveau 0–3 (Beschriftung aus
+// den Niveaustufen des Rasters); die einzelnen Kann-Beschreibungen dienen als Niveau-Anker/Hilfe.
 import React, { useState } from 'react'
 
 const heute = () => new Date().toISOString().slice(0, 10)
@@ -20,13 +20,13 @@ function Fortschritt({ aktuell, anzahl }) {
 }
 
 export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, gesperrteSchulstufe, schulstufen, onClose, onSaved }) {
-  const [schritt, setSchritt] = useState(0) // 0 = Intro, 1..N = Bereiche, N+1 = Zusammenfassung
+  const [schritt, setSchritt] = useState(0) // 0 = Intro, 1..N = Kompetenzbereiche, N+1 = Zusammenfassung
   const [schulstufe, setSchulstufe] = useState(gesperrteSchulstufe ?? letzteSchulstufe ?? null)
   const [datum, setDatum] = useState(heute())
   const [titel, setTitel] = useState('')
   const [raster, setRaster] = useState(null)
-  const [werte, setWerte] = useState({}) // { [bereichName]: { niveau, notiz } }
-  const [hilfeOffen, setHilfeOffen] = useState(false)
+  const [werte, setWerte] = useState({}) // { [bereichIdx]: { [teilkompIdx]: { niveau, notiz } } }
+  const [offeneHilfe, setOffeneHilfe] = useState(() => new Set())
   const [laden, setLaden] = useState(false)
   const [fehler, setFehler] = useState('')
   const [speichern, setSpeichern] = useState(false)
@@ -45,7 +45,9 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
       const r = await window.api.kompetenzKatalog.getRaster(fach.name, schulstufe)
       if (!r || !r.bereiche?.length) { setFehler('Für diese Schulstufe ist kein Raster hinterlegt.'); setLaden(false); return }
       setRaster(r)
-      setWerte(Object.fromEntries(r.bereiche.map(b => [b.name, { niveau: 0, notiz: '' }])))
+      setWerte(Object.fromEntries(r.bereiche.map((b, bi) =>
+        [bi, Object.fromEntries((b.kategorien ?? []).map((k, ti) => [ti, { niveau: 0, notiz: '' }]))]
+      )))
       setSchritt(1)
     } catch {
       setFehler('Raster konnte nicht geladen werden.')
@@ -54,22 +56,32 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
     }
   }
 
-  const setNiveau = (name, niveau) => setWerte(w => ({ ...w, [name]: { ...w[name], niveau } }))
-  const setNotiz = (name, notiz) => setWerte(w => ({ ...w, [name]: { ...w[name], notiz } }))
-  const weiter = () => { setHilfeOffen(false); setSchritt(s => s + 1) }
-  const zurueck = () => { setHilfeOffen(false); setFehler(''); setSchritt(s => s - 1) }
+  const setNiveau = (bi, ti, niveau) => setWerte(w => ({ ...w, [bi]: { ...w[bi], [ti]: { ...w[bi]?.[ti], niveau } } }))
+  const setNotiz = (bi, ti, notiz) => setWerte(w => ({ ...w, [bi]: { ...w[bi], [ti]: { ...w[bi]?.[ti], notiz } } }))
+  const toggleHilfe = (key) => setOffeneHilfe(prev => {
+    const n = new Set(prev)
+    if (n.has(key)) n.delete(key); else n.add(key)
+    return n
+  })
+  const weiter = () => setSchritt(s => s + 1)
+  const zurueck = () => { setFehler(''); setSchritt(s => s - 1) }
 
   const speichernFertig = async () => {
     setSpeichern(true); setFehler('')
     try {
+      const alleWerte = []
+      bereiche.forEach((b, bi) => (b.kategorien ?? []).forEach((k, ti) => {
+        alleWerte.push({
+          bereich_idx: bi,
+          teilkompetenz_idx: ti,
+          bereich_name: b.name,
+          teilkompetenz_name: k.name,
+          niveau: werte[bi]?.[ti]?.niveau ?? 0,
+          notiz: werte[bi]?.[ti]?.notiz?.trim() || null,
+        })
+      }))
       await window.api.kompetenzErhebungen.speichern({
-        schuelerId: schueler.id,
-        fachId: fach.id,
-        schulstufe,
-        datum,
-        titel: titel.trim() || null,
-        bereiche: bereiche.map(b => ({ name: b.name, beschreibung: b.basis ?? null })),
-        werte: bereiche.map(b => ({ bereichName: b.name, niveau: werte[b.name]?.niveau ?? 0, notiz: werte[b.name]?.notiz?.trim() || null })),
+        schuelerId: schueler.id, fachId: fach.id, schulstufe, datum, titel: titel.trim() || null, werte: alleWerte,
       })
       onSaved?.()
       onClose?.()
@@ -79,8 +91,20 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
     }
   }
 
-  const anzahlSchritte = (bereiche.length || 1) + 1 // Bereiche + Zusammenfassung (Intro = 0)
-  const aktBereich = schritt >= 1 && schritt <= bereiche.length ? bereiche[schritt - 1] : null
+  const anzahlSchritte = (bereiche.length || 1) + 1
+  const aktBereichIdx = schritt >= 1 && schritt <= bereiche.length ? schritt - 1 : null
+  const aktBereich = aktBereichIdx != null ? bereiche[aktBereichIdx] : null
+
+  // Kann-Beschreibungen eines Items als Zeilen (Niveau-Anker) aufbereiten.
+  const itemZeilen = (it) => {
+    if (it.text) return [it.text]
+    return [
+      it.niveau1 && `1: ${it.niveau1}`,
+      it.niveau1_standard && `1 (Standard): ${it.niveau1_standard}`,
+      it.niveau2 && `2: ${it.niveau2}`,
+      it.niveau3 && `3: ${it.niveau3}`,
+    ].filter(Boolean)
+  }
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
@@ -102,7 +126,7 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
           {schritt === 0 && (
             <div className="space-y-4">
               <p className="text-sm text-ink-600 dark:text-paper-300">
-                Erfasse den aktuellen Kompetenzstand je Bereich. Der Durchlauf wird als Erhebung mit Datum gespeichert –
+                Erfasse den aktuellen Kompetenzstand je Teilkompetenz. Der Durchlauf wird als Erhebung mit Datum gespeichert –
                 du kannst ihn im Schuljahr beliebig oft wiederholen und die Entwicklung im Netzdiagramm verfolgen.
               </p>
               <div>
@@ -133,7 +157,7 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
             </div>
           )}
 
-          {/* Schritt 1..N: je Bereich */}
+          {/* Schritt 1..N: je Kompetenzbereich, darin je Teilkompetenz */}
           {aktBereich && (
             <div className="space-y-4">
               <div>
@@ -142,58 +166,47 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
                 {aktBereich.basis && <p className="text-xs text-ink-500 dark:text-ink-400 mt-0.5">{aktBereich.basis}</p>}
               </div>
 
-              {/* Niveau-Auswahl */}
-              <div>
-                <div className="flex gap-1.5">
-                  {[0, 1, 2, 3].map(n => {
-                    const aktiv = (werte[aktBereich.name]?.niveau ?? 0) === n
-                    return (
-                      <button key={n} onClick={() => setNiveau(aktBereich.name, n)}
-                        className={`flex-1 h-11 rounded-lg text-sm font-bold transition-all active:scale-95 ${aktiv
-                          ? (n === 0 ? 'bg-ink-400 text-white' : 'bg-coral-500 text-white shadow-soft')
-                          : 'bg-paper-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400 hover:bg-paper-200 dark:hover:bg-ink-700'}`}>
-                        {n === 0 ? '·' : n}
-                      </button>
-                    )
-                  })}
-                </div>
-                <p className="text-xs text-ink-600 dark:text-paper-300 mt-1.5 text-center">{niveauLabel(werte[aktBereich.name]?.niveau ?? 0)}</p>
-              </div>
+              {(aktBereich.kategorien ?? []).map((k, ti) => {
+                const w = werte[aktBereichIdx]?.[ti] ?? { niveau: 0, notiz: '' }
+                const hilfeKey = `${aktBereichIdx}:${ti}`
+                const hilfeOffen = offeneHilfe.has(hilfeKey)
+                return (
+                  <div key={ti} className="border border-paper-200 dark:border-ink-800 rounded-xl p-3 space-y-2">
+                    <p className="text-sm font-medium text-ink-800 dark:text-paper-100">{k.name}</p>
+                    <div className="flex gap-1.5">
+                      {[0, 1, 2, 3].map(n => {
+                        const aktiv = w.niveau === n
+                        return (
+                          <button key={n} onClick={() => setNiveau(aktBereichIdx, ti, n)}
+                            className={`flex-1 h-10 rounded-lg text-sm font-bold transition-all active:scale-95 ${aktiv
+                              ? (n === 0 ? 'bg-ink-400 text-white' : 'bg-coral-500 text-white shadow-soft')
+                              : 'bg-paper-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400 hover:bg-paper-200 dark:hover:bg-ink-700'}`}>
+                            {n === 0 ? '·' : n}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <p className="text-xs text-ink-600 dark:text-paper-300 text-center">{niveauLabel(w.niveau)}</p>
 
-              {/* Hilfe: Teilkompetenzen */}
-              <div>
-                <button onClick={() => setHilfeOffen(o => !o)} className="text-xs font-medium text-coral-600 dark:text-coral-400 hover:underline">
-                  {hilfeOffen ? '▾ Teilkompetenzen ausblenden' : '▸ Teilkompetenzen anzeigen'}
-                </button>
-                {hilfeOffen && (
-                  <div className="mt-2 bg-paper-50 dark:bg-ink-900/40 border border-paper-200 dark:border-ink-800 rounded-lg p-3 space-y-3 max-h-56 overflow-y-auto">
-                    {aktBereich.kategorien.map((k, ki) => (
-                      <div key={ki}>
-                        <p className="text-[11px] font-bold text-ink-600 dark:text-paper-300 mb-1">{k.name}</p>
-                        <ul className="space-y-1.5">
-                          {k.items.map((it, ii) => (
-                            <li key={ii} className="text-[11px] text-ink-500 dark:text-ink-400 leading-snug">
-                              {it.text
-                                ? it.text
-                                : [it.niveau1, it.niveau2, it.niveau3].filter(Boolean).map((tx, ni) => (
-                                  <span key={ni} className="block"><span className="text-ink-400">{ni + 1}:</span> {tx}</span>
-                                ))}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
+                    <button onClick={() => toggleHilfe(hilfeKey)} className="text-xs font-medium text-coral-600 dark:text-coral-400 hover:underline">
+                      {hilfeOffen ? '▾ Kann-Beschreibungen ausblenden' : '▸ Kann-Beschreibungen anzeigen'}
+                    </button>
+                    {hilfeOffen && (
+                      <ul className="bg-paper-50 dark:bg-ink-900/40 border border-paper-100 dark:border-ink-800 rounded-lg p-2.5 space-y-1.5 max-h-48 overflow-y-auto">
+                        {(k.items ?? []).map((it, ii) => (
+                          <li key={ii} className="text-[11px] text-ink-500 dark:text-ink-400 leading-snug">
+                            {itemZeilen(it).map((z, zi) => <span key={zi} className="block">{z}</span>)}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <textarea rows={2} value={w.notiz ?? ''} onChange={e => setNotiz(aktBereichIdx, ti, e.target.value)}
+                      className="w-full text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 placeholder-ink-400 resize-none focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
+                      placeholder="Notiz (optional)…" />
                   </div>
-                )}
-              </div>
-
-              {/* Notiz */}
-              <div>
-                <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Notiz (optional)</label>
-                <textarea rows={2} value={werte[aktBereich.name]?.notiz ?? ''} onChange={e => setNotiz(aktBereich.name, e.target.value)}
-                  className="w-full text-sm bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-lg px-3 py-2 text-ink-800 dark:text-paper-200 placeholder-ink-400 resize-none focus:outline-none focus:ring-2 focus:ring-coral-400/40 focus:border-coral-400"
-                  placeholder="Beobachtung zu diesem Bereich…" />
-              </div>
+                )
+              })}
             </div>
           )}
 
@@ -201,16 +214,21 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
           {schritt === bereiche.length + 1 && bereiche.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm text-ink-600 dark:text-paper-300">Zusammenfassung – prüfe die Niveaus und speichere die Erhebung.</p>
-              <div className="border border-paper-200 dark:border-ink-800 rounded-lg divide-y divide-paper-100 dark:divide-ink-800">
-                {bereiche.map(b => (
-                  <div key={b.name} className="flex items-center justify-between gap-2 px-3 py-2">
-                    <span className="text-sm text-ink-700 dark:text-paper-200 truncate">{b.name}</span>
-                    <span className="text-xs text-ink-500 dark:text-ink-400 flex-shrink-0">
-                      <span className="font-bold text-coral-600 dark:text-coral-400">{werte[b.name]?.niveau ?? 0}</span> · {niveauLabel(werte[b.name]?.niveau ?? 0)}
-                    </span>
+              {bereiche.map((b, bi) => (
+                <div key={bi}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-1">{b.name}</p>
+                  <div className="border border-paper-200 dark:border-ink-800 rounded-lg divide-y divide-paper-100 dark:divide-ink-800">
+                    {(b.kategorien ?? []).map((k, ti) => (
+                      <div key={ti} className="flex items-center justify-between gap-2 px-3 py-1.5">
+                        <span className="text-sm text-ink-700 dark:text-paper-200 truncate">{k.name}</span>
+                        <span className="text-xs text-ink-500 dark:text-ink-400 flex-shrink-0">
+                          <span className="font-bold text-coral-600 dark:text-coral-400">{werte[bi]?.[ti]?.niveau ?? 0}</span> · {niveauLabel(werte[bi]?.[ti]?.niveau ?? 0)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           )}
 

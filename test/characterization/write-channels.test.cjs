@@ -105,8 +105,8 @@ const CASES = [
   { name: 'kompetenzbereiche:delete', channel: 'kompetenzbereiche:delete', args: [2], tables: ['kompetenzbereiche', 'schueler_kompetenzen'] },
   { name: 'kompetenzbereiche:reorder', channel: 'kompetenzbereiche:reorder', args: [[2, 1]], tables: ['kompetenzbereiche'] },
   { name: 'schuelerKompetenzen:set', channel: 'schuelerKompetenzen:set', args: [1, 1, 2, 'Notiz'], tables: ['schueler_kompetenzen'] },
-  { name: 'kompetenzErhebungen:speichern', channel: 'kompetenzErhebungen:speichern', args: [{ schuelerId: 1, fachId: 1, schulstufe: 3, datum: '2026-01-15', titel: 'Mitte', bereiche: [{ name: 'Lesen' }, { name: 'Zuhören' }], werte: [{ bereichName: 'Lesen', niveau: 2 }, { bereichName: 'Zuhören', niveau: 1, notiz: 'x' }] }], tables: ['kompetenzbereiche', 'kompetenz_erhebungen', 'kompetenz_erhebung_werte'] },
-  { name: 'kompetenzErhebungen:update', channel: 'kompetenzErhebungen:update', args: [1, { datum: '2026-01-20', titel: 'upd', werte: [{ kompetenzbereich_id: 1, niveau: 3 }] }], tables: ['kompetenz_erhebungen', 'kompetenz_erhebung_werte'] },
+  { name: 'kompetenzErhebungen:speichern', channel: 'kompetenzErhebungen:speichern', args: [{ schuelerId: 1, fachId: 1, schulstufe: 3, datum: '2026-01-15', titel: 'Mitte', werte: [{ bereich_idx: 0, teilkompetenz_idx: 0, bereich_name: 'Lesen', teilkompetenz_name: 'Lesefertigkeit', niveau: 2 }, { bereich_idx: 1, teilkompetenz_idx: 0, bereich_name: 'Schreiben', teilkompetenz_name: 'Verfassen', niveau: 1, notiz: 'x' }] }], tables: ['kompetenz_erhebungen', 'kompetenz_erhebung_werte'] },
+  { name: 'kompetenzErhebungen:update', channel: 'kompetenzErhebungen:update', args: [1, { datum: '2026-01-20', titel: 'upd', werte: [{ bereich_idx: 0, teilkompetenz_idx: 0, bereich_name: 'Lesen', teilkompetenz_name: 'Lesefertigkeit', niveau: 3 }] }], tables: ['kompetenz_erhebungen', 'kompetenz_erhebung_werte'] },
   { name: 'kompetenzErhebungen:delete', channel: 'kompetenzErhebungen:delete', args: [1], tables: ['kompetenz_erhebungen', 'kompetenz_erhebung_werte'] },
 
   // ── Stundenzeiten / Stundenplan ────────────────────────────────────────────

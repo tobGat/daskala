@@ -3826,29 +3826,6 @@
   "kompetenzErhebungen:speichern": {
     "ret": 3,
     "state": {
-      "kompetenzbereiche": [
-        {
-          "id": 1,
-          "fach_id": 1,
-          "titel": "Lesen",
-          "beschreibung": "Sinnerfassend lesen",
-          "reihenfolge": 1
-        },
-        {
-          "id": 2,
-          "fach_id": 1,
-          "titel": "Schreiben",
-          "beschreibung": "Texte verfassen",
-          "reihenfolge": 2
-        },
-        {
-          "id": 3,
-          "fach_id": 1,
-          "titel": "Zuhören",
-          "beschreibung": null,
-          "reihenfolge": 2
-        }
-      ],
       "kompetenz_erhebungen": [
         {
           "id": 1,
@@ -3882,42 +3859,60 @@
         {
           "id": 1,
           "erhebung_id": 1,
-          "kompetenzbereich_id": 1,
+          "bereich_idx": 0,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Lesen",
+          "teilkompetenz_name": "Lesefertigkeit",
           "niveau": 1,
           "notiz": null
         },
         {
           "id": 2,
           "erhebung_id": 1,
-          "kompetenzbereich_id": 2,
+          "bereich_idx": 1,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Schreiben",
+          "teilkompetenz_name": "Verfassen",
           "niveau": 2,
           "notiz": "ok"
         },
         {
           "id": 3,
           "erhebung_id": 2,
-          "kompetenzbereich_id": 1,
+          "bereich_idx": 0,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Lesen",
+          "teilkompetenz_name": "Lesefertigkeit",
           "niveau": 2,
           "notiz": null
         },
         {
           "id": 4,
           "erhebung_id": 2,
-          "kompetenzbereich_id": 2,
+          "bereich_idx": 1,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Schreiben",
+          "teilkompetenz_name": "Verfassen",
           "niveau": 3,
           "notiz": null
         },
         {
           "id": 5,
           "erhebung_id": 3,
-          "kompetenzbereich_id": 1,
+          "bereich_idx": 0,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Lesen",
+          "teilkompetenz_name": "Lesefertigkeit",
           "niveau": 2,
           "notiz": null
         },
         {
           "id": 6,
           "erhebung_id": 3,
-          "kompetenzbereich_id": 3,
+          "bereich_idx": 1,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Schreiben",
+          "teilkompetenz_name": "Verfassen",
           "niveau": 1,
           "notiz": "x"
         }
@@ -3951,28 +3946,40 @@
         {
           "id": 1,
           "erhebung_id": 1,
-          "kompetenzbereich_id": 1,
+          "bereich_idx": 0,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Lesen",
+          "teilkompetenz_name": "Lesefertigkeit",
           "niveau": 3,
           "notiz": null
         },
         {
           "id": 2,
           "erhebung_id": 1,
-          "kompetenzbereich_id": 2,
+          "bereich_idx": 1,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Schreiben",
+          "teilkompetenz_name": "Verfassen",
           "niveau": 2,
           "notiz": "ok"
         },
         {
           "id": 3,
           "erhebung_id": 2,
-          "kompetenzbereich_id": 1,
+          "bereich_idx": 0,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Lesen",
+          "teilkompetenz_name": "Lesefertigkeit",
           "niveau": 2,
           "notiz": null
         },
         {
           "id": 4,
           "erhebung_id": 2,
-          "kompetenzbereich_id": 2,
+          "bereich_idx": 1,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Schreiben",
+          "teilkompetenz_name": "Verfassen",
           "niveau": 3,
           "notiz": null
         }
@@ -3997,14 +4004,20 @@
         {
           "id": 3,
           "erhebung_id": 2,
-          "kompetenzbereich_id": 1,
+          "bereich_idx": 0,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Lesen",
+          "teilkompetenz_name": "Lesefertigkeit",
           "niveau": 2,
           "notiz": null
         },
         {
           "id": 4,
           "erhebung_id": 2,
-          "kompetenzbereich_id": 2,
+          "bereich_idx": 1,
+          "teilkompetenz_idx": 0,
+          "bereich_name": "Schreiben",
+          "teilkompetenz_name": "Verfassen",
           "niveau": 3,
           "notiz": null
         }

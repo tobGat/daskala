@@ -18,29 +18,38 @@ export default function KompetenzSection({ schueler, fach }) {
   const [hatRaster, setHatRaster] = useState(null)
   const [profil, setProfil] = useState(null)
   const [schulstufen, setSchulstufen] = useState([])
+  const [niveaustufen, setNiveaustufen] = useState([])
   const [wizard, setWizard] = useState(false)
   const [loading, setLoading] = useState(true)
   const [bestaetigeId, setBestaetigeId] = useState(null)
 
+  // Profil + (bei vorhandenen Erhebungen) die Niveaustufen-Bezeichnungen der fixierten Schulstufe laden.
   const laden = async () => {
     const p = await window.api.kompetenzErhebungen.getProfil(schueler.id, fach.id)
+    if (p.erhebungen?.length && p.letzteSchulstufe) {
+      const r = await window.api.kompetenzKatalog.getRaster(fach.name, p.letzteSchulstufe)
+      setNiveaustufen(r?.niveaustufen ?? [])
+    }
     setProfil(p)
   }
 
   useEffect(() => {
     let abbruch = false
-    setLoading(true); setProfil(null); setHatRaster(null); setBestaetigeId(null)
+    setLoading(true); setProfil(null); setHatRaster(null); setBestaetigeId(null); setNiveaustufen([])
     ;(async () => {
       const has = await window.api.kompetenzKatalog.hatRaster(fach.name)
       if (abbruch) return
       setHatRaster(has)
       if (!has) { setLoading(false); return }
-      const [p, stufen] = await Promise.all([
-        window.api.kompetenzErhebungen.getProfil(schueler.id, fach.id),
-        window.api.kompetenzKatalog.listSchulstufen(fach.name),
-      ])
+      const stufen = await window.api.kompetenzKatalog.listSchulstufen(fach.name)
+      const p = await window.api.kompetenzErhebungen.getProfil(schueler.id, fach.id)
+      let ns = []
+      if (p.erhebungen?.length && p.letzteSchulstufe) {
+        const r = await window.api.kompetenzKatalog.getRaster(fach.name, p.letzteSchulstufe)
+        ns = r?.niveaustufen ?? []
+      }
       if (abbruch) return
-      setProfil(p); setSchulstufen(stufen); setLoading(false)
+      setSchulstufen(stufen); setProfil(p); setNiveaustufen(ns); setLoading(false)
     })()
     return () => { abbruch = true }
   }, [fach.id, fach.name, schueler.id])
@@ -49,7 +58,6 @@ export default function KompetenzSection({ schueler, fach }) {
   if (loading || !profil) return null
 
   const erhebungen = profil.erhebungen ?? []
-  const bereiche = profil.bereiche ?? []
   const gesperrteSchulstufe = erhebungen.length ? profil.letzteSchulstufe : null
 
   const loeschen = async (id) => {
@@ -67,7 +75,7 @@ export default function KompetenzSection({ schueler, fach }) {
         </button>
       </div>
 
-      <KompetenzRadar bereiche={bereiche} erhebungen={erhebungen} />
+      <KompetenzRadar erhebungen={erhebungen} niveaustufen={niveaustufen} />
 
       {erhebungen.length > 0 && (
         <div className="mt-2 space-y-0.5">

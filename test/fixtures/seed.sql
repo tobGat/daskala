@@ -114,11 +114,11 @@ INSERT INTO kompetenz_erhebungen (id, schueler_id, fach_id, schulstufe, datum, t
   (1, 1, 1, 3, '2025-10-15', 'Herbst', '2025-10-15 08:00:00'),
   (2, 1, 1, 3, '2026-02-10', 'Winter', '2026-02-10 08:00:00');
 
-INSERT INTO kompetenz_erhebung_werte (id, erhebung_id, kompetenzbereich_id, niveau, notiz) VALUES
-  (1, 1, 1, 1, NULL),
-  (2, 1, 2, 2, 'ok'),
-  (3, 2, 1, 2, NULL),
-  (4, 2, 2, 3, NULL);
+INSERT INTO kompetenz_erhebung_werte (id, erhebung_id, bereich_idx, teilkompetenz_idx, bereich_name, teilkompetenz_name, niveau, notiz) VALUES
+  (1, 1, 0, 0, 'Lesen',     'Lesefertigkeit', 1, NULL),
+  (2, 1, 1, 0, 'Schreiben', 'Verfassen',      2, 'ok'),
+  (3, 2, 0, 0, 'Lesen',     'Lesefertigkeit', 2, NULL),
+  (4, 2, 1, 0, 'Schreiben', 'Verfassen',      3, NULL);
 
 -- ── Stunden-/Pausenzeiten ───────────────────────────────────────────────────
 -- main.js/initDB legt Default-Stundenzeiten an → für einen festen Snapshot leeren.
