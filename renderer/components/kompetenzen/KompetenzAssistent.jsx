@@ -31,20 +31,21 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
   const [speichern, setSpeichern] = useState(false)
 
   const bereiche = raster?.bereiche ?? []
+  const maxNiveau = (raster?.niveaustufen ?? []).length || 1
   const bezeichnung = (k) => (raster?.niveaustufen ?? []).find(x => x.niveau === k)?.bezeichnung || `Niveau ${k}`
 
-  // Auswahl-Optionen eines Items: entweder die drei Niveau-Formulierungen (mit Bezeichnung als Label)
-  // oder – bei 1-Niveau-Stufen (Item ist reiner Text) – eine „erreicht"-Option.
-  const optionenVonItem = (it) => {
-    const hatNiveaus = it.niveau1 != null || it.niveau2 != null || it.niveau3 != null
-    if (!hatNiveaus) return [{ k: 1, label: 'erreicht', text: it.text || '', standard: null }]
-    const out = []
-    for (const k of [1, 2, 3]) {
-      const t = it['niveau' + k]
-      if (!t) continue
-      out.push({ k, label: bezeichnung(k), text: t, standard: k === 1 ? (it.niveau1_standard || null) : null })
+  // Ein Item aufbereiten: Gibt es je Niveau UNTERSCHIEDLICHE Formulierungen (Stufe 3–4, teils 6–8)? Dann diese
+  // als Anker je Niveau zeigen. Sonst (ein Text bzw. identische Niveaus – Stufe 1–2, 5, viele 6–8) den Satz
+  // einmal als Aussage zeigen; das Niveau wählst du über die Niveaustufen-Knöpfe (1..maxNiveau).
+  const itemInfo = (it) => {
+    const distinct = [...new Set([it.niveau1, it.niveau2, it.niveau3].filter(Boolean))]
+    const textsDiffer = distinct.length >= 2
+    return {
+      textsDiffer,
+      single: textsDiffer ? null : (it.text ?? distinct[0] ?? ''),
+      nivText: { 1: it.niveau1 || null, 2: it.niveau2 || null, 3: it.niveau3 || null },
+      standard: it.niveau1_standard || null,
     }
-    return out
   }
 
   const rasterLaden = async () => {
@@ -178,23 +179,27 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
                   <p className="text-sm font-semibold text-ink-800 dark:text-paper-100 border-b border-paper-100 dark:border-ink-800 pb-1">{k.name}</p>
                   {(k.items ?? []).map((it, ii) => {
                     const gewaehlt = getNiveau(aktBereichIdx, ti, ii)
-                    const optionen = optionenVonItem(it)
+                    const info = itemInfo(it)
                     return (
                       <div key={ii} className="rounded-lg border border-paper-200 dark:border-ink-800 p-2 space-y-1">
-                        {optionen.map(opt => {
-                          const aktiv = gewaehlt === opt.k
+                        {info.single != null && (
+                          <p className="text-[12px] text-ink-700 dark:text-paper-200 leading-snug px-1 pb-0.5">kann {info.single}</p>
+                        )}
+                        {Array.from({ length: maxNiveau }, (_, i) => i + 1).map(nk => {
+                          const aktiv = gewaehlt === nk
+                          const anker = info.textsDiffer ? info.nivText[nk] : null
                           return (
-                            <button key={opt.k} onClick={() => setNiveau(aktBereichIdx, ti, ii, aktiv ? 0 : opt.k)}
+                            <button key={nk} onClick={() => setNiveau(aktBereichIdx, ti, ii, aktiv ? 0 : nk)}
                               className={`w-full text-left rounded-md px-2.5 py-1.5 flex gap-2 items-start transition-colors ${aktiv
                                 ? 'bg-coral-50 dark:bg-coral-900/30 ring-1 ring-coral-300 dark:ring-coral-700'
                                 : 'hover:bg-paper-100 dark:hover:bg-ink-800'}`}>
                               <span className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold ${aktiv ? 'bg-coral-500 border-coral-500 text-white' : 'border-paper-300 dark:border-ink-600 text-ink-400'}`}>
-                                {aktiv ? opt.k : ''}
+                                {nk}
                               </span>
                               <span className="text-[12px] leading-snug">
-                                <span className={`font-semibold ${aktiv ? 'text-coral-700 dark:text-coral-300' : 'text-ink-600 dark:text-paper-300'}`}>{opt.label}: </span>
-                                <span className="text-ink-600 dark:text-paper-300">kann {opt.text}</span>
-                                {opt.standard && <span className="block text-[11px] text-ink-400 italic">Standard (MS): kann {opt.standard}</span>}
+                                <span className={`font-semibold ${aktiv ? 'text-coral-700 dark:text-coral-300' : 'text-ink-600 dark:text-paper-300'}`}>{bezeichnung(nk)}</span>
+                                {anker && <span className="text-ink-600 dark:text-paper-300"> — kann {anker}</span>}
+                                {nk === 1 && info.standard && <span className="block text-[11px] text-ink-400 italic">Standard (MS): kann {info.standard}</span>}
                               </span>
                             </button>
                           )
