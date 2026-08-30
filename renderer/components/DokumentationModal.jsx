@@ -109,6 +109,7 @@ const DOKU = [
       { h: 'Netzdiagramm & Verlauf' },
       'Das Netzdiagramm zeigt je Kompetenzbereich den Durchschnitt der erfassten Kann-Beschreibungen auf einen Blick (Skala nach den Niveaustufen der Schulstufe). Mit dem Zeitstrahl-Schieber darunter wählst du den Erhebungszeitpunkt; das Diagramm wechselt animiert auf den jeweiligen Stand. Über „Details anzeigen" siehst du je Teilkompetenz das Ø-Niveau zum gewählten Zeitpunkt. So wird die Entwicklung über das Schuljahr sichtbar.',
       'Du kannst den Assistenten beliebig oft pro Jahr durchlaufen (z. B. je Semester). Einzelne Erhebungen lassen sich in der Liste unter dem Diagramm wieder löschen.',
+      'Erinnerung: In den Einstellungen → „Kompetenz-Erhebungen" legst du Zeitpunkte fest, zu denen du erinnert werden möchtest. Jeder Zeitpunkt wird als ToDo („Kompetenz-Erhebung durchführen", Erinnerung 1 Woche davor) eingetragen und erscheint im Dashboard.',
       { tipp: 'Für andere Fächer als Deutsch sind noch keine Raster hinterlegt – dort erscheint der Kompetenzen-Bereich vorerst nicht.' },
     ],
   },

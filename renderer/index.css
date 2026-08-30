@@ -329,6 +329,14 @@
 }
 .acc-body-in { animation: accIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
+/* Dezenter Aufmerksamkeits-Puls für eine Call-to-Action (z. B. „Assistent starten", solange leer). */
+@keyframes pulseCta {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 105, 54, 0.45); }
+  50%      { box-shadow: 0 0 0 7px rgba(251, 105, 54, 0); }
+}
+.animate-pulse-cta { animation: pulseCta 1.9s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+@media (prefers-reduced-motion: reduce) { .animate-pulse-cta { animation: none; } }
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MOBIL (Capacitor)
    Alles hier ist unter `html.cap` bzw. `.cap` eingezäunt. Die Markierung setzt

@@ -74,12 +74,21 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
     <section>
       <div className="flex items-center justify-between mb-2">
         <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500">Kompetenzen</p>
-        <button className="text-xs font-medium text-coral-600 dark:text-coral-400 hover:underline" onClick={() => setWizard(true)}>
-          + Assistent starten
-        </button>
+        {erhebungen.length > 0 && (
+          <button className="text-xs font-medium text-coral-600 dark:text-coral-400 hover:underline" onClick={() => setWizard(true)}>
+            + Assistent starten
+          </button>
+        )}
       </div>
 
-      <KompetenzRadar erhebungen={erhebungen} niveaustufen={niveaustufen} maxNiveau={effMaxNiveau} />
+      {erhebungen.length === 0 ? (
+        <button onClick={() => setWizard(true)}
+          className="btn-primary w-full animate-pulse-cta flex items-center justify-center gap-2 py-2.5 text-sm font-semibold">
+          ✎ Kompetenzen-Assistent starten
+        </button>
+      ) : (
+        <KompetenzRadar erhebungen={erhebungen} niveaustufen={niveaustufen} maxNiveau={effMaxNiveau} />
+      )}
 
       {erhebungen.length > 0 && (
         <div className="mt-2 space-y-0.5">
