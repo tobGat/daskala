@@ -104,9 +104,11 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
                   <button onClick={() => setBestaetigeId(null)} className="text-ink-400 hover:text-ink-600">Abbr.</button>
                 </span>
               ) : (
-                <span className="flex-shrink-0 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => setEditErhebung(e)} className="text-ink-400 hover:text-coral-500" title="Erhebung bearbeiten">✎</button>
-                  <button onClick={() => setBestaetigeId(e.id)} className="text-ink-400 hover:text-red-500" title="Erhebung löschen">✕</button>
+                <span className="flex-shrink-0 flex items-center gap-1">
+                  <button onClick={() => setEditErhebung(e)} title="Erhebung bearbeiten"
+                    className="w-7 h-7 rounded-md flex items-center justify-center text-ink-500 hover:text-coral-600 hover:bg-paper-200 dark:hover:bg-ink-700 transition-colors">✎</button>
+                  <button onClick={() => setBestaetigeId(e.id)} title="Erhebung löschen"
+                    className="w-7 h-7 rounded-md flex items-center justify-center text-ink-500 hover:text-red-500 hover:bg-paper-200 dark:hover:bg-ink-700 transition-colors">✕</button>
                 </span>
               )}
             </div>
