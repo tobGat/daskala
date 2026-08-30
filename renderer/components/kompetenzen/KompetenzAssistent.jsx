@@ -5,7 +5,7 @@
 // Ein Durchlauf = eine Erhebung (Zeitpunkt). Bewertet wird JEDE Kann-Beschreibung (Item): pro Item wählst du
 // das erreichte Niveau, wobei die Optionen die echten Raster-Formulierungen zeigen (mit der Niveaustufen-
 // Bezeichnung als Label, z. B. „unter Anleitung"). Gegliedert je Kompetenzbereich → Teilkompetenz.
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 
 const heute = () => new Date().toISOString().slice(0, 10)
 
@@ -32,6 +32,9 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
   const [laden, setLaden] = useState(false)
   const [fehler, setFehler] = useState('')
   const [speichern, setSpeichern] = useState(false)
+  const bodyRef = useRef(null)
+  // Bei Schrittwechsel den Inhaltsbereich nach oben scrollen.
+  useEffect(() => { bodyRef.current?.scrollTo({ top: 0 }) }, [schritt])
 
   const bereiche = raster?.bereiche ?? []
   // Standard (MS) hat ab Stufe 6 im Raster NUR Kompetenzniveau 1 ("unter Anleitung"); AHS hat 1–3.
@@ -159,7 +162,7 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
 
         {schritt > 0 && <Fortschritt aktuell={schritt} anzahl={anzahlSchritte} />}
 
-        <div className="flex-1 overflow-y-auto px-0.5">
+        <div ref={bodyRef} className="flex-1 overflow-y-auto px-0.5">
           {/* Schritt 0: Intro */}
           {schritt === 0 && (
             <div className="space-y-4">
@@ -235,11 +238,11 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
                     const gewaehlt = getNiveau(aktBereichIdx, ti, ii)
                     const info = itemInfo(it)
                     return (
-                      <div key={ii} className="rounded-lg border border-paper-200 dark:border-ink-800 p-2 space-y-1">
+                      <div key={ii} className="rounded-lg border border-paper-200 dark:border-ink-800 p-2.5 space-y-1.5">
                         {info.single != null && (
-                          <div className="px-1 pb-0.5">
-                            <p className="text-[12px] text-ink-700 dark:text-paper-200 leading-snug">kann {info.single}</p>
-                            {info.otherNote && <p className="text-[11px] text-ink-400 italic">{info.otherNote.label}: kann {info.otherNote.text}</p>}
+                          <div className="px-1 pb-1">
+                            <p className="text-sm font-medium text-ink-800 dark:text-paper-100 leading-snug">kann {info.single}</p>
+                            {info.otherNote && <p className="text-[11px] text-ink-400 italic mt-0.5">{info.otherNote.label}: kann {info.otherNote.text}</p>}
                           </div>
                         )}
                         {Array.from({ length: maxNiveau }, (_, i) => i + 1).map(nk => {
@@ -253,9 +256,9 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
                               <span className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold ${aktiv ? 'bg-coral-500 border-coral-500 text-white' : 'border-paper-300 dark:border-ink-600 text-ink-400'}`}>
                                 {nk}
                               </span>
-                              <span className="text-[12px] leading-snug">
+                              <span className="text-[13px] leading-snug">
                                 <span className={`font-semibold ${aktiv ? 'text-coral-700 dark:text-coral-300' : 'text-ink-600 dark:text-paper-300'}`}>{bezeichnung(nk)}</span>
-                                {anker && <span className="text-ink-600 dark:text-paper-300"> — kann {anker}</span>}
+                                {anker && <span className="text-ink-700 dark:text-paper-200"> — kann {anker}</span>}
                                 {nk === 1 && info.single == null && info.otherNote && <span className="block text-[11px] text-ink-400 italic">{info.otherNote.label}: kann {info.otherNote.text}</span>}
                               </span>
                             </button>

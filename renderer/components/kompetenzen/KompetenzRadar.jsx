@@ -19,7 +19,21 @@ const kurz = (s, n = 16) => {
   return t.length > n ? t.slice(0, n - 1) + '…' : t
 }
 
-const FARBE = '#fb6936' // coral (SA-Farbe im NotenChart)
+// Ampel-Farbe je Kompetenzwert. Standard (maxNiveau 1): rot → gelb → grün.
+// Standard AHS / Stufe 3–5 (maxNiveau 3): 0 rot, 1 orange, 2 gelb, 3 grün (dazwischen interpoliert).
+function lerpHex(a, b, t) {
+  const p = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]
+  const [r1, g1, b1] = p(a), [r2, g2, b2] = p(b)
+  const m = (x, y) => Math.round(x + (y - x) * t).toString(16).padStart(2, '0')
+  return `#${m(r1, r2)}${m(g1, g2)}${m(b1, b2)}`
+}
+function niveauFarbe(val, maxNiveau) {
+  const stops = maxNiveau <= 1 ? ['#ef4444', '#eab308', '#22c55e'] : ['#ef4444', '#f97316', '#eab308', '#22c55e']
+  const max = maxNiveau <= 1 ? 1 : maxNiveau
+  const pos = (Math.max(0, Math.min(max, val)) / max) * (stops.length - 1)
+  const i = Math.min(stops.length - 2, Math.floor(pos))
+  return lerpHex(stops[i], stops[i + 1], pos - i)
+}
 
 export default function KompetenzRadar({ erhebungen, niveaustufen = [], maxNiveau: maxNiveauProp }) {
   const maxNiveau = maxNiveauProp || niveaustufen.length || 1
@@ -79,7 +93,11 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [], maxNivea
   }
   const polyPunkte = (vals) => vals.map((v, i) => punkt(v, i).map(z => z.toFixed(1)).join(',')).join(' ')
   const ringPunkte = (level) => achsen.map((_, i) => punkt(0, i, (level / maxNiveau) * maxR).map(z => z.toFixed(1)).join(',')).join(' ')
-  const ringe = Array.from({ length: maxNiveau }, (_, k) => k + 1)
+  // Gitter-Ringe: Standard in 0,2er-Schritten, sonst in 0,5er-Schritten.
+  const ringStep = maxNiveau <= 1 ? 0.2 : 0.5
+  const ringe = []
+  for (let v = ringStep; v <= maxNiveau + 1e-9; v += ringStep) ringe.push(Math.round(v * 100) / 100)
+  const istGanz = (v) => Math.abs(v - Math.round(v)) < 1e-9
 
   const aktuelle = erhebungen[idx]
 
@@ -99,7 +117,7 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [], maxNivea
     <div className="bg-paper-50 dark:bg-ink-900/40 border border-paper-200 dark:border-ink-800 rounded-xl p-3">
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
         {ringe.map(level => (
-          <polygon key={level} points={ringPunkte(level)} fill="none" stroke="#cfc9c2" strokeWidth={level === maxNiveau ? 1 : 0.5} strokeOpacity={0.7} />
+          <polygon key={level} points={ringPunkte(level)} fill="none" stroke="#cfc9c2" strokeWidth={istGanz(level) ? 1 : 0.5} strokeOpacity={istGanz(level) ? 0.7 : 0.35} />
         ))}
         {achsen.map((a, i) => {
           const [ex, ey] = punkt(0, i, maxR)
@@ -115,16 +133,16 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [], maxNivea
             </g>
           )
         })}
-        {ringe.map(level => (
+        {ringe.filter(istGanz).map(level => (
           <text key={level} x={cx + 4} y={cy - (level / maxNiveau) * maxR + 3} fontSize={8} fill="#a59c91">{level}</text>
         ))}
-        <polygon points={polyPunkte(anim)} fill="rgba(251,105,54,0.18)" stroke={FARBE} strokeWidth={2} strokeLinejoin="round" />
+        <polygon points={polyPunkte(anim)} fill="rgba(148,163,184,0.15)" stroke="#94a3b8" strokeWidth={2} strokeLinejoin="round" />
         {anim.map((v, i) => {
           const [x, y] = punkt(v, i)
           return (
             <g key={achsen[i].idx}>
               <title>{`${achsen[i].name} · Ø ${avg(aktuelle, achsen[i].idx).toFixed(1)}`}</title>
-              <circle cx={x} cy={y} r={3.5} fill={FARBE} stroke="white" strokeWidth={1.2} />
+              <circle cx={x} cy={y} r={4} fill={niveauFarbe(v, maxNiveau)} stroke="white" strokeWidth={1.3} />
             </g>
           )
         })}
