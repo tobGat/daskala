@@ -8,6 +8,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 
 const heute = () => new Date().toISOString().slice(0, 10)
+const fmtDatum = (s) => { if (!s) return ''; const [y, m, d] = String(s).split('-'); return d ? `${d}.${m}.${y}` : s }
 
 function Fortschritt({ aktuell, anzahl }) {
   return (
@@ -19,7 +20,7 @@ function Fortschritt({ aktuell, anzahl }) {
   )
 }
 
-export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, gesperrteSchulstufe, letzteSchulzweig, gesperrterSchulzweig, autoSchulzweig, schulstufen, erhebung, onClose, onSaved }) {
+export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, gesperrteSchulstufe, letzteSchulzweig, gesperrterSchulzweig, autoSchulzweig, schulstufen, erhebung, letzteErhebung, onClose, onSaved }) {
   const istBearbeiten = !!erhebung // bestehende Erhebung korrigieren
   const [schritt, setSchritt] = useState(0) // 0 = Intro, 1..N = Kompetenzbereiche, N+1 = Zusammenfassung
   const [schulstufe, setSchulstufe] = useState(erhebung?.schulstufe ?? gesperrteSchulstufe ?? letzteSchulstufe ?? null)
@@ -41,6 +42,13 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
   const istStandardMS = (schulstufe ?? 0) >= 6 && schulzweig === 'ms'
   const maxNiveau = istStandardMS ? 1 : ((raster?.niveaustufen ?? []).length || 1)
   const bezeichnung = (k) => (raster?.niveaustufen ?? []).find(x => x.niveau === k)?.bezeichnung || `Niveau ${k}`
+
+  // Werte der letzten Erhebung (nur beim Anlegen) als kleine Referenz je Kann-Beschreibung.
+  const vorher = {}
+  if (!istBearbeiten && letzteErhebung) {
+    for (const w of letzteErhebung.werte ?? []) vorher[`${w.bereich_idx}:${w.teilkompetenz_idx}:${w.item_idx}`] = w.niveau
+  }
+  const vorherLabel = (nk) => nk === 0 ? 'noch nicht erfasst' : `${nk} · ${bezeichnung(nk)}`
 
   // Ein Item aufbereiten: Gibt es je Niveau UNTERSCHIEDLICHE Formulierungen (Stufe 3–4, teils 6–8)? Dann diese
   // als Anker je Niveau zeigen. Sonst (ein Text bzw. identische Niveaus – Stufe 1–2, 5, viele 6–8) den Satz
@@ -229,6 +237,7 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
                 <h3 className="text-base font-semibold text-ink-900 dark:text-white">{aktBereich.name}</h3>
                 {aktBereich.basis && <p className="text-xs text-ink-500 dark:text-ink-400 mt-0.5">{aktBereich.basis}</p>}
                 <p className="text-[11px] text-ink-400 mt-1">Wähle je Kann-Beschreibung das erreichte Niveau (oder „noch nicht").</p>
+                {!istBearbeiten && letzteErhebung && <p className="text-[11px] text-ink-400 mt-0.5">Klein angezeigt: die letzte Erhebung vom {fmtDatum(letzteErhebung.datum)}.</p>}
               </div>
 
               {(aktBereich.kategorien ?? []).map((k, ti) => (
@@ -239,6 +248,9 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
                     const info = itemInfo(it)
                     return (
                       <div key={ii} className="rounded-lg border border-paper-200 dark:border-ink-800 p-2.5 space-y-1.5">
+                        {vorher[`${aktBereichIdx}:${ti}:${ii}`] !== undefined && (
+                          <p className="text-[10px] text-ink-400 px-1">zuletzt: {vorherLabel(vorher[`${aktBereichIdx}:${ti}:${ii}`])}</p>
+                        )}
                         {info.single != null && (
                           <div className="px-1 pb-1">
                             <p className="text-sm font-medium text-ink-800 dark:text-paper-100 leading-snug">kann {info.single}</p>

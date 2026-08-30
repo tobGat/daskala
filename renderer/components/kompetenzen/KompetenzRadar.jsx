@@ -35,8 +35,9 @@ function niveauFarbe(val, maxNiveau) {
   return lerpHex(stops[i], stops[i + 1], pos - i)
 }
 
-export default function KompetenzRadar({ erhebungen, niveaustufen = [], maxNiveau: maxNiveauProp }) {
-  const maxNiveau = maxNiveauProp || niveaustufen.length || 1
+export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
+  // Max. Niveau je Erhebung: Standard (MS) ab Stufe 6 → 1, sonst Anzahl der Niveaustufen (3 bzw. 1).
+  const zweigMax = (e) => (e?.schulzweig === 'ms' && (e?.schulstufe ?? 0) >= 6) ? 1 : (niveaustufen.length || 1)
 
   // Achsen aus den Daten ableiten: distinct (bereich_idx, bereich_name), nach bereich_idx sortiert.
   const axisMap = new Map()
@@ -84,6 +85,8 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [], maxNivea
     )
   }
 
+  const aktuelle = erhebungen[idx]
+  const maxNiveau = zweigMax(aktuelle) // Skala richtet sich nach dem Zweig der gewählten Erhebung
   const W = 400, H = 320, cx = 200, cy = 150, maxR = 100
   const winkel = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / N
   const punkt = (niveau, i, r = null) => {
@@ -98,8 +101,6 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [], maxNivea
   const ringe = []
   for (let v = ringStep; v <= maxNiveau + 1e-9; v += ringStep) ringe.push(Math.round(v * 100) / 100)
   const istGanz = (v) => Math.abs(v - Math.round(v)) < 1e-9
-
-  const aktuelle = erhebungen[idx]
 
   // Detailliste: je Bereich → Teilkompetenzen (Ø der Item-Niveaus) für die gewählte Erhebung.
   const detailBereiche = achsen.map(a => {
@@ -160,7 +161,7 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [], maxNivea
         <div className="text-center text-xs text-ink-600 dark:text-paper-300 mb-1">
           <span className="font-semibold">{formatDatum(aktuelle?.datum)}</span>
           {aktuelle?.titel ? ` · ${aktuelle.titel}` : ''}
-          <span className="text-ink-400"> · {idx + 1}/{erhebungen.length}{aktuelle?.schulstufe ? ` · ${aktuelle.schulstufe}. Schulstufe` : ''}</span>
+          <span className="text-ink-400"> · {idx + 1}/{erhebungen.length}{aktuelle?.schulstufe ? ` · ${aktuelle.schulstufe}. Schulstufe` : ''}{aktuelle?.schulzweig ? ` · ${aktuelle.schulzweig === 'ms' ? 'Standard (MS)' : 'Standard AHS'}` : ''}</span>
         </div>
         {erhebungen.length > 1 && (
           <input type="range" min={0} max={erhebungen.length - 1} step={1} value={idx}

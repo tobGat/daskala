@@ -62,8 +62,6 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
 
   const erhebungen = profil.erhebungen ?? []
   const gesperrteSchulstufe = erhebungen.length ? profil.letzteSchulstufe : null
-  // Standard (MS) ab Stufe 6 kennt nur Niveau 1 → Radar entsprechend skalieren.
-  const effMaxNiveau = (profil.letzteSchulstufe >= 6 && profil.letzteSchulzweig === 'ms') ? 1 : (niveaustufen.length || 1)
 
   const loeschen = async (id) => {
     setBestaetigeId(null)
@@ -76,8 +74,9 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
       <div className="flex items-center justify-between mb-2">
         <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500">Kompetenzen</p>
         {erhebungen.length > 0 && (
-          <button className="text-xs font-medium text-coral-600 dark:text-coral-400 hover:underline" onClick={() => setWizard(true)}>
-            + Assistent starten
+          <button onClick={() => setWizard(true)}
+            className="text-xs font-semibold text-coral-700 dark:text-coral-300 bg-coral-50 dark:bg-coral-900/30 hover:bg-coral-100 dark:hover:bg-coral-900/50 border border-coral-200 dark:border-coral-800 rounded-lg px-2.5 py-1 transition-colors">
+            + Neue Erhebung
           </button>
         )}
       </div>
@@ -88,7 +87,7 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
           ✎ Kompetenzen-Assistent starten
         </button>
       ) : (
-        <KompetenzRadar erhebungen={erhebungen} niveaustufen={niveaustufen} maxNiveau={effMaxNiveau} />
+        <KompetenzRadar erhebungen={erhebungen} niveaustufen={niveaustufen} />
       )}
 
       {erhebungen.length > 0 && (
@@ -121,6 +120,7 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
           schueler={schueler}
           fach={fach}
           erhebung={editErhebung}
+          letzteErhebung={erhebungen.length ? erhebungen[erhebungen.length - 1] : null}
           letzteSchulstufe={profil.letzteSchulstufe}
           gesperrteSchulstufe={gesperrteSchulstufe}
           letzteSchulzweig={profil.letzteSchulzweig}
