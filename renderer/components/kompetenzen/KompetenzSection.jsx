@@ -14,7 +14,9 @@ function formatDatum(s) {
   return d ? `${d}.${m}.${y}` : s
 }
 
-export default function KompetenzSection({ schueler, fach }) {
+export default function KompetenzSection({ schueler, fach, niveau }) {
+  // Differenziertes Fach (AHS/ST) → Zweig automatisch aus dem Niveau der Person: AHS→ahs, ST→ms.
+  const autoSchulzweig = fach.benotungssystem === 'differenziert' ? (niveau === 'ST' ? 'ms' : 'ahs') : null
   const [hatRaster, setHatRaster] = useState(null)
   const [profil, setProfil] = useState(null)
   const [schulstufen, setSchulstufen] = useState([])
@@ -105,6 +107,7 @@ export default function KompetenzSection({ schueler, fach }) {
           gesperrteSchulstufe={gesperrteSchulstufe}
           letzteSchulzweig={profil.letzteSchulzweig}
           gesperrterSchulzweig={erhebungen.length ? profil.letzteSchulzweig : null}
+          autoSchulzweig={autoSchulzweig}
           schulstufen={schulstufen}
           onClose={() => setWizard(false)}
           onSaved={laden}

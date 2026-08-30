@@ -411,7 +411,7 @@ function FachDetail({ fach, eintraege, zeugnisnoten, notizen, niveauHistorie, ni
       </section>
 
       {/* Kompetenzen (Assistent + Netzdiagramm) – nur für Fächer mit Raster */}
-      <KompetenzSection schueler={schueler} fach={fach} />
+      <KompetenzSection schueler={schueler} fach={fach} niveau={aktNiveau} />
 
       {/* Notizen */}
       <section>

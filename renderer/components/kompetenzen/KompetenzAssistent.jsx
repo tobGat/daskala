@@ -19,10 +19,11 @@ function Fortschritt({ aktuell, anzahl }) {
   )
 }
 
-export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, gesperrteSchulstufe, letzteSchulzweig, gesperrterSchulzweig, schulstufen, onClose, onSaved }) {
+export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, gesperrteSchulstufe, letzteSchulzweig, gesperrterSchulzweig, autoSchulzweig, schulstufen, onClose, onSaved }) {
   const [schritt, setSchritt] = useState(0) // 0 = Intro, 1..N = Kompetenzbereiche, N+1 = Zusammenfassung
   const [schulstufe, setSchulstufe] = useState(gesperrteSchulstufe ?? letzteSchulstufe ?? null)
-  const [schulzweig, setSchulzweig] = useState(gesperrterSchulzweig ?? letzteSchulzweig ?? 'ahs') // 'ahs' | 'ms' (ab Stufe 6)
+  // autoSchulzweig (differenziertes Fach) hat Vorrang und ist nicht manuell änderbar.
+  const [schulzweig, setSchulzweig] = useState(autoSchulzweig ?? gesperrterSchulzweig ?? letzteSchulzweig ?? 'ahs') // 'ahs' | 'ms' (ab Stufe 6)
   const [datum, setDatum] = useState(heute())
   const [titel, setTitel] = useState('')
   const [raster, setRaster] = useState(null)
@@ -180,7 +181,9 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
               {(schulstufe ?? 0) >= 6 && (
                 <div>
                   <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Leistungsniveau</label>
-                  {gesperrterSchulzweig ? (
+                  {autoSchulzweig ? (
+                    <p className="text-sm text-ink-700 dark:text-paper-200">{autoSchulzweig === 'ms' ? 'Standard (Mittelschule)' : 'Standard AHS'} <span className="text-ink-400">(automatisch – differenziertes Fach, Niveau {autoSchulzweig === 'ms' ? 'ST' : 'AHS'})</span></p>
+                  ) : gesperrterSchulzweig ? (
                     <p className="text-sm text-ink-700 dark:text-paper-200">{gesperrterSchulzweig === 'ms' ? 'Standard (Mittelschule)' : 'Standard AHS'} <span className="text-ink-400">(für dieses Fach festgelegt)</span></p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
