@@ -15,9 +15,19 @@ function formatDatum(s) {
   return d ? `${d}.${m}.${y}` : s
 }
 
-const kurz = (s, n = 16) => {
-  const t = String(s ?? '').trim()
-  return t.length > n ? t.slice(0, n - 1) + '…' : t
+// Bereichsnamen auf mehrere Zeilen umbrechen (Wortgrenzen, ~15 Zeichen/Zeile), damit die
+// Achsenbeschriftung vollständig lesbar bleibt statt abgeschnitten zu werden.
+const umbrechen = (s, max = 15) => {
+  const worte = String(s ?? '').trim().split(/\s+/)
+  const zeilen = []
+  let cur = ''
+  for (const w of worte) {
+    if (!cur) cur = w
+    else if ((cur + ' ' + w).length <= max) cur += ' ' + w
+    else { zeilen.push(cur); cur = w }
+  }
+  if (cur) zeilen.push(cur)
+  return zeilen.length ? zeilen : ['']
 }
 
 export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
@@ -72,7 +82,8 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
 
   const aktuelle = erhebungen[idx]
   const maxNiveau = zweigMax(aktuelle) // Skala richtet sich nach dem Zweig der gewählten Erhebung
-  const W = 400, H = 320, cx = 200, cy = 150, maxR = 100
+  // Kleinerer Plot (maxR) mit mehr Rand ringsum, damit die (ggf. mehrzeiligen) Bereichsnamen Platz haben.
+  const W = 420, H = 340, cx = 210, cy = 162, maxR = 82
   const winkel = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / N
   const punkt = (niveau, i, r = null) => {
     const rr = r ?? (Math.max(0, Math.min(maxNiveau, niveau)) / maxNiveau) * maxR
@@ -107,14 +118,18 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
         ))}
         {achsen.map((a, i) => {
           const [ex, ey] = punkt(0, i, maxR)
-          const [lx, ly] = punkt(0, i, maxR + 12)
+          const [lx, ly] = punkt(0, i, maxR + 14)
           const c = Math.cos(winkel(i))
           const anchor = c > 0.3 ? 'start' : c < -0.3 ? 'end' : 'middle'
+          const zeilen = umbrechen(a.name)
+          const lineH = 9.5
+          const startDy = -((zeilen.length - 1) / 2) * lineH
           return (
             <g key={a.idx}>
               <line x1={cx} y1={cy} x2={ex} y2={ey} stroke="#cfc9c2" strokeWidth={0.5} strokeOpacity={0.7} />
-              <text x={lx} y={ly} textAnchor={anchor} fontSize={9} fill="#8a8178" dominantBaseline="middle">
-                <title>{a.name}</title>{kurz(a.name)}
+              <text x={lx} y={ly} textAnchor={anchor} fontSize={8.5} fill="#8a8178" dominantBaseline="middle">
+                <title>{a.name}</title>
+                {zeilen.map((z, k) => <tspan key={k} x={lx} dy={k === 0 ? startDy : lineH}>{z}</tspan>)}
               </text>
             </g>
           )
