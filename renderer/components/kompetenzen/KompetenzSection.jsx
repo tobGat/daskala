@@ -103,6 +103,8 @@ export default function KompetenzSection({ schueler, fach }) {
           fach={fach}
           letzteSchulstufe={profil.letzteSchulstufe}
           gesperrteSchulstufe={gesperrteSchulstufe}
+          letzteSchulzweig={profil.letzteSchulzweig}
+          gesperrterSchulzweig={erhebungen.length ? profil.letzteSchulzweig : null}
           schulstufen={schulstufen}
           onClose={() => setWizard(false)}
           onSaved={laden}

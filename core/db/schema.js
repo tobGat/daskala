@@ -325,6 +325,7 @@ const TABLE_DDL = [
       schulstufe INTEGER NOT NULL,
       datum TEXT NOT NULL,
       titel TEXT,
+      schulzweig TEXT,
       erstellt_am TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE,
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
@@ -976,6 +977,7 @@ function applySchema(db, deps) {
       schulstufe INTEGER NOT NULL,
       datum TEXT NOT NULL,
       titel TEXT,
+      schulzweig TEXT,
       erstellt_am TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE,
       FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
@@ -1007,6 +1009,7 @@ function applySchema(db, deps) {
   `)
   db.exec(`CREATE INDEX IF NOT EXISTS idx_komp_erhebungen_lookup ON kompetenz_erhebungen (schueler_id, fach_id, datum)`)
   db.exec(`CREATE INDEX IF NOT EXISTS idx_komp_erhebung_werte_erhebung ON kompetenz_erhebung_werte (erhebung_id)`)
+  spalteErgaenzen('kompetenz_erhebungen', 'schulzweig', 'TEXT') // additiv: Standard (MS) / AHS ab Stufe 6
 
   // Supplierstunden
   db.exec(`

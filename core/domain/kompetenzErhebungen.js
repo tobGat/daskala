@@ -10,7 +10,7 @@
 // Profil (alle Erhebungen mit ihren Teilkompetenz-Werten) für eine:n Schüler:in in einem Fach.
 async function getProfil(db, schuelerId, fachId) {
   const erhebungenRows = await db.select(
-    'SELECT id, schulstufe, datum, titel, erstellt_am FROM kompetenz_erhebungen WHERE schueler_id = ? AND fach_id = ? ORDER BY datum, id',
+    'SELECT id, schulstufe, schulzweig, datum, titel, erstellt_am FROM kompetenz_erhebungen WHERE schueler_id = ? AND fach_id = ? ORDER BY datum, id',
     [schuelerId, fachId]
   )
   const werteRows = await db.select(
@@ -37,21 +37,22 @@ async function getProfil(db, schuelerId, fachId) {
   const erhebungen = erhebungenRows.map(e => ({
     id: e.id,
     schulstufe: e.schulstufe,
+    schulzweig: e.schulzweig,
     datum: e.datum,
     titel: e.titel,
     erstellt_am: e.erstellt_am,
     werte: werteByErhebung[e.id] ?? [],
   }))
-  const letzteSchulstufe = erhebungenRows.length ? erhebungenRows[erhebungenRows.length - 1].schulstufe : null
-  return { erhebungen, letzteSchulstufe }
+  const letzte = erhebungenRows.length ? erhebungenRows[erhebungenRows.length - 1] : null
+  return { erhebungen, letzteSchulstufe: letzte?.schulstufe ?? null, letzteSchulzweig: letzte?.schulzweig ?? null }
 }
 
 // Eine neue Erhebung samt Teilkompetenz-Werten speichern. Gibt die neue erhebung_id zurück.
-async function speichern(db, { schuelerId, fachId, schulstufe, datum, titel, werte }) {
+async function speichern(db, { schuelerId, fachId, schulstufe, schulzweig, datum, titel, werte }) {
   return db.transaction(async tx => {
     const info = await tx.execute(
-      'INSERT INTO kompetenz_erhebungen (schueler_id, fach_id, schulstufe, datum, titel) VALUES (?, ?, ?, ?, ?)',
-      [schuelerId, fachId, schulstufe, datum, titel ?? null]
+      'INSERT INTO kompetenz_erhebungen (schueler_id, fach_id, schulstufe, schulzweig, datum, titel) VALUES (?, ?, ?, ?, ?, ?)',
+      [schuelerId, fachId, schulstufe, schulzweig ?? null, datum, titel ?? null]
     )
     const erhebungId = info.lastInsertRowid
     for (const w of werte ?? []) {

@@ -643,6 +643,7 @@
       {
         "id": 1,
         "schulstufe": 3,
+        "schulzweig": null,
         "datum": "2025-10-15",
         "titel": "Herbst",
         "erstellt_am": "2025-10-15 08:00:00",
@@ -670,6 +671,7 @@
       {
         "id": 2,
         "schulstufe": 3,
+        "schulzweig": null,
         "datum": "2026-02-10",
         "titel": "Winter",
         "erstellt_am": "2026-02-10 08:00:00",
@@ -695,7 +697,8 @@
         ]
       }
     ],
-    "letzteSchulstufe": 3
+    "letzteSchulstufe": 3,
+    "letzteSchulzweig": null
   },
   "stundenzeiten:getAll": [
     {

@@ -19,9 +19,10 @@ function Fortschritt({ aktuell, anzahl }) {
   )
 }
 
-export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, gesperrteSchulstufe, schulstufen, onClose, onSaved }) {
+export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, gesperrteSchulstufe, letzteSchulzweig, gesperrterSchulzweig, schulstufen, onClose, onSaved }) {
   const [schritt, setSchritt] = useState(0) // 0 = Intro, 1..N = Kompetenzbereiche, N+1 = Zusammenfassung
   const [schulstufe, setSchulstufe] = useState(gesperrteSchulstufe ?? letzteSchulstufe ?? null)
+  const [schulzweig, setSchulzweig] = useState(gesperrterSchulzweig ?? letzteSchulzweig ?? 'ahs') // 'ahs' | 'ms' (ab Stufe 6)
   const [datum, setDatum] = useState(heute())
   const [titel, setTitel] = useState('')
   const [raster, setRaster] = useState(null)
@@ -38,13 +39,26 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
   // als Anker je Niveau zeigen. Sonst (ein Text bzw. identische Niveaus – Stufe 1–2, 5, viele 6–8) den Satz
   // einmal als Aussage zeigen; das Niveau wählst du über die Niveaustufen-Knöpfe (1..maxNiveau).
   const itemInfo = (it) => {
-    const distinct = [...new Set([it.niveau1, it.niveau2, it.niveau3].filter(Boolean))]
+    const ms = schulzweig === 'ms'
+    const primN1 = ms ? (it.niveau1_standard ?? it.niveau1) : it.niveau1
+    const primText = ms ? (it.text_standard ?? it.text) : it.text
+    const distinct = [...new Set([primN1, it.niveau2, it.niveau3].filter(Boolean))]
     const textsDiffer = distinct.length >= 2
+    // Hinweis auf die jeweils ANDERE Zug-Variante, falls abweichend.
+    let otherNote = null
+    if (ms) {
+      const ahs = it.text ?? it.niveau1
+      const prim = it.text_standard ?? it.niveau1_standard
+      if (prim && ahs && ahs !== prim) otherNote = { label: 'AHS', text: ahs }
+    } else {
+      const std = it.text_standard ?? it.niveau1_standard
+      if (std) otherNote = { label: 'Standard (MS)', text: std }
+    }
     return {
       textsDiffer,
-      single: textsDiffer ? null : (it.text ?? distinct[0] ?? ''),
-      nivText: { 1: it.niveau1 || null, 2: it.niveau2 || null, 3: it.niveau3 || null },
-      standard: it.niveau1_standard || it.text_standard || null,
+      single: textsDiffer ? null : (primText ?? distinct[0] ?? ''),
+      nivText: { 1: primN1 || null, 2: it.niveau2 || null, 3: it.niveau3 || null },
+      otherNote,
     }
   }
 
@@ -91,7 +105,9 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
         })
       })))
       await window.api.kompetenzErhebungen.speichern({
-        schuelerId: schueler.id, fachId: fach.id, schulstufe, datum, titel: titel.trim() || null, werte: alleWerte,
+        schuelerId: schueler.id, fachId: fach.id, schulstufe,
+        schulzweig: schulstufe >= 6 ? schulzweig : null,
+        datum, titel: titel.trim() || null, werte: alleWerte,
       })
       onSaved?.()
       onClose?.()
@@ -161,6 +177,24 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
                   </div>
                 )}
               </div>
+              {(schulstufe ?? 0) >= 6 && (
+                <div>
+                  <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Leistungsniveau</label>
+                  {gesperrterSchulzweig ? (
+                    <p className="text-sm text-ink-700 dark:text-paper-200">{gesperrterSchulzweig === 'ms' ? 'Standard (Mittelschule)' : 'Standard AHS'} <span className="text-ink-400">(für dieses Fach festgelegt)</span></p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {[['ahs', 'Standard AHS'], ['ms', 'Standard (Mittelschule)']].map(([val, lab]) => (
+                        <button key={val} onClick={() => setSchulzweig(val)}
+                          className={`px-3 h-9 rounded-lg text-sm font-semibold transition-all ${schulzweig === val ? 'bg-coral-500 text-white shadow-soft' : 'bg-paper-100 dark:bg-ink-800 text-ink-600 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-700'}`}>
+                          {lab}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-1 text-[11px] text-ink-400">Ab der 6. Schulstufe unterscheidet das Raster Standard (Mittelschule) und AHS; die Formulierungen richten sich danach.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -183,7 +217,10 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
                     return (
                       <div key={ii} className="rounded-lg border border-paper-200 dark:border-ink-800 p-2 space-y-1">
                         {info.single != null && (
-                          <p className="text-[12px] text-ink-700 dark:text-paper-200 leading-snug px-1 pb-0.5">kann {info.single}</p>
+                          <div className="px-1 pb-0.5">
+                            <p className="text-[12px] text-ink-700 dark:text-paper-200 leading-snug">kann {info.single}</p>
+                            {info.otherNote && <p className="text-[11px] text-ink-400 italic">{info.otherNote.label}: kann {info.otherNote.text}</p>}
+                          </div>
                         )}
                         {Array.from({ length: maxNiveau }, (_, i) => i + 1).map(nk => {
                           const aktiv = gewaehlt === nk
@@ -199,7 +236,7 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
                               <span className="text-[12px] leading-snug">
                                 <span className={`font-semibold ${aktiv ? 'text-coral-700 dark:text-coral-300' : 'text-ink-600 dark:text-paper-300'}`}>{bezeichnung(nk)}</span>
                                 {anker && <span className="text-ink-600 dark:text-paper-300"> — kann {anker}</span>}
-                                {nk === 1 && info.standard && <span className="block text-[11px] text-ink-400 italic">Standard (MS): kann {info.standard}</span>}
+                                {nk === 1 && info.single == null && info.otherNote && <span className="block text-[11px] text-ink-400 italic">{info.otherNote.label}: kann {info.otherNote.text}</span>}
                               </span>
                             </button>
                           )
