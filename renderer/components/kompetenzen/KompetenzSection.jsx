@@ -22,6 +22,7 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
   const [schulstufen, setSchulstufen] = useState([])
   const [niveaustufen, setNiveaustufen] = useState([])
   const [wizard, setWizard] = useState(false)
+  const [editErhebung, setEditErhebung] = useState(null) // bestehende Erhebung bearbeiten
   const [loading, setLoading] = useState(true)
   const [bestaetigeId, setBestaetigeId] = useState(null)
 
@@ -103,24 +104,28 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
                   <button onClick={() => setBestaetigeId(null)} className="text-ink-400 hover:text-ink-600">Abbr.</button>
                 </span>
               ) : (
-                <button onClick={() => setBestaetigeId(e.id)} className="flex-shrink-0 text-ink-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Erhebung löschen">✕</button>
+                <span className="flex-shrink-0 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => setEditErhebung(e)} className="text-ink-400 hover:text-coral-500" title="Erhebung bearbeiten">✎</button>
+                  <button onClick={() => setBestaetigeId(e.id)} className="text-ink-400 hover:text-red-500" title="Erhebung löschen">✕</button>
+                </span>
               )}
             </div>
           ))}
         </div>
       )}
 
-      {wizard && (
+      {(wizard || editErhebung) && (
         <KompetenzAssistent
           schueler={schueler}
           fach={fach}
+          erhebung={editErhebung}
           letzteSchulstufe={profil.letzteSchulstufe}
           gesperrteSchulstufe={gesperrteSchulstufe}
           letzteSchulzweig={profil.letzteSchulzweig}
           gesperrterSchulzweig={erhebungen.length ? profil.letzteSchulzweig : null}
           autoSchulzweig={autoSchulzweig}
           schulstufen={schulstufen}
-          onClose={() => setWizard(false)}
+          onClose={() => { setWizard(false); setEditErhebung(null) }}
           onSaved={laden}
         />
       )}

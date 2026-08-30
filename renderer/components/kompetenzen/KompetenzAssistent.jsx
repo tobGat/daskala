@@ -19,13 +19,14 @@ function Fortschritt({ aktuell, anzahl }) {
   )
 }
 
-export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, gesperrteSchulstufe, letzteSchulzweig, gesperrterSchulzweig, autoSchulzweig, schulstufen, onClose, onSaved }) {
+export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, gesperrteSchulstufe, letzteSchulzweig, gesperrterSchulzweig, autoSchulzweig, schulstufen, erhebung, onClose, onSaved }) {
+  const istBearbeiten = !!erhebung // bestehende Erhebung korrigieren
   const [schritt, setSchritt] = useState(0) // 0 = Intro, 1..N = Kompetenzbereiche, N+1 = Zusammenfassung
-  const [schulstufe, setSchulstufe] = useState(gesperrteSchulstufe ?? letzteSchulstufe ?? null)
-  // autoSchulzweig (differenziertes Fach) hat Vorrang und ist nicht manuell änderbar.
-  const [schulzweig, setSchulzweig] = useState(autoSchulzweig ?? gesperrterSchulzweig ?? letzteSchulzweig ?? 'ahs') // 'ahs' | 'ms' (ab Stufe 6)
-  const [datum, setDatum] = useState(heute())
-  const [titel, setTitel] = useState('')
+  const [schulstufe, setSchulstufe] = useState(erhebung?.schulstufe ?? gesperrteSchulstufe ?? letzteSchulstufe ?? null)
+  // Beim Bearbeiten den ursprünglichen Zweig behalten; sonst autoSchulzweig (differenziert) mit Vorrang.
+  const [schulzweig, setSchulzweig] = useState(erhebung?.schulzweig ?? autoSchulzweig ?? gesperrterSchulzweig ?? letzteSchulzweig ?? 'ahs') // 'ahs' | 'ms' (ab Stufe 6)
+  const [datum, setDatum] = useState(erhebung?.datum ?? heute())
+  const [titel, setTitel] = useState(erhebung?.titel ?? '')
   const [raster, setRaster] = useState(null)
   const [werte, setWerte] = useState({}) // { [bi]: { [ti]: { [ii]: niveau } } }
   const [laden, setLaden] = useState(false)
@@ -80,6 +81,14 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
           ;(k.items ?? []).forEach((_, ii) => { init[bi][ti][ii] = 0 })
         })
       })
+      // Beim Bearbeiten die gespeicherten Niveaus übernehmen (per Position).
+      if (erhebung) {
+        for (const w of erhebung.werte ?? []) {
+          if (init[w.bereich_idx]?.[w.teilkompetenz_idx]?.[w.item_idx] !== undefined) {
+            init[w.bereich_idx][w.teilkompetenz_idx][w.item_idx] = w.niveau
+          }
+        }
+      }
       setWerte(init)
       setSchritt(1)
     } catch {
@@ -107,11 +116,15 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
           niveau: getNiveau(bi, ti, ii), notiz: null,
         })
       })))
-      await window.api.kompetenzErhebungen.speichern({
-        schuelerId: schueler.id, fachId: fach.id, schulstufe,
-        schulzweig: schulstufe >= 6 ? schulzweig : null,
-        datum, titel: titel.trim() || null, werte: alleWerte,
-      })
+      if (istBearbeiten) {
+        await window.api.kompetenzErhebungen.update(erhebung.id, { datum, titel: titel.trim() || null, werte: alleWerte })
+      } else {
+        await window.api.kompetenzErhebungen.speichern({
+          schuelerId: schueler.id, fachId: fach.id, schulstufe,
+          schulzweig: schulstufe >= 6 ? schulzweig : null,
+          datum, titel: titel.trim() || null, werte: alleWerte,
+        })
+      }
       onSaved?.()
       onClose?.()
     } catch {
@@ -138,7 +151,7 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
       <div className="modal-box max-w-2xl w-[92vw] flex flex-col max-h-[88vh]">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Kompetenzen-Assistent</h2>
+            <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Kompetenzen-Assistent{istBearbeiten ? ' – bearbeiten' : ''}</h2>
             <p className="text-xs text-ink-500 dark:text-ink-400">{schueler.vorname} {schueler.nachname} · {fach.name}</p>
           </div>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center text-ink-400 hover:text-ink-600 text-sm">✕</button>
@@ -167,8 +180,8 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
               </div>
               <div>
                 <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Schulstufe</label>
-                {gesperrteSchulstufe ? (
-                  <p className="text-sm text-ink-700 dark:text-paper-200">{gesperrteSchulstufe}. Schulstufe <span className="text-ink-400">(für dieses Fach festgelegt)</span></p>
+                {(gesperrteSchulstufe || istBearbeiten) ? (
+                  <p className="text-sm text-ink-700 dark:text-paper-200">{schulstufe}. Schulstufe <span className="text-ink-400">({istBearbeiten ? 'Erhebung wird bearbeitet' : 'für dieses Fach festgelegt'})</span></p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {(schulstufen ?? []).map(s => (
@@ -183,7 +196,9 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
               {(schulstufe ?? 0) >= 6 && (
                 <div>
                   <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Leistungsniveau</label>
-                  {autoSchulzweig ? (
+                  {istBearbeiten ? (
+                    <p className="text-sm text-ink-700 dark:text-paper-200">{schulzweig === 'ms' ? 'Standard (Mittelschule)' : 'Standard AHS'} <span className="text-ink-400">(Erhebung wird bearbeitet)</span></p>
+                  ) : autoSchulzweig ? (
                     <p className="text-sm text-ink-700 dark:text-paper-200">{autoSchulzweig === 'ms' ? 'Standard (Mittelschule)' : 'Standard AHS'} <span className="text-ink-400">(automatisch – differenziertes Fach, Niveau {autoSchulzweig === 'ms' ? 'ST' : 'AHS'})</span></p>
                   ) : gesperrterSchulzweig ? (
                     <p className="text-sm text-ink-700 dark:text-paper-200">{gesperrterSchulzweig === 'ms' ? 'Standard (Mittelschule)' : 'Standard AHS'} <span className="text-ink-400">(für dieses Fach festgelegt)</span></p>
