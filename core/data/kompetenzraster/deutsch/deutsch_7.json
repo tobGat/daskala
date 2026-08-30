@@ -6,6 +6,11 @@
   "quelle": "vom Nutzer hochgeladen: Deutsch_7-Schulstufe-Kompetenzraster_13025604.pdf",
   "status": "vollständig",
   "hinweis_leistungsniveau": "Raster unterscheidet 'Standard' (Mittelschule) und 'Standard AHS'. Bei den meisten Teilkompetenzen ist der Wortlaut über alle Niveaus und beide Züge identisch (die Differenzierung erfolgt über die Rahmenbedingungen 'unter Anleitung' / 'zunehmend selbstständig' / 'selbstständig', nicht über den Text selbst). Wo der Standard-Zug abweicht, steht das im Feld 'text_standard'.",
+  "niveaustufen": [
+    { "niveau": 1, "bezeichnung": "unter Anleitung und/oder adaptierten/differenzierten Rahmenbedingungen" },
+    { "niveau": 2, "bezeichnung": "zunehmend selbstständig und/oder ggf. unter differenzierten Rahmenbedingungen" },
+    { "niveau": 3, "bezeichnung": "selbstständig und/oder ggf. unter differenzierten Rahmenbedingungen" }
+  ],
   "kompetenzbereiche": [
     {
       "name": "Zuhören",

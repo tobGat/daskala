@@ -35,7 +35,7 @@ async function listSchulstufen(fachName) {
 // Stufe 1–2: Item ist ein String → text. Stufe 3–8: Objekt mit niveauX (teils null), Stufe 6–8 zusätzlich niveau1_standard.
 function normItem(item) {
   if (typeof item === 'string') {
-    return { text: item, niveau1: null, niveau2: null, niveau3: null, niveau1_standard: null }
+    return { text: item, niveau1: null, niveau2: null, niveau3: null, niveau1_standard: null, text_standard: null }
   }
   return {
     text: item.text ?? null,
@@ -43,6 +43,7 @@ function normItem(item) {
     niveau2: item.niveau2 ?? null,
     niveau3: item.niveau3 ?? null,
     niveau1_standard: item.niveau1_standard ?? null,
+    text_standard: item.text_standard ?? null,
   }
 }
 

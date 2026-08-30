@@ -44,7 +44,7 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
       textsDiffer,
       single: textsDiffer ? null : (it.text ?? distinct[0] ?? ''),
       nivText: { 1: it.niveau1 || null, 2: it.niveau2 || null, 3: it.niveau3 || null },
-      standard: it.niveau1_standard || null,
+      standard: it.niveau1_standard || it.text_standard || null,
     }
   }
 
