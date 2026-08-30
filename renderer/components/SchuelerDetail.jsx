@@ -5,6 +5,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import useStore from '../store/useStore'
 import SchuelerKVSection from './kv/SchuelerKVSection'
 import KompetenzSection from './kompetenzen/KompetenzSection'
+import KompetenzExportModal from './kompetenzen/KompetenzExportModal'
 import SchuelerAvatar from './SchuelerAvatar'
 import { avatarSvg } from '../utils/avatar'
 import { niveauZurZeit, niveauOffset } from '../utils/niveau'
@@ -487,6 +488,7 @@ export default function SchuelerDetail() {
   const [selectedFachId, setSelectedFachId] = useState(null)
   const [kvAktiv, setKvAktiv] = useState(false)         // ob KV-Sektion in Sidebar gewählt ist
   const [exportLoading, setExportLoading] = useState(false)
+  const [kompExportDaten, setKompExportDaten] = useState(null) // Kompetenzdaten für die Export-Auswahl
 
   useEffect(() => {
     if (!detailSchueler) return
@@ -511,12 +513,41 @@ export default function SchuelerDetail() {
 
   if (!detailSchueler) return null
 
+  // Führt den eigentlichen PDF-Export aus. `kompetenzen` = nach Fach gruppierte Radar-Diagramme (oder {}).
+  const doExportPdf = async (kompetenzen) => {
+    if (!profil) return
+    setExportLoading(true)
+    try {
+      const profilMitAvatar = { ...profil, avatarSvg: avatarSvg(profil.schueler, 96), kompetenzen }
+      await window.api.schueler.exportProfilPDF({ profil: profilMitAvatar, klassenname: aktiveKlasse?.name ?? '' })
+    } finally {
+      setExportLoading(false)
+      setKompExportDaten(null)
+    }
+  }
+
+  // Kompetenz-Erhebungen aller Fächer sammeln (für die Export-Auswahl). Nur Fächer mit Erhebungen.
+  const sammleKompetenzDaten = async () => {
+    const out = []
+    for (const f of profil.faecher ?? []) {
+      const p = await window.api.kompetenzErhebungen.getProfil(profil.schueler.id, f.id)
+      if (!p.erhebungen?.length) continue
+      const r = await window.api.kompetenzKatalog.getRaster(f.name, p.letzteSchulstufe, f.kompetenzraster)
+      const axisMap = new Map()
+      p.erhebungen.forEach(e => (e.werte ?? []).forEach(w => { if (!axisMap.has(w.bereich_idx)) axisMap.set(w.bereich_idx, w.bereich_name) }))
+      const achsen = [...axisMap.entries()].sort((a, b) => a[0] - b[0]).map(([idx, name]) => ({ idx, name }))
+      out.push({ fachId: f.id, fachName: f.name, niveaustufen: r?.niveaustufen ?? [], achsen, erhebungen: p.erhebungen })
+    }
+    return out
+  }
+
   const handleExportPdf = async () => {
     if (!profil) return
     setExportLoading(true)
     try {
-      const profilMitAvatar = { ...profil, avatarSvg: avatarSvg(profil.schueler, 96) }
-      await window.api.schueler.exportProfilPDF({ profil: profilMitAvatar, klassenname: aktiveKlasse?.name ?? '' })
+      const daten = await sammleKompetenzDaten()
+      if (!daten.length) { await doExportPdf({}); return } // keine Kompetenzdaten → direkt exportieren
+      setKompExportDaten(daten) // sonst: Auswahl-Dialog öffnen
     } finally {
       setExportLoading(false)
     }
@@ -526,6 +557,7 @@ export default function SchuelerDetail() {
   const selectedFach = profil?.faecher?.find(f => f.id === selectedFachId)
 
   return (
+    <>
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && closeDetail()}>
       <div className={`modal-box p-0 flex flex-col overflow-hidden ${mobil ? 'w-full h-[92vh] max-w-full' : 'max-w-6xl w-[92vw] h-[88vh]'}`}>
 
@@ -759,5 +791,14 @@ export default function SchuelerDetail() {
         </div>
       </div>
     </div>
+
+    {kompExportDaten && (
+      <KompetenzExportModal
+        faecherDaten={kompExportDaten}
+        onCancel={() => setKompExportDaten(null)}
+        onConfirm={doExportPdf}
+      />
+    )}
+    </>
   )
 }

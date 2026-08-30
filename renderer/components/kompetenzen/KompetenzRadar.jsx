@@ -7,6 +7,7 @@
 // auf points interpoliert der Browser nicht). Darunter eine ausklappbare Detailliste (je Bereich → Teilkompetenz
 // mit Ø-Niveau). Reines Inline-SVG im Stil von NotenChart.
 import React, { useEffect, useRef, useState } from 'react'
+import { niveauFarbe } from './radarSvg'
 
 function formatDatum(s) {
   if (!s) return ''
@@ -17,22 +18,6 @@ function formatDatum(s) {
 const kurz = (s, n = 16) => {
   const t = String(s ?? '').trim()
   return t.length > n ? t.slice(0, n - 1) + '…' : t
-}
-
-// Ampel-Farbe je Kompetenzwert. Standard (maxNiveau 1): rot → gelb → grün.
-// Standard AHS / Stufe 3–5 (maxNiveau 3): 0 rot, 1 orange, 2 gelb, 3 grün (dazwischen interpoliert).
-function lerpHex(a, b, t) {
-  const p = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]
-  const [r1, g1, b1] = p(a), [r2, g2, b2] = p(b)
-  const m = (x, y) => Math.round(x + (y - x) * t).toString(16).padStart(2, '0')
-  return `#${m(r1, r2)}${m(g1, g2)}${m(b1, b2)}`
-}
-function niveauFarbe(val, maxNiveau) {
-  const stops = maxNiveau <= 1 ? ['#ef4444', '#eab308', '#22c55e'] : ['#ef4444', '#f97316', '#eab308', '#22c55e']
-  const max = maxNiveau <= 1 ? 1 : maxNiveau
-  const pos = (Math.max(0, Math.min(max, val)) / max) * (stops.length - 1)
-  const i = Math.min(stops.length - 2, Math.floor(pos))
-  return lerpHex(stops[i], stops[i + 1], pos - i)
 }
 
 export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
