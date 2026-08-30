@@ -21,8 +21,8 @@ const kurz = (s, n = 16) => {
 
 const FARBE = '#fb6936' // coral (SA-Farbe im NotenChart)
 
-export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
-  const maxNiveau = niveaustufen.length || 1
+export default function KompetenzRadar({ erhebungen, niveaustufen = [], maxNiveau: maxNiveauProp }) {
+  const maxNiveau = maxNiveauProp || niveaustufen.length || 1
 
   // Achsen aus den Daten ableiten: distinct (bereich_idx, bereich_name), nach bereich_idx sortiert.
   const axisMap = new Map()
@@ -133,7 +133,7 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
       {/* Niveau-Legende (Raster-Begriffe) */}
       {niveaustufen.length > 0 && (
         <p className="text-[10px] text-ink-400 text-center px-2">
-          {niveaustufen.map(n => `${n.niveau} = ${n.bezeichnung}`).join(' · ')}
+          {niveaustufen.slice(0, maxNiveau).map(n => `${n.niveau} = ${n.bezeichnung}`).join(' · ')}
         </p>
       )}
 

@@ -33,7 +33,9 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
   const [speichern, setSpeichern] = useState(false)
 
   const bereiche = raster?.bereiche ?? []
-  const maxNiveau = (raster?.niveaustufen ?? []).length || 1
+  // Standard (MS) hat ab Stufe 6 im Raster NUR Kompetenzniveau 1 ("unter Anleitung"); AHS hat 1–3.
+  const istStandardMS = (schulstufe ?? 0) >= 6 && schulzweig === 'ms'
+  const maxNiveau = istStandardMS ? 1 : ((raster?.niveaustufen ?? []).length || 1)
   const bezeichnung = (k) => (raster?.niveaustufen ?? []).find(x => x.niveau === k)?.bezeichnung || `Niveau ${k}`
 
   // Ein Item aufbereiten: Gibt es je Niveau UNTERSCHIEDLICHE Formulierungen (Stufe 3–4, teils 6–8)? Dann diese

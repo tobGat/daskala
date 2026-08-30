@@ -61,6 +61,8 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
 
   const erhebungen = profil.erhebungen ?? []
   const gesperrteSchulstufe = erhebungen.length ? profil.letzteSchulstufe : null
+  // Standard (MS) ab Stufe 6 kennt nur Niveau 1 → Radar entsprechend skalieren.
+  const effMaxNiveau = (profil.letzteSchulstufe >= 6 && profil.letzteSchulzweig === 'ms') ? 1 : (niveaustufen.length || 1)
 
   const loeschen = async (id) => {
     setBestaetigeId(null)
@@ -77,7 +79,7 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
         </button>
       </div>
 
-      <KompetenzRadar erhebungen={erhebungen} niveaustufen={niveaustufen} />
+      <KompetenzRadar erhebungen={erhebungen} niveaustufen={niveaustufen} maxNiveau={effMaxNiveau} />
 
       {erhebungen.length > 0 && (
         <div className="mt-2 space-y-0.5">
