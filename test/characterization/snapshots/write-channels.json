@@ -152,6 +152,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -171,6 +172,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
+          "kompetenzraster": null,
           "uuid": null
         }
       ],
@@ -201,6 +203,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -220,6 +223,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -239,6 +243,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -258,6 +263,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -277,6 +283,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": "<UUID>"
         }
       ]
@@ -1568,6 +1575,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1587,6 +1595,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1606,6 +1615,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1625,6 +1635,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
+          "kompetenzraster": null,
           "uuid": null
         }
       ]
@@ -1651,6 +1662,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1670,6 +1682,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1689,6 +1702,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1708,6 +1722,94 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
+          "kompetenzraster": null,
+          "uuid": null
+        }
+      ]
+    }
+  },
+  "faecher:setKompetenzraster": {
+    "ret": true,
+    "state": {
+      "faecher": [
+        {
+          "id": 1,
+          "klasse_id": 1,
+          "name": "Deutsch",
+          "reihenfolge": 1,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 1,
+          "kompetenzraster": "fremdsprache",
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "klasse_id": 1,
+          "name": "Mathematik",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 1,
+          "kompetenzraster": null,
+          "uuid": null
+        },
+        {
+          "id": 3,
+          "klasse_id": 2,
+          "name": "Musik",
+          "reihenfolge": 1,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 1,
+          "kompetenzraster": null,
+          "uuid": null
+        },
+        {
+          "id": 4,
+          "klasse_id": 2,
+          "name": "Chor",
+          "reihenfolge": 2,
+          "gewichtung_sa": null,
+          "gewichtung_t": null,
+          "gewichtung_ma": null,
+          "gewichtung_hue": null,
+          "gewichtung_custom": null,
+          "ma_max_einfluss": null,
+          "hue_max_einfluss": null,
+          "farbe": null,
+          "ma_hue_max_einfluss": null,
+          "gewichtung_man": null,
+          "benotungssystem": "standard",
+          "alle_schueler": 0,
+          "kompetenzraster": null,
           "uuid": null
         }
       ]
@@ -1734,6 +1836,7 @@
           "gewichtung_man": null,
           "benotungssystem": "punkte",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1753,6 +1856,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1772,6 +1876,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1791,6 +1896,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
+          "kompetenzraster": null,
           "uuid": null
         }
       ]
@@ -1817,6 +1923,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1836,6 +1943,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1855,6 +1963,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1874,6 +1983,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
+          "kompetenzraster": null,
           "uuid": null
         }
       ]
@@ -1900,6 +2010,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1919,6 +2030,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1938,6 +2050,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -1957,6 +2070,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
+          "kompetenzraster": null,
           "uuid": null
         }
       ]
@@ -1983,6 +2097,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -2002,6 +2117,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -2021,6 +2137,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -2040,6 +2157,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
+          "kompetenzraster": null,
           "uuid": null
         }
       ],
@@ -2076,6 +2194,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -2095,6 +2214,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -2114,6 +2234,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
+          "kompetenzraster": null,
           "uuid": null
         }
       ]
@@ -5740,6 +5861,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -5759,6 +5881,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -5778,6 +5901,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -5797,6 +5921,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 0,
+          "kompetenzraster": null,
           "uuid": null
         },
         {
@@ -5816,6 +5941,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": "<UUID>"
         },
         {
@@ -5835,6 +5961,7 @@
           "gewichtung_man": null,
           "benotungssystem": "standard",
           "alle_schueler": 1,
+          "kompetenzraster": null,
           "uuid": "<UUID>"
         }
       ],

@@ -1,0 +1,54 @@
+{
+  "fach": "Lebende Fremdsprache",
+  "schulstufe": 1,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Lebende-Fremdsprache_1-Schulstufe-Kompetenzraster_3be4943c.pdf",
+  "kompetenzbereiche": [
+    {
+      "name": "Hören",
+      "kategorien": [
+        { "name": "Äußerungen verstehen", "items": [
+          "Grußformen und andere Alltagsäußerungen in einem eindeutigen situativen Kontext ganzheitlich verstehen."
+        ] },
+        { "name": "Globalverstehen", "items": [
+          "rhythmische Sprüche (Chants), kurze Reime und Liedtexte sowie illustrierte Geschichten und Videos inhaltlich erfassen."
+        ] },
+        { "name": "Fragen verstehen", "items": [
+          "Fragen aus ihrer Lebenswelt verstehen."
+        ] },
+        { "name": "Detailverstehen", "items": [
+          "kurze Anweisungen im Rahmen des Unterrichts und auch in anderen Unterrichtsgegenständen verstehen."
+        ] }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "kategorien": [
+        { "name": "Mit- und nachsprechen", "items": [
+          "Wörter verständlich mit- und nachsprechen bzw. mit- und nachsingen."
+        ] },
+        { "name": "Miteinander kommunizieren", "items": [
+          "in verschiedenen Situationen kommunizieren (z. B. grüßen, sich namentlich vorstellen und verabschieden).",
+          "einfache Wörter und Phrasen zu erarbeiteten Themen und Inhalten verwenden."
+        ] }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "kategorien": [
+        { "name": "Mitlesen", "items": [
+          "vorgelesene Wörter und Phrasen mitlesen."
+        ] }
+      ]
+    },
+    {
+      "name": "Schreiben",
+      "kategorien": [
+        { "name": "Wörter schreiben", "items": [
+          "erste einfache Wörter nach Vorbild schreiben."
+        ] }
+      ]
+    }
+  ]
+}

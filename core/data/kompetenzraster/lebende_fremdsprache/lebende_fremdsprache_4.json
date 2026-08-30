@@ -1,0 +1,57 @@
+{
+  "fach": "Lebende Fremdsprache",
+  "schulstufe": 4,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Lebende-Fremdsprache_4-Schulstufe-Kompetenzraster_f6d3b982.pdf",
+  "niveaustufen": [
+    { "niveau": 1, "bezeichnung": "Kompetenzniveau 1" },
+    { "niveau": 2, "bezeichnung": "Kompetenzniveau 2" },
+    { "niveau": 3, "bezeichnung": "Kompetenzniveau 3" }
+  ],
+  "kompetenzbereiche": [
+    {
+      "name": "Hören",
+      "kategorien": [
+        { "name": "Detailverstehen", "items": [
+          { "niveau1": "Anweisungen, Fragen und Aussagen verstehen (z. B. auf andere Unterrichtsgegenstände bezogene).", "niveau2": "mehrschrittige Anweisungen verstehen (z. B. auf andere Unterrichtsgegenstände bezogene).", "niveau3": "mehrschrittige Anweisungen verstehen (z. B. auf andere Unterrichtsgegenstände bezogene)." },
+          "aus kurzen Hörtexten spezifische Informationen entnehmen."
+        ] }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "kategorien": [
+        { "name": "Mit- und nachsprechen, mitsingen", "items": [
+          { "niveau1": "erarbeitete Wörter und Äußerungen verständlich aussprechen und intonieren.", "niveau2": "Reime, rhythmische Sprüche (Chants), Zungenbrecher und Liedtexte selbstständig wiedergeben (mit verständlicher Aussprache/Intonation).", "niveau3": "Reime, rhythmische Sprüche (Chants), Zungenbrecher und Liedtexte selbstständig wiedergeben (mit verständlicher Aussprache/Intonation)." }
+        ] },
+        { "name": "Informieren", "items": [
+          { "niveau1": "selbstständig kurze Informationen über sich selbst geben (z. B. über Vorlieben, Gefühle, Familie, Freunde und Bedürfnisse).", "niveau2": "selbstständig kurze Informationen über sich selbst und andere geben (z. B. über Vorlieben, Gefühle, Familie, Freunde und Bedürfnisse).", "niveau3": "selbstständig kurze Informationen über sich selbst und andere geben (z. B. über Vorlieben, Gefühle, Familie, Freunde und Bedürfnisse)." },
+          { "niveau1": "kurze Teile von Geschichten, Texten oder Informationen wiedergeben.", "niveau2": "kurze Geschichten und Texte mit einigen einfachen Details wiedergeben.", "niveau3": "kurze Geschichten und Texte mit einigen einfachen Details wiedergeben." }
+        ] },
+        { "name": "Miteinander kommunizieren", "items": [
+          { "niveau1": "sich an kurzen Gesprächen über die unmittelbare Lebenswelt mit einfachen sprachlichen Mitteln beteiligen (z. B. Gespräche initiieren, in Rollenspielen mitwirken, sich über etwas/jemanden erkundigen, einen Wunsch äußern).", "niveau2": "kurze Gespräche über die unmittelbare Lebenswelt mit einfachen sprachlichen Mitteln führen.", "niveau3": "kurze Gespräche zu vertrauten Themen führen." }
+        ] }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "kategorien": [
+        { "name": "Lesen und verstehen", "items": [
+          { "niveau1": "erarbeitete Sätze bzw. Anweisungen lesen, vorlesen und den Inhalt verstehen.", "niveau2": "die Hauptinformationen in kurzen Absätzen, Anweisungen und kurzen Texten verstehen.", "niveau3": "kurze Sätze, Anweisungen bzw. kurze Texte sinnentnehmend lesen, auch wenn es Unterschiede zwischen dem Laut- und dem Schriftbild gibt." }
+        ] }
+      ]
+    },
+    {
+      "name": "Schreiben",
+      "kategorien": [
+        { "name": "Nach Vorbild schreiben", "items": [
+          "sehr einfache Sätze nach Vorbild schreiben."
+        ] },
+        { "name": "Texte ergänzen", "items": [
+          { "niveau1": "kurze Texte mit einzelnen Wörtern vervollständigen.", "niveau2": "kurze Texte mit einzelnen Wörtern vervollständigen bzw. verändern.", "niveau3": "kurze Texte mit einzelnen Wörtern vervollständigen bzw. verändern." }
+        ] }
+      ]
+    }
+  ]
+}

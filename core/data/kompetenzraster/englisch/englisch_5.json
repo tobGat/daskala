@@ -1,0 +1,68 @@
+{
+  "fach": "Englisch",
+  "schulstufe": 5,
+  "schultyp": "Mittelschule, AHS-Unterstufe",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Englisch_5-Schulstufe-Kompetenzraster_1ab4a67c.pdf",
+  "kompetenzbereiche": [
+    {
+      "name": "Hören (A1/A2)",
+      "kategorien": [
+        { "name": "Globales Verstehen", "items": [
+          "einfacher alltäglicher Kommunikation (z. B. im Unterricht) in Grundzügen folgen, wenn sehr langsam, klar und deutlich gesprochen wird."
+        ] },
+        { "name": "Verstehen von Hauptaussagen und unterstützenden Details", "items": [
+          "in kurzen Dialogen einfache Fragen und Sätze verstehen, die sich auf sie selbst und ihr persönliches Umfeld beziehen, wenn sehr langsam, klar und deutlich gesprochen wird.",
+          "in kurzen, einfachen, visuell unterstützten Monologen über vertraute Themen die Hauptaussagen verstehen, wenn sehr langsam und deutlich gesprochen wird."
+        ] },
+        { "name": "Verstehen von spezifischen Informationen", "items": [
+          "bereits bekannte Wörter und Phrasen aus einfachen Gesprächen und Erzählungen über vertraute Themen wiedererkennen, wenn sehr langsam und deutlich gesprochen wird."
+        ] }
+      ]
+    },
+    {
+      "name": "Lesen (A1/A2)",
+      "kategorien": [
+        { "name": "Globales Verstehen", "items": [
+          "sehr kurze, sehr einfache illustrierte Texte (z. B. Geschichten) global verstehen.",
+          "sehr kurze Sach- und Alltagstexte (z. B. Einladungen, Briefe) in sehr einfacher Sprache zu konkreten, vertrauten Themen global verstehen."
+        ] },
+        { "name": "Verstehen von Hauptaussagen und unterstützenden Details", "items": [
+          "sehr einfachen Texten und Mitteilungen, wie z. B. Posts in sozialen Medien und E-Mails, über vertraute Themen Hauptaussagen entnehmen."
+        ] },
+        { "name": "Verstehen von spezifischen Informationen", "items": [
+          "sehr kurzen einfachen Anweisungen zu vertrauten Themen spezifische Informationen entnehmen, wenn diese visuell unterstützt werden.",
+          "sehr einfachen Texten und Mitteilungen (z. B. Postern, Flyern, Notizen, E-Mails, Einladungen) über vertraute Themen spezifische Informationen (z. B. Ort, Preis, Uhrzeit) entnehmen."
+        ] }
+      ]
+    },
+    {
+      "name": "Sprechen (A1/A2)",
+      "kategorien": [
+        { "name": "Beschreiben", "items": [
+          "mit Vorbereitung in einer Abfolge von einfachen Sätzen oder elementaren Wendungen Menschen, Dinge und Orte beschreiben."
+        ] },
+        { "name": "Informieren", "items": [
+          "mit Vorbereitung in einfachen Worten und elementaren Wendungen Informationen über unmittelbare Bedürfnisse und persönliche Themen geben."
+        ] },
+        { "name": "Gesprächsführungskompetenz", "items": [
+          "an einem einfachen, sehr kurzen Gespräch zu einem vertrauten, vorhersagbaren Thema teilnehmen, einfache Fragen stellen und in einfachen, kurzen Wendungen oder Sätzen antworten."
+        ] }
+      ]
+    },
+    {
+      "name": "Schreiben (A1/A2)",
+      "kategorien": [
+        { "name": "Informieren", "items": [
+          "mit formelhaften Wendungen einfache persönliche Informationen und Alltagsinformationen mitteilen (ggf. mit Hilfestellung)."
+        ] },
+        { "name": "Beschreiben", "items": [
+          "mit formelhaften Wendungen und sehr kurzen, einfachen Sätzen konkrete Alltagssituationen und Alltagsobjekte beschreiben (ggf. mit Hilfestellung)."
+        ] },
+        { "name": "Erzählen", "items": [
+          "mit formelhaften Wendungen und sehr kurzen, einfachen und isolierten Sätzen von einem persönlichen Ereignis erzählen (ggf. mit Hilfestellung)."
+        ] }
+      ]
+    }
+  ]
+}

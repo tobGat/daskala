@@ -586,6 +586,7 @@ function registerIPC() {
   ipcMain.handle('faecher:delete', (_, id) => faecherDomain.remove(dbPort, kernDeps, id))
   ipcMain.handle('faecher:rename', (_, id, name) => faecherDomain.rename(dbPort, kernDeps, id, name))
   ipcMain.handle('faecher:setFarbe', (_, id, farbe) => faecherDomain.setFarbe(dbPort, id, farbe))
+  ipcMain.handle('faecher:setKompetenzraster', (_, id, wert) => faecherDomain.setKompetenzraster(dbPort, id, wert))
   ipcMain.handle('faecher:updateGewichtung', (_, id, data) => faecherDomain.updateGewichtung(dbPort, kernDeps, id, data))
   ipcMain.handle('faecher:resetGewichtung', (_, id) => faecherDomain.resetGewichtung(dbPort, kernDeps, id))
   ipcMain.handle('faecher:setBenotungssystem', (_, id, system) => faecherDomain.setBenotungssystem(dbPort, kernDeps, id, system))
@@ -618,9 +619,9 @@ function registerIPC() {
   ipcMain.handle('schuelerKompetenzen:set', (_, kompetenzbereichId, schuelerId, niveau, notiz) => kompetenzenDomain.schuelerSet(dbPort, kompetenzbereichId, schuelerId, niveau, notiz))
 
   // ─── Kompetenz-Katalog (Raster) ────────────────────────────────────────────
-  ipcMain.handle('kompetenzKatalog:hatRaster', (_, fach) => kompetenzKatalog.hatRaster(fach))
-  ipcMain.handle('kompetenzKatalog:listSchulstufen', (_, fach) => kompetenzKatalog.listSchulstufen(fach))
-  ipcMain.handle('kompetenzKatalog:getRaster', (_, fach, stufe) => kompetenzKatalog.getRaster(fach, stufe))
+  ipcMain.handle('kompetenzKatalog:hatRaster', (_, fach, override) => kompetenzKatalog.hatRaster(fach, override))
+  ipcMain.handle('kompetenzKatalog:listSchulstufen', (_, fach, override) => kompetenzKatalog.listSchulstufen(fach, override))
+  ipcMain.handle('kompetenzKatalog:getRaster', (_, fach, stufe, override) => kompetenzKatalog.getRaster(fach, stufe, override))
 
   // ─── Kompetenz-Erhebungen (Zeitpunkte + Werte) ─────────────────────────────
   ipcMain.handle('kompetenzErhebungen:getProfil', (_, schuelerId, fachId) => kompetenzErhebungenDomain.getProfil(dbPort, schuelerId, fachId))

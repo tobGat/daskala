@@ -1,0 +1,58 @@
+{
+  "fach": "Lebende Fremdsprache",
+  "schulstufe": 3,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Lebende-Fremdsprache_3-Schulstufe-Kompetenzraster_43681325.pdf",
+  "niveaustufen": [
+    { "niveau": 1, "bezeichnung": "Kompetenzniveau 1" },
+    { "niveau": 2, "bezeichnung": "Kompetenzniveau 2" },
+    { "niveau": 3, "bezeichnung": "Kompetenzniveau 3" }
+  ],
+  "kompetenzbereiche": [
+    {
+      "name": "Hören",
+      "kategorien": [
+        { "name": "Detailverstehen", "items": [
+          { "niveau1": "kurze Fragen und Anweisungen verstehen.", "niveau2": "Fragen, Anweisungen und Aussagen in anderen Unterrichtsgegenständen verstehen.", "niveau3": "Aussagen und mehrschrittige Anweisungen verstehen." },
+          { "niveau1": null, "niveau2": "Fragen, kurze Gespräche und Aussagen in einem sozial-kommunikativen Kontext und über den Unterrichtsinhalt verstehen.", "niveau3": null }
+        ] }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "kategorien": [
+        { "name": "Mit- und nachsprechen, mitsingen", "items": [
+          { "niveau1": "Reime, rhythmische Sprüche (Chants), Zungenbrecher und Liedtexte wiedergeben (mit verständlicher Aussprache/Intonation).", "niveau2": "Reime, rhythmische Sprüche (Chants), Zungenbrecher und Liedtexte wiedergeben (mit möglichst korrekter Aussprache/Intonation).", "niveau3": "Reime, rhythmische Sprüche (Chants), Zungenbrecher und Liedtexte wiedergeben (mit möglichst korrekter Aussprache/Intonation)." }
+        ] },
+        { "name": "Informieren", "items": [
+          { "niveau1": "kurze Antworten auf Fragen zu Inhalten, Geschichten und Texten geben.", "niveau2": "kurze Teile von Geschichten, Texten oder Informationen wiedergeben.", "niveau3": "kurze Geschichten und Texte mit einigen Details wiedergeben." },
+          { "niveau1": "kurze Fragen über sich selbst beantworten (z. B. über Vorlieben, Gefühle, Familie, Freunde und Bedürfnisse).", "niveau2": "selbstständig kurze Informationen über sich selbst geben, z. B. über Vorlieben, Gefühle, Familie, Freunde und Bedürfnisse.", "niveau3": "selbstständig kurze Informationen über sich selbst und andere geben, z. B. über Vorlieben, Gefühle, Familie, Freunde und Bedürfnisse." }
+        ] },
+        { "name": "Miteinander kommunizieren", "items": [
+          { "niveau1": "sich an Gesprächen beteiligen.", "niveau2": "sich an Gesprächssituationen über die unmittelbare Lebenswelt beteiligen, z. B. Gespräche initiieren, in Rollenspielen mitwirken, sich erkundigen, einen Wunsch äußern.", "niveau3": "sich an Gesprächssituationen über die unmittelbare Lebenswelt beteiligen, z. B. Gespräche initiieren, in Rollenspielen mitwirken, sich erkundigen, einen Wunsch äußern." }
+        ] }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "kategorien": [
+        { "name": "Vorlesen und verstehen", "items": [
+          { "niveau1": "Wörter und Phrasen wiedererkennen und vorlesen.", "niveau2": "Wörter und Phrasen wiedererkennen und vorlesen.", "niveau3": "Wörter und Phrasen wiedererkennen und vorlesen." },
+          { "niveau1": "erarbeitete Sätze mit- und vorlesen.", "niveau2": "erarbeitete Sätze bzw. Anweisungen lesen, vorlesen und den Inhalt verstehen.", "niveau3": "Anweisungen und kurze Texte lesen, vorlesen und verstehen." }
+        ] }
+      ]
+    },
+    {
+      "name": "Schreiben",
+      "kategorien": [
+        { "name": "Nach Vorbild schreiben", "items": [
+          { "niveau1": "Wörter und Phrasen nach Vorbild schreiben.", "niveau2": "Wörter und Phrasen nach Vorbild schreiben sowie Unterschiede und Ähnlichkeiten zwischen der Erst- und der Fremdsprache wahrnehmen.", "niveau3": "Wörter und Phrasen nach Vorbild schreiben sowie Unterschiede und Ähnlichkeiten zwischen der Erst- und der Fremdsprache wahrnehmen." }
+        ] },
+        { "name": "Kurze Texte ergänzen", "items": [
+          { "niveau1": "kurze Texte mit einzelnen Wörtern vervollständigen.", "niveau2": "kurze Texte mit einzelnen Wörtern vervollständigen bzw. verändern.", "niveau3": "kurze Texte mit einzelnen Wörtern vervollständigen bzw. verändern." }
+        ] }
+      ]
+    }
+  ]
+}

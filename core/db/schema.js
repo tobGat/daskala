@@ -66,6 +66,7 @@ const TABLE_DDL = [
       ma_hue_max_einfluss REAL,
       benotungssystem TEXT DEFAULT 'standard',
       alle_schueler INTEGER DEFAULT 1,
+      kompetenzraster TEXT,
       uuid TEXT,
       FOREIGN KEY (klasse_id) REFERENCES klassen(id)
     )`,
@@ -799,6 +800,7 @@ function applySchema(db, deps) {
   spalteErgaenzen('klassen', 'teams_link', 'TEXT')
   spalteErgaenzen('faecher', 'benotungssystem', "TEXT DEFAULT 'standard'")
   spalteErgaenzen('faecher', 'alle_schueler', 'INTEGER DEFAULT 1')
+  spalteErgaenzen('faecher', 'kompetenzraster', 'TEXT') // manuelle Kompetenzraster-Zuordnung (null=Automatisch)
 
   // Fach-spezifische Schüler-Teilmenge (Gruppen). Nur befüllt, wenn faecher.alle_schueler = 0.
   db.exec(`

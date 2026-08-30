@@ -20,7 +20,7 @@ function Fortschritt({ aktuell, anzahl }) {
   )
 }
 
-export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, gesperrteSchulstufe, letzteSchulzweig, gesperrterSchulzweig, autoSchulzweig, schulstufen, erhebung, letzteErhebung, onClose, onSaved }) {
+export default function KompetenzAssistent({ schueler, fach, rasterOverride, letzteSchulstufe, gesperrteSchulstufe, letzteSchulzweig, gesperrterSchulzweig, autoSchulzweig, schulstufen, erhebung, letzteErhebung, onClose, onSaved }) {
   const istBearbeiten = !!erhebung // bestehende Erhebung korrigieren
   const [schritt, setSchritt] = useState(0) // 0 = Intro, 1..N = Kompetenzbereiche, N+1 = Zusammenfassung
   const [schulstufe, setSchulstufe] = useState(erhebung?.schulstufe ?? gesperrteSchulstufe ?? letzteSchulstufe ?? null)
@@ -81,7 +81,7 @@ export default function KompetenzAssistent({ schueler, fach, letzteSchulstufe, g
     if (!schulstufe) { setFehler('Bitte eine Schulstufe wählen.'); return }
     setLaden(true); setFehler('')
     try {
-      const r = await window.api.kompetenzKatalog.getRaster(fach.name, schulstufe)
+      const r = await window.api.kompetenzKatalog.getRaster(fach.name, schulstufe, rasterOverride)
       if (!r || !r.bereiche?.length) { setFehler('Für diese Schulstufe ist kein Raster hinterlegt.'); setLaden(false); return }
       setRaster(r)
       const init = {}

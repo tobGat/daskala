@@ -12,19 +12,35 @@ const DEFAULT_NIVEAUSTUFEN = [
   { niveau: 1, bezeichnung: 'erreicht' },
 ]
 
+// Gängige lebende Fremdsprachen (Fachname-Erkennung). „latein" ist bewusst NICHT dabei (keine lebende Sprache).
+const FREMDSPRACHEN = [
+  'englisch', 'französisch', 'franzoesisch', 'italienisch', 'spanisch', 'russisch',
+  'kroatisch', 'bosnisch', 'serbisch', 'slowenisch', 'tschechisch', 'slowakisch',
+  'ungarisch', 'polnisch', 'türkisch', 'tuerkisch', 'fremdsprache',
+]
+
 // Fachname → Katalog-Schlüssel (unscharf, damit z. B. „Deutsch 1a" passt). Erweiterbar.
 function matchFachKey(fachName) {
   const n = String(fachName ?? '').toLowerCase()
   if (n.includes('deutsch')) return 'deutsch'
+  if (FREMDSPRACHEN.some(s => n.includes(s))) return 'fremdsprache'
   return null
 }
 
-async function hatRaster(fachName) {
-  return matchFachKey(fachName) !== null
+// Manuelle Zuordnung pro Fach hat Vorrang: 'keines' → kein Raster; 'deutsch'/'fremdsprache' → dieser Katalog;
+// sonst (null/undefined/'auto') → Namenserkennung.
+function resolveKey(fachName, override) {
+  if (override === 'keines') return null
+  if (override === 'deutsch' || override === 'fremdsprache') return override
+  return matchFachKey(fachName)
 }
 
-async function listSchulstufen(fachName) {
-  const key = matchFachKey(fachName)
+async function hatRaster(fachName, override) {
+  return resolveKey(fachName, override) !== null
+}
+
+async function listSchulstufen(fachName, override) {
+  const key = resolveKey(fachName, override)
   if (!key || !KATALOG[key]) return []
   return Object.keys(KATALOG[key])
     .map(Number)
@@ -47,8 +63,8 @@ function normItem(item) {
   }
 }
 
-async function getRaster(fachName, schulstufe) {
-  const key = matchFachKey(fachName)
+async function getRaster(fachName, schulstufe, override) {
+  const key = resolveKey(fachName, override)
   const stufe = Number(schulstufe)
   const raw = key && KATALOG[key] ? KATALOG[key][stufe] : null
   if (!raw) return null

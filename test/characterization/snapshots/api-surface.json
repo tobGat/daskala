@@ -45,6 +45,7 @@
   "faecher.resetGewichtung",
   "faecher.setBenotungssystem",
   "faecher.setFarbe",
+  "faecher.setKompetenzraster",
   "faecher.setSchueler",
   "faecher.updateGewichtung",
   "gewichtungGlobal.getAll",

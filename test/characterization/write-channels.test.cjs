@@ -53,6 +53,7 @@ const CASES = [
   { name: 'klassen:reorder', channel: 'klassen:reorder', args: [[{ id: 1, reihenfolge: 3 }, { id: 2, reihenfolge: 1 }, { id: 3, reihenfolge: 2 }]], tables: ['klassen'] },
   { name: 'faecher:rename', channel: 'faecher:rename', args: [1, 'Deutsch neu'], tables: ['faecher'] },
   { name: 'faecher:setFarbe', channel: 'faecher:setFarbe', args: [1, '#abcdef'], tables: ['faecher'] },
+  { name: 'faecher:setKompetenzraster', channel: 'faecher:setKompetenzraster', args: [1, 'fremdsprache'], tables: ['faecher'] },
   { name: 'faecher:setBenotungssystem', channel: 'faecher:setBenotungssystem', args: [1, 'punkte'], tables: ['faecher'] },
   { name: 'faecher:resetGewichtung', channel: 'faecher:resetGewichtung', args: [1], tables: ['faecher'] },
   { name: 'faecher:updateGewichtung', channel: 'faecher:updateGewichtung', args: [1, { gewichtungSa: 3, gewichtungT: 1, gewichtungCustom: 1, maMaxEinfluss: 0.5, hueMaxEinfluss: 0.5 }], tables: ['faecher'] },

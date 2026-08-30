@@ -87,6 +87,7 @@ export function createMobileApi(dbPort) {
       setSchueler: (fId, d) => faecherDomain.setSchueler(dbPort, deps, fId, d),
       create: (d) => faecherDomain.create(dbPort, deps, d),
       setBenotungssystem: (id, s) => faecherDomain.setBenotungssystem(dbPort, deps, id, s),
+      setKompetenzraster: (id, w) => faecherDomain.setKompetenzraster(dbPort, id, w),
       // Gewichtung pro Fach (SA/Test/Individuell/Mitarbeit); Mitarbeit = gewichtung_ma.
       updateGewichtung: (id, data) => faecherDomain.updateGewichtung(dbPort, deps, id, data),
       resetGewichtung: (id) => faecherDomain.resetGewichtung(dbPort, deps, id),
@@ -171,9 +172,9 @@ export function createMobileApi(dbPort) {
       set: (kb, s, n, no) => kompetenzenDomain.schuelerSet(dbPort, kb, s, n, no),
     }),
     kompetenzKatalog: dp('kompetenzKatalog', {
-      hatRaster: (f) => kompetenzKatalog.hatRaster(f),
-      listSchulstufen: (f) => kompetenzKatalog.listSchulstufen(f),
-      getRaster: (f, s) => kompetenzKatalog.getRaster(f, s),
+      hatRaster: (f, o) => kompetenzKatalog.hatRaster(f, o),
+      listSchulstufen: (f, o) => kompetenzKatalog.listSchulstufen(f, o),
+      getRaster: (f, s, o) => kompetenzKatalog.getRaster(f, s, o),
     }),
     kompetenzErhebungen: dp('kompetenzErhebungen', {
       getProfil: (sId, fId) => kompetenzErhebungenDomain.getProfil(dbPort, sId, fId),

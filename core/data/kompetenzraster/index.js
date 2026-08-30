@@ -4,6 +4,10 @@
 // Statischer Katalog der Kompetenzraster (Referenzdaten). Electron-frei; wird sowohl im
 // Desktop-Build (Node `require`) als auch im Mobile-Build (Vite/Rollup-JSON) gebündelt –
 // kein Laufzeit-`fs`. Erweiterbar um weitere Fächer/Schulstufen.
+//
+// „fremdsprache" ist ein zusammengeführter Katalog: Schulstufe 1–4 aus dem Raster „Lebende
+// Fremdsprache" (Primarstufe, sprachunabhängig), Schulstufe 5–8 aus „Englisch" (Sek I). So nutzt
+// z. B. ein VS-Sprachfach (Stufe 1–4) das LF-Raster und ein Sek-Sprachfach (Stufe 5–8) das Englisch-Raster.
 module.exports = {
   deutsch: {
     1: require('./deutsch/deutsch_1.json'),
@@ -14,5 +18,15 @@ module.exports = {
     6: require('./deutsch/deutsch_6.json'),
     7: require('./deutsch/deutsch_7.json'),
     8: require('./deutsch/deutsch_8.json'),
+  },
+  fremdsprache: {
+    1: require('./lebende_fremdsprache/lebende_fremdsprache_1.json'),
+    2: require('./lebende_fremdsprache/lebende_fremdsprache_2.json'),
+    3: require('./lebende_fremdsprache/lebende_fremdsprache_3.json'),
+    4: require('./lebende_fremdsprache/lebende_fremdsprache_4.json'),
+    5: require('./englisch/englisch_5.json'),
+    6: require('./englisch/englisch_6.json'),
+    7: require('./englisch/englisch_7.json'),
+    8: require('./englisch/englisch_8.json'),
   },
 }

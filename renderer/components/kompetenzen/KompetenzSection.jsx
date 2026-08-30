@@ -30,7 +30,7 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
   const laden = async () => {
     const p = await window.api.kompetenzErhebungen.getProfil(schueler.id, fach.id)
     if (p.erhebungen?.length && p.letzteSchulstufe) {
-      const r = await window.api.kompetenzKatalog.getRaster(fach.name, p.letzteSchulstufe)
+      const r = await window.api.kompetenzKatalog.getRaster(fach.name, p.letzteSchulstufe, fach.kompetenzraster)
       setNiveaustufen(r?.niveaustufen ?? [])
     }
     setProfil(p)
@@ -40,15 +40,15 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
     let abbruch = false
     setLoading(true); setProfil(null); setHatRaster(null); setBestaetigeId(null); setNiveaustufen([])
     ;(async () => {
-      const has = await window.api.kompetenzKatalog.hatRaster(fach.name)
+      const has = await window.api.kompetenzKatalog.hatRaster(fach.name, fach.kompetenzraster)
       if (abbruch) return
       setHatRaster(has)
       if (!has) { setLoading(false); return }
-      const stufen = await window.api.kompetenzKatalog.listSchulstufen(fach.name)
+      const stufen = await window.api.kompetenzKatalog.listSchulstufen(fach.name, fach.kompetenzraster)
       const p = await window.api.kompetenzErhebungen.getProfil(schueler.id, fach.id)
       let ns = []
       if (p.erhebungen?.length && p.letzteSchulstufe) {
-        const r = await window.api.kompetenzKatalog.getRaster(fach.name, p.letzteSchulstufe)
+        const r = await window.api.kompetenzKatalog.getRaster(fach.name, p.letzteSchulstufe, fach.kompetenzraster)
         ns = r?.niveaustufen ?? []
       }
       if (abbruch) return
@@ -119,6 +119,7 @@ export default function KompetenzSection({ schueler, fach, niveau }) {
         <KompetenzAssistent
           schueler={schueler}
           fach={fach}
+          rasterOverride={fach.kompetenzraster}
           erhebung={editErhebung}
           letzteErhebung={erhebungen.length ? erhebungen[erhebungen.length - 1] : null}
           letzteSchulstufe={profil.letzteSchulstufe}

@@ -33,6 +33,7 @@ export default function FachTabs() {
   const [contextMenu, setContextMenu] = useState(null)
   const [farbMenuFach, setFarbMenuFach] = useState(null)
   const [benotungMenuFach, setBenotungMenuFach] = useState(null)
+  const [kompRasterMenuFach, setKompRasterMenuFach] = useState(null)
   const [fachSchuelerFach, setFachSchuelerFach] = useState(null)
 
   const fachHatCustomGewichtung = (fach) =>
@@ -146,6 +147,12 @@ export default function FachTabs() {
             }}>
               Benotungssystem {contextMenu.fach.benotungssystem === 'differenziert' ? '(AHS/ST)' : '(Standard)'}
             </div>
+            <div className="context-menu-item" onClick={() => {
+              setKompRasterMenuFach(contextMenu.fach)
+              setContextMenu(null)
+            }}>
+              Kompetenzraster…
+            </div>
             {!vorlagenModus && (
               <div className="context-menu-item" onClick={() => {
                 setFachSchuelerFach(contextMenu.fach)
@@ -240,6 +247,41 @@ export default function FachTabs() {
                 <div>AHS / ST</div>
                 <div className="text-xs opacity-70 mt-0.5">Differenziert</div>
               </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Kompetenzraster-Zuordnung-Popup */}
+      {kompRasterMenuFach && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setKompRasterMenuFach(null)} />
+          <div className="fixed z-50 bg-white dark:bg-ink-800 rounded-xl border border-paper-200 dark:border-ink-700 shadow-xl p-3 w-64"
+            style={{ left: 200, top: 48 }}>
+            <p className="text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Kompetenzraster für „{kompRasterMenuFach.name}"</p>
+            <p className="text-[11px] text-ink-400 mb-2">Bestimmt, welches Raster der Kompetenzen-Assistent nutzt.</p>
+            <div className="flex flex-col gap-1">
+              {[
+                [null, 'Automatisch (am Fachnamen)'],
+                ['deutsch', 'Deutsch'],
+                ['fremdsprache', 'Lebende Fremdsprache / Englisch'],
+                ['keines', 'Keines'],
+              ].map(([wert, label]) => {
+                const aktiv = (kompRasterMenuFach.kompetenzraster ?? null) === wert
+                return (
+                  <button key={label}
+                    className={`text-left px-3 py-1.5 rounded-lg text-sm border transition-colors ${aktiv
+                      ? 'border-coral-500 bg-coral-50 text-coral-700 dark:bg-coral-900 dark:text-coral-300 dark:border-coral-600'
+                      : 'border-paper-200 dark:border-ink-700 text-ink-600 dark:text-ink-400 hover:bg-paper-50 dark:hover:bg-ink-800'}`}
+                    onClick={async () => {
+                      await window.api.faecher.setKompetenzraster(kompRasterMenuFach.id, wert)
+                      await ladeFaecher()
+                      setKompRasterMenuFach(null)
+                    }}>
+                    {label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </>

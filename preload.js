@@ -95,6 +95,7 @@ const api = {
     delete: (id) => invoke('faecher:delete', id),
     rename: (id, name) => invoke('faecher:rename', id, name),
     setFarbe: (id, farbe) => invoke('faecher:setFarbe', id, farbe),
+    setKompetenzraster: (id, wert) => invoke('faecher:setKompetenzraster', id, wert),
     updateGewichtung: (id, data) => invoke('faecher:updateGewichtung', id, data),
     resetGewichtung: (id) => invoke('faecher:resetGewichtung', id),
     setBenotungssystem: (id, system) => invoke('faecher:setBenotungssystem', id, system),
@@ -227,9 +228,9 @@ const api = {
   },
 
   kompetenzKatalog: {
-    hatRaster: (fach) => invoke('kompetenzKatalog:hatRaster', fach),
-    listSchulstufen: (fach) => invoke('kompetenzKatalog:listSchulstufen', fach),
-    getRaster: (fach, stufe) => invoke('kompetenzKatalog:getRaster', fach, stufe),
+    hatRaster: (fach, override) => invoke('kompetenzKatalog:hatRaster', fach, override),
+    listSchulstufen: (fach, override) => invoke('kompetenzKatalog:listSchulstufen', fach, override),
+    getRaster: (fach, stufe, override) => invoke('kompetenzKatalog:getRaster', fach, stufe, override),
   },
 
   kompetenzErhebungen: {

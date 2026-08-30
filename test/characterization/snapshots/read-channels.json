@@ -919,6 +919,7 @@
       "gewichtung_man": null,
       "benotungssystem": "standard",
       "alle_schueler": 1,
+      "kompetenzraster": null,
       "uuid": null
     },
     {
@@ -938,6 +939,7 @@
       "gewichtung_man": null,
       "benotungssystem": "standard",
       "alle_schueler": 1,
+      "kompetenzraster": null,
       "uuid": null
     }
   ],
@@ -1028,6 +1030,7 @@
         "gewichtung_man": null,
         "benotungssystem": "standard",
         "alle_schueler": 1,
+        "kompetenzraster": null,
         "uuid": null
       },
       {
@@ -1047,6 +1050,7 @@
         "gewichtung_man": null,
         "benotungssystem": "standard",
         "alle_schueler": 1,
+        "kompetenzraster": null,
         "uuid": null
       }
     ],
