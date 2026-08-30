@@ -47,7 +47,7 @@ const EXCLUDED = {
   'jahresabschluss:neuesSchuljahr': 'spezialfall-todo',
   // Kompetenz-Katalog: statische Referenzdaten (JSON), kein DB-Zugriff
   'kompetenzKatalog:hatRaster': 'referenz', 'kompetenzKatalog:listSchulstufen': 'referenz',
-  'kompetenzKatalog:getRaster': 'referenz',
+  'kompetenzKatalog:getRaster': 'referenz', 'kompetenzKatalog:istDifferenziert': 'referenz',
 }
 
 const kanaeleAus = (datei) => [...fs.readFileSync(path.join(__dirname, datei), 'utf8')

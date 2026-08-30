@@ -34,12 +34,20 @@ export default function KompetenzAssistent({ schueler, fach, rasterOverride, let
   const [fehler, setFehler] = useState('')
   const [speichern, setSpeichern] = useState(false)
   const bodyRef = useRef(null)
+  // Unterscheidet der Raster-Katalog dieses Fachs überhaupt Standard/AHS? (Deutsch/Englisch ja, Volksgruppensprache nein.)
+  const [rasterDifferenziert, setRasterDifferenziert] = useState(false)
   // Bei Schrittwechsel den Inhaltsbereich nach oben scrollen.
   useEffect(() => { bodyRef.current?.scrollTo({ top: 0 }) }, [schritt])
+  useEffect(() => {
+    let ab = false
+    window.api.kompetenzKatalog.istDifferenziert(fach.name, rasterOverride).then(d => { if (!ab) setRasterDifferenziert(!!d) })
+    return () => { ab = true }
+  }, [fach.name, rasterOverride])
 
   const bereiche = raster?.bereiche ?? []
   // Standard (MS) hat ab Stufe 6 im Raster NUR Kompetenzniveau 1 ("unter Anleitung"); AHS hat 1–3.
-  const istStandardMS = (schulstufe ?? 0) >= 6 && schulzweig === 'ms'
+  // Nur relevant, wenn das geladene Raster überhaupt differenziert (sonst – z. B. Volksgruppensprache – alle Niveaus).
+  const istStandardMS = (schulstufe ?? 0) >= 6 && schulzweig === 'ms' && !!raster?.differenziertesNiveau
   const maxNiveau = istStandardMS ? 1 : ((raster?.niveaustufen ?? []).length || 1)
   const bezeichnung = (k) => (raster?.niveaustufen ?? []).find(x => x.niveau === k)?.bezeichnung || `Niveau ${k}`
 
@@ -132,7 +140,7 @@ export default function KompetenzAssistent({ schueler, fach, rasterOverride, let
       } else {
         await window.api.kompetenzErhebungen.speichern({
           schuelerId: schueler.id, fachId: fach.id, schulstufe,
-          schulzweig: schulstufe >= 6 ? schulzweig : null,
+          schulzweig: (schulstufe >= 6 && raster?.differenziertesNiveau) ? schulzweig : null,
           datum, titel: titel.trim() || null, werte: alleWerte,
         })
       }
@@ -204,7 +212,7 @@ export default function KompetenzAssistent({ schueler, fach, rasterOverride, let
                   </div>
                 )}
               </div>
-              {(schulstufe ?? 0) >= 6 && (
+              {(schulstufe ?? 0) >= 6 && rasterDifferenziert && (
                 <div>
                   <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Leistungsniveau</label>
                   {istBearbeiten ? (

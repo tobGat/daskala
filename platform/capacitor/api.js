@@ -175,6 +175,7 @@ export function createMobileApi(dbPort) {
       hatRaster: (f, o) => kompetenzKatalog.hatRaster(f, o),
       listSchulstufen: (f, o) => kompetenzKatalog.listSchulstufen(f, o),
       getRaster: (f, s, o) => kompetenzKatalog.getRaster(f, s, o),
+      istDifferenziert: (f, o) => kompetenzKatalog.istDifferenziert(f, o),
     }),
     kompetenzErhebungen: dp('kompetenzErhebungen', {
       getProfil: (sId, fId) => kompetenzErhebungenDomain.getProfil(dbPort, sId, fId),

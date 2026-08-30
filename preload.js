@@ -231,6 +231,7 @@ const api = {
     hatRaster: (fach, override) => invoke('kompetenzKatalog:hatRaster', fach, override),
     listSchulstufen: (fach, override) => invoke('kompetenzKatalog:listSchulstufen', fach, override),
     getRaster: (fach, stufe, override) => invoke('kompetenzKatalog:getRaster', fach, stufe, override),
+    istDifferenziert: (fach, override) => invoke('kompetenzKatalog:istDifferenziert', fach, override),
   },
 
   kompetenzErhebungen: {

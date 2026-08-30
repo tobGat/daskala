@@ -8,6 +8,10 @@
 // „fremdsprache" ist ein zusammengeführter Katalog: Schulstufe 1–4 aus dem Raster „Lebende
 // Fremdsprache" (Primarstufe, sprachunabhängig), Schulstufe 5–8 aus „Englisch" (Sek I). So nutzt
 // z. B. ein VS-Sprachfach (Stufe 1–4) das LF-Raster und ein Sek-Sprachfach (Stufe 5–8) das Englisch-Raster.
+//
+// „volksgruppensprache" (Kroatisch/Slowenisch/Ungarisch): eigener Katalog laut BMBWF-Raster
+// (BGBl. II Nr. 1/2023). Aktuell liegen die Raster für Schulstufe 3, 4, 7 und 8 vor (sprachunabhängig,
+// EINE Skala mit drei Kompetenzniveaus – KEINE Standard/AHS-Unterscheidung wie bei Deutsch/Englisch).
 module.exports = {
   deutsch: {
     1: require('./deutsch/deutsch_1.json'),
@@ -28,5 +32,11 @@ module.exports = {
     6: require('./englisch/englisch_6.json'),
     7: require('./englisch/englisch_7.json'),
     8: require('./englisch/englisch_8.json'),
+  },
+  volksgruppensprache: {
+    3: require('./volksgruppensprache/volksgruppensprache_3.json'),
+    4: require('./volksgruppensprache/volksgruppensprache_4.json'),
+    7: require('./volksgruppensprache/volksgruppensprache_7.json'),
+    8: require('./volksgruppensprache/volksgruppensprache_8.json'),
   },
 }

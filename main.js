@@ -622,6 +622,7 @@ function registerIPC() {
   ipcMain.handle('kompetenzKatalog:hatRaster', (_, fach, override) => kompetenzKatalog.hatRaster(fach, override))
   ipcMain.handle('kompetenzKatalog:listSchulstufen', (_, fach, override) => kompetenzKatalog.listSchulstufen(fach, override))
   ipcMain.handle('kompetenzKatalog:getRaster', (_, fach, stufe, override) => kompetenzKatalog.getRaster(fach, stufe, override))
+  ipcMain.handle('kompetenzKatalog:istDifferenziert', (_, fach, override) => kompetenzKatalog.istDifferenziert(fach, override))
 
   // ─── Kompetenz-Erhebungen (Zeitpunkte + Werte) ─────────────────────────────
   ipcMain.handle('kompetenzErhebungen:getProfil', (_, schuelerId, fachId) => kompetenzErhebungenDomain.getProfil(dbPort, schuelerId, fachId))

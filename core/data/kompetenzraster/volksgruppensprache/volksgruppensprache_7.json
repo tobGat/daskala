@@ -1,0 +1,78 @@
+{
+  "fach": "Volksgruppensprache (Kroatisch/Slowenisch/Ungarisch)",
+  "schulstufe": 7,
+  "schultyp": "Mittelschule, AHS-Unterstufe",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Volksgruppensprachen_7-Schulstufe-Kompetenzraster_2c4fad41.pdf",
+  "niveaustufen": [
+    { "niveau": 1, "bezeichnung": "Kompetenzniveau 1" },
+    { "niveau": 2, "bezeichnung": "Kompetenzniveau 2" },
+    { "niveau": 3, "bezeichnung": "Kompetenzniveau 3" }
+  ],
+  "kompetenzbereiche": [
+    {
+      "name": "Hören",
+      "kategorien": [
+        { "name": "Hörfertigkeit", "items": [
+          { "niveau1": "Gehörtes bewusst wahrnehmen, indem sie ihre Aufmerksamkeit/Konzentration steuern sowie Verständnisschwierigkeiten unter Anleitung artikulieren.", "niveau2": "Gehörtes bewusst wahrnehmen, Verständnisschwierigkeiten artikulieren und mit Hilfestellung kompensieren.", "niveau3": "Gehörtes bewusst wahrnehmen, Verständnisschwierigkeiten artikulieren und zunehmend selbstständig kompensieren sowie fehlende Informationen identifizieren." }
+        ] },
+        { "name": "Hörverstehen", "items": [
+          { "niveau1": "in unterschiedlichen einfachen Hörtexten und Beiträgen Themen und Inhalte unter Anleitung erschließen.", "niveau2": "Themen, Inhalte und Emotionen in Hörtexten (zu vertrauten Themenbereichen) mit Hilfestellung erkennen.", "niveau3": "Themen, Inhalte und Emotionen in Hörtexten (zu vertrauten Themenbereichen) zunehmend selbstständig erkennen und deren Wirkung wahrnehmen." }
+        ] }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "kategorien": [
+        { "name": "Sprechfertigkeit", "items": [
+          { "niveau1": "die Ausspracheregeln anwenden.", "niveau2": "ausdrucksvoll und verständlich sprechen und sich dabei körpersprachlicher Mittel (Mimik und Gestik) bedienen.", "niveau3": "artikuliert sprechen und die Standardsprache benutzen." },
+          { "niveau1": "die Grundregeln von Grammatik unter Anleitung richtig anwenden.", "niveau2": "die Grundregeln von Grammatik mit Hilfestellung richtig anwenden.", "niveau3": "die Grundregeln von Grammatik zunehmend selbstständig richtig anwenden." }
+        ] },
+        { "name": "An Gesprächen teilnehmen", "items": [
+          { "niveau1": "(nach einem vorgegebenen Schema) Informationen und Auskünfte (zu vertrauten Themenbereichen) unter Anleitung einholen bzw. geben und dabei verbale und nonverbale Mittel einsetzen.", "niveau2": "(nach einem vorgegebenen Schema) Auskünfte über Sachverhalte, Erfahrungen, Ereignisse, Wünsche und Gefühle mit Hilfestellung einholen bzw. geben und dabei verbale und nonverbale Mittel einsetzen.", "niveau3": "Auskünfte über Sachverhalte, Erfahrungen, Ereignisse, Wünsche und Gefühle zunehmend selbstständig einholen bzw. geben und dabei verbale und nonverbale Mittel einsetzen." }
+        ] },
+        { "name": "Zusammenhängend sprechen, Inhalte mündlich präsentieren", "items": [
+          { "niveau1": "(über vertraute Themenbereiche) unter Verwendung von sprachlichen Bausteinen (z. B. scaffolding) unter Anleitung sprechen.", "niveau2": "(über vertraute Themenbereiche) unter Verwendung von sprachlichen Bausteinen (z. B. scaffolding) mit Hilfestellung sprechen.", "niveau3": "(über vertraute Themenbereiche) unter Verwendung von sprachlichen Bausteinen (z. B. scaffolding) zunehmend selbstständig sprechen." },
+          { "niveau1": "wichtige Informationen zu vertrauten Themenbereichen unter Anleitung präsentieren (SpR – Sprachreflexion).", "niveau2": "wichtige Informationen (zu vertrauten Themenbereichen) mit Hilfestellung präsentieren (SpR).", "niveau3": "wichtige Informationen (zu vertrauten Themenbereichen) zunehmend selbstständig präsentieren (SpR)." },
+          { "niveau1": "den wesentlichen Inhalt eines kurzen deutschsprachigen Textes in der Volksgruppensprache unter Anleitung wiedergeben (SpM – Sprachmittlung).", "niveau2": "den wesentlichen Inhalt eines kurzen deutschsprachigen Textes in der Volksgruppensprache mit Hilfestellung wiedergeben (SpM).", "niveau3": "den wesentlichen Inhalt eines deutschsprachigen Textes in der Volksgruppensprache zunehmend selbstständig wiedergeben (SpM)." }
+        ] }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "kategorien": [
+        { "name": "Lesefertigkeit", "items": [
+          { "niveau1": "geübte Texte mit angemessener Lesegeschwindigkeit lesen.", "niveau2": "einfache Texte mit angemessener Lesegeschwindigkeit lesen und ihre Verlesungen mit Hilfestellung korrigieren.", "niveau3": "schwierigere Texte mit angemessener Lesegeschwindigkeit lesen und ihre Verlesungen zunehmend selbstständig korrigieren." }
+        ] },
+        { "name": "Leseverstehen", "items": [
+          { "niveau1": "einfache Texte (auch literarische) zu vertrauten Themenbereichen unter Anleitung verstehen.", "niveau2": "Texte (auch literarische) (zu vertrauten Themenbereichen) mit Hilfestellung verstehen.", "niveau3": "Texte (auch literarische) (zu vertrauten Themenbereichen) zunehmend selbstständig verstehen." },
+          { "niveau1": "Informationen aus einfachen Texten (auch aus regionalen Medien) unter Anleitung entnehmen.", "niveau2": "Informationen aus einfachen Texten (auch aus regionalen Medien) mit Hilfestellung entnehmen.", "niveau3": "Informationen aus (einfachen) Texten (auch aus regionalen Medien) zunehmend selbstständig entnehmen." }
+        ] },
+        { "name": "Lesetechniken und Lesestrategien", "items": [
+          { "niveau1": "zur Texterschließung Lesetechniken und Lesestrategien (markieren, unterstreichen, Schlüsselwörter suchen, zusammenfassen …) unter Anleitung anwenden.", "niveau2": "zur Texterschließung Lesetechniken und Lesestrategien (markieren, unterstreichen, Schlüsselwörter suchen, zusammenfassen …) mit Hilfestellung anwenden.", "niveau3": "zur Texterschließung Lesetechniken und Lesestrategien (markieren, unterstreichen, Schlüsselwörter suchen, zusammenfassen …) zunehmend selbstständig anwenden." }
+        ] }
+      ]
+    },
+    {
+      "name": "Schreiben",
+      "kategorien": [
+        { "name": "Schreibfertigkeit", "items": [
+          { "niveau1": "die Grundregeln von Grammatik, Rechtschreibung und Zeichensetzung unter Anleitung richtig anwenden.", "niveau2": "die Grundregeln von Grammatik, Rechtschreibung und Zeichensetzung mit Hilfestellung richtig anwenden.", "niveau3": "die Grundregeln von Grammatik, Rechtschreibung und Zeichensetzung zunehmend selbstständig richtig anwenden." }
+        ] },
+        { "name": "Texte planen", "items": [
+          { "niveau1": "Textadressaten berücksichtigen und einige Methoden der Stoffsammlung unter Anleitung anwenden (z. B. Mindmap, Cluster).", "niveau2": "Textadressaten und Schreibsituation berücksichtigen und einige Methoden der Stoffsammlung mit Hilfestellung anwenden (z. B. Mindmap, Cluster).", "niveau3": "Textadressaten, Schreibsituation und Textsorte berücksichtigen und Methoden der Stoffsammlung zunehmend selbstständig anwenden (z. B. Mindmap, Cluster)." }
+        ] },
+        { "name": "Texte verfassen", "items": [
+          { "niveau1": "an einer medialen Kommunikation über vertraute Themenbereiche unter Anleitung teilnehmen (z. B. E-Mail).", "niveau2": "an einer medialen Kommunikation über vertraute Themenbereiche mit Hilfestellung teilnehmen.", "niveau3": "an einer (medialen) Kommunikation (über vertraute Themenbereiche) zunehmend selbstständig teilnehmen." },
+          { "niveau1": "ausgewählte Aspekte des formelhaften und nichtlinearen Schreibens unter Anleitung anwenden (z. B. Formulare).", "niveau2": "Aspekte des formelhaften und nichtlinearen Schreibens mit Hilfestellung anwenden (z. B. Formulare).", "niveau3": "Aspekte des formelhaften linearen und nichtlinearen Schreibens zunehmend selbstständig anwenden (z. B. Formulare)." },
+          { "niveau1": "einfache Sachverhalte (Erlebnisse) unter Anleitung zusammenhängend formulieren.", "niveau2": "Sachverhalte (Erlebnisse, Erfahrungen und Gedanken) mit Hilfestellung zusammenhängend formulieren.", "niveau3": "Sachverhalte zusammenhängend formulieren sowie notierende und informierende Texte zunehmend selbstständig verfassen." },
+          { "niveau1": null, "niveau2": "einzelnen Wörtern/Wortgruppen (deutsche oder in der Volksgruppensprache) entsprechende Übersetzungen/Erklärungen mit Hilfestellung zuordnen (SpM).", "niveau3": "wesentliche Inhalte und die Intention eines deutschsprachigen Textes zu vertrauten Themen in der Volksgruppensprache zunehmend selbstständig wiedergeben (SpM)." }
+        ] },
+        { "name": "Texte überarbeiten", "items": [
+          { "niveau1": "Texte unter Anleitung inhaltlich optimieren.", "niveau2": "Texte mit Hilfestellung inhaltlich optimieren.", "niveau3": "Texte zunehmend selbstständig inhaltlich optimieren." },
+          { "niveau1": "Texte sprachlich und orthografisch unter Anleitung überprüfen und überarbeiten.", "niveau2": "Texte sprachlich und orthografisch mit Hilfestellung überprüfen und überarbeiten.", "niveau3": "Texte sprachlich, orthografisch und im Hinblick auf Erfordernisse der Textsorte zunehmend selbstständig überarbeiten." }
+        ] }
+      ]
+    }
+  ]
+}

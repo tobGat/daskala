@@ -19,20 +19,40 @@ const FREMDSPRACHEN = [
   'ungarisch', 'polnisch', 'türkisch', 'tuerkisch', 'fremdsprache',
 ]
 
+// Volksgruppensprachen (Kroatisch/Slowenisch/Ungarisch …): nur EINDEUTIGE Signale automatisch erkennen.
+// Bare „Kroatisch"/„Slowenisch"/„Ungarisch" bleiben absichtlich Fremdsprache (dort volle Stufenabdeckung 1–8);
+// als Volksgruppensprache wird pro Fach manuell zugeordnet (Rechtsklick → Kompetenzraster).
+const VOLKSGRUPPENSPRACHEN = [
+  'volksgruppensprache', 'volksgruppe', 'burgenlandkroatisch', 'burgenländischkroatisch', 'romanes',
+]
+
 // Fachname → Katalog-Schlüssel (unscharf, damit z. B. „Deutsch 1a" passt). Erweiterbar.
+// Reihenfolge: Volksgruppensprache VOR Fremdsprache prüfen (z. B. „Burgenlandkroatisch" enthält „kroatisch").
 function matchFachKey(fachName) {
   const n = String(fachName ?? '').toLowerCase()
   if (n.includes('deutsch')) return 'deutsch'
+  if (VOLKSGRUPPENSPRACHEN.some(s => n.includes(s))) return 'volksgruppensprache'
   if (FREMDSPRACHEN.some(s => n.includes(s))) return 'fremdsprache'
   return null
 }
 
-// Manuelle Zuordnung pro Fach hat Vorrang: 'keines' → kein Raster; 'deutsch'/'fremdsprache' → dieser Katalog;
+const KEYS = ['deutsch', 'fremdsprache', 'volksgruppensprache']
+
+// Manuelle Zuordnung pro Fach hat Vorrang: 'keines' → kein Raster; ein bekannter Schlüssel → dieser Katalog;
 // sonst (null/undefined/'auto') → Namenserkennung.
 function resolveKey(fachName, override) {
   if (override === 'keines') return null
-  if (override === 'deutsch' || override === 'fremdsprache') return override
+  if (KEYS.includes(override)) return override
   return matchFachKey(fachName)
+}
+
+// Differenziert das Raster zwischen Standard (Mittelschule) und Standard AHS? Nur Deutsch/Englisch ab Stufe 6.
+// Volksgruppensprachen haben EINE Skala für alle. Datengetrieben (kein Hartcodieren der Schlüssel).
+function rasterIstDifferenziert(raw) {
+  if (!raw) return false
+  if (raw.hinweis_leistungsniveau) return true
+  return (raw.kompetenzbereiche ?? []).some(b => (b.kategorien ?? []).some(k =>
+    (k.items ?? []).some(it => it && typeof it === 'object' && it.niveau1_standard != null)))
 }
 
 async function hatRaster(fachName, override) {
@@ -71,6 +91,7 @@ async function getRaster(fachName, schulstufe, override) {
   return {
     fach: raw.fach,
     schulstufe: raw.schulstufe,
+    differenziertesNiveau: rasterIstDifferenziert(raw),
     niveaustufen: Array.isArray(raw.niveaustufen) && raw.niveaustufen.length ? raw.niveaustufen : DEFAULT_NIVEAUSTUFEN,
     bereiche: (raw.kompetenzbereiche ?? []).map(b => ({
       name: b.name,
@@ -83,4 +104,12 @@ async function getRaster(fachName, schulstufe, override) {
   }
 }
 
-module.exports = { matchFachKey, hatRaster, listSchulstufen, getRaster }
+// Hat der Katalog dieses Fachs überhaupt eine Standard/AHS-Differenzierung (irgendeine Stufe)?
+// Steuert im Assistenten die Leistungsniveau-Auswahl (Standard AHS / Standard MS) – für Volksgruppensprachen aus.
+async function istDifferenziert(fachName, override) {
+  const key = resolveKey(fachName, override)
+  if (!key || !KATALOG[key]) return false
+  return Object.values(KATALOG[key]).some(rasterIstDifferenziert)
+}
+
+module.exports = { matchFachKey, hatRaster, listSchulstufen, getRaster, istDifferenziert }

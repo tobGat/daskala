@@ -265,6 +265,7 @@ export default function FachTabs() {
                 [null, 'Automatisch (am Fachnamen)'],
                 ['deutsch', 'Deutsch'],
                 ['fremdsprache', 'Lebende Fremdsprache / Englisch'],
+                ['volksgruppensprache', 'Volksgruppensprache (Kroat./Slowen./Ungar.)'],
                 ['keines', 'Keines'],
               ].map(([wert, label]) => {
                 const aktiv = (kompRasterMenuFach.kompetenzraster ?? null) === wert

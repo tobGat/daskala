@@ -81,6 +81,7 @@
   "kompetenzErhebungen.update",
   "kompetenzKatalog.getRaster",
   "kompetenzKatalog.hatRaster",
+  "kompetenzKatalog.istDifferenziert",
   "kompetenzKatalog.listSchulstufen",
   "kompetenzbereiche.create",
   "kompetenzbereiche.delete",
