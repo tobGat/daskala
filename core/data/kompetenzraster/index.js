@@ -12,6 +12,9 @@
 // „volksgruppensprache" (Kroatisch/Slowenisch/Ungarisch): eigener Katalog laut BMBWF-Raster
 // (BGBl. II Nr. 1/2023). Aktuell liegen die Raster für Schulstufe 3, 4, 7 und 8 vor (sprachunabhängig,
 // EINE Skala mit drei Kompetenzniveaus – KEINE Standard/AHS-Unterscheidung wie bei Deutsch/Englisch).
+//
+// „mathematik": BMBWF-Raster Schulstufe 1–8 (BGBl. II Nr. 1/2023). EINSTUFIG – je Kompetenzbeschreibung
+// erreicht oder (noch) nicht (keine niveaustufen → Default „erreicht"; keine Standard/AHS-Unterscheidung).
 module.exports = {
   deutsch: {
     1: require('./deutsch/deutsch_1.json'),
@@ -38,5 +41,15 @@ module.exports = {
     4: require('./volksgruppensprache/volksgruppensprache_4.json'),
     7: require('./volksgruppensprache/volksgruppensprache_7.json'),
     8: require('./volksgruppensprache/volksgruppensprache_8.json'),
+  },
+  mathematik: {
+    1: require('./mathematik/mathematik_1.json'),
+    2: require('./mathematik/mathematik_2.json'),
+    3: require('./mathematik/mathematik_3.json'),
+    4: require('./mathematik/mathematik_4.json'),
+    5: require('./mathematik/mathematik_5.json'),
+    6: require('./mathematik/mathematik_6.json'),
+    7: require('./mathematik/mathematik_7.json'),
+    8: require('./mathematik/mathematik_8.json'),
   },
 }

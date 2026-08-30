@@ -1,0 +1,59 @@
+{
+  "fach": "Mathematik",
+  "schulstufe": 3,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Mathematik_3-Schulstufe-Kompetenzraster_2bb71d1f.pdf",
+  "hinweis": "Einstufiger Kompetenzraster: je Kompetenzbeschreibung erreicht oder (noch) nicht erreicht.",
+  "kompetenzbereiche": [
+    {
+      "name": "Zahlen und Daten",
+      "kategorien": [
+        { "name": "Zahlen", "items": [
+          "die Zahlen bis 1000 zerlegen, vergleichen, ordnen, runden und vielfältig nutzen."
+        ] },
+        { "name": "Daten", "items": [
+          "einfache kombinatorische Abzählaufgaben darstellen und lösen.",
+          "die Wahrscheinlichkeiten von Ereignissen ihrer Lebenswelt qualitativ beschreiben und vergleichen."
+        ] }
+      ]
+    },
+    {
+      "name": "Operationen",
+      "kategorien": [
+        { "name": "Rechenoperationen und Sachsituationen", "items": [
+          "Rechenoperationen im additiven und multiplikativen Bereich im Zahlenraum 1000 halbschriftlich flexibel durchführen.",
+          "Ergebnisse durch Runden und durch Überschlagsrechnungen abschätzen.",
+          "Additionen, Subtraktionen, Multiplikationen mit einstelligem Multiplikator sowie Divisionen mit einstelligem Divisor im Zahlenraum 1000 schriftlich durchführen.",
+          "vielfältige Sachsituationen modellieren."
+        ] }
+      ]
+    },
+    {
+      "name": "Größen",
+      "kategorien": [
+        { "name": "Größen und Maßeinheiten", "items": [
+          "mit genormten Maßeinheiten (kg, dag, m, dm, cm, ℓ, h, min, s, €, c, neu: t, g, km, mm, mℓ) Vorstellungen verbinden und Größenangaben interpretieren.",
+          "Größen messen bzw. mithilfe von Stützpunktvorstellungen abschätzen und Ergebnisse mit entsprechenden Maßeinheiten notieren.",
+          "Beziehungen zwischen Maßeinheiten anwenden.",
+          "Größen ein- und mehrnamig anschreiben und Umrechnungen durchführen.",
+          "Uhrzeiten mit Stunden und Minuten ablesen und darstellen.",
+          "mit Größen in Sachsituationen arbeiten."
+        ] }
+      ]
+    },
+    {
+      "name": "Ebene und Raum",
+      "kategorien": [
+        { "name": "Figuren, Körper und Umfang", "items": [
+          "ebene Figuren und Körper auf ihre Eigenschaften hin untersuchen, beschreiben und vergleichen.",
+          "spielerisch und planvoll mit ebenen Figuren und Körpern arbeiten, insbesondere mit symmetrischen Objekten.",
+          "Lagebeziehungen von Strecken in der Ebene beschreiben.",
+          "rechte Winkel, Quadrate und Rechtecke mit dem Geodreieck zeichnen.",
+          "den Umfang ebener Figuren messen bzw. abschätzen.",
+          "den Umfang von Quadraten und Rechtecken berechnen."
+        ] }
+      ]
+    }
+  ]
+}

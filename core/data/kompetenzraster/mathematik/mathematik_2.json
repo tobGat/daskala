@@ -1,0 +1,57 @@
+{
+  "fach": "Mathematik",
+  "schulstufe": 2,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Mathematik_2-Schulstufe-Kompetenzraster_e8a95532.pdf",
+  "hinweis": "Einstufiger Kompetenzraster: je Kompetenzbeschreibung erreicht oder (noch) nicht erreicht.",
+  "kompetenzbereiche": [
+    {
+      "name": "Zahlen und Daten",
+      "kategorien": [
+        { "name": "Zahlen", "items": [
+          "die Zahlen bis 100 zerlegen, vergleichen, ordnen und vielfältig nutzen.",
+          "die Zahlen bis 1000 mit strukturiertem Material darstellen, lesen und schreiben."
+        ] },
+        { "name": "Daten", "items": [
+          "Daten aus ihrer Lebenswelt erheben und mit Säulen- und Balkendiagrammen darstellen.",
+          "Säulen- und Balkendiagramme sowie Piktogramme interpretieren."
+        ] }
+      ]
+    },
+    {
+      "name": "Operationen",
+      "kategorien": [
+        { "name": "Rechenoperationen und Muster", "items": [
+          "Rechenoperationen im additiven und multiplikativen Bereich im Zahlenraum 100 flexibel mündlich und halbschriftlich durchführen.",
+          "arithmetische Muster erkennen, beschreiben, fortsetzen und ergänzen.",
+          "reale bzw. verbal oder bildlich dargestellte Sachsituationen modellieren."
+        ] }
+      ]
+    },
+    {
+      "name": "Größen",
+      "kategorien": [
+        { "name": "Größen und Maßeinheiten", "items": [
+          "mit genormten Maßeinheiten (kg, m, ℓ, h, €, c, neu: dag, dm, cm, min, s) Vorstellungen verbinden und Größenangaben interpretieren.",
+          "Größen messen und Ergebnisse mit entsprechenden Maßeinheiten notieren.",
+          "Beziehungen zwischen Maßeinheiten anwenden.",
+          "Größen ein- und mehrnamig anschreiben.",
+          "Uhrzeiten mit halben Stunden und Viertelstunden ablesen und darstellen.",
+          "mit Größen in einfachen Sachsituationen arbeiten."
+        ] }
+      ]
+    },
+    {
+      "name": "Ebene und Raum",
+      "kategorien": [
+        { "name": "Figuren, Körper und Muster", "items": [
+          "Eigenschaften von ebenen Figuren und Körpern erkennen und benennen.",
+          "spielerisch und planvoll mit ebenen Figuren und Körpern arbeiten, insbesondere mit symmetrischen Objekten.",
+          "das Lineal zum Zeichnen und Messen nutzen.",
+          "geometrische Muster erkennen, beschreiben, fortsetzen und ergänzen."
+        ] }
+      ]
+    }
+  ]
+}

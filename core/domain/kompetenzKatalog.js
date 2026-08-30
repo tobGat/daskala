@@ -31,12 +31,13 @@ const VOLKSGRUPPENSPRACHEN = [
 function matchFachKey(fachName) {
   const n = String(fachName ?? '').toLowerCase()
   if (n.includes('deutsch')) return 'deutsch'
+  if (n.includes('mathematik') || n.includes('mathe')) return 'mathematik'
   if (VOLKSGRUPPENSPRACHEN.some(s => n.includes(s))) return 'volksgruppensprache'
   if (FREMDSPRACHEN.some(s => n.includes(s))) return 'fremdsprache'
   return null
 }
 
-const KEYS = ['deutsch', 'fremdsprache', 'volksgruppensprache']
+const KEYS = ['deutsch', 'fremdsprache', 'volksgruppensprache', 'mathematik']
 
 // Manuelle Zuordnung pro Fach hat Vorrang: 'keines' → kein Raster; ein bekannter Schlüssel → dieser Katalog;
 // sonst (null/undefined/'auto') → Namenserkennung.

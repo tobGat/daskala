@@ -264,6 +264,7 @@ export default function FachTabs() {
               {[
                 [null, 'Automatisch (am Fachnamen)'],
                 ['deutsch', 'Deutsch'],
+                ['mathematik', 'Mathematik'],
                 ['fremdsprache', 'Lebende Fremdsprache / Englisch'],
                 ['volksgruppensprache', 'Volksgruppensprache (Kroat./Slowen./Ungar.)'],
                 ['keines', 'Keines'],

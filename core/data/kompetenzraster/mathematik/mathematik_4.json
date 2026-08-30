@@ -1,0 +1,60 @@
+{
+  "fach": "Mathematik",
+  "schulstufe": 4,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Mathematik_4-Schulstufe-Kompetenzraster_aa76aaf3.pdf",
+  "hinweis": "Einstufiger Kompetenzraster: je Kompetenzbeschreibung erreicht oder (noch) nicht erreicht.",
+  "kompetenzbereiche": [
+    {
+      "name": "Zahlen und Daten",
+      "kategorien": [
+        { "name": "Zahlen", "items": [
+          "die Zahlen bis 1 000 000 lesen, schreiben, darstellen, zerlegen, vergleichen, ordnen, runden und vielfältig nutzen.",
+          "Brüche mit kleinen Nennern lesen und schreiben, insbesondere mit den Nennern 2, 4 und 8.",
+          "Bruchteile konkreter Objekte bzw. Größen erkennen, darstellen, in Bruchschreibweise notieren, vergleichen, ordnen und in einfachen Fällen additiv zerlegen.",
+          "Bruchteile ermitteln."
+        ] },
+        { "name": "Daten", "items": [
+          "einfache Zufallsexperimente durchführen und wiederholen.",
+          "Ergebnisse und ihre absoluten Häufigkeiten darstellen sowie Wahrscheinlichkeiten qualitativ vergleichen."
+        ] }
+      ]
+    },
+    {
+      "name": "Operationen",
+      "kategorien": [
+        { "name": "Schriftliche Rechenverfahren und Sachsituationen", "items": [
+          "Additionen, Subtraktionen, Multiplikationen mit ein- und zweistelligem Multiplikator sowie Divisionen mit ein- und zweistelligem Divisor im Zahlenraum 1 000 000 schriftlich durchführen.",
+          "Ergebnisse durch Runden und durch Überschlagsrechnungen abschätzen.",
+          "vielfältige Sachsituationen modellieren.",
+          "direkt proportionale Zusammenhänge erkennen, tabellarisch darstellen und für Berechnungen nutzen."
+        ] }
+      ]
+    },
+    {
+      "name": "Größen",
+      "kategorien": [
+        { "name": "Größen und Maßeinheiten", "items": [
+          "mit genormten Maßeinheiten für Flächeninhalte (t, kg, dag, g, km, m, dm, cm, mm, ℓ, mℓ, h, min, s, €, c, neu: km², ha, a, m², dm², cm², mm²) Vorstellungen verbinden und Größenangaben interpretieren.",
+          "Größen messen bzw. mithilfe von Stützpunktvorstellungen abschätzen und Ergebnisse mit entsprechenden Maßeinheiten notieren.",
+          "Größen ein- und mehrnamig anschreiben und Umrechnungen durchführen.",
+          "mit Zeitpunkten und Zeitspannen arbeiten.",
+          "mit Größen in Sachsituationen arbeiten."
+        ] }
+      ]
+    },
+    {
+      "name": "Ebene und Raum",
+      "kategorien": [
+        { "name": "Figuren, Körper und Flächeninhalt", "items": [
+          "einfache Körpermodelle und Netze untersuchen, zuordnen und erstellen.",
+          "den Flächeninhalt ebener Figuren mithilfe geeigneter Einheitsflächen messen bzw. abschätzen.",
+          "Flächeninhalt und Umfang von Quadraten und Rechtecken bzw. von einfachen daraus zusammengesetzten Figuren berechnen.",
+          "ebene Figuren verkleinern und vergrößern, insbesondere mithilfe von Rastern.",
+          "einfache Pläne interpretieren und anfertigen."
+        ] }
+      ]
+    }
+  ]
+}

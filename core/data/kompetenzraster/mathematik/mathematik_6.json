@@ -1,0 +1,100 @@
+{
+  "fach": "Mathematik",
+  "schulstufe": 6,
+  "schultyp": "Mittelschule, AHS-Unterstufe",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Mathematik_6-Schulstufe-Kompetenzraster_5616708a.pdf",
+  "hinweis": "Einstufiger Kompetenzraster: je Kompetenzbeschreibung erreicht oder (noch) nicht erreicht. Teilkompetenzen entsprechen dem Lehrplanbezug (Taxonomie z. B. 6-ZM-1).",
+  "kompetenzbereiche": [
+    {
+      "name": "Zahlen und Maße",
+      "kategorien": [
+        { "name": "Vielfache, Teiler und Teilbarkeit", "items": [
+          "die Begriffe Vielfaches, Teiler, Teilbarkeit und Primzahl erklären und anwenden; allenfalls Primfaktorzerlegungen durchführen.",
+          "gemeinsame Vielfache und Teiler von Zahlen erkennen und ermitteln; das kleinste gemeinsame Vielfache und den größten gemeinsamen Teiler ermitteln, allenfalls auch mit Rechenverfahren.",
+          "einfache Teilbarkeitsregeln angeben und anwenden; allenfalls Teilbarkeitsregeln begründen und Aussagen zur Teilbarkeit widerlegen bzw. begründen.",
+          "Teiler und Vielfache in Sachsituationen anwenden."
+        ] },
+        { "name": "Bruch-, Dezimal- und ganze Zahlen", "items": [
+          "Brüche deuten, erweitern, kürzen und am Zahlenstrahl darstellen; nichtnegative Dezimal- und Bruchzahlen vergleichen und ordnen.",
+          "zwischen Bruch- und Dezimaldarstellung wechseln, auch bei Zahlen mit einfacher periodischer Dezimaldarstellung.",
+          "zwischen Bruch- bzw. Dezimaldarstellung und Prozentdarstellung wechseln.",
+          "Brüche als relative Anteile und relative Häufigkeiten deuten.",
+          "ganze Zahlen als Punkte auf der Zahlengeraden darstellen; ganze Zahlen auch in außermathematischen Situationen interpretieren.",
+          "ganze Zahlen vergleichen und ordnen.",
+          "Zahlbereiche vergleichen, z. B. hinsichtlich der Eindeutigkeit der Zahldarstellung sowie der Existenz von Vorgängern, Nachfolgern und von Zahlen zwischen zwei Werten."
+        ] },
+        { "name": "Rechnen mit Bruchzahlen und ganzen Zahlen", "items": [
+          "Grundrechenoperationen und Rechenverfahren mit nichtnegativen Dezimalzahlen durchführen und mit Grundvorstellungen verbinden; Rechenergebnisse abschätzen und Schranken ermitteln.",
+          "Multiplikationen mit Bruchzahlen, z. B. als Teilen und nachfolgendes Vervielfachen bzw. als Vervielfachen und nachfolgendes Teilen oder als Ermitteln eines relativen Anteils deuten („Von-Deutung“ der Multiplikation).",
+          "Divisionen durch eine Bruchzahl deuten, z. B. als Messen oder als Umkehren des Multiplizierens.",
+          "die vier Grundrechenoperationen mit Bruchzahlen schriftlich durchführen, in einfachen Fällen auch im Kopf.",
+          "die Rechenregeln für Bruchzahlen beschreiben und anwenden; diese Rechenregeln durch geometrische Deutungen und in Sachsituationen interpretieren.",
+          "erkennen und beschreiben, wie sich Änderungen eines Operanden (Summand, Faktor, …) auf das Ergebnis auswirken, allenfalls auch im Zusammenhang mit Variablen.",
+          "die gleichen Rechengesetze sowie Klammer- und Vorrangregeln wie für natürliche Zahlen auf Rechnungen mit nichtnegativen Dezimal- und Bruchzahlen anwenden.",
+          "Vorteile und Nachteile der Bruch- bzw. Dezimaldarstellung beim Durchführen von Rechenoperationen erkennen und beschreiben.",
+          "Additionen und Subtraktionen der Form z + n und z − n mit z ∈ ℤ und n ∈ ℕ als Bewegungen auf der Zahlengeraden deuten und darstellen; diese Deutung verwenden, um entsprechende Rechenaufgaben zu lösen."
+        ] },
+        { "name": "Proportionalität und Prozente", "items": [
+          "direkte und indirekte Proportionalitäten in Sachsituationen, die in Texten, durch Daten in Tabellen oder grafisch gegeben sein können, erkennen; Proportionalitäten begründen oder widerlegen.",
+          "mit Prozenten in vielfältigen Situationen rechnen; additive und multiplikative Berechnungen verwenden und entsprechende Zusammenhänge begründen.",
+          "Proportionalitäten und Prozente in Sachsituationen anwenden; Lösungswege beschreiben, vergleichen und begründen; Ergebnisse und ihre Genauigkeit kritisch betrachten."
+        ] }
+      ]
+    },
+    {
+      "name": "Variablen und Funktionen",
+      "kategorien": [
+        { "name": "Terme, Gleichungen und Formeln", "items": [
+          "einfache Terme, Gleichungen und Formeln in der Geometrie und in verschiedenen Sachsituationen aufstellen und deuten.",
+          "Gleichungen zu vorgegebenen Texten aufstellen sowie Texte zu vorgegebenen Gleichungen formulieren.",
+          "Formeln im Zusammenhang mit Proportionalitäten und Prozenten aufstellen."
+        ] },
+        { "name": "Gleichungen lösen und Formeln umformen", "items": [
+          "einfache Gleichungen durch systematisches Probieren und mithilfe von Veranschaulichungen lösen.",
+          "lineare Gleichungen durch Umkehren von Rechenoperationen lösen.",
+          "Formeln im Zusammenhang mit Prozenten und Proportionalitäten umformen.",
+          "lineare Gleichungen in Sachsituationen anwenden; die Angemessenheit der mathematischen Beschreibung sowie die Ergebnisse und ihre Genauigkeit kritisch betrachten."
+        ] }
+      ]
+    },
+    {
+      "name": "Figuren und Körper",
+      "kategorien": [
+        { "name": "Kartesisches Koordinatensystem", "items": [
+          "erklären und anwenden, dass Koordinatenachsen Zahlengeraden sind, die aufeinander normal stehen.",
+          "Koordinaten von Punkten ablesen; Punkte mit gegebenen Koordinaten in allen Quadranten einzeichnen; Figuren, die durch Punkte festgelegt sind, einzeichnen.",
+          "grafisch und rechnerisch Figuren verschieben."
+        ] },
+        { "name": "Symmetrie und Kongruenz", "items": [
+          "überprüfen, ob eine Figur achsensymmetrisch ist.",
+          "überprüfen, ob zwei Figuren zueinander kongruent sind durch Übereinanderlegen, durch Messen aller Längen und Winkel sowie allenfalls durch Anwenden geometrischer Sätze.",
+          "zueinander kongruente Figuren konstruieren.",
+          "die Eigenschaften von Strecken- und Winkelsymmetralen beschreiben; Strecken- und Winkelsymmetralen konstruieren und anwenden."
+        ] },
+        { "name": "Dreiecke, Vierecke und Flächeninhalte", "items": [
+          "Sachverhalte (z. B. Neigungen, Drehungen) durch Winkel darstellen; Größenbeziehungen zwischen Winkeln in geometrischen Figuren erkennen und anwenden.",
+          "begründen und anwenden, dass die Winkelsumme im Dreieck 180° beträgt.",
+          "Eigenschaften spitzwinkeliger, rechtwinkeliger, stumpfwinkeliger, gleichschenkeliger sowie gleichseitiger Dreiecke und besonderer Vierecke (Rechteck, Quadrat, Parallelogramm, Rhombus/Raute, Drachenviereck/Deltoid, Trapez) beschreiben und anwenden.",
+          "Dreiecke und besondere Vierecke konstruieren.",
+          "Flächeninhaltsformeln für Dreiecke und besondere Vierecke angeben, anwenden und begründen.",
+          "allenfalls den Satz von Thales erklären, anwenden und begründen.",
+          "allenfalls besondere Punkte im Dreieck konstruieren.",
+          "allenfalls Vermessungsaufgaben mithilfe maßstäblicher Zeichnungen konstruktiv lösen."
+        ] }
+      ]
+    },
+    {
+      "name": "Daten und Zufall",
+      "kategorien": [
+        { "name": "Relative Häufigkeiten", "items": [
+          "mit verschiedenen Darstellungsformen von Daten, dem arithmetischen Mittelwert und dem Median arbeiten.",
+          "relative Häufigkeiten berechnen und den Zusammenhang zwischen absoluten und relativen Häufigkeiten erklären und anwenden.",
+          "relative Häufigkeiten in Bruch-, Dezimal- und Prozentdarstellung angeben sowie in Tabellen und Diagrammen (Säulen- oder Balkendiagramm, Kreisdiagramm, Prozentstreifen) darstellen.",
+          "relative Häufigkeiten aus Tabellen und grafischen Darstellungen ablesen und interpretieren.",
+          "mit relativen Anteilen und relativen Häufigkeiten in zweistufigen, allenfalls dreistufigen Situationen arbeiten, insbesondere mithilfe von Baumdiagrammen."
+        ] }
+      ]
+    }
+  ]
+}
