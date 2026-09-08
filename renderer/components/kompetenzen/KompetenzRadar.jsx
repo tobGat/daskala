@@ -15,6 +15,13 @@ function formatDatum(s) {
   return d ? `${d}.${m}.${y}` : s
 }
 
+// Kompaktes Datum für die Erhebungs-Chips (TT.MM.JJ).
+function fmtKurz(s) {
+  if (!s) return ''
+  const [y, m, d] = String(s).split('-')
+  return d ? `${d}.${m}.${y.slice(2)}` : s
+}
+
 // Bereichsnamen auf mehrere Zeilen umbrechen (Wortgrenzen, ~15 Zeichen/Zeile), damit die
 // Achsenbeschriftung vollständig lesbar bleibt statt abgeschnitten zu werden.
 const umbrechen = (s, max = 15) => {
@@ -156,16 +163,33 @@ export default function KompetenzRadar({ erhebungen, niveaustufen = [] }) {
         </p>
       )}
 
-      {/* Zeitstrahl */}
+      {/* Erhebung wählen: zentrierte Chips (je Erhebung ein Datum) + Vor/Zurück-Pfeile */}
       <div className="px-1 pt-1">
-        <div className="text-center text-xs text-ink-600 dark:text-paper-300 mb-1">
+        <div className="text-center text-xs text-ink-600 dark:text-paper-300 mb-1.5">
           <span className="font-semibold">{formatDatum(aktuelle?.datum)}</span>
           {aktuelle?.titel ? ` · ${aktuelle.titel}` : ''}
-          <span className="text-ink-400"> · {idx + 1}/{erhebungen.length}{aktuelle?.schulstufe ? ` · ${aktuelle.schulstufe}. Schulstufe` : ''}{aktuelle?.schulzweig ? ` · ${aktuelle.schulzweig === 'ms' ? 'Standard (MS)' : 'Standard AHS'}` : ''}</span>
+          <span className="text-ink-400">{aktuelle?.schulstufe ? ` · ${aktuelle.schulstufe}. Schulstufe` : ''}{aktuelle?.schulzweig ? ` · ${aktuelle.schulzweig === 'ms' ? 'Standard (MS)' : 'Standard AHS'}` : ''}</span>
         </div>
         {erhebungen.length > 1 && (
-          <input type="range" min={0} max={erhebungen.length - 1} step={1} value={idx}
-            onChange={e => setIdx(Number(e.target.value))} className="w-full accent-coral-500" aria-label="Erhebungszeitpunkt" />
+          <div className="flex items-center justify-center gap-1.5">
+            <button type="button" onClick={() => setIdx(i => Math.max(0, i - 1))} disabled={idx === 0}
+              aria-label="Vorherige Erhebung" title="Vorherige Erhebung"
+              className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full text-ink-500 hover:text-coral-600 hover:bg-paper-100 dark:hover:bg-ink-800 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-500 transition-colors">‹</button>
+            <div className="flex flex-wrap items-center justify-center gap-1">
+              {erhebungen.map((e, i) => (
+                <button key={e.id ?? i} type="button" onClick={() => setIdx(i)}
+                  aria-current={i === idx} title={`${formatDatum(e.datum)}${e.titel ? ' · ' + e.titel : ''}`}
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${i === idx
+                    ? 'bg-coral-500 text-white shadow-soft'
+                    : 'bg-paper-100 dark:bg-ink-800 text-ink-600 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-700'}`}>
+                  {fmtKurz(e.datum)}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={() => setIdx(i => Math.min(erhebungen.length - 1, i + 1))} disabled={idx === erhebungen.length - 1}
+              aria-label="Nächste Erhebung" title="Nächste Erhebung"
+              className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full text-ink-500 hover:text-coral-600 hover:bg-paper-100 dark:hover:bg-ink-800 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-500 transition-colors">›</button>
+          </div>
         )}
       </div>
 
