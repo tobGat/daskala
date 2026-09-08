@@ -1,0 +1,83 @@
+{
+  "fach": "Englisch",
+  "schulstufe": 6,
+  "schultyp": "Mittelschule, AHS-Unterstufe",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Englisch_6-Schulstufe-Kompetenzraster_c3e620f0.pdf",
+  "hinweis_leistungsniveau": "Raster unterscheidet 'Standard' (Mittelschule) und 'Standard AHS'. Bei 'Standard' ist nur Kompetenzniveau 1 ausgewiesen; 'Standard AHS' hat alle drei Niveaus. Wo der Standard-Zug bei Niveau 1 abweicht, steht das im Feld 'niveau1_standard'.",
+  "niveaustufen": [
+    { "niveau": 1, "bezeichnung": "Kompetenzniveau 1" },
+    { "niveau": 2, "bezeichnung": "Kompetenzniveau 2" },
+    { "niveau": 3, "bezeichnung": "Kompetenzniveau 3" }
+  ],
+  "kompetenzbereiche": [
+    {
+      "name": "Hören (A2)",
+      "kategorien": [
+        { "name": "Globales Verstehen", "items": [
+          { "niveau1": "einfachen, kurzen Monologen und Gesprächen zu vertrauten Themen folgen (ggf. mit Hilfestellung), wenn langsam und deutlich gesprochen wird.", "niveau1_standard": "unter Anleitung einfachen, kurzen Monologen und Gesprächen zu vertrauten Themen folgen, wenn langsam und deutlich gesprochen wird.", "niveau2": "einfachen, kurzen Monologen und Gesprächen zu vertrauten Themen folgen, wenn langsam und deutlich gesprochen wird.", "niveau3": "einfachen Monologen und Gesprächen zu vertrauten Themen folgen, wenn langsam und deutlich gesprochen wird." }
+        ] },
+        { "name": "Verstehen von Hauptaussagen und unterstützenden Details", "items": [
+          { "niveau1": "die Hauptaussagen von kurzen, einfachen monologischen Texten zu vertrauten Themen verstehen (ggf. mit Hilfestellung), wenn visuell unterstützt sowie langsam und deutlich gesprochen wird.", "niveau1_standard": "unter Anleitung die Hauptaussagen von kurzen, einfachen monologischen Texten zu vertrauten Themen verstehen, wenn visuell unterstützt sowie langsam und deutlich gesprochen wird.", "niveau2": "die Hauptaussagen von kurzen, einfachen monologischen Texten zu vertrauten Themen verstehen, wenn visuell unterstützt sowie langsam und deutlich gesprochen wird.", "niveau3": "die Hauptaussagen von kurzen, einfachen monologischen Texten zu vertrauten Themen verstehen, wenn langsam und deutlich gesprochen wird." },
+          { "niveau1": "die Hauptaussagen von kurzen, einfachen Gesprächen zu vertrauten Themen verstehen (ggf. mit Hilfestellung), wenn langsam und deutlich gesprochen wird.", "niveau1_standard": "unter Anleitung die Hauptaussagen von kurzen, einfachen Gesprächen zu vertrauten Themen verstehen, wenn langsam und deutlich gesprochen wird.", "niveau2": "die Hauptaussagen von kurzen, einfachen Gesprächen zu vertrauten Themen verstehen, wenn langsam und deutlich gesprochen wird.", "niveau3": "die Hauptaussagen von kurzen, einfachen Gesprächen zu vertrauten Themen verstehen, wenn langsam und deutlich gesprochen wird." }
+        ] },
+        { "name": "Verstehen von spezifischen Informationen", "items": [
+          { "niveau1": "in einfachen Anweisungen, Auskünften und Durchsagen zu vertrauten Themen spezifische Informationen verstehen (ggf. mit Hilfestellung), wenn langsam und deutlich gesprochen wird.", "niveau1_standard": "unter Anleitung in einfachen Anweisungen, Auskünften und Durchsagen zu vertrauten Themen spezifische Informationen verstehen, wenn langsam und deutlich gesprochen wird.", "niveau2": "in einfachen Anweisungen, Auskünften und Durchsagen zu vertrauten Themen spezifische Informationen verstehen, wenn langsam und deutlich gesprochen wird.", "niveau3": "in Anweisungen, Auskünften und Durchsagen zu vertrauten Themen spezifische Informationen verstehen, wenn langsam und deutlich gesprochen wird." },
+          { "niveau1": "einfachen Medienbeiträgen und Gesprächen zu vertrauten Themen spezifische Informationen entnehmen (ggf. mit Hilfestellung), wenn langsam und deutlich gesprochen wird.", "niveau1_standard": "unter Anleitung einfachen Medienbeiträgen und Gesprächen zu vertrauten Themen spezifische Informationen entnehmen, wenn langsam und deutlich gesprochen wird.", "niveau2": "einfachen Medienbeiträgen und Gesprächen zu vertrauten Themen spezifische Informationen entnehmen, wenn langsam und deutlich gesprochen wird.", "niveau3": "kurzen Medienbeiträgen und Gesprächen zu vertrauten Themen spezifische Informationen entnehmen, wenn langsam und deutlich gesprochen wird." }
+        ] }
+      ]
+    },
+    {
+      "name": "Lesen (A2)",
+      "kategorien": [
+        { "name": "Globales Verstehen", "items": [
+          { "niveau1": "kurze, einfache bebilderte Sach- und Alltagstexte sowie kurze, einfache persönliche Texte zu konkreten, vertrauten Themen global verstehen (ggf. mit Hilfestellung).", "niveau1_standard": "unter Anleitung kurze, einfache bebilderte Sach- und Alltagstexte sowie kurze, einfache persönliche Texte zu konkreten, vertrauten Themen global verstehen.", "niveau2": "kurze, einfache Geschichten, Alltagstexte, persönliche Texte und bebilderte Sachtexte zu konkreten, vertrauten Themen global verstehen.", "niveau3": "kurze, einfache Geschichten, Alltagstexte, persönliche Texte und Sachtexte zu vertrauten Themen global verstehen." }
+        ] },
+        { "name": "Verstehen von Hauptaussagen und unterstützenden Details", "items": [
+          { "niveau1": "die Hauptereignisse in kurzen, einfachen Geschichten zu vertrauten Themen verstehen (ggf. mit Hilfestellung).", "niveau1_standard": "unter Anleitung die Hauptereignisse in kurzen, einfachen Geschichten zu vertrauten Themen verstehen.", "niveau2": "die Hauptereignisse in kurzen, einfachen Geschichten zu vertrauten, persönlichen Themen verstehen.", "niveau3": "die Hauptereignisse und wichtige Details in kurzen, einfachen Geschichten zu vertrauten Themen verstehen." },
+          { "niveau1": "Hauptaussagen in kurzen, einfachen, bebilderten Sach- und Alltagstexten zu konkreten, vertrauten Themen verstehen.", "niveau1_standard": "unter Anleitung Hauptaussagen in kurzen, einfachen, bebilderten Sach- und Alltagstexten zu konkreten, vertrauten Themen verstehen.", "niveau2": "Hauptaussagen in kurzen, einfachen, bebilderten Sach- und Alltagstexten zu konkreten, vertrauten Themen verstehen.", "niveau3": "Hauptaussagen und unterstützende Details in kurzen, einfachen Sach- und Alltagstexten zu vertrauten Themen verstehen." }
+        ] },
+        { "name": "Verstehen von spezifischen Informationen", "items": [
+          { "niveau1": "kurzen, einfachen bebilderten Sach- und Alltagstexten zu konkreten, vertrauten Themen spezifische Informationen entnehmen (ggf. mit Hilfestellung).", "niveau1_standard": "unter Anleitung kurzen, einfachen, bebilderten Sach- und Alltagstexten zu konkreten, vertrauten Themen spezifische Informationen entnehmen.", "niveau2": "kurzen, einfachen bebilderten Sach- und Alltagstexten zu konkreten, vertrauten Themen spezifische Informationen entnehmen.", "niveau3": "kurzen, einfachen Sach- und Alltagstexten zu vertrauten Themen spezifische Informationen entnehmen." }
+        ] }
+      ]
+    },
+    {
+      "name": "Sprechen (A2)",
+      "kategorien": [
+        { "name": "Beschreiben und berichten", "items": [
+          { "niveau1": "mit einfachen Worten Dinge, Orte, Personen und Tätigkeiten beschreiben.", "niveau1_standard": "unter Anleitung mit einfachen Worten Dinge, Orte, Personen und Tätigkeiten beschreiben.", "niveau2": "mit einfachen Worten Dinge, Orte, Personen und Tätigkeiten beschreiben.", "niveau3": "mit einem einfachen Repertoire an Ausdrücken kurz persönliche Ereignisse, Aktivitäten und Erfahrungen beschreiben." }
+        ] },
+        { "name": "Informieren", "items": [
+          { "niveau1": "in Alltagssituationen einfache Informationen in kurzen, einfachen Sätzen geben und erfragen (ggf. mit Hilfestellung).", "niveau1_standard": "unter Anleitung in Alltagssituationen einfache Informationen in kurzen, einfachen Sätzen geben und erfragen.", "niveau2": "in Alltagssituationen einfache Informationen in kurzen, einfachen Sätzen geben und erfragen.", "niveau3": "in Alltagssituationen einfache Informationen in einfachen, zusammenhängenden Sätzen geben und erfragen." }
+        ] },
+        { "name": "Über Vorschläge und Pläne sprechen", "items": [
+          { "niveau1": "in Alltagssituationen mit elementaren, formelhaften Wendungen sagen, was sie tun wollen, und Verabredungen treffen (ggf. mit Hilfestellung).", "niveau1_standard": "unter Anleitung in Alltagssituationen mit elementaren, formelhaften Wendungen sagen, was sie tun wollen, und Verabredungen treffen.", "niveau2": "in Alltagssituationen mit elementaren, formelhaften Wendungen sagen, was sie tun wollen, und Verabredungen treffen.", "niveau3": "in Alltagssituationen mit einem einfachen Repertoire an Ausdrücken sagen, was sie tun wollen, und Verabredungen treffen." }
+        ] },
+        { "name": "Meinungen und Gefühle ausdrücken", "items": [
+          { "niveau1": "mit elementaren, formelhaften Wendungen ausdrücken, wie sie sich fühlen und was sie (nicht) mögen (ggf. mit Hilfestellung).", "niveau1_standard": "unter Anleitung mit elementaren, formelhaften Wendungen ausdrücken, wie sie sich fühlen und was sie (nicht) mögen.", "niveau2": "mit elementaren, formelhaften Wendungen ausdrücken, wie sie sich fühlen und was sie (nicht) mögen.", "niveau3": "mit einem einfachen Repertoire an Ausdrücken Gefühle und Meinungen zu vertrauten Themen kommunizieren." }
+        ] },
+        { "name": "Gesprächsführungskompetenz", "items": [
+          { "niveau1": "in einfachen, kurzen Gesprächen zu vertrauten Themen einfache Fragen stellen und in einfachen, kurzen Sätzen antworten. Das Gespräch ist jedoch völlig davon abhängig, dass etwas langsamer wiederholt, umformuliert oder korrigiert wird.", "niveau1_standard": "unter Anleitung in einfachen, kurzen Gesprächen zu vertrauten Themen einfache Fragen stellen und in einfachen, kurzen Sätzen antworten.", "niveau2": "kurze Gespräche zu vertrauten Themen führen. Das Gespräch ist jedoch völlig davon abhängig, dass etwas langsamer wiederholt, umformuliert oder korrigiert wird.", "niveau3": "einfache sprachliche Mittel anwenden, um ein kurzes Gespräch zu vertrauten Themen zu beginnen, in Gang zu halten und zu beenden." }
+        ] }
+      ]
+    },
+    {
+      "name": "Schreiben (A2)",
+      "kategorien": [
+        { "name": "Informieren", "items": [
+          { "niveau1": "einfache Wendungen und sehr kurze Sätze verfassen, um Informationen über sich selbst oder unmittelbare Bedürfnisse auszudrücken.", "niveau1_standard": "unter Anleitung einfache Wendungen und sehr kurze Sätze verfassen, um Informationen über sich selbst oder unmittelbare Bedürfnisse auszudrücken.", "niveau2": "einfache Wendungen und sehr kurze Sätze verfassen, um Informationen über sich selbst oder unmittelbare Bedürfnisse auszudrücken.", "niveau3": "in einer Reihe einfacher Sätze kurze Texte über die eigenen Lebensumstände schreiben." }
+        ] },
+        { "name": "Beschreiben", "items": [
+          { "niveau1": "mit einfachen Wendungen und kurzen Sätzen Menschen, Orte und Alltagsobjekte beschreiben (ggf. mit Hilfestellung).", "niveau1_standard": "unter Anleitung mit einfachen Wendungen und kurzen Sätzen Menschen, Orte und Alltagsobjekte beschreiben.", "niveau2": "mit einfachen Wendungen und kurzen Sätzen Menschen, Orte und Alltagsobjekte beschreiben.", "niveau3": "mit einfachen Wendungen und kurzen Sätzen Menschen, Orte und Alltagsobjekte beschreiben." }
+        ] },
+        { "name": "Erzählen", "items": [
+          { "niveau1": "in einer Reihe sehr einfacher Sätze von einem persönlichen Ereignis erzählen und eine Einleitung oder Fortsetzung zu einer einfachen Geschichte schreiben (ggf. mit Hilfestellung).", "niveau1_standard": "unter Anleitung in einer Reihe sehr einfacher Sätze von einem persönlichen Ereignis erzählen und eine Einleitung oder Fortsetzung zu einer einfachen Geschichte schreiben.", "niveau2": "in einer Reihe sehr einfacher Sätze von einem persönlichen Ereignis erzählen und eine Einleitung oder Fortsetzung zu einer einfachen Geschichte schreiben.", "niveau3": "mit einfachen Phrasen und Sätzen eine Geschichte über ein vertrautes Thema erzählen." }
+        ] },
+        { "name": "Begründen und erklären", "items": [
+          { "niveau1": "eigene Eindrücke, Meinungen und Pläne zu persönlichen Themen in kurzen, einfachen Texten oder Kommentaren äußern und dabei elementare Alltagswörter und Ausdrücke verwenden.", "niveau2": "eigene Eindrücke, Meinungen und Pläne zu persönlichen Themen in kurzen, einfachen Texten oder Kommentaren äußern und dabei elementare Alltagswörter und Ausdrücke verwenden.", "niveau3": "eigene Eindrücke, Meinungen und Pläne zu persönlichen Themen in kurzen, einfachen Texten oder Kommentaren äußern und dabei elementare Alltagswörter und Ausdrücke verwenden." }
+        ] }
+      ]
+    }
+  ]
+}

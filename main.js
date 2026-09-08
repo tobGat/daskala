@@ -21,6 +21,8 @@ const gewichtungSchuelerDomain = require('./core/domain/gewichtungSchueler')
 const faecherDomain = require('./core/domain/faecher')
 const schuelerDomain = require('./core/domain/schueler')
 const kompetenzenDomain = require('./core/domain/kompetenzen')
+const kompetenzKatalog = require('./core/domain/kompetenzKatalog')
+const kompetenzErhebungenDomain = require('./core/domain/kompetenzErhebungen')
 const spaltenDomain = require('./core/domain/spalten')
 const eintraegeDomain = require('./core/domain/eintraege')
 const zeugnisnotenDomain = require('./core/domain/zeugnisnoten')
@@ -84,10 +86,30 @@ function exportDatum() {
 
 // ─── Leistungsprofil-PDF-HTML ─────────────────────────────────────────────────
 function bauePdfHtml(profil, klassenname) {
-  const { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus = {}, avatarSvg } = profil
+  const { schueler, faecher, zeugnisnoten, eintraege, notizen, niveaus = {}, avatarSvg, kompetenzen = {} } = profil
 
   function esc(t) {
     return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  }
+  function fmtDatum(s) {
+    if (!s) return ''
+    const [y, m, d] = String(s).split('-')
+    return d ? `${d}.${m}.${y}` : String(s)
+  }
+  // Kompetenz-Block eines Fachs: fertige Radar-SVGs (aus dem Renderer) + Achsen-/Niveau-Legende.
+  function kompetenzHtml(komp) {
+    if (!komp || !komp.erhebungen?.length) return ''
+    const achsenLeg = (komp.achsen ?? []).map((a, i) => `${i + 1} = ${esc(a.name)}`).join(' · ')
+    const nivLeg = (komp.niveaustufen ?? []).map(n => `${n.niveau} = ${esc(n.bezeichnung)}`).join(' · ')
+    const radars = komp.erhebungen.map(e => {
+      const cap = `${fmtDatum(e.datum)}${e.titel ? ' · ' + esc(e.titel) : ''}${e.schulstufe ? ' · ' + e.schulstufe + '. Stufe' : ''}${e.schulzweig ? ' · ' + (e.schulzweig === 'ms' ? 'Standard (MS)' : 'Standard AHS') : ''}`
+      return `<div style="flex:0 0 48%;max-width:48%;margin-bottom:4px"><div style="background:#fff;border:1px solid #f3f4f6;border-radius:6px;padding:4px">${e.svg || ''}</div><div style="font-size:8px;color:#6b7280;text-align:center;margin-top:2px">${cap}</div></div>`
+    }).join('')
+    return `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #f3f4f6">`
+      + `<div style="font-size:9px;font-weight:600;color:#6b7280;margin-bottom:2px">Kompetenzen</div>`
+      + `<div style="font-size:8px;color:#9ca3af;margin-bottom:5px;line-height:1.5">Bereiche: ${achsenLeg}${nivLeg ? ` &nbsp;·&nbsp; Niveau: ${nivLeg}` : ''}</div>`
+      + `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between">${radars}</div>`
+      + `</div>`
   }
   function noteColor(n) {
     if (!n) return '#9ca3af'
@@ -167,7 +189,9 @@ function bauePdfHtml(profil, klassenname) {
       ? `<span style="background:${noteColor(n)};color:#fff;padding:1px 7px;border-radius:10px;font-weight:700;font-size:11px">${n}</span>`
       : `<span style="color:#9ca3af">—</span>`
     const svg = buildSvg(fachEintr)
-    const hasDaten = svg || maGes > 0 || hueGes > 0 || fachNotizen.length > 0
+    const komp = kompetenzen[fach.id]
+    const hasKomp = !!(komp && komp.erhebungen?.length)
+    const hasDaten = svg || maGes > 0 || hueGes > 0 || fachNotizen.length > 0 || hasKomp
     let content = ''
     if (svg) {
       content += `<div style="background:#f9fafb;border-radius:6px;padding:6px 8px 4px;margin-top:6px">${svg}<div style="display:flex;gap:16px;margin-top:2px"><span style="font-size:8px;color:#9ca3af">● SA (orange)</span><span style="font-size:8px;color:#9ca3af">● Test (lila)</span></div></div>`
@@ -187,6 +211,7 @@ function bauePdfHtml(profil, klassenname) {
       fachNotizen.forEach(n => { content += `<p style="font-size:9px;color:#6b7280;font-style:italic;line-height:1.5;margin:1px 0">${esc(n.text)}</p>` })
       content += `</div>`
     }
+    if (hasKomp) content += kompetenzHtml(komp)
     if (!hasDaten) content += `<p style="font-size:9px;color:#d1d5db;font-style:italic;margin-top:4px">Keine Daten vorhanden</p>`
     sectionsHtml += `<div style="margin-bottom:14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:6px;page-break-inside:avoid"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:700;color:#4f46e5">${esc(fach.name)}</span><span style="display:flex;align-items:center;gap:5px"><span style="color:#9ca3af;font-size:9px">ZN</span>${znBadge(nZN)}</span></div>${content}</div>`
   }
@@ -584,6 +609,7 @@ function registerIPC() {
   ipcMain.handle('faecher:delete', (_, id) => faecherDomain.remove(dbPort, kernDeps, id))
   ipcMain.handle('faecher:rename', (_, id, name) => faecherDomain.rename(dbPort, kernDeps, id, name))
   ipcMain.handle('faecher:setFarbe', (_, id, farbe) => faecherDomain.setFarbe(dbPort, id, farbe))
+  ipcMain.handle('faecher:setKompetenzraster', (_, id, wert) => faecherDomain.setKompetenzraster(dbPort, id, wert))
   ipcMain.handle('faecher:updateGewichtung', (_, id, data) => faecherDomain.updateGewichtung(dbPort, kernDeps, id, data))
   ipcMain.handle('faecher:resetGewichtung', (_, id) => faecherDomain.resetGewichtung(dbPort, kernDeps, id))
   ipcMain.handle('faecher:setBenotungssystem', (_, id, system) => faecherDomain.setBenotungssystem(dbPort, kernDeps, id, system))
@@ -614,6 +640,18 @@ function registerIPC() {
   // ─── Schüler:innen-Kompetenzen ─────────────────────────────────────────────
   ipcMain.handle('schuelerKompetenzen:getAll', (_, fachId) => kompetenzenDomain.schuelerGetAll(dbPort, fachId))
   ipcMain.handle('schuelerKompetenzen:set', (_, kompetenzbereichId, schuelerId, niveau, notiz) => kompetenzenDomain.schuelerSet(dbPort, kompetenzbereichId, schuelerId, niveau, notiz))
+
+  // ─── Kompetenz-Katalog (Raster) ────────────────────────────────────────────
+  ipcMain.handle('kompetenzKatalog:hatRaster', (_, fach, override) => kompetenzKatalog.hatRaster(fach, override))
+  ipcMain.handle('kompetenzKatalog:listSchulstufen', (_, fach, override) => kompetenzKatalog.listSchulstufen(fach, override))
+  ipcMain.handle('kompetenzKatalog:getRaster', (_, fach, stufe, override) => kompetenzKatalog.getRaster(fach, stufe, override))
+  ipcMain.handle('kompetenzKatalog:istDifferenziert', (_, fach, override) => kompetenzKatalog.istDifferenziert(fach, override))
+
+  // ─── Kompetenz-Erhebungen (Zeitpunkte + Werte) ─────────────────────────────
+  ipcMain.handle('kompetenzErhebungen:getProfil', (_, schuelerId, fachId) => kompetenzErhebungenDomain.getProfil(dbPort, schuelerId, fachId))
+  ipcMain.handle('kompetenzErhebungen:speichern', (_, payload) => kompetenzErhebungenDomain.speichern(dbPort, payload))
+  ipcMain.handle('kompetenzErhebungen:update', (_, id, data) => kompetenzErhebungenDomain.update(dbPort, id, data))
+  ipcMain.handle('kompetenzErhebungen:delete', (_, id) => kompetenzErhebungenDomain.remove(dbPort, id))
 
   // Schüler:innen. Reihenfolge richtet sich nach der pro Klasse gewählten Sortierung.
   ipcMain.handle('schueler:getAll', (_, klasseId) => schuelerDomain.getAll(dbPort, klasseId))

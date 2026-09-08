@@ -1,0 +1,101 @@
+{
+  "fach": "Mathematik",
+  "schulstufe": 7,
+  "schultyp": "Mittelschule, AHS-Unterstufe",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Mathematik_7-Schulstufe-Kompetenzraster_f44211b5.pdf",
+  "hinweis": "Einstufiger Kompetenzraster: je Kompetenzbeschreibung erreicht oder (noch) nicht erreicht. Teilkompetenzen entsprechen dem Lehrplanbezug (Taxonomie z. B. 7-ZM-1).",
+  "kompetenzbereiche": [
+    {
+      "name": "Zahlen und Maße",
+      "kategorien": [
+        { "name": "Rationale Zahlen: darstellen und rechnen", "items": [
+          "nichtnegative rationale und ganze Zahlen als Punkte auf der Zahlengeraden darstellen; diese Zahlen vergleichen und ordnen; Rechenoperationen durchführen.",
+          "Zustände und Zustandsänderungen beschreiben; Zustände als Punkte und Zustandsänderungen durch Pfeile auf der Zahlengeraden darstellen.",
+          "die verschiedenen Bedeutungen des Minuszeichens als Rechenzeichen, als Vorzeichen und als Zeichen für das Übergehen zur Gegenzahl erklären und anwenden.",
+          "das Addieren, Subtrahieren und, in einfachen Fällen, das Multiplizieren auf der Zahlengeraden veranschaulichen.",
+          "den Betrag einer Zahl erklären und anwenden.",
+          "das Subtrahieren als Addieren der Gegenzahl deuten.",
+          "das Dividieren als Multiplizieren mit dem Kehrwert deuten.",
+          "die vier Grundrechenoperationen schriftlich durchführen.",
+          "das Potenzieren mit einem positiven ganzzahligen Exponenten als wiederholtes Multiplizieren deuten.",
+          "Zahlen unter Verwendung von Zehnerpotenzen darstellen; die Gleitkommadarstellung anwenden."
+        ] }
+      ]
+    },
+    {
+      "name": "Variablen und Funktionen",
+      "kategorien": [
+        { "name": "Terme, Gleichungen, Formeln und Proportionen", "items": [
+          "Aufgaben mit direkten und indirekten Proportionalitäten lösen.",
+          "Terme, Gleichungen und Formeln in unterschiedlichen Kontexten aufstellen.",
+          "Terme und Formeln kontextbezogen deuten.",
+          "erkennen und beschreiben, wie sich die Änderung von Größen auf eine andere Größe in einer Formel auswirkt.",
+          "Termstrukturen erkennen und beschreiben, insbesondere im Hinblick auf die Anwendbarkeit von Rechenregeln.",
+          "direkte und indirekte Proportionalitäten mithilfe von Tabellen und Diagrammen darstellen.",
+          "Proportionalitäten mit Gleichungen und mithilfe von Verhältnissen beschreiben.",
+          "Proportionen umformen, insbesondere durch Anwenden von a/b = c/d ⇔ a : b = c : d ⇔ a · d = b · c (für b, d ≠ 0)."
+        ] },
+        { "name": "Terme umformen und Potenzen", "items": [
+          "die Potenzdarstellung mit positiven ganzzahligen Exponenten interpretieren und anwenden.",
+          "die elementaren Rechenregeln für Potenzen beschreiben und anwenden; allenfalls diese Regeln begründen.",
+          "Terme umformen, z. B. durch Ausmultiplizieren, Zusammenfassen, Herausheben oder Kürzen.",
+          "die drei binomischen Formeln herleiten, grafisch veranschaulichen und anwenden; allenfalls weitere Rechenregeln herleiten."
+        ] },
+        { "name": "Gleichungen und Formeln lösen", "items": [
+          "lineare Gleichungen durch Äquivalenzumformungen lösen; allenfalls einzelne Umformungsschritte begründen.",
+          "Gleichungen lösen, die sich durch einfache Umformungen auf lineare Gleichungen zurückführen lassen.",
+          "Gleichungen in Sachsituationen anwenden; die Angemessenheit der mathematischen Beschreibung und die Ergebnisse bzw. ihre Genauigkeit kritisch betrachten.",
+          "einfache Formeln umformen, insbesondere auch Flächeninhaltsformeln von Dreiecken und besonderen Vierecken.",
+          "Fragestellungen im Zusammenhang mit der Prozentrechnung bearbeiten."
+        ] },
+        { "name": "Wachstums- und Abnahmeprozesse", "items": [
+          "lineare Wachstums- und Abnahmeprozesse in Sachsituationen erkennen, bearbeiten und darstellen; die Anwendbarkeit linearer Modelle überprüfen.",
+          "vertiefende Aufgaben zur Prozentrechnung in ein- und mehrstufigen Situationen bearbeiten, insbesondere unter Verwendung von Änderungsfaktoren.",
+          "Formeln im Zusammenhang mit Zinsen bzw. Zinseszinsen aufstellen.",
+          "Aufgaben im Kontext von Wachstums- und Abnahmeprozessen mit einem Tabellenkalkulationsprogramm bearbeiten, insbesondere bei konstanter prozentueller Änderung pro Zeiteinheit."
+        ] }
+      ]
+    },
+    {
+      "name": "Figuren und Körper",
+      "kategorien": [
+        { "name": "Vielecke und Flächeninhalte", "items": [
+          "Flächeninhalte von Dreiecken und besonderen Vierecken berechnen.",
+          "regelmäßige Sechsecke und allenfalls weitere regelmäßige Vielecke konstruieren.",
+          "allenfalls Flächeninhalte allgemeiner Vierecke im Koordinatensystem berechnen.",
+          "Umkehraufgaben zu Flächeninhalten lösen, insbesondere durch Umformen von Formeln."
+        ] },
+        { "name": "Ähnlichkeit und zentrische Streckung", "items": [
+          "Figuren mit einem positiven Faktor k zentrisch vergrößern bzw. verkleinern; erkennen, dass einander entsprechende Winkel gleich groß sind, dass alle neuen Strecken k-mal so lang wie die ursprünglichen Strecken sind und dass der neue Flächeninhalt k²-mal so groß wie der ursprüngliche Flächeninhalt ist.",
+          "Eigenschaften ähnlicher Figuren beschreiben; Ähnlichkeitsfaktoren interpretieren und anwenden; allenfalls begründen, dass Dreiecke mit paarweise gleich großen Winkeln zueinander ähnlich sind.",
+          "allenfalls Strecken in einem gegebenen Verhältnis durch Konstruktion teilen."
+        ] },
+        { "name": "Prismen und Pyramiden", "items": [
+          "grundlegende Eigenschaften von geraden Prismen und von Pyramiden angeben und beschreiben.",
+          "Schrägrisse von geraden Prismen und von Pyramiden skizzieren.",
+          "Oberflächeninhalte gerader Prismen berechnen.",
+          "Formeln für den Rauminhalt von geraden Prismen und von Pyramiden angeben und anwenden; allenfalls solche Formeln begründen.",
+          "Sachaufgaben zu diesen Körpern bearbeiten, insbesondere Massen und Dichten berechnen.",
+          "allenfalls untersuchen, wie sich Längenänderungen auf Oberflächen- und Rauminhalte auswirken."
+        ] }
+      ]
+    },
+    {
+      "name": "Daten und Zufall",
+      "kategorien": [
+        { "name": "Statistische Darstellungen", "items": [
+          "einfache statistische Kennzahlen ermitteln und interpretieren.",
+          "Häufigkeitsverteilungen grafisch darstellen.",
+          "verschiedene grafische Darstellungen von Häufigkeitsverteilungen interpretieren.",
+          "geeignete Darstellungsformen zur Hervorhebung ausgewählter Aspekte verwenden; Manipulationsmöglichkeiten aufzeigen."
+        ] },
+        { "name": "Wahrscheinlichkeit (intuitiv)", "items": [
+          "einen intuitiven Wahrscheinlichkeitsbegriff zur Quantifizierung von Sicherheit verwenden.",
+          "Wahrscheinlichkeiten mithilfe empirisch gewonnener relativer Häufigkeiten schätzen.",
+          "Laplace-Wahrscheinlichkeiten bei einstufigen Zufallsexperimenten ermitteln; solche Wahrscheinlichkeiten als Vorhersagewert für relative Häufigkeiten interpretieren."
+        ] }
+      ]
+    }
+  ]
+}

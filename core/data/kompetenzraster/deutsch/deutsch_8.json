@@ -1,0 +1,139 @@
+{
+  "fach": "Deutsch",
+  "schulstufe": 8,
+  "schultyp": "Mittelschule, AHS-Unterstufe",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Deutsch_8-Schulstufe-Kompetenzraster_ac9d5607.pdf",
+  "status": "vollständig",
+  "hinweis_leistungsniveau": "Raster unterscheidet 'Standard' (Mittelschule) und 'Standard AHS'. Bei den meisten Teilkompetenzen ist der Wortlaut über alle Niveaus und beide Züge identisch (die Differenzierung erfolgt über die Rahmenbedingungen 'unter Anleitung' / 'zunehmend selbstständig' / 'selbstständig', nicht über den Text selbst).",
+  "niveaustufen": [
+    { "niveau": 1, "bezeichnung": "unter Anleitung und/oder adaptierten/differenzierten Rahmenbedingungen" },
+    { "niveau": 2, "bezeichnung": "zunehmend selbstständig und/oder ggf. unter differenzierten Rahmenbedingungen" },
+    { "niveau": 3, "bezeichnung": "selbstständig und/oder ggf. unter differenzierten Rahmenbedingungen" }
+  ],
+  "kompetenzbereiche": [
+    {
+      "name": "Zuhören",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            { "text": "eine Hörerwartung aufbauen und die Aufmerksamkeit auf Texte richten." },
+            { "text": "zum Verständnis auf das Vorwissen zurückgreifen, Störfaktoren identifizieren und bei Verständnisschwierigkeiten nachfragen/nachschlagen." },
+            { "text": "die Wirkung para- und nonverbaler Mittel erkennen und benennen." }
+          ]
+        },
+        {
+          "name": "Hörverstehen",
+          "items": [
+            { "text": "Strategien zur Erschließung von Texten nutzen und deren Anwendbarkeit reflektieren." },
+            { "text": "explizite und implizite Informationen entnehmen und deren Relevanz prüfen." },
+            { "text": "außertextuelle Bezüge für das Verstehen nutzen." },
+            { "text": "lokale und globale Kohärenz bilden sowie unterschiedliche Perspektiven und Deutungsspielräume erkennen." },
+            { "text": "Textsortenmerkmale, kommunikative Situationen und Sprachregister erkennen und reflektieren." },
+            { "text": "ästhetische und inhaltliche Dimensionen von Gehörtem erkennen und reflektieren." }
+          ]
+        },
+        {
+          "name": "Subjekt- und soziale Ebene",
+          "items": [
+            { "text": "ihr Weltwissen und ihre Hörgewohnheiten sowie ihren Wortschatz und ihr Sprachbewusstsein erweitern." },
+            { "text": "die Wirkung und den Wert des Zuhörens in Bezug auf ihr Leben und die Gesellschaft erkennen und reflektieren." },
+            { "text": "sich über Gehörtes austauschen und die Einschätzungen anderer beurteilen." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            { "text": "sinngestaltend in der Standardsprache sprechen." },
+            { "text": "para- und nonverbale Mittel gezielt einsetzen." },
+            { "text": "wertschätzend und sprachlich sensibel kommunizieren." }
+          ]
+        },
+        {
+          "name": "Diskurstypen",
+          "items": [
+            { "text": "aktiv und konstruktiv an Gesprächen teilnehmen." },
+            { "text": "Sprachregister situationsangemessen anwenden." },
+            { "text": "Redebeiträge planen und medial unterstützt adressatenorientiert umsetzen." },
+            { "text": "mit sachgerechtem, abwechslungsreichem Wortschatz sowie rhetorischen Mitteln frei sprechen." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            { "text": "eine Leseerwartung aufbauen und die Aufmerksamkeit auf Texte richten." },
+            { "text": "zum Verständnis auf das Vorwissen zurückgreifen und bei Verständnisschwierigkeiten recherchieren." },
+            { "text": "vorbereitete Texte sinngestaltend vorlesen." }
+          ]
+        },
+        {
+          "name": "Leseverstehen",
+          "items": [
+            { "text": "Strategien zur Erschließung von Texten nutzen und deren Anwendbarkeit reflektieren." },
+            { "text": "explizite und implizite Informationen entnehmen und deren Relevanz prüfen." },
+            { "text": "außertextuelle Bezüge für das Verstehen nutzen." },
+            { "text": "lokale und globale Kohärenz bilden sowie unterschiedliche Perspektiven und Deutungsspielräume erkennen; Texte inhaltlich erfassen und deuten." },
+            { "text": "Textmerkmale, Textsorten und Textfunktionen erkennen und reflektieren." },
+            { "text": "ästhetische und inhaltliche Dimensionen von Gelesenem erkennen, reflektieren und deuten." }
+          ]
+        },
+        {
+          "name": "Subjekt- und soziale Ebene",
+          "items": [
+            { "text": "ihr Weltwissen und ihren Lesehorizont sowie ihren Wortschatz und ihr Sprachbewusstsein erweitern." },
+            { "text": "die Wirkung und den Wert des Lesens in Bezug auf ihr Leben und die Gesellschaft erkennen und reflektieren." },
+            { "text": "sich über Gelesenes austauschen und die Einschätzungen anderer beurteilen." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Schreiben",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            { "text": "manuell gut lesbar und flüssig schreiben sowie Textverarbeitungsprogramme gezielt nutzen." },
+            { "text": "ihr Wissen über Sprachnormen erweitern, vertiefen und anwenden." },
+            { "text": "digitale und analoge Nachschlagewerke nutzen." }
+          ]
+        },
+        {
+          "name": "Planen",
+          "items": [
+            { "text": "Informationen aus unterschiedlichen Impulsen produktorientiert erschließen und gezielt nutzen." },
+            { "text": "Bausteine unterschiedlicher Textmuster nutzen." },
+            { "text": "Schreibprozesse planen." }
+          ]
+        },
+        {
+          "name": "Verfassen/Formulieren",
+          "items": [
+            { "text": "Inhalte dem Textmuster und der Schreibabsicht entsprechend realisieren." },
+            { "text": "Texte strukturieren." },
+            { "text": "Texte zu einem sinnvollen, kohärenten Ganzen verbinden." },
+            { "text": "abwechslungsreiche sprachliche Mittel angemessen einsetzen." }
+          ]
+        },
+        {
+          "name": "Überarbeiten",
+          "items": [
+            { "text": "eigene und fremde Texte, auch im Austausch mit anderen, kriterienorientiert bewerten und rückmelden." },
+            { "text": "Überarbeitungsvorschläge reflektieren und umsetzen." }
+          ]
+        }
+      ]
+    }
+  ]
+}

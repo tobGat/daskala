@@ -1,0 +1,83 @@
+{
+  "fach": "Englisch",
+  "schulstufe": 8,
+  "schultyp": "Mittelschule, AHS-Unterstufe",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Englisch_8-Schulstufe-Kompetenzraster_82c62221.pdf",
+  "hinweis_leistungsniveau": "Raster unterscheidet 'Standard' (Mittelschule) und 'Standard AHS'. Bei 'Standard' ist nur Kompetenzniveau 1 ausgewiesen; 'Standard AHS' hat alle drei Niveaus. Wo der Standard-Zug bei Niveau 1 abweicht, steht das im Feld 'niveau1_standard'.",
+  "niveaustufen": [
+    { "niveau": 1, "bezeichnung": "Kompetenzniveau 1" },
+    { "niveau": 2, "bezeichnung": "Kompetenzniveau 2" },
+    { "niveau": 3, "bezeichnung": "Kompetenzniveau 3" }
+  ],
+  "kompetenzbereiche": [
+    {
+      "name": "Hören (A2+/B1)",
+      "kategorien": [
+        { "name": "Globales Verstehen", "items": [
+          { "niveau1": "einfachen Erzählungen, Gesprächen und Medienbeiträgen zu vertrauten Themen folgen, wenn langsam und deutlich gesprochen wird.", "niveau1_standard": "einfachen Erzählungen, Gesprächen und Medienbeiträgen zu vertrauten Themen folgen (ggf. mit Hilfestellung), wenn langsam und deutlich gesprochen wird.", "niveau2": "Erzählungen, Gesprächen und Medienbeiträgen zu vertrauten Themen folgen, wenn langsam und deutlich gesprochen wird.", "niveau3": "Erzählungen, Gesprächen und Medienbeiträgen folgen, wenn deutlich und in Standardsprache gesprochen wird." }
+        ] },
+        { "name": "Verstehen von Hauptaussagen und unterstützenden Details", "items": [
+          { "niveau1": "die Hauptaussagen von kurzen, einfachen monologischen Texten zu vertrauten Themen verstehen, wenn langsam und deutlich gesprochen wird.", "niveau1_standard": "die Hauptaussagen von kurzen, einfachen monologischen Texten zu vertrauten Themen verstehen (ggf. mit Hilfestellung), wenn langsam und deutlich gesprochen wird.", "niveau2": "die Hauptaussagen und unterstützende Details von einfachen monologischen Texten zu vertrauten Themen verstehen, wenn langsam und deutlich gesprochen wird.", "niveau3": "die Hauptaussagen und unterstützende Details von monologischen Texten zu vertrauten Themen verstehen, wenn deutlich und in Standardsprache gesprochen wird." },
+          { "niveau1": "die Hauptaussagen von kurzen, einfachen Gesprächen zu vertrauten Themen verstehen, wenn langsam und deutlich gesprochen wird.", "niveau1_standard": "die Hauptaussagen von kurzen, einfachen Gesprächen zu vertrauten Themen verstehen (ggf. mit Hilfestellung), wenn langsam und deutlich gesprochen wird.", "niveau2": "die Hauptaussagen und unterstützende Details von einfachen Gesprächen zu vertrauten Themen verstehen, wenn langsam und deutlich gesprochen wird.", "niveau3": "die Hauptaussagen und unterstützende Details von einfachen Gesprächen zu vertrauten Themen verstehen, wenn deutlich und in Standardsprache gesprochen wird." }
+        ] },
+        { "name": "Verstehen von spezifischen Informationen", "items": [
+          { "niveau1": "kurzen Medienbeiträgen und Gesprächen zu vertrauten Themen spezifische Informationen entnehmen, wenn langsam und deutlich gesprochen wird.", "niveau1_standard": "kurzen Medienbeiträgen und Gesprächen zu vertrauten Themen spezifische Informationen entnehmen (ggf. mit Hilfestellung), wenn langsam und deutlich gesprochen wird.", "niveau2": "längeren Medienbeiträgen und Gesprächen zu vertrauten Themen spezifische Informationen entnehmen, wenn langsam und deutlich gesprochen wird.", "niveau3": "längeren Medienbeiträgen und Gesprächen zu vertrauten Themen spezifische Informationen entnehmen, wenn deutlich und in Standardsprache gesprochen wird." }
+        ] }
+      ]
+    },
+    {
+      "name": "Lesen (A2+/B1)",
+      "kategorien": [
+        { "name": "Globales Verstehen", "items": [
+          { "niveau1": "kurze, einfache Sachtexte, Alltagstexte oder persönliche Texte zu vertrauten Themen global verstehen.", "niveau1_standard": "kurze, einfache Sachtexte, Alltagstexte oder persönliche Texte zu vertrauten Themen global verstehen (ggf. mit Hilfestellung).", "niveau2": "einfache Sachtexte, Alltagstexte oder persönliche Texte zu vertrauten Themen global verstehen.", "niveau3": "unkomplizierte Sach- und Alltagstexte oder persönliche Texte zu vertrauten Themen global verstehen." }
+        ] },
+        { "name": "Verstehen von Hauptaussagen und unterstützenden Details", "items": [
+          { "niveau1": "die Hauptereignisse und wichtige Details in kurzer Jugendliteratur in einfacher Sprache zu vertrauten Themen verstehen.", "niveau1_standard": "die Hauptereignisse und wichtige Details in kurzer Jugendliteratur in einfacher Sprache zu vertrauten Themen verstehen (ggf. mit Hilfestellung).", "niveau2": "die Hauptereignisse und Details in Jugendliteratur in einfacher Sprache zu vertrauten Themen verstehen.", "niveau3": null },
+          { "niveau1": "Hauptaussagen und unterstützende Details in kurzen, einfachen Sach- und Alltagstexten zu vertrauten Themen verstehen.", "niveau1_standard": "Hauptaussagen und unterstützende Details in kurzen, einfachen Sach- und Alltagstexten zu vertrauten Themen verstehen (ggf. mit Hilfestellung).", "niveau2": "Hauptaussagen und unterstützende Details in einfachen Sach- und Alltagstexten zu vertrauten Themen verstehen.", "niveau3": "Hauptaussagen und unterstützende Details in unkomplizierten Sach- und Alltagstexten zu vertrauten Themen verstehen." },
+          { "niveau1": "explizit ausgedrückte Gefühle und Wünsche in Geschichten und Alltagstexten (z. B. Artikeln in Magazinen) verstehen, wenn sie in sehr einfacher Alltagssprache beschrieben werden.", "niveau1_standard": "explizit ausgedrückte Gefühle und Wünsche in Geschichten und Alltagstexten (z. B. Artikeln in Magazinen) verstehen, wenn sie in sehr einfacher Alltagssprache beschrieben werden (ggf. mit Hilfestellung).", "niveau2": "explizit ausgedrückte Gefühle und Wünsche in Geschichten und Alltagstexten verstehen, wenn sie in einfacher Sprache beschrieben werden.", "niveau3": "explizit ausgedrückte Einstellungen, Gefühle und Wünsche in Geschichten und Alltagstexten verstehen, wenn sie in einfacher Sprache beschrieben werden." }
+        ] },
+        { "name": "Verstehen von spezifischen Informationen", "items": [
+          { "niveau1": "kurzen, einfachen Sach- und Alltagstexten zu vertrauten Themen spezifische Informationen entnehmen.", "niveau1_standard": "kurzen, einfachen Sach- und Alltagstexten zu vertrauten Themen spezifische Informationen entnehmen (ggf. mit Hilfestellung).", "niveau2": "einfachen Sach- und Alltagstexten zu vertrauten Themen spezifische Informationen entnehmen.", "niveau3": "unkomplizierten Sach- und Alltagstexten zu vertrauten Themen spezifische Informationen entnehmen." }
+        ] }
+      ]
+    },
+    {
+      "name": "Sprechen (A2+/B1)",
+      "kategorien": [
+        { "name": "Beschreiben und berichten", "items": [
+          { "niveau1": "mit einem einfachen Repertoire an Ausdrücken kurz persönliche Ereignisse, Aktivitäten und Erfahrungen beschreiben.", "niveau1_standard": "mit einem einfachen Repertoire an Ausdrücken kurz persönliche Ereignisse, Aktivitäten und Erfahrungen beschreiben (ggf. mit Hilfestellung).", "niveau2": "in einfacher Sprache zu vertrauten Themen kurz über Ereignisse, Aktivitäten und Erfahrungen erzählen und berichten.", "niveau3": "in einfacher Sprache über reale und erfundene Ereignisse und Aktivitäten erzählen und detailliert über Erfahrungen zu vertrauten Themen berichten." }
+        ] },
+        { "name": "Präsentieren und informieren", "items": [
+          { "niveau1": "eine kurze, vorbereitete, einfache Präsentation zu einem vertrauten Thema halten.", "niveau1_standard": "eine kurze, vorbereitete, einfache Präsentation zu einem vertrauten Thema halten (ggf. mit Hilfestellung).", "niveau2": "eine kurze, vorbereitete Präsentation zu einem vertrauten Thema halten.", "niveau3": "eine vorbereitete Präsentation zu einem vertrauten Thema halten, in welcher die Hauptpunkte hinreichend präzise erklärt werden." }
+        ] },
+        { "name": "Über Vorschläge, Ratschläge und Pläne sprechen", "items": [
+          { "niveau1": "mit einem einfachen Repertoire an Ausdrücken über Vorschläge, Ratschläge und Pläne in routinemäßigen Situationen sprechen und sagen, was sie tun wollen, sowie Verabredungen treffen.", "niveau1_standard": "mit einem einfachen Repertoire an Ausdrücken über Vorschläge, Ratschläge und Pläne in routinemäßigen Situationen sprechen und sagen, was sie tun wollen, sowie Verabredungen treffen (ggf. mit Hilfestellung).", "niveau2": "in einfacher Sprache Vorschläge, Ratschläge und Pläne in routinemäßigen Situationen besprechen und sagen, was man machen könnte.", "niveau3": "ohne Vorbereitung in einfacher Sprache Vorschläge, Ratschläge und Pläne in routinemäßigen Situationen besprechen." }
+        ] },
+        { "name": "Meinungen und Gefühle ausdrücken und begründen sowie Vermutungen anstellen", "items": [
+          { "niveau1": "mit einem einfachen Repertoire an Ausdrücken Gefühle und Meinungen zu vertrauten Themen kommunizieren.", "niveau1_standard": "mit einem einfachen Repertoire an Ausdrücken Gefühle und Meinungen zu vertrauten Themen kommunizieren (ggf. mit Hilfestellung).", "niveau2": "in einfacher Sprache Gefühle, Meinungen und Vermutungen zu vertrauten Themen ausdrücken sowie diese kurz begründen und einfache Vergleiche anstellen.", "niveau3": "ohne Vorbereitung in einfacher Sprache Gefühle, Meinungen und Vermutungen zu vertrauten Themen ausdrücken sowie diese kurz begründen und einfache Vergleiche anstellen." }
+        ] },
+        { "name": "Gesprächsführungskompetenz", "items": [
+          { "niveau1": "einfache sprachliche Mittel anwenden, um ein kurzes Gespräch zu vertrauten Themen zu beginnen, in Gang zu halten und zu beenden.", "niveau1_standard": "einfache sprachliche Mittel anwenden, um ein kurzes Gespräch zu vertrauten Themen zu beginnen, in Gang zu halten und zu beenden (ggf. mit Hilfestellung).", "niveau2": "eine Reihe einfacher sprachlicher Mittel anwenden, um ein kurzes Gespräch zu vertrauten Themen zu beginnen, in Gang zu halten und zu beenden.", "niveau3": "unterschiedliche sprachliche Mittel anwenden, um ein Gespräch zu vertrauten Themen zu beginnen, in Gang zu halten und zu beenden." }
+        ] }
+      ]
+    },
+    {
+      "name": "Schreiben (A2+/B1)",
+      "kategorien": [
+        { "name": "Informieren", "items": [
+          { "niveau1": "in einer Reihe einfacher Sätze kurze Texte über alltägliche Aspekte des eigenen Umfelds schreiben.", "niveau1_standard": "in einer Reihe einfacher Sätze kurze Texte über alltägliche Aspekte des eigenen Umfelds schreiben (ggf. mit Hilfestellung).", "niveau2": "in Form verbundener Sätze einfache Texte über alltägliche Aspekte des eigenen Umfelds schreiben.", "niveau3": "in strukturierten, unkomplizierten Texten zu vertrauten Themen einfache Informationen von persönlicher Relevanz kommunizieren." }
+        ] },
+        { "name": "Beschreiben", "items": [
+          { "niveau1": "kurze, einfache Beschreibungen von Ereignissen, persönlichen Erfahrungen, Gefühlen und Reaktionen zu einem vertrauten Thema verfassen.", "niveau1_standard": "unter Anleitung kurze, einfache Beschreibungen von Ereignissen, persönlichen Erfahrungen, Gefühlen und Reaktionen zu einem vertrauten Thema verfassen.", "niveau2": "kurze, einfache Beschreibungen von Ereignissen, persönlichen Erfahrungen, Gefühlen und Reaktionen zu einem vertrauten Thema verfassen.", "niveau3": "in einem einfachen, zusammenhängenden Text unkomplizierte Beschreibungen zu einem vertrauten Thema und Erfahrungsberichte schreiben, in denen Gefühle und Reaktionen beschrieben werden." }
+        ] },
+        { "name": "Erzählen", "items": [
+          { "niveau1": "eine kurze, sehr einfache (fiktive) Geschichte über ein vertrautes Thema mit einfachen Phrasen und Sätzen erzählen.", "niveau1_standard": "eine kurze, sehr einfache (fiktive) Geschichte über ein vertrautes Thema mit einfachen Phrasen und Sätzen erzählen (ggf. mit Hilfestellung).", "niveau2": "eine kurze, einfache (fiktive) Geschichte zu einem vertrauten Thema erzählen.", "niveau3": "eine einfache (fiktive) Geschichte zu einem vertrauten Thema erzählen." }
+        ] },
+        { "name": "Begründen und erklären", "items": [
+          { "niveau1": "eigene Eindrücke, Meinungen, Pläne und einfache Vermutungen zu vertrauten Themen in kurzen, einfachen Texten oder Kommentaren begründen und erklären.", "niveau1_standard": "unter Anleitung eigene Eindrücke, Meinungen, Pläne und einfache Vermutungen zu vertrauten Themen in kurzen, einfachen Texten oder Kommentaren begründen und erklären.", "niveau2": "eigene Eindrücke, Meinungen, Pläne und einfache Vermutungen zu vertrauten Themen in kurzen, einfachen Texten oder Kommentaren begründen und erklären.", "niveau3": "eigene Eindrücke, Meinungen, Pläne und Vermutungen zu vertrauten Themen in strukturierten, unkomplizierten Texten oder Kommentaren begründen und erklären." }
+        ] }
+      ]
+    }
+  ]
+}

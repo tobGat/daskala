@@ -66,6 +66,12 @@ async function setFarbe(db, id, farbe) {
   return true
 }
 
+// Manuelle Kompetenzraster-Zuordnung: null=Automatisch (Namenserkennung) | 'deutsch' | 'fremdsprache' | 'keines'.
+async function setKompetenzraster(db, id, wert) {
+  await db.execute('UPDATE faecher SET kompetenzraster = ? WHERE id = ?', [wert ?? null, id])
+  return true
+}
+
 async function updateGewichtung(db, deps, id, data) {
   // SA/Test/Individuell/Mitarbeit gewichten die Note. Die Mitarbeitsnote (MA) wird aus den
   // Bonus/Malus- + Hausübungs-Aufzeichnungen berechnet (§ 4 Abs. 2 LBVO); Hausübung hat kein
@@ -148,6 +154,6 @@ async function setSchueler(db, deps, fachId, { alle, schuelerIds = [] }) {
 }
 
 module.exports = {
-  getAll, getAllImSchuljahr, create, remove, rename, setFarbe,
+  getAll, getAllImSchuljahr, create, remove, rename, setFarbe, setKompetenzraster,
   updateGewichtung, resetGewichtung, setBenotungssystem, getSchuelerIds, setSchueler,
 }

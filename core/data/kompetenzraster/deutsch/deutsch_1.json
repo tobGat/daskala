@@ -1,0 +1,116 @@
+{
+  "fach": "Deutsch",
+  "schulstufe": 1,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Deutsch_1-Schulstufe-Kompetenzraster_caf8e9ca.pdf",
+  "status": "vollständig (2 von 2 Seiten)",
+  "kompetenzbereiche": [
+    {
+      "name": "(Recht-)Schreiben und Sprachbetrachtung",
+      "kategorien": [
+        {
+          "name": "(Recht-)Schreiben",
+          "items": [
+            "gesicherte und häufig vorkommende (Basis-)Grapheme leserlich in Groß- und Kleinschreibung graphomotorisch flüssig umsetzen",
+            "Wörter des erarbeiteten Schreibwortschatzes mit einer einfachen Abfolge von Vokalen und Konsonanten unter Berücksichtigung der Basisgrapheme (lautgetreu) aufschreiben"
+          ]
+        },
+        {
+          "name": "Sprachbetrachtung",
+          "items": [
+            "den Unterschied zwischen Schreiben, Lesen, Sprechen, Zuhören und Zeichnen erklären",
+            "Wörter als sprachliche Einheiten erkennen und sie in Silben, Phoneme bzw. Grapheme gliedern"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Verfassen von Texten",
+      "kategorien": [
+        {
+          "name": "Planen",
+          "items": [
+            "in Vorbereitung auf das Planen von Texten mittels vorgegebener Strukturen Erlebtes mündlich wiedergeben"
+          ]
+        },
+        {
+          "name": "Verfassen",
+          "items": [
+            "einfache Satzmuster mit Formulierungshilfen und dem erarbeiteten Wortschatz mündlich und schriftlich umsetzen",
+            "sich multimodal (durch geschriebene Wörter, ggf. auch in Kombination mit Bildern und mündlichen Ergänzungen) mitteilen"
+          ]
+        },
+        {
+          "name": "Überarbeiten",
+          "items": [
+            "das Überarbeiten als Teil des Verfassens von Texten begreifen und die Bereitschaft dafür aufbringen"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "kategorien": [
+        {
+          "name": "Lesefertigkeit",
+          "items": [
+            "bei erarbeiteten (Basis-)Graphemen in einer vertrauten Schriftart die Graphem-Phonem-Korrespondenz benennen",
+            "unbekannte Wörter und Pseudowörter ohne Konsonantenhäufungen phonologisch rekodieren",
+            "die erarbeiteten Wörter bzw. den Sichtwortschatz, insbesondere Funktionswörter und häufig vorkommende Silben und Wörter, automatisiert laut lesen",
+            "die Lesegenauigkeit bei semantisch und syntaktisch einfachen Phrasen/Wortgruppen und Sätzen zeigen"
+          ]
+        },
+        {
+          "name": "Leseverstehen",
+          "items": [
+            "beim Lesen von bekannten Wörtern, die aus gesicherten Graphemen bestehen, auf die Wortbedeutung zugreifen",
+            "bei erarbeiteten Satzmustern unter Berücksichtigung der grammatikalischen Struktur im Zusammenspiel mit der Wortbedeutung zu einem Verständnis auf Satzebene gelangen"
+          ]
+        },
+        {
+          "name": "Subjekt- und Sozialebene",
+          "items": [
+            "multimodal realisierte Kinderliteratur (z. B. Hörbücher/Hörspiele, Filme, Bücher) rezipieren, um sich am Austausch darüber zu beteiligen"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Zuhören",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            "die auditive Merkfähigkeit in verschiedenen Situationen zeigen"
+          ]
+        },
+        {
+          "name": "Hörverstehen",
+          "items": [
+            "durch aufmerksamkeitsgesteuertes Zuhören Informationen entnehmen",
+            "einfache, altersgemäße Gespräche und mündlich vermittelte Texte verstehen",
+            "einfache Handlungsanweisungen umsetzen"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            "in verschiedenen Gesprächssituationen und zu unterschiedlichen Themen in der vertrauten Varietät der deutschen Sprache verständlich artikuliert sprechen"
+          ]
+        },
+        {
+          "name": "Diskurstypen",
+          "items": [
+            "vertraute alltägliche und geübte Kommunikationssituationen unter Berücksichtigung grundlegender verbaler, nonverbaler und paraverbaler Signale interpretieren und entsprechend verbal darauf reagieren"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "fach": "Volksgruppensprache (Kroatisch/Slowenisch/Ungarisch)",
+  "schulstufe": 3,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Volksgruppensprachen_3-Schulstufe-Kompetenzraster_5ebfddb7.pdf",
+  "niveaustufen": [
+    { "niveau": 1, "bezeichnung": "Kompetenzniveau 1" },
+    { "niveau": 2, "bezeichnung": "Kompetenzniveau 2" },
+    { "niveau": 3, "bezeichnung": "Kompetenzniveau 3" }
+  ],
+  "kompetenzbereiche": [
+    {
+      "name": "Hören",
+      "kategorien": [
+        { "name": "Hörfertigkeit", "items": [
+          { "niveau1": "beim Zuhören verbale und nonverbale Mittel mit Unterstützung deuten.", "niveau2": "beim Zuhören verbale und nonverbale Mittel deuten.", "niveau3": "das Gehörte verstehen." }
+        ] },
+        { "name": "Hörverstehen", "items": [
+          { "niveau1": "sehr einfache Äußerungen mit (non-)verbaler Unterstützung erfassen.", "niveau2": "in verschiedenen Situationen zu bekannten Themen (non-)verbal angemessen reagieren.", "niveau3": "in verschiedenen Situationen zu Alltagsthemen (non-)verbal angemessen reagieren." }
+        ] }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "kategorien": [
+        { "name": "Sprechfertigkeit", "items": [
+          { "niveau1": "sprachspezifische Laute, Wortbildungen und sehr einfache Kommunikationsmuster möglichst richtig nachahmen/verständlich aussprechen/deutlich artikulieren.", "niveau2": "sprachspezifische Laute, Wortbildungen und Kommunikationsmuster richtig aussprechen und anwenden.", "niveau3": "einfache Kommunikationsmuster an der Standardsprache orientiert anwenden." }
+        ] },
+        { "name": "Dialogisches Sprechen", "items": [
+          { "niveau1": "mit sehr einfachen standardsprachlichen Mitteln (im Rahmen der erarbeiteten Gesprächsstoffe) mit anderen in Kontakt treten.", "niveau2": "mit einfachen standardsprachlichen Mitteln (im Rahmen der erarbeiteten Gesprächsstoffe) mit anderen kommunizieren.", "niveau3": "möglichst selbstständig an kurzen Kommunikationen teilnehmen." }
+        ] },
+        { "name": "Monologisches Sprechen", "items": [
+          { "niveau1": "mit sehr einfachen vorgegebenen sprachlichen Mitteln unter Anleitung kurze Informationen (über erarbeitete Themen und Inhalte) geben.", "niveau2": "mit vorgegebenen sprachlichen Mitteln kurze Informationen (über erarbeitete Themen und Inhalte) geben.", "niveau3": "möglichst selbstständig mit erarbeiteten sprachlichen Mitteln zusammenhängende Informationen (über Themen und Inhalte) geben." }
+        ] }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "kategorien": [
+        { "name": "Lesefertigkeit", "items": [
+          { "niveau1": "Wörter, Sätze und einfache (erarbeitete) Texte genau lesen.", "niveau2": "Wörter, Sätze und einfache (erarbeitete) Texte genau und flüssig lesen.", "niveau3": "einfache, kurze Texte genau und flüssig lesen." }
+        ] },
+        { "name": "Leseverstehen", "items": [
+          { "niveau1": "einfachen Texten (zu erarbeiteten Themen) unter Anleitung Informationen entnehmen.", "niveau2": "einfachen Texten (zu erarbeiteten Themen) mit Hilfestellung Informationen entnehmen.", "niveau3": "Texten zu vertrauten Themen Informationen entnehmen und vergleichen." }
+        ] },
+        { "name": "Lesestrategien", "items": [
+          { "niveau1": "zur Texterschließung Lesetechniken und eine Lesestrategie unter Anleitung anwenden.", "niveau2": "zur Texterschließung Lesetechniken und Lesestrategien mit Hilfestellung anwenden.", "niveau3": "zur Texterschließung Lesetechniken und Lesestrategien zunehmend selbstständig anwenden." }
+        ] }
+      ]
+    },
+    {
+      "name": "Verfassen von Texten",
+      "kategorien": [
+        { "name": "Schreibfertigkeit", "items": [
+          { "niveau1": "mittels einfacher Wortgruppen bzw. Sätze kurze Mitteilungen unter Anleitung verschriftlichen.", "niveau2": "mittels einfacher Wortgruppen bzw. Sätze kurze Mitteilungen mit Hilfestellung verschriftlichen.", "niveau3": "mittels einfacher Wortgruppen und Sätze Mitteilungen möglichst selbstständig verschriftlichen." }
+        ] },
+        { "name": "Texte planen", "items": [
+          { "niveau1": "Ideen sammeln und diese unter Anleitung ordnen.", "niveau2": "einfache Texte (anhand von Textmustern und zu erarbeiteten Themen) mit Hilfestellung planen.", "niveau3": "eigene Texte (anhand von Textmustern und zu erarbeiteten Themen) zunehmend selbstständig planen." }
+        ] },
+        { "name": "Texte verfassen", "items": [
+          { "niveau1": "Textteile (zu erarbeiteten Themen) unter Anleitung zusammensetzen.", "niveau2": "einfache Texte (anhand von Textmustern und zu erarbeiteten Themen) mit Hilfestellung strukturieren und verfassen.", "niveau3": "eigene Texte (anhand von Textmustern und zu erarbeiteten Themen) zunehmend selbstständig strukturieren und verfassen." }
+        ] },
+        { "name": "Texte überarbeiten", "items": [
+          { "niveau1": "schriftlich Verfasstes unter Anleitung berichtigen.", "niveau2": "schriftlich Verfasstes mit Hilfestellung berichtigen und dabei einfache Überarbeitungsstrategien anwenden.", "niveau3": "schriftlich Verfasstes zunehmend selbstständig berichtigen und dabei einfache Überarbeitungsstrategien anwenden." }
+        ] }
+      ]
+    },
+    {
+      "name": "(Recht-)Schreiben und Sprachbetrachtung",
+      "kategorien": [
+        { "name": "Rechtschreiben", "items": [
+          { "niveau1": "erarbeitete Wörter und Phrasen aus bekannten Themenbereichen richtig abschreiben sowie basale Rechtschreibregeln unter Anleitung anwenden.", "niveau2": "erarbeitete Wörter und Phrasen aus bekannten Themenbereichen richtig schreiben sowie basale Rechtschreibregeln mit Hilfestellung anwenden.", "niveau3": "durch Verlängern und Ableiten von Wörtern einer Wortfamilie die richtige Schreibweise sowie basale Rechtschreibregeln zunehmend selbstständig anwenden." },
+          { "niveau1": "einfache Nachschlagetechniken anhand analoger Medien unter Anleitung anwenden.", "niveau2": "analoge oder digitale Medien zur Überprüfung der Schreibrichtigkeit von Wörtern mit Hilfestellung verwenden.", "niveau3": "anhand von analogen oder digitalen Medien die Schreibrichtigkeit zunehmend selbstständig überprüfen." }
+        ] },
+        { "name": "Sprachbetrachtung", "items": [
+          { "niveau1": "einige Wort- und Satzarten sowie Zeitformen aus einem erarbeiteten Wortschatz unter Anleitung erkennen und anwenden.", "niveau2": "einige Wort- und Satzarten sowie Zeitformen aus einem erarbeiteten Wortschatz mit Hilfestellung erkennen und anwenden.", "niveau3": "einige Wort- und Satzarten sowie Zeitformen aus einem erarbeiteten Wortschatz zunehmend selbstständig erkennen und anwenden." }
+        ] }
+      ]
+    }
+  ]
+}

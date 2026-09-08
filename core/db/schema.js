@@ -66,6 +66,7 @@ const TABLE_DDL = [
       ma_hue_max_einfluss REAL,
       benotungssystem TEXT DEFAULT 'standard',
       alle_schueler INTEGER DEFAULT 1,
+      kompetenzraster TEXT,
       uuid TEXT,
       FOREIGN KEY (klasse_id) REFERENCES klassen(id)
     )`,
@@ -318,6 +319,31 @@ const TABLE_DDL = [
       FOREIGN KEY (kompetenzbereich_id) REFERENCES kompetenzbereiche(id) ON DELETE CASCADE,
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
     )`,
+  `CREATE TABLE IF NOT EXISTS kompetenz_erhebungen (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schueler_id INTEGER NOT NULL,
+      fach_id INTEGER NOT NULL,
+      schulstufe INTEGER NOT NULL,
+      datum TEXT NOT NULL,
+      titel TEXT,
+      schulzweig TEXT,
+      erstellt_am TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS kompetenz_erhebung_werte (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      erhebung_id INTEGER NOT NULL,
+      bereich_idx INTEGER NOT NULL,
+      teilkompetenz_idx INTEGER NOT NULL,
+      item_idx INTEGER NOT NULL,
+      bereich_name TEXT NOT NULL,
+      teilkompetenz_name TEXT NOT NULL,
+      niveau INTEGER NOT NULL DEFAULT 0,
+      notiz TEXT,
+      UNIQUE(erhebung_id, bereich_idx, teilkompetenz_idx, item_idx),
+      FOREIGN KEY (erhebung_id) REFERENCES kompetenz_erhebungen(id) ON DELETE CASCADE
+    )`,
   `CREATE TABLE IF NOT EXISTS supplierstunden (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       woche_datum TEXT NOT NULL,
@@ -484,6 +510,10 @@ const INDEX_DDL = [
       ON klassen_schueler (schueler_id)`,
   `CREATE INDEX IF NOT EXISTS idx_schueler_fach_spf_fach
       ON schueler_fach_spf (fach_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_komp_erhebungen_lookup
+      ON kompetenz_erhebungen (schueler_id, fach_id, datum)`,
+  `CREATE INDEX IF NOT EXISTS idx_komp_erhebung_werte_erhebung
+      ON kompetenz_erhebung_werte (erhebung_id)`,
   // UUID-Weiche (Phase 2.4): geräteübergreifend eindeutige Identität je Entität
   // für ein späteres Zusammenführen. UNIQUE-Index; mehrere NULL sind in SQLite
   // erlaubt, daher stören noch nicht befüllte Zeilen die Eindeutigkeit nicht.
@@ -770,6 +800,7 @@ function applySchema(db, deps) {
   spalteErgaenzen('klassen', 'teams_link', 'TEXT')
   spalteErgaenzen('faecher', 'benotungssystem', "TEXT DEFAULT 'standard'")
   spalteErgaenzen('faecher', 'alle_schueler', 'INTEGER DEFAULT 1')
+  spalteErgaenzen('faecher', 'kompetenzraster', 'TEXT') // manuelle Kompetenzraster-Zuordnung (null=Automatisch)
 
   // Fach-spezifische Schüler-Teilmenge (Gruppen). Nur befüllt, wenn faecher.alle_schueler = 0.
   db.exec(`
@@ -938,6 +969,49 @@ function applySchema(db, deps) {
       FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE
     )
   `)
+
+  // Kompetenz-Erhebungen (Zeitpunkte) + Werte je Kompetenzbereich – Verlauf übers Jahr
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS kompetenz_erhebungen (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schueler_id INTEGER NOT NULL,
+      fach_id INTEGER NOT NULL,
+      schulstufe INTEGER NOT NULL,
+      datum TEXT NOT NULL,
+      titel TEXT,
+      schulzweig TEXT,
+      erstellt_am TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (schueler_id) REFERENCES schueler(id) ON DELETE CASCADE,
+      FOREIGN KEY (fach_id) REFERENCES faecher(id) ON DELETE CASCADE
+    )
+  `)
+  // Dev-Umstellung (Feature unveröffentlicht): frühere werte-Formen (ohne item_idx) auf die neue
+  // item-basierte Form bringen. Verwirft bisherige Test-Erhebungen (kein Release betroffen).
+  {
+    const wInfo = db.prepare('PRAGMA table_info(kompetenz_erhebung_werte)').all()
+    if (wInfo.length && !wInfo.some(c => c.name === 'item_idx')) {
+      db.exec('DROP TABLE IF EXISTS kompetenz_erhebung_werte')
+      db.exec('DELETE FROM kompetenz_erhebungen')
+    }
+  }
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS kompetenz_erhebung_werte (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      erhebung_id INTEGER NOT NULL,
+      bereich_idx INTEGER NOT NULL,
+      teilkompetenz_idx INTEGER NOT NULL,
+      item_idx INTEGER NOT NULL,
+      bereich_name TEXT NOT NULL,
+      teilkompetenz_name TEXT NOT NULL,
+      niveau INTEGER NOT NULL DEFAULT 0,
+      notiz TEXT,
+      UNIQUE(erhebung_id, bereich_idx, teilkompetenz_idx, item_idx),
+      FOREIGN KEY (erhebung_id) REFERENCES kompetenz_erhebungen(id) ON DELETE CASCADE
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_komp_erhebungen_lookup ON kompetenz_erhebungen (schueler_id, fach_id, datum)`)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_komp_erhebung_werte_erhebung ON kompetenz_erhebung_werte (erhebung_id)`)
+  spalteErgaenzen('kompetenz_erhebungen', 'schulzweig', 'TEXT') // additiv: Standard (MS) / AHS ab Stufe 6
 
   // Supplierstunden
   db.exec(`

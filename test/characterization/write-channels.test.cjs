@@ -53,6 +53,7 @@ const CASES = [
   { name: 'klassen:reorder', channel: 'klassen:reorder', args: [[{ id: 1, reihenfolge: 3 }, { id: 2, reihenfolge: 1 }, { id: 3, reihenfolge: 2 }]], tables: ['klassen'] },
   { name: 'faecher:rename', channel: 'faecher:rename', args: [1, 'Deutsch neu'], tables: ['faecher'] },
   { name: 'faecher:setFarbe', channel: 'faecher:setFarbe', args: [1, '#abcdef'], tables: ['faecher'] },
+  { name: 'faecher:setKompetenzraster', channel: 'faecher:setKompetenzraster', args: [1, 'fremdsprache'], tables: ['faecher'] },
   { name: 'faecher:setBenotungssystem', channel: 'faecher:setBenotungssystem', args: [1, 'punkte'], tables: ['faecher'] },
   { name: 'faecher:resetGewichtung', channel: 'faecher:resetGewichtung', args: [1], tables: ['faecher'] },
   { name: 'faecher:updateGewichtung', channel: 'faecher:updateGewichtung', args: [1, { gewichtungSa: 3, gewichtungT: 1, gewichtungCustom: 1, maMaxEinfluss: 0.5, hueMaxEinfluss: 0.5 }], tables: ['faecher'] },
@@ -105,6 +106,9 @@ const CASES = [
   { name: 'kompetenzbereiche:delete', channel: 'kompetenzbereiche:delete', args: [2], tables: ['kompetenzbereiche', 'schueler_kompetenzen'] },
   { name: 'kompetenzbereiche:reorder', channel: 'kompetenzbereiche:reorder', args: [[2, 1]], tables: ['kompetenzbereiche'] },
   { name: 'schuelerKompetenzen:set', channel: 'schuelerKompetenzen:set', args: [1, 1, 2, 'Notiz'], tables: ['schueler_kompetenzen'] },
+  { name: 'kompetenzErhebungen:speichern', channel: 'kompetenzErhebungen:speichern', args: [{ schuelerId: 1, fachId: 1, schulstufe: 3, schulzweig: 'ahs', datum: '2026-01-15', titel: 'Mitte', werte: [{ bereich_idx: 0, teilkompetenz_idx: 0, item_idx: 0, bereich_name: 'Lesen', teilkompetenz_name: 'Lesefertigkeit', niveau: 2 }, { bereich_idx: 1, teilkompetenz_idx: 0, item_idx: 0, bereich_name: 'Schreiben', teilkompetenz_name: 'Verfassen', niveau: 1, notiz: 'x' }] }], tables: ['kompetenz_erhebungen', 'kompetenz_erhebung_werte'] },
+  { name: 'kompetenzErhebungen:update', channel: 'kompetenzErhebungen:update', args: [1, { datum: '2026-01-20', titel: 'upd', werte: [{ bereich_idx: 0, teilkompetenz_idx: 0, item_idx: 0, bereich_name: 'Lesen', teilkompetenz_name: 'Lesefertigkeit', niveau: 3 }] }], tables: ['kompetenz_erhebungen', 'kompetenz_erhebung_werte'] },
+  { name: 'kompetenzErhebungen:delete', channel: 'kompetenzErhebungen:delete', args: [1], tables: ['kompetenz_erhebungen', 'kompetenz_erhebung_werte'] },
 
   // ── Stundenzeiten / Stundenplan ────────────────────────────────────────────
   { name: 'stundenzeiten:update', channel: 'stundenzeiten:update', args: [1, { beginn: '08:00', ende: '08:50' }], tables: ['stundenzeiten'] },

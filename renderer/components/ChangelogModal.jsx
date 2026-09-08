@@ -8,6 +8,19 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.7.0',
+    datum: '2026-09-08',
+    punkte: [
+      'Kompetenzen erfassen (neu): Im Leistungsprofil kannst du pro Fach und Schüler:in den Kompetenzstand mit einem Schritt-für-Schritt-Assistenten festhalten. Bewertet wird jede einzelne Kann-Beschreibung des amtlichen Rasters – mit den echten Niveau-Formulierungen („unter Anleitung", „zunehmend selbstständig" …) bzw. „erreicht/noch nicht". Ein Durchlauf ergibt eine „Erhebung" zu einem Zeitpunkt; sie lässt sich beliebig oft pro Jahr wiederholen sowie später bearbeiten (✎) oder löschen (✕).',
+      'Netzdiagramm & Verlauf: Die Erhebung wird als Netzdiagramm (je Kompetenzbereich der Ø-Stand) dargestellt. Bei mehreren Erhebungen wechselst du über Datums-Schaltflächen bzw. ‹ ›-Pfeile zwischen den Zeitpunkten – das Diagramm überblendet animiert. „Details anzeigen" zeigt je Teilkompetenz das Ø-Niveau.',
+      'Hinterlegte Raster: Deutsch (Schulstufe 1–8), Mathematik (1–8), Englisch (5–8) samt 1. lebender Fremdsprache der Primarstufe (1–4) sowie die Volksgruppensprachen Kroatisch/Slowenisch/Ungarisch (3, 4, 7, 8) – jeweils nach dem BMBWF-Kompetenzraster (BGBl. II Nr. 1/2023).',
+      'Erkennung & Zuordnung: Das passende Raster wird am Fachnamen erkannt (z. B. „Deutsch", „Mathematik", „Englisch", „Französisch"). Heißt ein Fach anders oder soll es als Volksgruppensprache geführt werden, ordnest du das Raster pro Fach zu: Rechtsklick auf das Fach → „Kompetenzraster…".',
+      'Leistungsniveau: Ab der 6. Schulstufe unterscheiden die Raster für Deutsch und Englisch „Standard (Mittelschule)" und „Standard AHS"; bei differenziert benoteten Fächern wird der Zweig automatisch aus dem Niveau der Schüler:in gesetzt. Mathematik und Volksgruppensprachen verwenden eine einheitliche Skala ohne diese Unterscheidung.',
+      'Erinnerungen: In den Einstellungen → „Kompetenz-Erhebungen" legst du Zeitpunkte fest, zu denen du erinnert werden möchtest – jeder Zeitpunkt wird als ToDo (mit Erinnerung eine Woche davor) eingetragen und erscheint im Dashboard.',
+      'Im PDF-Export: Die Netzdiagramme werden in den PDF-Export des Leistungsprofils übernommen. Gibt es mehrere Erhebungen, wählst du vor dem Speichern je Fach aus, welche Diagramme aufgenommen werden (Standard: alle) – oder exportierst ohne Diagramme.',
+    ],
+  },
+  {
     version: '1.6.3',
     datum: '2026-08-27',
     punkte: [

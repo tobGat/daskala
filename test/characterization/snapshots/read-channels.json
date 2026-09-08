@@ -638,6 +638,68 @@
       "aktualisiert": "2025-10-01"
     }
   ],
+  "kompetenzErhebungen:getProfil": {
+    "erhebungen": [
+      {
+        "id": 1,
+        "schulstufe": 3,
+        "schulzweig": null,
+        "datum": "2025-10-15",
+        "titel": "Herbst",
+        "erstellt_am": "2025-10-15 08:00:00",
+        "werte": [
+          {
+            "bereich_idx": 0,
+            "teilkompetenz_idx": 0,
+            "item_idx": 0,
+            "bereich_name": "Lesen",
+            "teilkompetenz_name": "Lesefertigkeit",
+            "niveau": 1,
+            "notiz": null
+          },
+          {
+            "bereich_idx": 1,
+            "teilkompetenz_idx": 0,
+            "item_idx": 0,
+            "bereich_name": "Schreiben",
+            "teilkompetenz_name": "Verfassen",
+            "niveau": 2,
+            "notiz": "ok"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "schulstufe": 3,
+        "schulzweig": null,
+        "datum": "2026-02-10",
+        "titel": "Winter",
+        "erstellt_am": "2026-02-10 08:00:00",
+        "werte": [
+          {
+            "bereich_idx": 0,
+            "teilkompetenz_idx": 0,
+            "item_idx": 0,
+            "bereich_name": "Lesen",
+            "teilkompetenz_name": "Lesefertigkeit",
+            "niveau": 2,
+            "notiz": null
+          },
+          {
+            "bereich_idx": 1,
+            "teilkompetenz_idx": 0,
+            "item_idx": 0,
+            "bereich_name": "Schreiben",
+            "teilkompetenz_name": "Verfassen",
+            "niveau": 3,
+            "notiz": null
+          }
+        ]
+      }
+    ],
+    "letzteSchulstufe": 3,
+    "letzteSchulzweig": null
+  },
   "stundenzeiten:getAll": [
     {
       "id": 1,
@@ -857,6 +919,7 @@
       "gewichtung_man": null,
       "benotungssystem": "standard",
       "alle_schueler": 1,
+      "kompetenzraster": null,
       "uuid": null
     },
     {
@@ -876,6 +939,7 @@
       "gewichtung_man": null,
       "benotungssystem": "standard",
       "alle_schueler": 1,
+      "kompetenzraster": null,
       "uuid": null
     }
   ],
@@ -966,6 +1030,7 @@
         "gewichtung_man": null,
         "benotungssystem": "standard",
         "alle_schueler": 1,
+        "kompetenzraster": null,
         "uuid": null
       },
       {
@@ -985,6 +1050,7 @@
         "gewichtung_man": null,
         "benotungssystem": "standard",
         "alle_schueler": 1,
+        "kompetenzraster": null,
         "uuid": null
       }
     ],

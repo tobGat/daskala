@@ -22,6 +22,8 @@ import rezenzDomain from '../../core/domain/rezenz'
 import maNoteDomain from '../../core/domain/maNote'
 import gewichtungSchuelerDomain from '../../core/domain/gewichtungSchueler'
 import kompetenzenDomain from '../../core/domain/kompetenzen'
+import kompetenzKatalog from '../../core/domain/kompetenzKatalog'
+import kompetenzErhebungenDomain from '../../core/domain/kompetenzErhebungen'
 import gewichtungDomain from '../../core/domain/gewichtung'
 import todosDomain from '../../core/domain/todos'
 import termineDomain from '../../core/domain/termine'
@@ -85,6 +87,7 @@ export function createMobileApi(dbPort) {
       setSchueler: (fId, d) => faecherDomain.setSchueler(dbPort, deps, fId, d),
       create: (d) => faecherDomain.create(dbPort, deps, d),
       setBenotungssystem: (id, s) => faecherDomain.setBenotungssystem(dbPort, deps, id, s),
+      setKompetenzraster: (id, w) => faecherDomain.setKompetenzraster(dbPort, id, w),
       // Gewichtung pro Fach (SA/Test/Individuell/Mitarbeit); Mitarbeit = gewichtung_ma.
       updateGewichtung: (id, data) => faecherDomain.updateGewichtung(dbPort, deps, id, data),
       resetGewichtung: (id) => faecherDomain.resetGewichtung(dbPort, deps, id),
@@ -167,6 +170,18 @@ export function createMobileApi(dbPort) {
     schuelerKompetenzen: dp('schuelerKompetenzen', {
       getAll: (fId) => kompetenzenDomain.schuelerGetAll(dbPort, fId),
       set: (kb, s, n, no) => kompetenzenDomain.schuelerSet(dbPort, kb, s, n, no),
+    }),
+    kompetenzKatalog: dp('kompetenzKatalog', {
+      hatRaster: (f, o) => kompetenzKatalog.hatRaster(f, o),
+      listSchulstufen: (f, o) => kompetenzKatalog.listSchulstufen(f, o),
+      getRaster: (f, s, o) => kompetenzKatalog.getRaster(f, s, o),
+      istDifferenziert: (f, o) => kompetenzKatalog.istDifferenziert(f, o),
+    }),
+    kompetenzErhebungen: dp('kompetenzErhebungen', {
+      getProfil: (sId, fId) => kompetenzErhebungenDomain.getProfil(dbPort, sId, fId),
+      speichern: (p) => kompetenzErhebungenDomain.speichern(dbPort, p),
+      update: (id, d) => kompetenzErhebungenDomain.update(dbPort, id, d),
+      delete: (id) => kompetenzErhebungenDomain.remove(dbPort, id),
     }),
     todos: dp('todos', {
       getAll: (sjId) => todosDomain.getAll(dbPort, sjId),

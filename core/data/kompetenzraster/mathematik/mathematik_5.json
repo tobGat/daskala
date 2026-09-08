@@ -1,0 +1,105 @@
+{
+  "fach": "Mathematik",
+  "schulstufe": 5,
+  "schultyp": "Mittelschule, AHS-Unterstufe",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Mathematik_5-Schulstufe-Kompetenzraster_42845955.pdf",
+  "hinweis": "Einstufiger Kompetenzraster: je Kompetenzbeschreibung erreicht oder (noch) nicht erreicht. Teilkompetenzen entsprechen dem Lehrplanbezug (Taxonomie z. B. 5-ZM-1).",
+  "kompetenzbereiche": [
+    {
+      "name": "Zahlen und Maße",
+      "kategorien": [
+        { "name": "Natürliche, Dezimal- und Bruchzahlen", "items": [
+          "Zahlen als Punkte am Zahlenstrahl grafisch darstellen und ablesen; große Zahlen lesen.",
+          "das dezimale Stellenwertsystem, d. h. das Prinzip „Bündeln in Zehner-Schritten“, erklären und anwenden.",
+          "Brüche als Anteile eines Ganzen bzw. als Anteile von mehreren Ganzen deuten; Brüche auf Ganze ergänzen.",
+          "Brüche erweitern und kürzen, insbesondere mithilfe von Visualisierungen.",
+          "Brüche als Quotienten deuten.",
+          "in einfachen Fällen zwischen Bruch- und Dezimaldarstellung wechseln.",
+          "natürliche Zahlen sowie nichtnegative Dezimal- und Bruchzahlen vergleichen und ordnen.",
+          "römische Zahldarstellungen lesen und allenfalls schreiben; die Vorteile des dezimalen Stellenwertsystems im Vergleich zur römischen Zahldarstellung erklären."
+        ] },
+        { "name": "Rechenoperationen und Rechengesetze", "items": [
+          "die vier Grundrechenoperationen mit natürlichen Zahlen und nichtnegativen Dezimalzahlen durchführen, in einfachen Fällen auch im Kopf.",
+          "die Algorithmen für die Grundrechenoperationen anhand konkreter Beispiele beschreiben; allenfalls Algorithmen anhand konkreter Beispiele mithilfe von Rechenregeln und Eigenschaften des dezimalen Stellenwertsystems begründen.",
+          "Zahlen runden sowie Rechenergebnisse abschätzen und Schranken ermitteln.",
+          "erkennen und nutzen, wie sich Änderungen eines Operanden (Summand, Faktor, …) auf das Ergebnis auswirken.",
+          "Rechenoperationen veranschaulichen, z. B. mittels Zahlenstrahl, Strecken, Rechtecken oder Punktmuster.",
+          "das Addieren z. B. als Zusammenfügen, bei natürlichen Zahlen auch als Weiterzählen deuten.",
+          "das Subtrahieren z. B. als Abziehen, als Ergänzen, als Ermitteln des Unterschieds oder als Umkehren des Addierens deuten.",
+          "das Multiplizieren mit natürlichen Zahlen z. B. als wiederholtes Addieren oder als Vervielfachen deuten.",
+          "das Dividieren durch natürliche Zahlen z. B. als Teilen, als Messen oder als Umkehren des Multiplizierens deuten.",
+          "Rechengesetze sowie Klammer- und Vorrangregeln für natürliche Zahlen und nichtnegative Dezimalzahlen angeben, erklären und anwenden.",
+          "Rechenausdrücke verbal beschreiben sowie verbal beschriebene Rechenanweisungen durch Rechenausdrücke darstellen.",
+          "Aufgaben in Sachsituationen lösen; Lösungswege beschreiben, vergleichen und begründen; Ergebnisse und ihre Genauigkeit kritisch betrachten."
+        ] },
+        { "name": "Größen und Maßeinheiten", "items": [
+          "Vorstellungen mit Maßeinheiten verbinden; Größen (insbesondere Längen, Flächen- und Rauminhalte, Massen, Zeitspannen, Geldbeträge) vergleichen und messen; Größen anhand von Stützpunktvorstellungen, d. h. Vergleichen mit Größen aus dem Alltag, schätzen.",
+          "ein- und mehrnamige Schreibweisen von Größen nutzen; Maßumrechnungen durchführen."
+        ] }
+      ]
+    },
+    {
+      "name": "Variablen und Funktionen",
+      "kategorien": [
+        { "name": "Terme, Gleichungen und Formeln aufstellen", "items": [
+          "einfache Terme bzw. Gleichungen zu vorgegebenen Texten aufstellen; Texte zu vorgegebenen einfachen Termen bzw. Gleichungen formulieren.",
+          "einfache Formeln in der Geometrie und in verschiedenen Sachsituationen aufstellen."
+        ] },
+        { "name": "Einfache Gleichungen lösen", "items": [
+          "einfache Gleichungen durch systematisches Probieren und durch Veranschaulichen lösen.",
+          "eine Größe aus einer einfachen Formel berechnen, wenn alle anderen Größen gegeben sind."
+        ] }
+      ]
+    },
+    {
+      "name": "Figuren und Körper",
+      "kategorien": [
+        { "name": "Geometrische Objekte in der Ebene", "items": [
+          "die geometrischen Objekte Punkt, Strecke, Strahl, Gerade und Winkel benennen bzw. beschreiben; Lagebeziehungen zwischen diesen Objekten beschreiben.",
+          "Konstruktionsaufgaben mit parallelen bzw. normalen Geraden, Strahlen und Strecken lösen.",
+          "den Abstand zweier Punkte, den Abstand eines Punktes von einer Geraden und den Abstand paralleler Geraden beschreiben und solche Abstände ermitteln.",
+          "das Gradmaß für Winkel erklären; die Größe von Winkeln schätzen; Winkel nach ihrer Größe (spitzer, rechter, stumpfer, gestreckter, erhabener und voller Winkel) einteilen.",
+          "Winkel zeichnen und messen.",
+          "Kreise (Kreislinien, Kreisflächen) und Kreisteile (Kreisbogen, Kreissektor, Kreissegment) beschreiben und zeichnen; die Lagebeziehung zwischen Kreis und Punkt bzw. Gerade beschreiben, insbesondere im Fall einer Tangente; Tangenten in Kreispunkten konstruieren.",
+          "allenfalls weitere Konstruktionsaufgaben mit Kreisen und Geraden lösen.",
+          "den Unterschied zwischen einem geometrischen Objekt und seiner Größe (Strecke – Streckenlänge, Fläche – Flächeninhalt, Winkel – Winkelmaß) erkennen und beschreiben."
+        ] },
+        { "name": "Rechtecke: Umfang und Flächeninhalt", "items": [
+          "Rechtecke und Figuren, die aus Rechtecken bestehen, skizzieren und konstruieren.",
+          "Figuren, die aus Rechtecken bestehen, maßstäblich zeichnen; geeignete Maßstäbe wählen; Längen aus maßstäblichen Zeichnungen ermitteln.",
+          "eine Formel für den Umfang eines Rechtecks angeben, anwenden und begründen; entsprechende Umkehraufgaben lösen.",
+          "Flächeninhalte von Rechtecken durch Zerlegen in passende Einheitsquadrate ermitteln.",
+          "die Formel für den Flächeninhalt eines Rechtecks angeben, anwenden und begründen; entsprechende Umkehraufgaben lösen.",
+          "den Flächeninhalt von Figuren durch Auslegen bzw. Überdecken mit Rechtecken, allenfalls auch von nicht geradlinig begrenzten Figuren abschätzen.",
+          "Aufgaben in Sachsituationen, z. B. mit Plänen und Landkarten, bearbeiten."
+        ] },
+        { "name": "Quader: Oberfläche und Rauminhalt", "items": [
+          "Quader mithilfe geeigneter geometrischer Begriffe (Ecken, Kanten, Flächen, parallel, normal) beschreiben.",
+          "Schrägrisse von Quadern skizzieren.",
+          "erkennen, ob eine gegebene Figur Netz eines Quaders sein kann; Netze skizzieren und allenfalls konstruieren.",
+          "eine Formel für den Oberflächeninhalt eines Quaders angeben, anwenden und begründen.",
+          "Rauminhalte von Quadern durch Zerlegen in passende Einheitswürfel ermitteln.",
+          "die Formel für das Volumen eines Quaders angeben, anwenden und begründen; allenfalls entsprechende Umkehraufgaben lösen.",
+          "einfache Ansichten (von vorne, von der Seite, von oben) von Körpern, die aus Quadern bestehen, erstellen."
+        ] }
+      ]
+    },
+    {
+      "name": "Daten und Zufall",
+      "kategorien": [
+        { "name": "Daten erheben und darstellen", "items": [
+          "Daten sammeln und nach verschiedenen Gesichtspunkten ordnen.",
+          "absolute Häufigkeiten ermitteln.",
+          "Daten in Tabellen und durch Säulen- oder Balkendiagramme darstellen.",
+          "Daten aus Tabellen und grafischen Darstellungen (z. B. Säulen- und Balkendiagramme, Piktogramme) ablesen und interpretieren.",
+          "einfache Abzählaufgaben auch mithilfe von Baumdiagrammen lösen."
+        ] },
+        { "name": "Statistische Kennzahlen", "items": [
+          "Datenlisten ordnen; Minimum, Maximum sowie Spannweite von Datenlisten ermitteln und interpretieren.",
+          "den arithmetischen Mittelwert (Durchschnittswert) und den Median für kleine Datensätze ermitteln und interpretieren."
+        ] }
+      ]
+    }
+  ]
+}

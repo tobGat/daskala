@@ -1,0 +1,91 @@
+{
+  "fach": "Mathematik",
+  "schulstufe": 8,
+  "schultyp": "Mittelschule, AHS-Unterstufe",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Mathematik_8-Schulstufe-Kompetenzraster_34c48db9.pdf",
+  "hinweis": "Einstufiger Kompetenzraster: je Kompetenzbeschreibung erreicht oder (noch) nicht erreicht. Teilkompetenzen entsprechen dem Lehrplanbezug (Taxonomie z. B. 8-ZM-1).",
+  "kompetenzbereiche": [
+    {
+      "name": "Zahlen und Maße",
+      "kategorien": [
+        { "name": "Reelle Zahlen, Wurzeln und Näherungswerte", "items": [
+          "rationale Zahlen auf der Zahlengeraden darstellen; rationale Zahlen vergleichen und ordnen; Rechenoperationen durchführen.",
+          "erklären und allenfalls begründen, dass es Zahlen gibt, die nicht rational sind, z. B. √2.",
+          "erklären, dass durch die Erweiterung der rationalen Zahlen zu den reellen Zahlen die Zahlengerade lückenlos ausgefüllt wird.",
+          "Quadratwurzeln in einfachen Fällen im Kopf ermitteln; Quadratwurzeln durch systematisches Probieren näherungsweise berechnen bzw. abschätzen; Quadrat- und Kubikwurzeln mittels Technologieeinsatz berechnen.",
+          "die Regeln √(a · b) = √a · √b und √(a / b) = √a / √b angeben und anwenden; begründen, dass im Allgemeinen √(a ± b) ≠ √a ± √b ist.",
+          "Rechenoperationen mit reellen Zahlen durchführen; die Problematik des Rechnens mit Näherungswerten (z. B. (√2)² = 2, aber 1,41² ≠ 2) erklären."
+        ] }
+      ]
+    },
+    {
+      "name": "Variablen und Funktionen",
+      "kategorien": [
+        { "name": "Terme, Gleichungen und Formeln", "items": [
+          "Terme und Formeln aufstellen und umformen.",
+          "Gleichungen, die sich auf lineare Gleichungen zurückführen lassen, lösen; Gleichungen in Sachsituationen anwenden.",
+          "allenfalls Bruchterme umformen und Bedingungen angeben, die Variablen dabei erfüllen müssen."
+        ] },
+        { "name": "Funktionale Zusammenhänge und Darstellungsformen", "items": [
+          "erkennen und beschreiben, wie sich die Änderung von Größen auf eine andere Größe in einer Formel auswirkt, sowie in diesem Zusammenhang Proportionalitäten erkennen.",
+          "grafische Darstellungen in Sachsituationen interpretieren, insbesondere Werte ablesen und Änderungen beschreiben.",
+          "Funktionen als eindeutige Zuordnungen beschreiben, interpretieren und anwenden.",
+          "verschiedene Darstellungsformen einfacher reeller Funktionen (verbale Beschreibung, Funktionsterm bzw. Funktionsgleichung, Wertetabelle, Funktionsgraph) nutzen; in einfachen Fällen zwischen den Darstellungsformen wechseln.",
+          "erkennen und begründen, ob durch eine gegebene grafische Darstellung oder Tabelle ein funktionaler Zusammenhang beschrieben wird."
+        ] },
+        { "name": "Lineare Funktionen", "items": [
+          "Eigenschaften einer linearen Funktion f mit f(x) = k · x + d beschreiben.",
+          "zwischen Funktionsgleichung und Funktionsgraph wechseln, auch mithilfe von Steigungsdreiecken unter Verwendung der Parameter k und d.",
+          "die Parameter k und d auch in Sachsituationen deuten.",
+          "lineare Funktionen in Sachsituationen anwenden; für bzw. gegen die Angemessenheit der Modellierung eines Sachverhalts mit linearen Funktionen argumentieren.",
+          "allenfalls begründen, dass der Graph einer linearen Funktion eine Gerade ist."
+        ] },
+        { "name": "Lineare Gleichungssysteme", "items": [
+          "Lösungen einer linearen Gleichung berechnen sowie alle Lösungen im Koordinatensystem darstellen.",
+          "lineare Gleichungssysteme grafisch und rechnerisch lösen.",
+          "Aufgaben in inner- und außermathematischen Situationen mithilfe linearer Gleichungssysteme bearbeiten."
+        ] }
+      ]
+    },
+    {
+      "name": "Figuren und Körper",
+      "kategorien": [
+        { "name": "Pythagoräischer Lehrsatz", "items": [
+          "den pythagoräischen Lehrsatz für vorgegebene rechtwinkelige Dreiecke in unterschiedlichen Lagen und unter Verwendung verschiedener Bezeichnungen formulieren.",
+          "die Umkehrung des pythagoräischen Lehrsatzes anwenden, um zu prüfen, ob ein Dreieck rechtwinkelig ist.",
+          "einen Beweis des pythagoräischen Lehrsatzes nachvollziehen und erklären.",
+          "den pythagoräischen Lehrsatz für Berechnungen in ebenen Figuren sowie allenfalls zum Aufstellen von Formeln anwenden.",
+          "den pythagoräischen Lehrsatz für Berechnungen in Körpern sowie allenfalls zum Aufstellen von Formeln anwenden."
+        ] },
+        { "name": "Kreis und Kreisteile", "items": [
+          "beschreiben, dass bei jedem Kreis das Verhältnis von Umfang zu Durchmesser die gleiche Zahl π ergibt; Näherungswerte für π experimentell ermitteln.",
+          "allenfalls den Flächeninhalt von Kreisen näherungsweise ermitteln.",
+          "die Formeln für die Berechnung des Umfangs und des Flächeninhalts von Kreisen angeben und anwenden, insbesondere auf Halbkreise, Viertelkreise und Achtelkreise.",
+          "allenfalls Formeln für den Umfang und Flächeninhalt von Kreissektoren herleiten und anwenden.",
+          "Umkehraufgaben lösen, insbesondere durch Umformen von Formeln."
+        ] },
+        { "name": "Prismen, Pyramiden, Drehzylinder und Drehkegel", "items": [
+          "Eigenschaften von Prismen und Pyramiden beschreiben; Oberflächen- und Rauminhalte berechnen.",
+          "grundlegende Eigenschaften von Drehzylindern und Drehkegeln beschreiben.",
+          "Formeln für die Berechnung von Oberflächen- und Rauminhalten von Drehzylindern und Drehkegeln angeben und anwenden; allenfalls solche Formeln begründen.",
+          "einfache Umkehraufgaben lösen, insbesondere durch Umformen von Formeln.",
+          "Aufgaben in Sachsituationen lösen, insbesondere Massen und Dichten berechnen."
+        ] }
+      ]
+    },
+    {
+      "name": "Daten und Zufall",
+      "kategorien": [
+        { "name": "Häufigkeitsverteilungen und Kreuztabellen", "items": [
+          "Häufigkeitsverteilungen in Tabellen und Diagrammen darstellen; den arithmetischen Mittelwert und den Median einer Datenmenge ermitteln und interpretieren.",
+          "absolute und relative Häufigkeiten in Kreuztabellen, insbesondere in Vierfeldertafeln, darstellen, ergänzen und interpretieren."
+        ] },
+        { "name": "Wahrscheinlichkeit (ein- und zweistufig)", "items": [
+          "Baumdiagramme erstellen und interpretieren; Laplace-Wahrscheinlichkeiten ermitteln und interpretieren.",
+          "Wahrscheinlichkeiten bei ein- und zweistufigen Zufallsexperimenten auch mithilfe von Baumdiagrammen ermitteln; solche Wahrscheinlichkeiten interpretieren."
+        ] }
+      ]
+    }
+  ]
+}

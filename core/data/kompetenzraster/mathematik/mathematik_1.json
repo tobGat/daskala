@@ -1,0 +1,54 @@
+{
+  "fach": "Mathematik",
+  "schulstufe": 1,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Mathematik_1-Schulstufe-Kompetenzraster_0a2aa53d.pdf",
+  "hinweis": "Einstufiger Kompetenzraster: je Kompetenzbeschreibung erreicht oder (noch) nicht erreicht.",
+  "kompetenzbereiche": [
+    {
+      "name": "Zahlen und Daten",
+      "kategorien": [
+        { "name": "Zahlen", "items": [
+          "die Zahlen bis mindestens 20 mit strukturiertem Material darstellen, lesen, schreiben, zerlegen, vergleichen, ordnen und vielfältig nutzen.",
+          "die Zahlen bis 100 mit strukturiertem Material darstellen, lesen und schreiben."
+        ] },
+        { "name": "Daten", "items": [
+          "Daten aus ihrer unmittelbaren Lebenswelt erheben und mit Strichlisten und Tabellen darstellen.",
+          "Strichlisten und Tabellen interpretieren."
+        ] }
+      ]
+    },
+    {
+      "name": "Operationen",
+      "kategorien": [
+        { "name": "Rechenoperationen und Sachsituationen", "items": [
+          "Rechenoperationen im additiven Bereich im Zahlenraum bis mindestens 20 flexibel durchführen.",
+          "arithmetische Muster erkennen, beschreiben, fortsetzen und ergänzen.",
+          "Sachsituationen aus ihrer Lebenswelt modellieren."
+        ] }
+      ]
+    },
+    {
+      "name": "Größen",
+      "kategorien": [
+        { "name": "Größen und Maßeinheiten", "items": [
+          "Größen mit selbst gewählten und genormten Einheiten messen und die Ergebnisse notieren.",
+          "mit genormten Maßeinheiten (kg, m, ℓ, h, €, c) Vorstellungen verbinden und Größenangaben interpretieren.",
+          "Uhrzeiten mit vollen Stunden ablesen und darstellen.",
+          "mit Größen in einfachen Sachsituationen arbeiten."
+        ] }
+      ]
+    },
+    {
+      "name": "Ebene und Raum",
+      "kategorien": [
+        { "name": "Figuren, Muster und Raumvorstellung", "items": [
+          "einfache Lagebeziehungen und Richtungsangaben zur Orientierung und Beschreibung nutzen.",
+          "ebene Figuren und Körper anhand einfacher Merkmale unterscheiden, beschreiben und vergleichen.",
+          "spielerisch mit ebenen Figuren, Mustern und Körpern arbeiten, insbesondere mit symmetrischen Objekten."
+        ] }
+      ]
+    }
+  ]
+}

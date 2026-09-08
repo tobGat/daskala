@@ -1,0 +1,141 @@
+{
+  "fach": "Deutsch",
+  "schulstufe": 5,
+  "schultyp": "Mittelschule, AHS-Unterstufe, PTS-Vorstufe",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle_original": "vom Nutzer hochgeladenes PDF: Deutsch_5-Schulstufe-Kompetenzraster_fced5cb2.pdf",
+  "niveaustufen": [
+    { "niveau": 1, "bezeichnung": "unter Anleitung und/oder adaptierten/differenzierten Rahmenbedingungen" },
+    { "niveau": 2, "bezeichnung": "zunehmend selbstständig und/oder ggf. unter differenzierten Rahmenbedingungen" },
+    { "niveau": 3, "bezeichnung": "selbstständig und/oder ggf. unter differenzierten Rahmenbedingungen" }
+  ],
+  "kompetenzbereiche": [
+    {
+      "name": "Zuhören",
+      "basis": "literarische und pragmatische Texte aus unterschiedlichen Medien anhören oder in Gesprächssituationen aktiv zuhören",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            "eine Hörerwartung aufbauen und die Aufmerksamkeit auf Texte richten",
+            "zum Verständnis auf Vorwissen zurückgreifen, Störfaktoren identifizieren und bei Verständnisschwierigkeiten nachfragen/nachschlagen",
+            "para- und nonverbale Mittel benennen"
+          ]
+        },
+        {
+          "name": "Hörverstehen",
+          "items": [
+            "Strategien zur Erschließung von Texten nutzen",
+            "explizite Informationen entnehmen",
+            "außertextuelle Bezüge für das Verstehen nutzen",
+            "lokale und globale Kohärenz bilden",
+            "Textmerkmale, kommunikative Situationen und Sprachregister erkennen",
+            "inhaltliche und ästhetische Aspekte von Gehörtem reflektieren"
+          ]
+        },
+        {
+          "name": "Subjekt- und soziale Ebene",
+          "items": [
+            "ihr Weltwissen und ihre Hörgewohnheiten sowie ihren Wortschatz und ihr Sprachbewusstsein erweitern",
+            "die Wirkung und den Wert des Zuhörens in Bezug auf ihr Leben erkennen",
+            "sich über Gehörtes austauschen und die Einschätzungen anderer beurteilen"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "basis": "in vielfältigen kommunikativen Situationen aus unterschiedlichen Kontexten sprechen",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            "sinngestaltend und an der Standardsprache ausgerichtet sprechen",
+            "in Kommunikationssituationen para- und nonverbale Mittel einsetzen",
+            "wertschätzend und sprachlich sensibel kommunizieren"
+          ]
+        },
+        {
+          "name": "Diskurstypen",
+          "items": [
+            "aktiv und konstruktiv an Gesprächen teilnehmen",
+            "Sprachregister situationsangemessen anwenden",
+            "Redebeiträge planen und medial unterstützt adressatenorientiert umsetzen",
+            "mit sachgerechtem Wortschatz frei sprechen"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "basis": "multimediale und multimodale literarische und pragmatische Texte aus unterschiedlichen Kontexten lesen",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            "eine Leseerwartung aufbauen und die Aufmerksamkeit auf Texte richten",
+            "zum Verständnis auf das Vorwissen zurückgreifen und bei Verständnisschwierigkeiten nachfragen/nachschlagen",
+            "zunehmend flüssig lesen und/oder vorbereitete Texte sinngestaltend vorlesen"
+          ]
+        },
+        {
+          "name": "Leseverstehen",
+          "items": [
+            "Strategien zur Erschließung von Texten nutzen",
+            "explizite Informationen entnehmen",
+            "außertextuelle Bezüge für das Verstehen nutzen",
+            "lokale und globale Kohärenz bilden",
+            "Textmerkmale, Textsorten und Textfunktionen erkennen",
+            "inhaltliche und ästhetische Dimensionen von Gelesenem erkennen"
+          ]
+        },
+        {
+          "name": "Subjekt- und soziale Ebene",
+          "items": [
+            "ihr Weltwissen und ihren Lesehorizont sowie ihren Wortschatz und ihr Sprachbewusstsein erweitern",
+            "die Wirkung und den Wert des Lesens in Bezug auf ihr Leben erkennen",
+            "sich über Gelesenes austauschen und die Einschätzungen anderer beurteilen"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Schreiben",
+      "basis": "Texte zu unterschiedlichen Textmustern funktions- und situationsgerecht und adressatenorientiert verfassen",
+      "kategorien": [
+        {
+          "name": "Grundfertigkeiten",
+          "items": [
+            "manuell gut lesbar und flüssig schreiben sowie Textverarbeitungsprogramme nutzen",
+            "ihr Vorwissen über Sprachnormen aktivieren, erweitern und anwenden",
+            "digitale und analoge Nachschlagewerke nutzen"
+          ]
+        },
+        {
+          "name": "Planen",
+          "items": [
+            "Informationen aus vorgegebenen Impulsen produktorientiert erschließen und nutzen",
+            "Bausteine unterschiedlicher Textmuster nutzen",
+            "Schreibstrategien nutzen sowie einen Schreibplan erstellen"
+          ]
+        },
+        {
+          "name": "Verfassen/Formulieren",
+          "items": [
+            "Inhalte dem Textmuster und der Schreibabsicht entsprechend realisieren",
+            "Texte strukturieren",
+            "Texte zu einem sinnvollen, kohärenten Ganzen verbinden",
+            "sprachliche Mittel angemessen einsetzen"
+          ]
+        },
+        {
+          "name": "Überarbeiten",
+          "items": [
+            "eigene und fremde Texte, auch im Austausch mit anderen, kriterienorientiert bewerten und rückmelden",
+            "Texte anhand von reflektierten Überarbeitungsvorschlägen optimieren"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -164,6 +164,36 @@ export default function Einstellungen({ onClose }) {
     await window.api.einstellungen.set('ma_pflicht_warnung', an ? '1' : '0')
     useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
   }
+  // Kompetenz-Erhebung: wählbare Erinnerungs-Zeitpunkte, die als ToDos eingetragen werden. Liste [{datum, todoId}].
+  const [kompErinnerungen, setKompErinnerungen] = useState(() => {
+    try { return JSON.parse(einstellungen['kompetenz_erinnerungen'] || '[]') } catch { return [] }
+  })
+  const [neuesErinnerungsdatum, setNeuesErinnerungsdatum] = useState('')
+  const persistKompErinnerungen = async (liste) => {
+    setKompErinnerungen(liste)
+    await window.api.einstellungen.set('kompetenz_erinnerungen', JSON.stringify(liste))
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
+  const minusTage = (datum, tage) => { const d = new Date(datum + 'T00:00:00'); d.setDate(d.getDate() - tage); return d.toISOString().slice(0, 10) }
+  const addKompErinnerung = async () => {
+    const datum = neuesErinnerungsdatum
+    if (!datum || kompErinnerungen.some(e => e.datum === datum)) return
+    const todoId = await window.api.todos.create({
+      titel: 'Kompetenz-Erhebung durchführen',
+      klasseId: null, fachId: null,
+      faelligkeit: datum,
+      erinnerung: minusTage(datum, 7),
+    })
+    await persistKompErinnerungen([...kompErinnerungen, { datum, todoId }].sort((a, b) => a.datum.localeCompare(b.datum)))
+    setNeuesErinnerungsdatum('')
+    pushToast('Erinnerung als ToDo eingetragen.', 'success')
+  }
+  const removeKompErinnerung = async (datum) => {
+    const eintrag = kompErinnerungen.find(e => e.datum === datum)
+    if (eintrag?.todoId) { try { await window.api.todos.delete(eintrag.todoId) } catch { /* evtl. schon gelöscht */ } }
+    await persistKompErinnerungen(kompErinnerungen.filter(e => e.datum !== datum))
+  }
+
   const [loading, setLoading] = useState(false)
   const [fehler, setFehler] = useState('')
   const [erfolg, setErfolg] = useState(false)
@@ -619,6 +649,33 @@ export default function Einstellungen({ onClose }) {
                 </button>
               </div>
             </div>
+          </Akkordeon>
+
+          {/* Kompetenz-Erhebungen: Erinnerungen als ToDos */}
+          <Akkordeon id="kompetenzen" icon="🕸️" titel="Kompetenz-Erhebungen" offen={offenerBereich} onToggle={toggleBereich}>
+            <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">
+              Lege Zeitpunkte fest, zu denen du an eine Kompetenz-Erhebung erinnert werden möchtest. Jeder Zeitpunkt wird als
+              ToDo („Kompetenz-Erhebung durchführen", Erinnerung 1 Woche davor) eingetragen und erscheint im Dashboard.
+            </p>
+            <div className="flex items-end gap-2 mb-3">
+              <div className="flex-1">
+                <label className="block text-xs text-ink-500 mb-1">Neuer Zeitpunkt</label>
+                <input type="date" className="input" value={neuesErinnerungsdatum} onChange={e => setNeuesErinnerungsdatum(e.target.value)} />
+              </div>
+              <button className="btn-primary" onClick={addKompErinnerung} disabled={!neuesErinnerungsdatum}>Hinzufügen</button>
+            </div>
+            {kompErinnerungen.length === 0 ? (
+              <p className="text-xs text-ink-400 dark:text-ink-500">Noch keine Erinnerungen festgelegt.</p>
+            ) : (
+              <ul className="space-y-1">
+                {kompErinnerungen.map(e => (
+                  <li key={e.datum} className="flex items-center justify-between gap-2 text-sm bg-paper-50 dark:bg-ink-900/40 border border-paper-200 dark:border-ink-800 rounded-lg px-3 py-1.5">
+                    <span className="text-ink-700 dark:text-paper-200">🔔 {new Date(e.datum + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                    <button className="text-xs text-ink-400 hover:text-red-500 transition-colors" onClick={() => removeKompErinnerung(e.datum)} title="Erinnerung entfernen">Entfernen</button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Akkordeon>
 
           {/* Archiv */}

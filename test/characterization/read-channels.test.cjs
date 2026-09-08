@@ -40,6 +40,7 @@ const CASES = [
   { channel: 'gewichtungSchueler:get',  args: [1] },      // Fach 1: individuelle Gewichtungen
   { channel: 'kompetenzbereiche:getAll', args: [1] },
   { channel: 'schuelerKompetenzen:getAll', args: [1] },
+  { channel: 'kompetenzErhebungen:getProfil', args: [1, 1] },
   // Stundenplan / Termine / Todos / Ferien / Jahresplanung
   { channel: 'stundenzeiten:getAll',    args: [] },
   { channel: 'stundenplan:getAll',      args: [] },

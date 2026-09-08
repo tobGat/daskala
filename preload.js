@@ -95,6 +95,7 @@ const api = {
     delete: (id) => invoke('faecher:delete', id),
     rename: (id, name) => invoke('faecher:rename', id, name),
     setFarbe: (id, farbe) => invoke('faecher:setFarbe', id, farbe),
+    setKompetenzraster: (id, wert) => invoke('faecher:setKompetenzraster', id, wert),
     updateGewichtung: (id, data) => invoke('faecher:updateGewichtung', id, data),
     resetGewichtung: (id) => invoke('faecher:resetGewichtung', id),
     setBenotungssystem: (id, system) => invoke('faecher:setBenotungssystem', id, system),
@@ -224,6 +225,20 @@ const api = {
   schuelerKompetenzen: {
     getAll: (fachId) => invoke('schuelerKompetenzen:getAll', fachId),
     set: (kompetenzbereichId, schuelerId, niveau, notiz) => invoke('schuelerKompetenzen:set', kompetenzbereichId, schuelerId, niveau, notiz),
+  },
+
+  kompetenzKatalog: {
+    hatRaster: (fach, override) => invoke('kompetenzKatalog:hatRaster', fach, override),
+    listSchulstufen: (fach, override) => invoke('kompetenzKatalog:listSchulstufen', fach, override),
+    getRaster: (fach, stufe, override) => invoke('kompetenzKatalog:getRaster', fach, stufe, override),
+    istDifferenziert: (fach, override) => invoke('kompetenzKatalog:istDifferenziert', fach, override),
+  },
+
+  kompetenzErhebungen: {
+    getProfil: (schuelerId, fachId) => invoke('kompetenzErhebungen:getProfil', schuelerId, fachId),
+    speichern: (payload) => invoke('kompetenzErhebungen:speichern', payload),
+    update: (id, data) => invoke('kompetenzErhebungen:update', id, data),
+    delete: (id) => invoke('kompetenzErhebungen:delete', id),
   },
 
   customFerien: {

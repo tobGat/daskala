@@ -1,0 +1,51 @@
+{
+  "fach": "Lebende Fremdsprache",
+  "schulstufe": 2,
+  "schultyp": "Volksschule",
+  "lehrplanbezug": "BGBl. II Nr. 1/2023",
+  "quelle": "vom Nutzer hochgeladen: Lebende-Fremdsprache_2-Schulstufe-Kompetenzraster_06cf1bd9.pdf",
+  "kompetenzbereiche": [
+    {
+      "name": "Hören",
+      "kategorien": [
+        { "name": "Detailverstehen", "items": [
+          "Begrüßungen und Anweisungen verstehen.",
+          "Ankündigungen, Bitten und Fragen auch im Rahmen der Unterrichtsorganisation verstehen."
+        ] },
+        { "name": "Globalverstehen", "items": [
+          "erarbeitete Wörter und Phrasen in kurzen Hörtexten mit audiovisuellen Medien (Bücher/Videos) erfassen."
+        ] }
+      ]
+    },
+    {
+      "name": "Sprechen",
+      "kategorien": [
+        { "name": "Mit- und nachsprechen, mitsingen", "items": [
+          "Reime, rhythmische Sprüche (Chants), Zungenbrecher und Liedtexte mit- und nachsprechen/mitsingen (mit verständlicher Aussprache und Intonation)."
+        ] },
+        { "name": "Informieren", "items": [
+          "etwas mitteilen (z. B. über die eigene Person, die unmittelbare Lebenswelt)."
+        ] },
+        { "name": "Miteinander kommunizieren", "items": [
+          "sich an kurzen Gesprächen beteiligen."
+        ] }
+      ]
+    },
+    {
+      "name": "Lesen",
+      "kategorien": [
+        { "name": "Wörter und Phrasen lesen", "items": [
+          "einzelne vertraute Wörter verstehen."
+        ] }
+      ]
+    },
+    {
+      "name": "Schreiben",
+      "kategorien": [
+        { "name": "Wörter und Phrasen schreiben", "items": [
+          "einzelne Wörter und Wendungen nach Vorbild schreiben."
+        ] }
+      ]
+    }
+  ]
+}
