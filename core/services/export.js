@@ -730,7 +730,74 @@ async function archivOds(db, deps, schuljahrId) {
   return true
 }
 
+// ─── Klassenlisten-Generator ────────────────────────────────────────────────
+// Erzeugt eine druckbare Liste (PDF). Der Renderer stellt die Optionen zusammen und liefert die
+// fertig aufbereiteten Spalten/Zeilen; dieser Service baut nur noch HTML → PDF. So bleibt die
+// Auswahl-/Sortier-Logik im Renderer (der die Schüler:innen ohnehin schon hat).
+//   opt = {
+//     titel, untertitel, dateiName,
+//     orientierung: 'hoch' | 'quer',
+//     zeilenHoeheMm: number,                 // Zeilenhöhe (Platz zum Schreiben)
+//     spalten: [ { label, art: 'nummer'|'text'|'leer', form?: 'quadrat'|'breit' } ],
+//     zeilen:  [ [zellenText, …] ],          // Länge je Zeile = Anzahl Spalten
+//   }
+function baueKlassenlisteHtml(opt) {
+  const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const spalten = Array.isArray(opt.spalten) ? opt.spalten : []
+  const zeilen = Array.isArray(opt.zeilen) ? opt.zeilen : []
+  const zeilenHoehe = Math.max(6, Number(opt.zeilenHoeheMm) || 9)
+  const quer = opt.orientierung === 'quer'
+
+  // Spaltenbreiten: Nummer & quadratische Leerspalten fix schmal; breite Leerspalten füllen den Rest
+  // (min-width, damit sie den freien Platz absorbieren); Textspalten wachsen nach Inhalt.
+  const spaltenStil = (c) => {
+    if (c.art === 'nummer') return 'width:9mm;text-align:center'
+    if (c.art === 'leer' && c.form === 'quadrat') return `width:${zeilenHoehe}mm`
+    if (c.art === 'leer') return 'min-width:34mm' // breit
+    return '' // Textspalte: Inhaltsbreite
+  }
+
+  const kopf = spalten.map(c => `<th style="${spaltenStil(c)}">${esc(c.label)}</th>`).join('')
+  const koerper = zeilen.map(zeile => {
+    const tds = spalten.map((c, i) => {
+      const wert = zeile[i]
+      const align = c.art === 'nummer' ? 'text-align:center;' : ''
+      return `<td style="${align}height:${zeilenHoehe}mm">${esc(wert)}</td>`
+    }).join('')
+    return `<tr>${tds}</tr>`
+  }).join('')
+
+  const kopfBlock = `<div class="kopf"><h1>${esc(opt.titel || 'Liste')}</h1>${opt.untertitel ? `<div class="sub">${esc(opt.untertitel)}</div>` : ''}</div>`
+
+  return `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff;font-size:11px}
+    @page{size:A4 ${quer ? 'landscape' : 'portrait'};margin:1.2cm}
+    .kopf{margin-bottom:10px}
+    .kopf h1{font-size:17px;font-weight:700}
+    .kopf .sub{font-size:10px;color:#6b7280;margin-top:2px}
+    table{width:100%;border-collapse:collapse;table-layout:auto}
+    th,td{border:1px solid #9ca3af;padding:2px 5px;vertical-align:top}
+    th{background:#f3f4f6;font-size:10px;font-weight:700;text-align:left;height:auto}
+    td{font-size:11px}
+    tr{page-break-inside:avoid}
+    thead{display:table-header-group}
+  </style></head><body>${kopfBlock}<table><thead><tr>${kopf}</tr></thead><tbody>${koerper}</tbody></table></body></html>`
+}
+
+async function klassenlistePdf(_db, deps, opt) {
+  const filePath = await deps.dialog.saveFile({
+    defaultName: `${deps.dateiTeil(opt.dateiName || opt.titel || 'Klassenliste')}_${deps.exportDatum()}.pdf`,
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+  })
+  if (!filePath) return false
+  const buf = await deps.pdf.fromHtml(baueKlassenlisteHtml(opt), { landscape: opt.orientierung === 'quer' })
+  deps.fs.write(filePath, buf)
+  return true
+}
+
 module.exports = {
   toJson, fachOds, planungPdf, stundenplanPdf, jahresplanungOdt, fachPlanungDocx,
   allSchuelerOds, allSchuelerPdf, archivPdf, archivOds, baueNotenUebersichtHtml,
+  klassenlistePdf, baueKlassenlisteHtml,
 }

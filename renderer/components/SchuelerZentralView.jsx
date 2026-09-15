@@ -11,6 +11,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import useStore from '../store/useStore'
 import SchuelerAvatar from './SchuelerAvatar'
 import AvatarEditorModal from './AvatarEditorModal'
+import KlassenlistenGeneratorModal from './KlassenlistenGeneratorModal'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { parseSchuelerDatei } from '../utils/schuelerImport'
 
@@ -124,6 +125,8 @@ export default function SchuelerZentralView() {
   const [suche, setSuche] = useState('')
   const [bearbeiten, setBearbeiten] = useState(null) // { schueler } – Bearbeiten-Modal
   const [neu, setNeu] = useState(false) // Neu-Anlegen-Modal
+  const [listeOffen, setListeOffen] = useState(false) // Klassenlisten-Generator
+  const mobil = useIsMobile()
   const [spaltenOffen, setSpaltenOffen] = useState(false) // Spalten-Auswahl (Popover)
   const [klasseFilter, setKlasseFilter] = useState('') // '' = alle Klassen, sonst klasse_id (String)
   const [merkmalFilter, setMerkmalFilter] = useState(() => ({ lernschwaeche: false, legasthenie: false, spf: false }))
@@ -196,6 +199,11 @@ export default function SchuelerZentralView() {
         <button type="button" onClick={() => setNeu(true)}
           className="text-xs font-semibold px-2.5 h-7 rounded-lg bg-coral-600 text-white hover:bg-coral-700 transition-colors"
           title="Neue:n Schüler:in anlegen">+ Hinzufügen</button>
+        {!mobil && (
+          <button type="button" onClick={() => setListeOffen(true)}
+            className="text-xs font-semibold px-2.5 h-7 rounded-lg border border-paper-300 dark:border-ink-700 text-ink-600 dark:text-paper-200 hover:bg-paper-100 dark:hover:bg-ink-800 transition-colors flex items-center gap-1"
+            title="Druckbare Klassenliste als PDF erstellen"><span aria-hidden>📋</span> Klassenliste</button>
+        )}
         {/* Filter: Merkmale */}
         <div className="flex items-center gap-1 ml-auto">
           {MERKMALE.map(m => (
@@ -310,6 +318,17 @@ export default function SchuelerZentralView() {
 
       {/* Neu-Anlegen-Modal (nur hier – Anlegen neuer Schüler:innen ist zentral) */}
       {neu && <SchuelerNeuModal klassen={echteKlassen} onClose={() => setNeu(false)} />}
+
+      {/* Klassenlisten-Generator (druckbares PDF) */}
+      {listeOffen && (
+        <KlassenlistenGeneratorModal
+          alleSchueler={alleSchueler}
+          klassen={echteKlassen}
+          aktuellesSchuljahr={aktuellesSchuljahr}
+          initialKlasseId={klasseFilter}
+          onClose={() => setListeOffen(false)}
+        />
+      )}
     </div>
   )
 }
