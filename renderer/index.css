@@ -228,6 +228,12 @@
   .modal-box {
     @apply bg-white rounded-3xl w-full max-w-md p-6;
     @apply border border-paper-200 shadow-pop;
+    /* Nie höher als der Viewport (mit etwas Rand); bei Bedarf scrollt der Inhalt, damit
+       die Buttons am Ende immer erreichbar bleiben. Modals mit eigenem 3-Zonen-Flex-Layout
+       (fixer Kopf/Fuß, scrollender Mittelteil) setzen ihre eigene max-h-Utility und bleiben
+       davon unberührt; ihr innerer Scrollbereich greift weiterhin. */
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
     animation: popIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
 
