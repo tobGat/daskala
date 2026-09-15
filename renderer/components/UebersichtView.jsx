@@ -8,6 +8,12 @@ import TerminePanel from './TerminePanel'
 import Stundenplan from './Stundenplan'
 import { useIsMobile } from '../hooks/useIsMobile'
 
+// Lokales Datum (YYYY-MM-DD) – bewusst NICHT toISOString (UTC), sonst zeigt der Zähler nahe Mitternacht
+// einen Tag daneben. Gleiche Logik wie im TerminePanel.
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function Begruessung() {
   const h = new Date().getHours()
   if (h < 5)  return { text: 'Noch wach?',           emoji: '🌙' }
@@ -95,9 +101,9 @@ export default function UebersichtView() {
   const begruessung = useMemo(() => Begruessung(), [])
 
   const offeneTodos = (todos ?? []).filter(t => !t.erledigt).length
-  const heute = new Date().toISOString().slice(0, 10)
-  const inSiebenTagen = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
-  const naechsteTermine = (termine ?? []).filter(t => t.datum >= heute && t.datum <= inSiebenTagen).length
+  // Kommende Termine (ab heute) – analog zum ToDos-Zähler (alle offenen) und zur „kommend"-Liste im Panel.
+  const heute = localDateStr()
+  const kommendeTermine = (termine ?? []).filter(t => t.datum >= heute).length
 
   // ── Mobile Ansicht: nur der Stundenplan (Tagesansicht). ToDos/Termine laufen
   //    über die Kopfzeilen-Symbole; ein Badge-Tap öffnet die passende Vollbild-Liste. ──
@@ -134,7 +140,7 @@ export default function UebersichtView() {
 
           <div className="flex items-center gap-2 flex-wrap">
             <StatPill label={offeneTodos === 1 ? 'ToDo' : 'ToDos'}         value={offeneTodos}     emoji="✏️" accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300" />
-            <StatPill label={naechsteTermine === 1 ? 'Termin' : 'Termine'} value={naechsteTermine} emoji="📅" accent="bg-mint-50 text-mint-700 dark:bg-mint-900/30 dark:text-mint-300" />
+            <StatPill label={kommendeTermine === 1 ? 'Termin' : 'Termine'} value={kommendeTermine} emoji="📅" accent="bg-mint-50 text-mint-700 dark:bg-mint-900/30 dark:text-mint-300" />
           </div>
         </div>
       </div>
