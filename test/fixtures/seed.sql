@@ -153,6 +153,17 @@ INSERT INTO todos (id, titel, erledigt, klasse_id, fach_id, faelligkeit, erinner
   (1, 'Schularbeiten korrigieren', 0, 1, 1, '2025-10-16', '2025-10-15', 1),
   (2, 'Materialien kopieren',      0, 1, 1, '2025-10-10', NULL,         2);
 
+-- ── Notizbuch (Ordner + Notizen, pro Schuljahr) ─────────────────────────────
+-- Feste Zeitstempel, damit die read-channels-Snapshots deterministisch sind (die Read-Ergebnisse
+-- werden – anders als Tabellen-Snapshots – nicht normalisiert). aktualisiert_am steuert die Sortierung.
+INSERT INTO notiz_ordner (id, schuljahr_id, name, farbe, reihenfolge, erstellt_am) VALUES
+  (1, 1, 'Ideen',    '#fb6936', 1, '2025-09-01 08:00:00'),
+  (2, 1, 'Projekte', '#0ea5e9', 2, '2025-09-01 08:05:00');
+INSERT INTO notiz_eintraege (id, schuljahr_id, ordner_id, klasse_id, titel, text, reihenfolge, erstellt_am, aktualisiert_am) VALUES
+  (1, 1, 1,    NULL, 'Erste Idee',   'Ausflug planen',     0, '2025-09-02 09:00:00', '2025-09-03 10:00:00'),
+  (2, 1, NULL, 1,    'Klassennotiz', 'Sitzordnung ändern', 0, '2025-09-02 09:10:00', '2025-09-05 10:00:00'),
+  (3, 1, NULL, NULL, 'Allgemein',    'Sonstiges',          0, '2025-09-02 09:20:00', '2025-09-04 10:00:00');
+
 -- ── Benutzerdefinierte Ferien ───────────────────────────────────────────────
 INSERT INTO custom_ferien (id, schuljahr_id, name, von, bis) VALUES
   (1, 1, 'Schulautonom frei', '2025-11-03', '2025-11-03');

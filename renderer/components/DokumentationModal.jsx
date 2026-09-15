@@ -207,6 +207,16 @@ const DOKU = [
     ],
   },
   {
+    id: 'notizen', titel: 'Notizen', bloecke: [
+      'Der Button „📝 Notizen" (oben neben „Schüler:innen") öffnet einen zentralen Notizbereich – aufgebaut wie eine kleine Notiz-App in drei Spalten: links die Ordner, in der Mitte die Notizen des gewählten Ordners, rechts der Editor.',
+      { h: 'Ordner' },
+      'Für jede Klasse gibt es automatisch einen Ordner; zusätzlich legst du unter „Eigene Ordner" über „＋" beliebige weitere Ordner an (mit Name und Farbe). Eigene Ordner lassen sich umbenennen (✎) und löschen (✕, mit Bestätigung samt Anzahl der enthaltenen Notizen). Notizen ohne Ordner sammeln sich unter „Allgemein". Der ganze Bereich ist an das Schuljahr gebunden – beim Schuljahrwechsel siehst du die Notizen des jeweiligen Jahres.',
+      { h: 'Notizen schreiben' },
+      'Mit „＋ Notiz" legst du im aktuellen Ordner eine neue Notiz an. Jede Notiz hat einen (optionalen) Titel und einen Textkörper; deine Eingaben werden automatisch gespeichert (ein „zuletzt geändert"-Zeitstempel zeigt es). Über das „Ordner"-Auswahlfeld oben im Editor verschiebst du eine Notiz in einen anderen Ordner (Klasse, eigener Ordner oder „Allgemein"). Löschen erfolgt über das ✕ an der Notiz bzw. „🗑 Löschen" im Editor.',
+      { tipp: 'Löschst du eine Klasse, bleiben ihre Notizen erhalten und wandern nach „Allgemein" – es geht nichts verloren.' },
+    ],
+  },
+  {
     id: 'stundenplan', titel: 'Stundenplan & Ferien', bloecke: [
       'Der Stundenplan ist im Dashboard sichtbar. Über „Bearbeiten" pflegst du die Stunden und – kompakt im selben Screen – die Stunden-/Pausenzeiten.',
       'Im Bearbeitungsmodus verschiebst du Stunden per Drag & Drop in einen anderen Slot; ziehst du eine Stunde auf einen bereits belegten Slot, werden die beiden getauscht. Eine hinterlegte Wochen-Planung wandert dabei mit.',

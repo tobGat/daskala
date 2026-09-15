@@ -23,6 +23,7 @@ const schuelerDomain = require('./core/domain/schueler')
 const kompetenzenDomain = require('./core/domain/kompetenzen')
 const kompetenzKatalog = require('./core/domain/kompetenzKatalog')
 const kompetenzErhebungenDomain = require('./core/domain/kompetenzErhebungen')
+const notizbuchDomain = require('./core/domain/notizbuch')
 const spaltenDomain = require('./core/domain/spalten')
 const eintraegeDomain = require('./core/domain/eintraege')
 const zeugnisnotenDomain = require('./core/domain/zeugnisnoten')
@@ -1028,6 +1029,16 @@ function registerIPC() {
   ipcMain.handle('termine:create', (_, data) => termineDomain.create(dbPort, data))
   ipcMain.handle('termine:update', (_, id, data) => termineDomain.update(dbPort, id, data))
   ipcMain.handle('termine:delete', (_, id) => termineDomain.remove(dbPort, id))
+
+  // ─── Notizbuch (zentrale Notizen mit Ordnern) ─────────────────────────────────
+  ipcMain.handle('notizbuch:ordnerGetAll', (_, schuljahrId) => notizbuchDomain.ordnerGetAll(dbPort, schuljahrId))
+  ipcMain.handle('notizbuch:ordnerCreate', (_, data) => notizbuchDomain.ordnerCreate(dbPort, data))
+  ipcMain.handle('notizbuch:ordnerUpdate', (_, id, data) => notizbuchDomain.ordnerUpdate(dbPort, id, data))
+  ipcMain.handle('notizbuch:ordnerDelete', (_, id) => notizbuchDomain.ordnerRemove(dbPort, id))
+  ipcMain.handle('notizbuch:notizGetAll', (_, schuljahrId) => notizbuchDomain.notizGetAll(dbPort, schuljahrId))
+  ipcMain.handle('notizbuch:notizCreate', (_, data) => notizbuchDomain.notizCreate(dbPort, data))
+  ipcMain.handle('notizbuch:notizUpdate', (_, id, data) => notizbuchDomain.notizUpdate(dbPort, id, data))
+  ipcMain.handle('notizbuch:notizDelete', (_, id) => notizbuchDomain.notizRemove(dbPort, id))
 
   // ─── Jahresplanung ────────────────────────────────────────────────────────────
   ipcMain.handle('jahresplanung:getAll', (_, fachId) => jahresplanungDomain.getAll(dbPort, fachId))

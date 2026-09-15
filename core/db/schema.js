@@ -344,6 +344,29 @@ const TABLE_DDL = [
       UNIQUE(erhebung_id, bereich_idx, teilkompetenz_idx, item_idx),
       FOREIGN KEY (erhebung_id) REFERENCES kompetenz_erhebungen(id) ON DELETE CASCADE
     )`,
+  `CREATE TABLE IF NOT EXISTS notiz_ordner (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schuljahr_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      farbe TEXT,
+      reihenfolge INTEGER DEFAULT 0,
+      erstellt_am TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
+    )`,
+  `CREATE TABLE IF NOT EXISTS notiz_eintraege (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schuljahr_id INTEGER NOT NULL,
+      ordner_id INTEGER,
+      klasse_id INTEGER,
+      titel TEXT,
+      text TEXT DEFAULT '',
+      reihenfolge INTEGER DEFAULT 0,
+      erstellt_am TEXT DEFAULT (datetime('now')),
+      aktualisiert_am TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE,
+      FOREIGN KEY (ordner_id) REFERENCES notiz_ordner(id) ON DELETE CASCADE,
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE SET NULL
+    )`,
   `CREATE TABLE IF NOT EXISTS supplierstunden (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       woche_datum TEXT NOT NULL,
@@ -514,6 +537,10 @@ const INDEX_DDL = [
       ON kompetenz_erhebungen (schueler_id, fach_id, datum)`,
   `CREATE INDEX IF NOT EXISTS idx_komp_erhebung_werte_erhebung
       ON kompetenz_erhebung_werte (erhebung_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_notiz_ordner_schuljahr
+      ON notiz_ordner (schuljahr_id, reihenfolge)`,
+  `CREATE INDEX IF NOT EXISTS idx_notiz_eintraege_lookup
+      ON notiz_eintraege (schuljahr_id, klasse_id, ordner_id)`,
   // UUID-Weiche (Phase 2.4): geräteübergreifend eindeutige Identität je Entität
   // für ein späteres Zusammenführen. UNIQUE-Index; mehrere NULL sind in SQLite
   // erlaubt, daher stören noch nicht befüllte Zeilen die Eindeutigkeit nicht.
@@ -1012,6 +1039,38 @@ function applySchema(db, deps) {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_komp_erhebungen_lookup ON kompetenz_erhebungen (schueler_id, fach_id, datum)`)
   db.exec(`CREATE INDEX IF NOT EXISTS idx_komp_erhebung_werte_erhebung ON kompetenz_erhebung_werte (erhebung_id)`)
   spalteErgaenzen('kompetenz_erhebungen', 'schulzweig', 'TEXT') // additiv: Standard (MS) / AHS ab Stufe 6
+
+  // Zentrale Notizen mit Ordnern (Notizbuch) – pro Schuljahr. Klassen-Ordner sind virtuell (klasse_id),
+  // eigene Ordner sind Zeilen in notiz_ordner; Notiz ohne Ordner = „Allgemein".
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notiz_ordner (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schuljahr_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      farbe TEXT,
+      reihenfolge INTEGER DEFAULT 0,
+      erstellt_am TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
+    )
+  `)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notiz_eintraege (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schuljahr_id INTEGER NOT NULL,
+      ordner_id INTEGER,
+      klasse_id INTEGER,
+      titel TEXT,
+      text TEXT DEFAULT '',
+      reihenfolge INTEGER DEFAULT 0,
+      erstellt_am TEXT DEFAULT (datetime('now')),
+      aktualisiert_am TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE,
+      FOREIGN KEY (ordner_id) REFERENCES notiz_ordner(id) ON DELETE CASCADE,
+      FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE SET NULL
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_notiz_ordner_schuljahr ON notiz_ordner (schuljahr_id, reihenfolge)`)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_notiz_eintraege_lookup ON notiz_eintraege (schuljahr_id, klasse_id, ordner_id)`)
 
   // Supplierstunden
   db.exec(`

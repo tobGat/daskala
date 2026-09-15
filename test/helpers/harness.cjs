@@ -90,7 +90,7 @@ async function createHarness({ seedSql = null } = {}) {
   // Liest den Zustand der angegebenen Tabellen deterministisch (für Schreib-Kanal-
   // Snapshots). Zeitstempel-Spalten werden auf '<TS>' normalisiert, damit
   // datetime('now')-Defaults die Snapshots nicht unbestimmt machen.
-  const TS_SPALTEN = /^(zeitstempel|aktualisiert|erstellt_am|reagiert_am|erledigt_am)$/
+  const TS_SPALTEN = /^(zeitstempel|aktualisiert(_am)?|erstellt_am|reagiert_am|erledigt_am)$/
   function snapshotTables(namen) {
     const rdb = new RealDatabase(dbPath, { readonly: true })
     try {

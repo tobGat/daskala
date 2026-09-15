@@ -840,6 +840,59 @@
       "klasse_name": "1A"
     }
   ],
+  "notizbuch:ordnerGetAll": [
+    {
+      "id": 1,
+      "schuljahr_id": 1,
+      "name": "Ideen",
+      "farbe": "#fb6936",
+      "reihenfolge": 1,
+      "erstellt_am": "2025-09-01 08:00:00"
+    },
+    {
+      "id": 2,
+      "schuljahr_id": 1,
+      "name": "Projekte",
+      "farbe": "#0ea5e9",
+      "reihenfolge": 2,
+      "erstellt_am": "2025-09-01 08:05:00"
+    }
+  ],
+  "notizbuch:notizGetAll": [
+    {
+      "id": 2,
+      "schuljahr_id": 1,
+      "ordner_id": null,
+      "klasse_id": 1,
+      "titel": "Klassennotiz",
+      "text": "Sitzordnung ändern",
+      "reihenfolge": 0,
+      "erstellt_am": "2025-09-02 09:10:00",
+      "aktualisiert_am": "2025-09-05 10:00:00"
+    },
+    {
+      "id": 3,
+      "schuljahr_id": 1,
+      "ordner_id": null,
+      "klasse_id": null,
+      "titel": "Allgemein",
+      "text": "Sonstiges",
+      "reihenfolge": 0,
+      "erstellt_am": "2025-09-02 09:20:00",
+      "aktualisiert_am": "2025-09-04 10:00:00"
+    },
+    {
+      "id": 1,
+      "schuljahr_id": 1,
+      "ordner_id": 1,
+      "klasse_id": null,
+      "titel": "Erste Idee",
+      "text": "Ausflug planen",
+      "reihenfolge": 0,
+      "erstellt_am": "2025-09-02 09:00:00",
+      "aktualisiert_am": "2025-09-03 10:00:00"
+    }
+  ],
   "customFerien:getAll": [
     {
       "id": 1,

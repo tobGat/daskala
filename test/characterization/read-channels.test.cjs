@@ -46,6 +46,8 @@ const CASES = [
   { channel: 'stundenplan:getAll',      args: [] },
   { channel: 'todos:getAll',            args: [1] },      // Schuljahr 1
   { channel: 'termine:getAll',          args: [1] },      // Schuljahr 1
+  { channel: 'notizbuch:ordnerGetAll',  args: [1] },      // Schuljahr 1
+  { channel: 'notizbuch:notizGetAll',   args: [1] },      // Schuljahr 1
   { channel: 'customFerien:getAll',     args: [1] },      // Schuljahr 1
   { channel: 'jahresplanung:getAll',    args: [1] },      // Fach 1
   // Weitere Kern-Reads
