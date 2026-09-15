@@ -1006,6 +1006,7 @@ function registerIPC() {
   ipcMain.handle('export:fachPlanungDocx', (_, fachId, fachName, klasseName, wochenDaten) => exportService.fachPlanungDocx(dbPort, exDeps, fachId, fachName, klasseName, wochenDaten))
   ipcMain.handle('export:allSchuelerOds', () => exportService.allSchuelerOds(dbPort, exDeps))
   ipcMain.handle('export:allSchuelerPdf', () => exportService.allSchuelerPdf(dbPort, exDeps))
+  ipcMain.handle('export:klassenliste', (_, opt) => exportService.klassenlistePdf(dbPort, exDeps, opt))
   ipcMain.handle('export:archivPdf', (_, schuljahrId) => exportService.archivPdf(dbPort, exDeps, schuljahrId))
   ipcMain.handle('export:archivOds', (_, schuljahrId) => exportService.archivOds(dbPort, exDeps, schuljahrId))
 

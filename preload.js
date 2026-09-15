@@ -321,6 +321,7 @@ const api = {
     stundenplanPdf: (titelZusatz) => invoke('export:stundenplanPdf', titelZusatz),
     allSchuelerOds: () => invoke('export:allSchuelerOds'),
     allSchuelerPdf: () => invoke('export:allSchuelerPdf'),
+    klassenliste: (opt) => invoke('export:klassenliste', opt),
     fachPlanungDocx: (fachId, fachName, klasseName, wochenDaten) => invoke('export:fachPlanungDocx', fachId, fachName, klasseName, wochenDaten),
     jahresplanungOdt: (fachId) => invoke('export:jahresplanungOdt', fachId),
     archivPdf: (schuljahrId) => invoke('export:archivPdf', schuljahrId),

@@ -24,7 +24,7 @@ const EXCLUDED = {
   'export:stundenplanPdf': 'export', 'export:jahresplanungOdt': 'export',
   'export:fachPlanungDocx': 'export', 'export:allSchuelerOds': 'export',
   'export:allSchuelerPdf': 'export', 'export:archivPdf': 'export', 'export:archivOds': 'export',
-  'schueler:exportProfilPDF': 'export',
+  'export:klassenliste': 'export', 'schueler:exportProfilPDF': 'export',
   // Materialien: Dateisystem/Explorer
   'materialien:waehleRoot': 'fs', 'materialien:list': 'fs', 'materialien:dateienHinzufuegen': 'fs',
   'materialien:linkHinzufuegen': 'fs', 'materialien:metaSetzen': 'fs', 'materialien:entfernen': 'fs',

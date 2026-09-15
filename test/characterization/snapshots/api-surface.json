@@ -32,6 +32,7 @@
   "export.fachOds",
   "export.fachPlanungDocx",
   "export.jahresplanungOdt",
+  "export.klassenliste",
   "export.planungPdf",
   "export.stundenplanPdf",
   "export.toJson",
