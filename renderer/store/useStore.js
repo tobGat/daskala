@@ -503,6 +503,12 @@ const useStore = create((set, get) => ({
     await get().aktualisiereSchuelerAnsichten()
   },
 
+  // Person global entfernen (Soft-Delete: aktiv=0 in allen Klassen; Aufzeichnungen bleiben erhalten).
+  loescheSchueler: async (schuelerId) => {
+    await window.api.schueler.delete(schuelerId)
+    await get().aktualisiereSchuelerAnsichten()
+  },
+
   // Nach einer Schüler:innen-Änderung alle betroffenen Ansichten neu laden (zentral + aktive Klasse/Fach).
   aktualisiereSchuelerAnsichten: async () => {
     await get().ladeAlleSchueler()
