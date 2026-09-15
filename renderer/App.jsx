@@ -17,6 +17,7 @@ import KlassenplanungView from './components/KlassenplanungView'
 import KompetenzrasterView from './components/KompetenzrasterView'
 import UebersichtView from './components/UebersichtView'
 import SchuelerZentralView from './components/SchuelerZentralView'
+import NotizenView from './components/NotizenView'
 import KVView from './components/KVView'
 import DokumentationModal from './components/DokumentationModal'
 import SperreOverlay from './components/SperreOverlay'
@@ -188,6 +189,7 @@ export default function App() {
       <div className="flex-1 overflow-hidden flex flex-col">
         {!vorlagenModus && currentView === 'stundenplan' && <UebersichtView />}
         {!vorlagenModus && currentView === 'schueler' && <SchuelerZentralView />}
+        {!vorlagenModus && !mobil && currentView === 'notizen' && <NotizenView />}
         {!vorlagenModus && mobil && currentView === 'planer' && <MobilePlaner />}
         {/* Mobil: klassenbezogene Planung im eigenen „Planung"-Tab (Wrapper mit Umschalter). */}
         {!vorlagenModus && mobil && planungAktiv && ['jahresplanung', 'klassenplanung'].includes(currentView) && <MobilePlanung />}

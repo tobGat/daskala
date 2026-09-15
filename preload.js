@@ -362,6 +362,17 @@ const api = {
     delete:  (id)            => invoke('termine:delete', id),
   },
 
+  notizbuch: {
+    ordnerGetAll: (schuljahrId) => invoke('notizbuch:ordnerGetAll', schuljahrId),
+    ordnerCreate: (data)        => invoke('notizbuch:ordnerCreate', data),
+    ordnerUpdate: (id, data)    => invoke('notizbuch:ordnerUpdate', id, data),
+    ordnerDelete: (id)          => invoke('notizbuch:ordnerDelete', id),
+    notizGetAll:  (schuljahrId) => invoke('notizbuch:notizGetAll', schuljahrId),
+    notizCreate:  (data)        => invoke('notizbuch:notizCreate', data),
+    notizUpdate:  (id, data)    => invoke('notizbuch:notizUpdate', id, data),
+    notizDelete:  (id)          => invoke('notizbuch:notizDelete', id),
+  },
+
   jahresplanung: {
     getAll:            (fachId)                => invoke('jahresplanung:getAll', fachId),
     create:            (data)                  => invoke('jahresplanung:create', data),

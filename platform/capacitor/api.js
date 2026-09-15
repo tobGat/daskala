@@ -27,6 +27,7 @@ import kompetenzErhebungenDomain from '../../core/domain/kompetenzErhebungen'
 import gewichtungDomain from '../../core/domain/gewichtung'
 import todosDomain from '../../core/domain/todos'
 import termineDomain from '../../core/domain/termine'
+import notizbuchDomain from '../../core/domain/notizbuch'
 import customFerienDomain from '../../core/domain/customFerien'
 import stundenzeitenDomain from '../../core/domain/stundenzeiten'
 import stundenplanDomain from '../../core/domain/stundenplan'
@@ -195,6 +196,16 @@ export function createMobileApi(dbPort) {
       create: (d) => termineDomain.create(dbPort, d),
       update: (id, d) => termineDomain.update(dbPort, id, d),
       delete: (id) => termineDomain.remove(dbPort, id),
+    }),
+    notizbuch: dp('notizbuch', {
+      ordnerGetAll: (sjId) => notizbuchDomain.ordnerGetAll(dbPort, sjId),
+      ordnerCreate: (d) => notizbuchDomain.ordnerCreate(dbPort, d),
+      ordnerUpdate: (id, d) => notizbuchDomain.ordnerUpdate(dbPort, id, d),
+      ordnerDelete: (id) => notizbuchDomain.ordnerRemove(dbPort, id),
+      notizGetAll: (sjId) => notizbuchDomain.notizGetAll(dbPort, sjId),
+      notizCreate: (d) => notizbuchDomain.notizCreate(dbPort, d),
+      notizUpdate: (id, d) => notizbuchDomain.notizUpdate(dbPort, id, d),
+      notizDelete: (id) => notizbuchDomain.notizRemove(dbPort, id),
     }),
     customFerien: dp('customFerien', {
       getAll: (sjId) => customFerienDomain.getAll(dbPort, sjId),

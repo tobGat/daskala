@@ -34,6 +34,13 @@ const CASES = [
   { name: 'termine:update', channel: 'termine:update', args: [1, { titel: 'Elternabend (verschoben)', datum: '2025-10-21', uhrzeit: '18:30', bisUhrzeit: '20:00', notiz: 'Aula', klasseId: 1, stundeId: null }], tables: ['termine'] },
   { name: 'todos:create', channel: 'todos:create', args: [{ titel: 'Kopien vorbereiten', klasseId: 1, fachId: 1, faelligkeit: '2025-11-01', erinnerung: null }], tables: ['todos'] },
   { name: 'todos:toggleErledigt', channel: 'todos:toggleErledigt', args: [1], tables: ['todos'] },
+  // Notizbuch (zentrale Notizen mit Ordnern)
+  { name: 'notizbuch:ordnerCreate', channel: 'notizbuch:ordnerCreate', args: [{ schuljahrId: 1, name: 'Klausuren', farbe: '#22c55e' }], tables: ['notiz_ordner'] },
+  { name: 'notizbuch:ordnerUpdate', channel: 'notizbuch:ordnerUpdate', args: [2, { name: 'Projekte 2025', farbe: '#a855f7' }], tables: ['notiz_ordner'] },
+  { name: 'notizbuch:ordnerDelete (Kaskade)', channel: 'notizbuch:ordnerDelete', args: [1], tables: ['notiz_ordner', 'notiz_eintraege'] },
+  { name: 'notizbuch:notizCreate', channel: 'notizbuch:notizCreate', args: [{ schuljahrId: 1, klasseId: 1, ordnerId: null, titel: 'Elternsprechtag', text: 'Termine sammeln' }], tables: ['notiz_eintraege'] },
+  { name: 'notizbuch:notizUpdate (verschieben)', channel: 'notizbuch:notizUpdate', args: [2, { titel: 'Klassennotiz', text: 'aktualisiert', klasseId: null, ordnerId: 2 }], tables: ['notiz_eintraege'] },
+  { name: 'notizbuch:notizDelete', channel: 'notizbuch:notizDelete', args: [3], tables: ['notiz_eintraege'] },
   { name: 'stundenplan:create', channel: 'stundenplan:create', args: [{ wochentag: 4, stundeId: 2, fachId: 1, wochenIntervall: 1 }], tables: ['stundenplan'] },
   // Sonderfall: Ziel-Slot belegt → Tausch der beiden Stunden (transaktional).
   { name: 'stundenplan:verschieben (Tausch)', channel: 'stundenplan:verschieben', args: [1, 1, 2], tables: ['stundenplan'] },

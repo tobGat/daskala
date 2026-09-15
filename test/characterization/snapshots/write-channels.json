@@ -872,6 +872,219 @@
       ]
     }
   },
+  "notizbuch:ordnerCreate": {
+    "ret": 3,
+    "state": {
+      "notiz_ordner": [
+        {
+          "id": 1,
+          "schuljahr_id": 1,
+          "name": "Ideen",
+          "farbe": "#fb6936",
+          "reihenfolge": 1,
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "schuljahr_id": 1,
+          "name": "Projekte",
+          "farbe": "#0ea5e9",
+          "reihenfolge": 2,
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 3,
+          "schuljahr_id": 1,
+          "name": "Klausuren",
+          "farbe": "#22c55e",
+          "reihenfolge": 3,
+          "erstellt_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "notizbuch:ordnerUpdate": {
+    "ret": true,
+    "state": {
+      "notiz_ordner": [
+        {
+          "id": 1,
+          "schuljahr_id": 1,
+          "name": "Ideen",
+          "farbe": "#fb6936",
+          "reihenfolge": 1,
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "schuljahr_id": 1,
+          "name": "Projekte 2025",
+          "farbe": "#a855f7",
+          "reihenfolge": 2,
+          "erstellt_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "notizbuch:ordnerDelete (Kaskade)": {
+    "ret": true,
+    "state": {
+      "notiz_ordner": [
+        {
+          "id": 2,
+          "schuljahr_id": 1,
+          "name": "Projekte",
+          "farbe": "#0ea5e9",
+          "reihenfolge": 2,
+          "erstellt_am": "<TS>"
+        }
+      ],
+      "notiz_eintraege": [
+        {
+          "id": 2,
+          "schuljahr_id": 1,
+          "ordner_id": null,
+          "klasse_id": 1,
+          "titel": "Klassennotiz",
+          "text": "Sitzordnung ändern",
+          "reihenfolge": 0,
+          "erstellt_am": "<TS>",
+          "aktualisiert_am": "<TS>"
+        },
+        {
+          "id": 3,
+          "schuljahr_id": 1,
+          "ordner_id": null,
+          "klasse_id": null,
+          "titel": "Allgemein",
+          "text": "Sonstiges",
+          "reihenfolge": 0,
+          "erstellt_am": "<TS>",
+          "aktualisiert_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "notizbuch:notizCreate": {
+    "ret": 4,
+    "state": {
+      "notiz_eintraege": [
+        {
+          "id": 1,
+          "schuljahr_id": 1,
+          "ordner_id": 1,
+          "klasse_id": null,
+          "titel": "Erste Idee",
+          "text": "Ausflug planen",
+          "reihenfolge": 0,
+          "erstellt_am": "<TS>",
+          "aktualisiert_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "schuljahr_id": 1,
+          "ordner_id": null,
+          "klasse_id": 1,
+          "titel": "Klassennotiz",
+          "text": "Sitzordnung ändern",
+          "reihenfolge": 0,
+          "erstellt_am": "<TS>",
+          "aktualisiert_am": "<TS>"
+        },
+        {
+          "id": 3,
+          "schuljahr_id": 1,
+          "ordner_id": null,
+          "klasse_id": null,
+          "titel": "Allgemein",
+          "text": "Sonstiges",
+          "reihenfolge": 0,
+          "erstellt_am": "<TS>",
+          "aktualisiert_am": "<TS>"
+        },
+        {
+          "id": 4,
+          "schuljahr_id": 1,
+          "ordner_id": null,
+          "klasse_id": 1,
+          "titel": "Elternsprechtag",
+          "text": "Termine sammeln",
+          "reihenfolge": 0,
+          "erstellt_am": "<TS>",
+          "aktualisiert_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "notizbuch:notizUpdate (verschieben)": {
+    "ret": true,
+    "state": {
+      "notiz_eintraege": [
+        {
+          "id": 1,
+          "schuljahr_id": 1,
+          "ordner_id": 1,
+          "klasse_id": null,
+          "titel": "Erste Idee",
+          "text": "Ausflug planen",
+          "reihenfolge": 0,
+          "erstellt_am": "<TS>",
+          "aktualisiert_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "schuljahr_id": 1,
+          "ordner_id": 2,
+          "klasse_id": null,
+          "titel": "Klassennotiz",
+          "text": "aktualisiert",
+          "reihenfolge": 0,
+          "erstellt_am": "<TS>",
+          "aktualisiert_am": "<TS>"
+        },
+        {
+          "id": 3,
+          "schuljahr_id": 1,
+          "ordner_id": null,
+          "klasse_id": null,
+          "titel": "Allgemein",
+          "text": "Sonstiges",
+          "reihenfolge": 0,
+          "erstellt_am": "<TS>",
+          "aktualisiert_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "notizbuch:notizDelete": {
+    "ret": true,
+    "state": {
+      "notiz_eintraege": [
+        {
+          "id": 1,
+          "schuljahr_id": 1,
+          "ordner_id": 1,
+          "klasse_id": null,
+          "titel": "Erste Idee",
+          "text": "Ausflug planen",
+          "reihenfolge": 0,
+          "erstellt_am": "<TS>",
+          "aktualisiert_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "schuljahr_id": 1,
+          "ordner_id": null,
+          "klasse_id": 1,
+          "titel": "Klassennotiz",
+          "text": "Sitzordnung ändern",
+          "reihenfolge": 0,
+          "erstellt_am": "<TS>",
+          "aktualisiert_am": "<TS>"
+        }
+      ]
+    }
+  },
   "stundenplan:create": {
     "ret": 5,
     "state": {
