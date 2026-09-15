@@ -8,6 +8,16 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.8.0',
+    datum: '2026-09-15',
+    punkte: [
+      'Klassenlisten-Generator (neu): In der Schüler:innen-Verwaltung erzeugt der Button „📋 Klassenliste" druckbare Listen als PDF. Wähle zwischen einer Klassenliste mit Namen (du hakst an, welche Informationen als Spalten erscheinen – z. B. Nachname, Vorname, Geburtsdatum, Klasse, Telefon, Adresse, Merkmale …) oder einer leeren Liste mit blanko Zeilen zum Ausfüllen (Zeilenanzahl wählbar).',
+      'Klassenliste – Spalten zum Ausfüllen: Füge beliebig viele beschriftbare Leerspalten hinzu (Überschrift optional, leer lassen für ein blankes Kopffeld). Die Form wählst du je nach Zweck: „Quadratisch" für schmale Ankreuz-Kästchen oder „Breit" für Schreibfelder. Dazu optional eine Nr.-Spalte, Hoch- oder Querformat und die Zeilenhöhe (Normal/Groß). Die Klasse ist wählbar (oder „Alle Klassen").',
+      'Dashboard: Der Termine-Zähler oben zeigt jetzt alle kommenden Termine (ab heute) statt nur die der nächsten sieben Tage – so bleibt die Zahl aussagekräftig, auch wenn der nächste Termin weiter entfernt ist.',
+      'Fenster/Dialoge: Modale Fenster werden nie höher als der Bildschirm und lassen sich bei Bedarf scrollen – die Schaltflächen am unteren Rand bleiben dadurch immer erreichbar.',
+    ],
+  },
+  {
     version: '1.7.0',
     datum: '2026-09-08',
     punkte: [
