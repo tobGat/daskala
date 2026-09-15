@@ -8,6 +8,15 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.9.0',
+    datum: '2026-09-15',
+    punkte: [
+      'Notizen (neu): Ein zentraler Notizbereich mit Ordnern – erreichbar über „📝 Notizen" oben neben „Schüler:innen". Aufgebaut wie eine kleine Notiz-App in drei Spalten (Ordner · Notizliste · Editor). Für jede Klasse gibt es automatisch einen Ordner; zusätzlich legst du beliebige eigene Ordner (mit Name und Farbe) an. Notizen ohne Ordner sammeln sich unter „Allgemein".',
+      'Notizen – schreiben & organisieren: Jede Notiz hat einen optionalen Titel und einen Textkörper; Eingaben werden automatisch gespeichert. Notizen lassen sich per Ordner-Auswahl verschieben, umbenennen und löschen. Der Bereich ist an das Schuljahr gebunden. Hinweis: Löschst du eine Klasse, wandern ihre Notizen nach „Allgemein" – es geht nichts verloren.',
+      'Schüler:innen löschen: In der zentralen Schüler:innen-Verwaltung lässt sich eine Person jetzt über „✎ Bearbeiten" → „🗑 Löschen" (mit Rückfrage) entfernen. Sie verschwindet aus allen Klassen und Listen; die Aufzeichnungen bleiben erhalten.',
+    ],
+  },
+  {
     version: '1.8.0',
     datum: '2026-09-15',
     punkte: [
