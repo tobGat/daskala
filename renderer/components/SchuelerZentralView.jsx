@@ -121,7 +121,7 @@ function renderSpalte(c, s, onDetail) {
 }
 
 export default function SchuelerZentralView() {
-  const { alleSchueler, ladeAlleSchueler, klassen, aktuellesSchuljahr, setDetailSchueler, bearbeiteSchueler, zentraleSortierung: sort, setZentraleSortierung: setSort, zentraleSpalten, setZentraleSpalte, zentraleSpaltenReihenfolge, setZentraleSpaltenReihenfolge } = useStore()
+  const { alleSchueler, ladeAlleSchueler, klassen, aktuellesSchuljahr, setDetailSchueler, bearbeiteSchueler, loescheSchueler, zentraleSortierung: sort, setZentraleSortierung: setSort, zentraleSpalten, setZentraleSpalte, zentraleSpaltenReihenfolge, setZentraleSpaltenReihenfolge } = useStore()
   const [suche, setSuche] = useState('')
   const [bearbeiten, setBearbeiten] = useState(null) // { schueler } – Bearbeiten-Modal
   const [neu, setNeu] = useState(false) // Neu-Anlegen-Modal
@@ -313,6 +313,7 @@ export default function SchuelerZentralView() {
           klassen={echteKlassen}
           onClose={() => setBearbeiten(null)}
           onSpeichern={async (payload) => { await bearbeiteSchueler(bearbeiten.schueler.id, payload); setBearbeiten(null) }}
+          onLoeschen={async () => { await loescheSchueler(bearbeiten.schueler.id); setBearbeiten(null) }}
         />
       )}
 
@@ -449,7 +450,7 @@ function SchuelerNeuModal({ klassen, onClose }) {
 // Eigenes Modal zum Bearbeiten aller Details einer Person: Name, Merkmale, Klassen- und
 // Fächer-Zuordnung, SPF, Stammdaten – gebündelt mit EINEM „Speichern". Wird sowohl in der
 // zentralen Verwaltung als auch (per „Bearbeiten") im Klassen-Modal verwendet.
-export function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern }) {
+export function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeichern, onLoeschen }) {
   const [vorname, setVorname] = useState(schueler.vorname || '')
   const [nachname, setNachname] = useState(schueler.nachname || '')
   const [merkmale, setMerkmale] = useState(() => ({
@@ -467,6 +468,8 @@ export function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeicher
   const [avatarStand, setAvatarStand] = useState(schueler.avatar ?? null) // aktueller Avatar (Vorschau)
   const [stammdaten, setStammdaten] = useState(() => Object.fromEntries(STAMMDATEN.map(s => [s.feld, schueler[s.feld] || ''])))
   const [speichert, setSpeichert] = useState(false)
+  const [loeschAktiv, setLoeschAktiv] = useState(false) // 2-Schritt-Bestätigung fürs Löschen
+  const [loescht, setLoescht] = useState(false)
 
   // Fächer der AKTUELL gewählten Klassen laden (nicht nur der Ursprungsklassen), damit eine im
   // Klassen-Modal geänderte Zuordnung sofort ihre Auswahl-Fächer zeigt.
@@ -629,9 +632,29 @@ export function SchuelerBearbeitenModal({ schueler, klassen, onClose, onSpeicher
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-5">
-          <button className="btn-secondary" onClick={onClose} disabled={speichert}>Abbrechen</button>
-          <button className="btn-primary" onClick={speichern} disabled={!kannSpeichern}>{speichert ? 'Speichern…' : 'Speichern'}</button>
+        <div className="flex items-center justify-between gap-2 mt-5">
+          <div className="min-h-[1.75rem] flex items-center">
+            {onLoeschen && (loeschAktiv ? (
+              <span className="flex items-center gap-2 text-xs">
+                <span className="text-ink-600 dark:text-paper-300">Aus allen Klassen entfernen? <span className="text-ink-400">(Aufzeichnungen bleiben)</span></span>
+                <button className="text-red-600 hover:text-red-700 font-semibold disabled:opacity-50" disabled={loescht}
+                  onClick={async () => { setLoescht(true); try { await onLoeschen() } finally { setLoescht(false) } }}>
+                  {loescht ? 'Löscht…' : 'Ja, löschen'}
+                </button>
+                <button className="text-ink-400 hover:text-ink-600" onClick={() => setLoeschAktiv(false)} disabled={loescht}>Abbrechen</button>
+              </span>
+            ) : (
+              <button className="text-xs text-ink-500 hover:text-red-600 flex items-center gap-1 disabled:opacity-50" disabled={speichert}
+                onClick={() => setLoeschAktiv(true)}
+                title="Diese Person aus allen Klassen und Listen entfernen (Aufzeichnungen bleiben erhalten)">
+                🗑 Löschen
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button className="btn-secondary" onClick={onClose} disabled={speichert || loescht}>Abbrechen</button>
+            <button className="btn-primary" onClick={speichern} disabled={!kannSpeichern || loescht}>{speichert ? 'Speichern…' : 'Speichern'}</button>
+          </div>
         </div>
       </div>
     </div>
