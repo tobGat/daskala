@@ -3,6 +3,12 @@
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 import { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
+import MaterialListe from './MaterialListe'
+
+// Mehrere Materialien werden zeilensepariert in der bestehenden `link`-Spalte gespeichert
+// (rückwärtskompatibel: ein einzelner Link/Pfad bleibt ein Eintrag).
+const parseLinks = (s) => String(s ?? '').split('\n').map(x => x.trim()).filter(Boolean)
+const joinLinks = (arr) => (arr && arr.length ? arr.join('\n') : null)
 
 export function toLocalDateStr(d) {
   const y = d.getFullYear()
@@ -54,7 +60,7 @@ export default function PlanungModal({ eintrag, wocheDatum, fachWochentage = [],
   const [hueText, setHueText] = useState('')
   const [hueFristOption, setHueFristOption] = useState('naechste')
   const [hueFristDatum, setHueFristDatum] = useState('')
-  const [link, setLink] = useState('')
+  const [links, setLinks] = useState([])
   const istMusik = eintrag.fach_name?.toLowerCase().includes('musik')
 
   useEffect(() => {
@@ -72,7 +78,7 @@ export default function PlanungModal({ eintrag, wocheDatum, fachWochentage = [],
         setInhalt(plan.inhalt)
         setMusizieren(!!plan.musizieren)
         setHueText(plan.hue_text ?? '')
-        setLink(plan.link ?? '')
+        setLinks(parseLinks(plan.link))
         if (plan.hue_frist_datum) {
           const naechste = naechsteLektionDatum(wocheDatum, eintrag.wochentag, fachWochentage, 1)
           const uebnaechste = naechsteLektionDatum(wocheDatum, eintrag.wochentag, fachWochentage, 2)
@@ -113,7 +119,7 @@ export default function PlanungModal({ eintrag, wocheDatum, fachWochentage = [],
 
   const speichern = async () => {
     try {
-      await window.api.stundenPlanung.save(eintrag.id, wocheDatum, titel, inhalt, musizieren, hueText || null, berechneHueFrist(), link || null)
+      await window.api.stundenPlanung.save(eintrag.id, wocheDatum, titel, inhalt, musizieren, hueText || null, berechneHueFrist(), joinLinks(links))
     } catch (e) {
       console.error('stundenPlanung.save Fehler:', e)
       useStore.getState().pushToast('Fehler beim Speichern: ' + e.message, 'error')
@@ -295,31 +301,10 @@ export default function PlanungModal({ eintrag, wocheDatum, fachWochentage = [],
           )}
         </div>
 
-        {/* Link */}
+        {/* Materialien / Links (mehrere möglich) */}
         <div className="mt-3">
-          <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Link / Dateipfad <span className="font-normal">(optional)</span></label>
-          <div className="flex gap-2">
-            <input
-              className="input flex-1 text-sm"
-              placeholder="https://… oder C:\…"
-              value={link}
-              onChange={e => setLink(e.target.value)}
-            />
-            <button
-              type="button"
-              className="btn-secondary text-xs px-2 py-1 flex-shrink-0"
-              onClick={async () => { const p = await window.api.dialog.openFile([]); if (p) setLink(p) }}
-              title="Datei auswählen"
-            >📂</button>
-            {link && (
-              <button
-                type="button"
-                className="btn-secondary text-xs px-2 py-1 flex-shrink-0"
-                onClick={() => window.api.shell?.open(link)}
-                title="Öffnen"
-              >↗</button>
-            )}
-          </div>
+          <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 mb-1">Materialien / Links <span className="font-normal">(optional)</span></label>
+          <MaterialListe items={links} onChange={setLinks} />
         </div>
 
         {/* Musizieren-Checkbox (nur bei Musik) */}

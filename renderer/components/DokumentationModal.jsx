@@ -138,7 +138,7 @@ const DOKU = [
   },
   {
     id: 'detailplanung', titel: 'Detailplanung (Unterrichtsplanung pro Woche)', bloecke: [
-      'Ergänzend zur Jahresplanung kannst du jede einzelne Unterrichtsstunde Woche für Woche vorbereiten – mit Titel, Inhalt, Hausübung und Link. Die Detailplanung liegt im eigenen Klassen-Tab „Planung", neben der Notentabelle.',
+      'Ergänzend zur Jahresplanung kannst du jede einzelne Unterrichtsstunde Woche für Woche vorbereiten – mit Titel, Inhalt, Hausübung und Materialien. Die Detailplanung liegt im eigenen Klassen-Tab „Planung", neben der Notentabelle.',
       { h: 'Aktivieren' },
       'Der Tab „Planung" ist standardmäßig ausgeblendet. Du schaltest ihn unter Einstellungen → „Module" über das Häkchen „Unterrichtsplanung aktivieren" ein – damit werden „Planung" (Klassenplanung) und „Jahresplan" als Klassen-Tabs verfügbar. Den Stundenplan im Dashboard betrifft das nicht; er bleibt unabhängig davon sichtbar. Schaltest du das Modul wieder aus, verschwinden die beiden Tabs.',
       { h: 'Aufbau: Wochen-Spalten je Fach' },
@@ -150,7 +150,7 @@ const DOKU = [
         '„Titel der Stunde…" als Überschrift der Karte',
         'den Inhalt („Unterrichtsinhalt, Materialien, Ziele…") mit einer kleinen Markdown-Leiste (Fett, Kursiv, Trennlinie, Aufzählung)',
         'eine „Hausübung" (optional); mit Text erscheint zusätzlich die Abgabe-Frist: „Nächste Stunde", „Übernächste" oder ein freies „Datum"',
-        '„Link / Dateipfad" (optional) – wahlweise per 📂 eine Datei wählen und mit ↗ öffnen',
+        '„Materialien / Links" (optional) – mehrere Dateien/Links je Stunde: per 📂 eine Datei wählen oder eine Adresse eintippen und mit „＋" hinzufügen; jeder Eintrag lässt sich mit ↗ öffnen oder mit ✕ entfernen',
       ] },
       'Liegt für die Woche ein Jahresplanungs-Abschnitt vor, wird er oben im Fenster als Referenz eingeblendet. Bei Musik-Fächern gibt es zusätzlich das Häkchen „Musizieren"; hat die Klasse einen Teams-Link hinterlegt, führt „Teams ↗" direkt hinein. Mit „Speichern" übernimmst du die Planung, „Löschen" entfernt sie für diese Woche wieder. Auf der Karte erscheinen danach Titel, die erste Inhaltszeile und – falls gesetzt – ein „HÜ"-Hinweis.',
       { h: 'Parallelklassen als Referenz einblenden' },

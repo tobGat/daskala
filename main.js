@@ -750,7 +750,19 @@ function registerIPC() {
   ipcMain.handle('supplierstunden:update', (_, id, data) => supplierstundenDomain.update(dbPort, id, data))
 
   ipcMain.handle('shell:open', (_, url) => {
-    return oeffneExternSicher(url)
+    const s = String(url ?? '').trim()
+    if (!s) return false
+    // Web-/Mail-Links über die sichere Prüfung extern öffnen (unverändert strikt).
+    if (/^(https?:|mailto:)/i.test(s)) return oeffneExternSicher(s)
+    // Lokale Datei (per Dateiauswahl gewählt oder Pfad eingegeben) mit dem Standardprogramm öffnen.
+    try {
+      const pfad = /^file:\/\//i.test(s) ? require('node:url').fileURLToPath(s) : s
+      shell.openPath(pfad).then((err) => { if (err) logError('shell:open openPath', err) })
+      return true
+    } catch (e) {
+      logError('shell:open', e)
+      return false
+    }
   })
 
   ipcMain.handle('app:clipboard', (_, text) => {
