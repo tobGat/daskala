@@ -221,7 +221,7 @@ export default function App() {
 
       {/* Sicherungs-Erinnerung */}
       {!activeModal && backupErinnerung && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl shadow-pop px-4 py-2.5">
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl shadow-pop px-4 py-2.5">
           <span className="text-lg">💾</span>
           <span className="text-sm">Zeit für eine Datensicherung.</span>
           <button
@@ -251,7 +251,7 @@ export default function App() {
 
       {/* Auto-Update: Hinweis, sobald ein Update geladen wurde */}
       {updateInfo?.status === 'downloaded' && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-3 bg-ink-900 dark:bg-ink-800 text-white rounded-xl shadow-pop px-4 py-2.5 border border-ink-700">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 bg-ink-900 dark:bg-ink-800 text-white rounded-xl shadow-pop px-4 py-2.5 border border-ink-700">
           <span className="text-sm">
             Ein Update{updateInfo.version ? ` (v${updateInfo.version})` : ''} ist bereit.
           </span>
