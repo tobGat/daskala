@@ -8,6 +8,15 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.9.1',
+    datum: '2026-09-21',
+    punkte: [
+      'Unterrichtsplanung – mehrere Materialien je Stunde: Das frühere einzelne „Link / Dateipfad"-Feld ist jetzt eine Liste. Du fügst beliebig viele Dateien (per 📂) oder Links hinzu, öffnest jeden Eintrag mit „↗" und entfernst ihn mit „✕".',
+      'Materialien/Links öffnen behoben: Lokale Dateien lassen sich nun direkt aus der Planung mit dem Standardprogramm öffnen (bisher wurden nur Web-Links geöffnet).',
+      'Eingabefelder in Fenstern zuverlässig anklickbar: Fenster ließen sich in manchen Fällen (z. B. wenn oben eine Sicherungs-Erinnerung oder unten ein Update-Hinweis eingeblendet war) im oberen Bereich nicht sofort anklicken. Die Hinweise liegen jetzt hinter den Fenstern, und Fenster öffnen von der Oberkante – die Felder sind sofort erreichbar.',
+    ],
+  },
+  {
     version: '1.9.0',
     datum: '2026-09-15',
     punkte: [
