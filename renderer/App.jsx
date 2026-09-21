@@ -175,9 +175,13 @@ export default function App() {
     <>
     <div className={`app-shell flex flex-col h-screen bg-paper-50 dark:bg-ink-950${gesperrt ? ' blur-lg pointer-events-none select-none' : ''}`}>
 
-      {/* Grün leuchtender Rahmen als deutliches Signal für den Vorlagen-Modus */}
+      {/* Grün leuchtender Rahmen als deutliches Signal für den Vorlagen-Modus.
+          Bewusst UNTER der Overlay-Ebene (z-30 < Modal z-50): der daueranimierte, kompositierte
+          Vollbild-Layer lag zuvor mit z-100 ÜBER den Modals und störte – trotz pointer-events-none –
+          das Hit-Testing der backdrop-filter-Modals (Eingaben nicht klickbar). Unter den Modals
+          bleibt er sichtbar, wenn kein Fenster offen ist, und behindert keine Modal-Eingaben mehr. */}
       {vorlagenModus && (
-        <div className="pointer-events-none fixed inset-0 z-[100] border-4 border-green-400 animate-glow-frame" />
+        <div className="pointer-events-none fixed inset-0 z-30 border-4 border-green-400 animate-glow-frame" />
       )}
 
       {/* Navigation: Desktop = KlassenTabs (+ FachTabs); Mobil = schlanker Logo-Header
