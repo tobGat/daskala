@@ -50,6 +50,18 @@ export default function BackupWiederherstellenModal({ onClose }) {
     // Bei Erfolg startet die App neu – hier passiert dann nichts mehr.
   }
 
+  // Eine Sicherung aus einem frei gewählten Ordner/Datei zurückspielen. Dialog + Bestätigung
+  // laufen im Main-Prozess; hier nur Fehler/Abbruch behandeln (bei Erfolg startet die App neu).
+  const ausDatei = async () => {
+    setBusy(true)
+    const res = await window.api.backup.wiederherstellenAusDatei()
+    if (res?.canceled) { setBusy(false); return }
+    if (!res?.ok) {
+      setBusy(false)
+      pushToast(res?.fehler || 'Wiederherstellung fehlgeschlagen.', 'error')
+    }
+  }
+
   return (
     <div className="modal-overlay" style={{ zIndex: 130 }} onMouseDown={e => e.target === e.currentTarget && !busy && onClose()}>
       <div className="modal-box max-w-lg max-h-[85vh] overflow-y-auto">
@@ -57,9 +69,19 @@ export default function BackupWiederherstellenModal({ onClose }) {
           <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Sicherung wiederherstellen</h2>
           <button className="text-ink-400 hover:text-ink-600 text-xl" onClick={onClose} disabled={busy}>✕</button>
         </div>
-        <p className="text-xs text-ink-400 dark:text-ink-500 mb-4">
+        <p className="text-xs text-ink-400 dark:text-ink-500 mb-3">
           Wähle eine Sicherung, um sie zurückzuspielen. Deine aktuellen Daten werden vorher automatisch gesichert.
         </p>
+
+        {/* Aus beliebigem Ordner/Datei wiederherstellen (z. B. eine extern gespeicherte Sicherung). */}
+        <button
+          className="btn-secondary w-full mb-4 flex items-center justify-center gap-2"
+          onClick={ausDatei}
+          disabled={busy}
+          title="Eine Sicherungsdatei aus einem beliebigen Ordner auswählen und wiederherstellen"
+        >
+          <span aria-hidden>📁</span> Aus Datei wählen…
+        </button>
 
         {liste === null ? (
           <p className="text-sm text-ink-400 text-center py-6">Sicherungen werden geladen…</p>

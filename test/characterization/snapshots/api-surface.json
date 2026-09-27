@@ -12,6 +12,7 @@
   "backup.status",
   "backup.waehleOrdner",
   "backup.wiederherstellen",
+  "backup.wiederherstellenAusDatei",
   "customFerien.getAll",
   "customFerien.save",
   "datei.speichereText",

@@ -263,6 +263,7 @@ const api = {
     getList: () => invoke('backup:getList'),
     liste: () => invoke('backup:liste'),
     wiederherstellen: (pfad) => invoke('backup:wiederherstellen', pfad),
+    wiederherstellenAusDatei: () => invoke('backup:wiederherstellenAusDatei'),
     status: () => invoke('backup:status'),
     jetzt: () => invoke('backup:jetzt'),
     waehleOrdner: () => invoke('backup:waehleOrdner'),
