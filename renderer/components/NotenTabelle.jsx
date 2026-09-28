@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import React, { useState, useRef, useCallback, useMemo, memo } from 'react'
+import React, { useState, useRef, useLayoutEffect, useCallback, useMemo, memo } from 'react'
 import useStore from '../store/useStore'
 import Zelle from './Zelle'
 import ZeugnisnoteZelle from './ZeugnisnoteZelle'
@@ -898,9 +898,26 @@ function NiveauWechselPopup({ schuelerName, aktuellesNiveau, historie, anchorRec
   }
 
   const popupW = 280
-  let left = anchorRect ? anchorRect.left : 100
-  let top = anchorRect ? anchorRect.bottom + 6 : 100
-  if (left + popupW > window.innerWidth - 8) left = window.innerWidth - 8 - popupW
+  const popupRef = useRef(null)
+  // Position nach dem Rendern anhand der gemessenen Höhe festlegen: unterhalb des Badges, sonst
+  // (bei unteren Zeilen) oberhalb kippen bzw. am Rand festklemmen – damit das Fenster nie aus dem
+  // Viewport ragt. useLayoutEffect läuft vor dem Paint → keine sichtbare Verschiebung.
+  const [pos, setPos] = useState({ left: anchorRect?.left ?? 100, top: anchorRect?.bottom + 6 || 100, bereit: false })
+  useLayoutEffect(() => {
+    const el = popupRef.current
+    if (!el) return
+    const h = el.offsetHeight
+    const vw = window.innerWidth, vh = window.innerHeight
+    let left = anchorRect ? anchorRect.left : 100
+    left = Math.max(8, Math.min(left, vw - popupW - 8))
+    let top
+    if (anchorRect) {
+      if (anchorRect.bottom + 6 + h <= vh - 8) top = anchorRect.bottom + 6          // passt unterhalb
+      else if (anchorRect.top - 6 - h >= 8) top = anchorRect.top - 6 - h             // oberhalb kippen
+      else top = Math.max(8, vh - 8 - h)                                             // sonst am unteren Rand
+    } else top = 100
+    setPos({ left, top, bereit: true })
+  }, [anchorRect])
 
   const echteHistorie = (historie ?? []).filter(h => h.gueltig_ab !== '1900-01-01')
 
@@ -908,8 +925,9 @@ function NiveauWechselPopup({ schuelerName, aktuellesNiveau, historie, anchorRec
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
-        className="fixed z-50 bg-white dark:bg-ink-800 rounded-2xl border border-paper-200 dark:border-ink-700 shadow-pop p-4 animate-pop-in"
-        style={{ left, top, width: popupW }}
+        ref={popupRef}
+        className="fixed z-50 bg-white dark:bg-ink-800 rounded-2xl border border-paper-200 dark:border-ink-700 shadow-pop p-4 animate-pop-in overflow-y-auto"
+        style={{ left: pos.left, top: pos.top, width: popupW, maxHeight: 'calc(100vh - 16px)', visibility: pos.bereit ? 'visible' : 'hidden' }}
       >
         <p className="text-xs text-ink-500 dark:text-ink-400 mb-0.5">Niveau-Wechsel</p>
         <p className="text-sm font-bold text-ink-800 dark:text-paper-100 mb-3 truncate">{schuelerName}</p>
