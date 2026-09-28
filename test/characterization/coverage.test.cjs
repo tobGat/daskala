@@ -31,6 +31,7 @@ const EXCLUDED = {
   'materialien:oeffnen': 'fs', 'materialien:ordnerOeffnen': 'fs',
   // Backup: Dateisystem
   'backup:create': 'fs', 'backup:getList': 'fs', 'backup:liste': 'fs', 'backup:wiederherstellen': 'fs',
+  'backup:wiederherstellenAusDatei': 'dialog',
   'backup:status': 'fs', 'backup:jetzt': 'fs', 'backup:waehleOrdner': 'dialog',
   'backup:setAutomatisch': 'fs', 'backup:ordnerZuruecksetzen': 'fs', 'backup:snooze': 'fs',
   // Sperre: Authentifizierung (separat abzusichern)

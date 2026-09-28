@@ -311,6 +311,7 @@ const DOKU = [
       'Ist keine automatische Sicherung aktiv, erinnert dich die App nach einigen Tagen ohne Sicherung mit einem Hinweis oben im Fenster. Vor jedem Update wird zusätzlich automatisch gesichert.',
       { h: 'Wiederherstellen' },
       'Über „Wiederherstellen…" (Einstellungen → Datensicherung) siehst du alle vorhandenen Sicherungen mit Datum und Art und spielst eine davon mit einem Klick zurück. Deine aktuellen Daten werden dabei zuerst automatisch gesichert, dann durch die gewählte Sicherung ersetzt; anschließend startet die App neu.',
+      'Zusätzlich kannst du mit „📁 Aus Datei wählen…" eine Sicherung aus einem beliebigen Ordner zurückspielen – etwa eine auf USB-Stick, in der Cloud oder auf einem anderen Rechner abgelegte Sicherungsdatei. Du wählst die Datei im Dateidialog, bestätigst und spielst sie wie gewohnt zurück (auch hier wird vorher automatisch gesichert).',
       { tipp: 'Erstelle vor größeren Änderungen (z. B. Schuljahreswechsel) ein Backup – oder aktiviere gleich die automatische Sicherung.' },
       { h: 'App zurücksetzen' },
       'In den Einstellungen ganz unten (Gefahrenzone) kannst du die App vollständig zurücksetzen. Dabei werden alle Daten unwiderruflich gelöscht – der Vorgang ist mehrfach abgesichert, und vorher wird automatisch eine Sicherheitskopie angelegt.',

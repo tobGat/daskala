@@ -804,15 +804,19 @@ function registerIPC() {
     try { return sammleBackups() } catch (e) { logError('backup:liste', e); return [] }
   })
 
-  // Eine Sicherung wiederherstellen: aktuelle Daten sichern, DB ersetzen, neu starten.
-  ipcMain.handle('backup:wiederherstellen', (_, pfad) => {
+  // Kernlogik der Wiederherstellung (von beiden Handlern genutzt): optional die Allowlist prüfen,
+  // SQLite-Header prüfen, aktuelle Daten sichern, DB ersetzen, neu starten.
+  const wiederherstellenVonPfad = (pfad, pruefeErlaubt) => {
     try {
       if (!pfad || !fs.existsSync(pfad)) return { ok: false, fehler: 'Datei nicht gefunden.' }
-      // Nur aus bekannten Backup-Orten zulassen.
-      const ordner = bkGet('backup_ordner')
-      const erlaubt = [backupDir, ordner].filter(Boolean)
-        .some(d => path.resolve(pfad).startsWith(path.resolve(d) + path.sep))
-      if (!erlaubt) return { ok: false, fehler: 'Ungültiger Pfad.' }
+      // Vom Renderer übergebene Pfade nur aus bekannten Backup-Orten zulassen. Bei einer im
+      // Main-Prozess per OS-Dialog gewählten Datei entfällt diese Prüfung (Auswahl = Autorisierung).
+      if (pruefeErlaubt) {
+        const ordner = bkGet('backup_ordner')
+        const erlaubt = [backupDir, ordner].filter(Boolean)
+          .some(d => path.resolve(pfad).startsWith(path.resolve(d) + path.sep))
+        if (!erlaubt) return { ok: false, fehler: 'Ungültiger Pfad.' }
+      }
       // SQLite-Header prüfen.
       let kopf = ''
       try {
@@ -839,6 +843,36 @@ function registerIPC() {
       try { db = new Database(dbPath); db.pragma('journal_mode = WAL'); db.pragma('foreign_keys = ON') } catch (e2) { logError('backup:wiederherstellen reopen', e2) }
       return { ok: false, fehler: 'Wiederherstellung fehlgeschlagen.' }
     }
+  }
+
+  // Eine Sicherung aus der Liste (bekannter Ort) wiederherstellen.
+  ipcMain.handle('backup:wiederherstellen', (_, pfad) => wiederherstellenVonPfad(pfad, true))
+
+  // Eine Sicherung aus einer frei gewählten Datei wiederherstellen. Der Datei-Dialog läuft im
+  // Main-Prozess; die bewusste OS-Auswahl gilt als Autorisierung (kein Allowlist-Zwang).
+  ipcMain.handle('backup:wiederherstellenAusDatei', async () => {
+    const win = BrowserWindow.getAllWindows()[0]
+    const res = await dialog.showOpenDialog(win, {
+      title: 'Sicherung auswählen',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Daskala-Sicherung', extensions: ['sqlite', 'db', 'bak'] },
+        { name: 'Alle Dateien', extensions: ['*'] },
+      ],
+    })
+    if (res.canceled || !res.filePaths?.[0]) return { canceled: true }
+    const pfad = res.filePaths[0]
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning',
+      buttons: ['Abbrechen', 'Wiederherstellen'],
+      defaultId: 1,
+      cancelId: 0,
+      title: 'Sicherung wiederherstellen',
+      message: 'Diese Sicherung wiederherstellen?',
+      detail: `${path.basename(pfad)}\n\nDeine aktuellen Daten werden vorher automatisch gesichert, dann durch die gewählte Sicherung ersetzt. Die App startet danach neu.`,
+    })
+    if (response !== 1) return { canceled: true }
+    return wiederherstellenVonPfad(pfad, false)
   })
 
   // Status für die Sicherungs-Erinnerung.
