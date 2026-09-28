@@ -176,6 +176,19 @@ const TABLE_DDL = [
       FOREIGN KEY (stunde_id) REFERENCES stundenzeiten(id),
       FOREIGN KEY (fach_id) REFERENCES faecher(id)
     )`,
+  // Freie (nicht klassengebundene) Stundenplan-Belegungen: Sprechstunde, Kustodiat, QB-Stunden … –
+  // eigene Tabelle statt fach_id nullable zu machen (additiv, kein Umbau der referenzierten stundenplan-Tabelle).
+  `CREATE TABLE IF NOT EXISTS stundenplan_frei (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wochentag INTEGER NOT NULL,
+      stunde_id INTEGER NOT NULL,
+      titel TEXT NOT NULL,
+      farbe TEXT,
+      wochen_intervall INTEGER DEFAULT 1,
+      anker_datum TEXT,
+      erstellt_am TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (stunde_id) REFERENCES stundenzeiten(id)
+    )`,
   `CREATE TABLE IF NOT EXISTS stunden_planung (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       stundenplan_id INTEGER NOT NULL,
@@ -738,6 +751,18 @@ function applySchema(db, deps) {
       musizieren INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (stundenplan_id) REFERENCES stundenplan(id) ON DELETE CASCADE,
       UNIQUE(stundenplan_id, woche_datum)
+    );
+
+    CREATE TABLE IF NOT EXISTS stundenplan_frei (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wochentag INTEGER NOT NULL,
+      stunde_id INTEGER NOT NULL,
+      titel TEXT NOT NULL,
+      farbe TEXT,
+      wochen_intervall INTEGER DEFAULT 1,
+      anker_datum TEXT,
+      erstellt_am TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (stunde_id) REFERENCES stundenzeiten(id)
     );
   `)
 

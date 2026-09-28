@@ -139,6 +139,12 @@ INSERT INTO stundenplan (id, wochentag, stunde_id, fach_id, wochen_intervall, an
 INSERT INTO stunden_planung (id, stundenplan_id, woche_datum, titel, inhalt, musizieren, hue_text, hue_frist_datum, link, entfall) VALUES
   (1, 1, '2025-10-13', 'Balladen', 'Einführung Balladen', 0, 'Gedicht auswählen', '2025-10-14', NULL, 0);
 
+-- ── Freie (nicht klassengebundene) Belegungen: Sprechstunde/Kustodiat/QB … ───
+-- erstellt_am fix (read-channels-Snapshot normalisiert Zeitstempel NICHT).
+INSERT INTO stundenplan_frei (id, wochentag, stunde_id, titel, farbe, wochen_intervall, anker_datum, erstellt_am) VALUES
+  (1, 2, 2, 'Sprechstunde', 'blau',  1, NULL,         '2025-09-01 08:00:00'),  -- Di, 2. Std
+  (2, 4, 1, 'Kustodiat',    'gruen', 2, '2025-09-08', '2025-09-01 08:00:00');  -- Do, 1. Std, 14-tägig
+
 -- ── Supplierstunde ──────────────────────────────────────────────────────────
 INSERT INTO supplierstunden (id, woche_datum, wochentag, stunde_id, klasse_text, fach_text, notiz, titel, inhalt, hue_text, hue_frist_datum, link) VALUES
   (1, '2025-10-13', 2, 3, '1A', 'Deutsch', 'Vertretung Kollegin', 'Lesestunde', NULL, NULL, NULL, NULL);

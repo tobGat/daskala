@@ -39,6 +39,7 @@ async function saveAll(db, deps, rows) {
     for (const id of entfernt) {
       try { await tx.execute('DELETE FROM stunden_planung WHERE stundenplan_id IN (SELECT id FROM stundenplan WHERE stunde_id = ?)', [id]) } catch (e) { deps.logError('stundenzeiten:speichern stunden_planung', e) }
       await tx.execute('DELETE FROM stundenplan WHERE stunde_id = ?', [id]) // supplierstunden.stunde_id kaskadiert über stundenzeiten
+      await tx.execute('DELETE FROM stundenplan_frei WHERE stunde_id = ?', [id]) // freie Belegungen ohne CASCADE
       await tx.execute('DELETE FROM stundenzeiten WHERE id = ?', [id])      // supplierstunden ON DELETE CASCADE
     }
 

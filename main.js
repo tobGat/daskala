@@ -739,6 +739,10 @@ function registerIPC() {
   ipcMain.handle('stundenplan:verschieben', (_, id, wochentag, stundeId) => stundenplanDomain.verschieben(dbPort, id, wochentag, stundeId))
   ipcMain.handle('stundenplan:getByKlasse', (_, klasseId) => stundenplanDomain.getByKlasse(dbPort, klasseId))
   ipcMain.handle('stundenplan:getParallelFach', (_, aktuelleKlasseId, fachName) => stundenplanDomain.getParallelFach(dbPort, aktuelleKlasseId, fachName))
+  ipcMain.handle('stundenplan:freiGetAll', () => stundenplanDomain.freiGetAll(dbPort))
+  ipcMain.handle('stundenplan:freiCreate', (_, data) => stundenplanDomain.freiCreate(dbPort, data))
+  ipcMain.handle('stundenplan:freiUpdate', (_, id, data) => stundenplanDomain.freiUpdate(dbPort, id, data))
+  ipcMain.handle('stundenplan:freiDelete', (_, id) => stundenplanDomain.freiRemove(dbPort, id))
 
   // Stunden-Planung
   ipcMain.handle('stundenPlanung:get', (_, stundenplanId, wocheDatum) => stundenPlanungDomain.get(dbPort, stundenplanId, wocheDatum))

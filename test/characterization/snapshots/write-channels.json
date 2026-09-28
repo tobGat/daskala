@@ -1171,6 +1171,87 @@
       ]
     }
   },
+  "stundenplan:freiCreate": {
+    "ret": 3,
+    "state": {
+      "stundenplan_frei": [
+        {
+          "id": 1,
+          "wochentag": 2,
+          "stunde_id": 2,
+          "titel": "Sprechstunde",
+          "farbe": "blau",
+          "wochen_intervall": 1,
+          "anker_datum": null,
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "wochentag": 4,
+          "stunde_id": 1,
+          "titel": "Kustodiat",
+          "farbe": "gruen",
+          "wochen_intervall": 2,
+          "anker_datum": "2025-09-08",
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 3,
+          "wochentag": 3,
+          "stunde_id": 3,
+          "titel": "Sprechstunde",
+          "farbe": "blau",
+          "wochen_intervall": 1,
+          "anker_datum": null,
+          "erstellt_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "stundenplan:freiUpdate": {
+    "ret": true,
+    "state": {
+      "stundenplan_frei": [
+        {
+          "id": 1,
+          "wochentag": 2,
+          "stunde_id": 2,
+          "titel": "Kustodiat",
+          "farbe": "gruen",
+          "wochen_intervall": 2,
+          "anker_datum": "2025-10-13",
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "wochentag": 4,
+          "stunde_id": 1,
+          "titel": "Kustodiat",
+          "farbe": "gruen",
+          "wochen_intervall": 2,
+          "anker_datum": "2025-09-08",
+          "erstellt_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "stundenplan:freiDelete": {
+    "ret": true,
+    "state": {
+      "stundenplan_frei": [
+        {
+          "id": 2,
+          "wochentag": 4,
+          "stunde_id": 1,
+          "titel": "Kustodiat",
+          "farbe": "gruen",
+          "wochen_intervall": 2,
+          "anker_datum": "2025-09-08",
+          "erstellt_am": "<TS>"
+        }
+      ]
+    }
+  },
   "schuljahre:create": {
     "ret": 3,
     "state": {
