@@ -8,6 +8,15 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.10.0',
+    datum: '2026-09-28',
+    punkte: [
+      'Sicherung aus beliebigem Ordner wiederherstellen: Im Fenster „Sicherung wiederherstellen" gibt es jetzt zusätzlich „📁 Aus Datei wählen…". Damit spielst du eine Sicherungsdatei aus einem frei wählbaren Ordner zurück – z. B. von USB-Stick, aus der Cloud oder von einem anderen Rechner (praktisch besonders auf einem neuen Gerät). Deine aktuellen Daten werden wie gewohnt vorher automatisch gesichert.',
+      'Eingabefelder im Vorlagenmodus: Fenster (z. B. „Neues Fach") ließen sich im Vorlagenmodus im oberen Bereich nicht anklicken – behoben. Der grüne Signalrahmen liegt jetzt hinter den Fenstern.',
+      'Niveau-Wechsel (AHS/ST): Das Fenster zum Niveau-Wechsel ragte bei Schüler:innen im unteren Listenbereich aus dem sichtbaren Bereich. Es wird jetzt automatisch so platziert (bei Bedarf oberhalb), dass es vollständig sichtbar bleibt.',
+    ],
+  },
+  {
     version: '1.9.1',
     datum: '2026-09-21',
     punkte: [
