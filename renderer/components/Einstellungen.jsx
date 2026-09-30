@@ -827,15 +827,15 @@ export default function Einstellungen({ onClose }) {
             )}
           </Akkordeon>
 
-          {/* EduPage-/webcal-Kalender */}
-          <Akkordeon id="edupage" icon="📆" titel="EduPage-Kalender" offen={offenerBereich} onToggle={toggleBereich}>
+          {/* Externe Kalender (webcal/ICS) */}
+          <Akkordeon id="edupage" icon="📆" titel="Externe Kalender" offen={offenerBereich} onToggle={toggleBereich}>
             <label className="flex items-start gap-2 cursor-pointer select-none">
               <input type="checkbox" checked={edupageAktiv} onChange={e => handleEdupageAktiv(e.target.checked)} className="mt-0.5" />
               <div>
-                <span className="text-sm text-ink-700 dark:text-paper-200">Kalender-Einbindung aktivieren</span>
+                <span className="text-sm text-ink-700 dark:text-paper-200">Externe Kalender einbinden</span>
                 <p className="text-[11px] text-ink-400 leading-snug">
-                  Bindet abonnierte webcal-/ICS-Kalender (z. B. aus EduPage) ein – etwa Sprechtage, Prüfungen oder Events.
-                  Die Termine erscheinen schreibgeschützt im Termine-Panel und im Stundenplan. Abruf nur am Desktop.
+                  Abonniert beliebige webcal-/ICS-Kalender (EduPage, Google, Outlook u. a.) – etwa Sprechtage, Prüfungen
+                  oder Events. Die Termine erscheinen schreibgeschützt im Kalender. Abruf nur am Desktop.
                 </p>
               </div>
             </label>
@@ -872,7 +872,7 @@ export default function Einstellungen({ onClose }) {
                 {/* Neues Abo */}
                 <div className="rounded-xl border border-dashed border-paper-300 dark:border-ink-700 p-3 space-y-2">
                   <h4 className="text-sm font-semibold text-ink-700 dark:text-paper-300">Kalender hinzufügen</h4>
-                  <input className="input" placeholder="Bezeichnung (optional), z. B. EduPage" value={neuName} onChange={e => setNeuName(e.target.value)} />
+                  <input className="input" placeholder="Bezeichnung (optional), z. B. Google, Outlook, EduPage" value={neuName} onChange={e => setNeuName(e.target.value)} />
                   <input className="input" placeholder="webcal://… oder https://…/ical" value={neuUrl} onChange={e => setNeuUrl(e.target.value)} />
                   <div className="flex items-center gap-2 flex-wrap">
                     {KI_FARBEN.map(f => (
@@ -892,10 +892,17 @@ export default function Einstellungen({ onClose }) {
                 <button className="btn-primary w-full" onClick={handleSync} disabled={syncLaeuft || kalenderAbos.length === 0}>
                   {syncLaeuft ? 'Synchronisiere…' : 'Jetzt synchronisieren'}
                 </button>
-                <p className="text-[11px] text-ink-400 leading-snug">
-                  Die webcal-URL findest du in EduPage unter deinem Profil/Kalender („iCal"/„Abonnieren"). Beim App-Start
-                  wird höchstens einmal pro Tag automatisch abgeglichen.
-                </p>
+
+                {/* Wo finde ich die ICS-/webcal-URL? */}
+                <div className="text-[11px] text-ink-400 leading-snug space-y-1">
+                  <p className="font-medium text-ink-500 dark:text-ink-400">Wo finde ich die Abo-URL?</p>
+                  <ul className="space-y-0.5 list-disc pl-4">
+                    <li><span className="font-medium">EduPage:</span> Profil/Kalender → „iCal" bzw. „Abonnieren".</li>
+                    <li><span className="font-medium">Google Kalender:</span> Einstellungen → Kalender wählen → „Geheime Adresse im iCal-Format" (endet auf <span className="tabular-nums">…/basic.ics</span>).</li>
+                    <li><span className="font-medium">Outlook / Microsoft 365:</span> Kalender → Freigeben/Veröffentlichen → ICS-Link kopieren.</li>
+                  </ul>
+                  <p>Nur lesend – Änderungen in Google/Outlook erscheinen je nach Anbieter erst nach einigen Stunden. Beim App-Start wird höchstens einmal pro Tag automatisch abgeglichen.</p>
+                </div>
               </div>
             )}
           </Akkordeon>

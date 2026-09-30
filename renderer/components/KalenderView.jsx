@@ -165,7 +165,7 @@ export default function KalenderView({ modus = 'monat', setModus, switchSlot, zi
         <button className="text-xs font-medium px-2.5 py-1 rounded-full border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-ink-300 hover:bg-paper-100 dark:hover:bg-ink-800" onClick={() => setAnker(heuteStr())}>Heute</button>
         <span className="text-base font-semibold text-ink-800 dark:text-paper-100 ml-1">{titelText}</span>
         <div className="ml-auto flex items-center gap-1.5">
-          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-500 dark:text-ink-300 hover:bg-paper-100 dark:hover:bg-ink-800 disabled:opacity-50" onClick={handleSync} disabled={syncLaeuft} title="EduPage-/webcal-Kalender abgleichen">
+          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-500 dark:text-ink-300 hover:bg-paper-100 dark:hover:bg-ink-800 disabled:opacity-50" onClick={handleSync} disabled={syncLaeuft} title="Externe Kalender abgleichen">
             <span className={syncLaeuft ? 'animate-spin inline-block' : ''}>↻</span>
           </button>
           <button className="text-xs font-semibold px-3 py-1.5 rounded-full bg-coral-500 hover:bg-coral-600 text-white flex items-center gap-1 shadow-sm" onClick={() => setFormModal({ preset: { datum: heuteStr() } })}>
