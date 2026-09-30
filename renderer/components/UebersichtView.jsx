@@ -6,7 +6,7 @@ import useStore from '../store/useStore'
 import TodoBoard from './TodoBoard'
 import TerminePanel from './TerminePanel'
 import Stundenplan from './Stundenplan'
-import KalenderView from './KalenderView'
+import KalenderView, { Segmented } from './KalenderView'
 import { useIsMobile } from '../hooks/useIsMobile'
 
 // Lokales Datum (YYYY-MM-DD) – bewusst NICHT toISOString (UTC), sonst zeigt der Zähler nahe Mitternacht
@@ -52,7 +52,7 @@ export default function UebersichtView() {
   })
   const setAnsichtModus = (m) => { setAnsichtModusState(m); try { localStorage.setItem('dashboard-ansicht', m) } catch { /* ignore */ } }
   const setKalenderModus = (m) => { setKalenderModusState(m); try { localStorage.setItem('dashboard-kalender-modus', m) } catch { /* ignore */ } }
-  const segCls = (aktiv) => `px-3 py-1.5 rounded-md transition-colors ${aktiv ? 'bg-white dark:bg-ink-700 text-coral-600 dark:text-coral-300 shadow-sm' : 'text-ink-500 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300'}`
+  const ANSICHTEN = [['stundenplan', 'Stundenplan'], ['kalender', 'Kalender']]
 
   // Resizable Sidebar — wie früher in App.jsx
   const [todoBreite, setTodoBreite]   = useState(() => parseInt(localStorage.getItem('todo-panel-breite') ?? '288'))
@@ -159,25 +159,19 @@ export default function UebersichtView() {
       {/* Hauptbereich: Stundenplan links, Sidebar (Todos+Termine) rechts */}
       <div className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Umschalt-Leiste zentral oben im Modul */}
-          <div className="flex-shrink-0 flex items-center justify-center gap-3 px-3 py-1.5 border-b border-paper-200 dark:border-ink-800 bg-white dark:bg-ink-900">
-            <div className="flex rounded-lg bg-paper-100 dark:bg-ink-800 p-0.5 text-xs font-medium">
-              {[['stundenplan', 'Stundenplan'], ['kalender', 'Kalender']].map(([id, label]) => (
-                <button key={id} className={segCls(ansichtModus === id)} onClick={() => setAnsichtModus(id)}>{label}</button>
-              ))}
+          {ansichtModus === 'stundenplan' && (
+            <div className="flex-shrink-0 flex items-center px-3 py-2 border-b border-paper-200 dark:border-ink-800 bg-white dark:bg-ink-900">
+              <Segmented options={ANSICHTEN} value={ansichtModus} onChange={setAnsichtModus} />
             </div>
-            {ansichtModus === 'kalender' && (
-              <div className="flex rounded-lg bg-paper-100 dark:bg-ink-800 p-0.5 text-xs font-medium">
-                {[['woche', 'Woche'], ['monat', 'Monat']].map(([id, label]) => (
-                  <button key={id} className={segCls(kalenderModus === id)} onClick={() => setKalenderModus(id)}>{label}</button>
-                ))}
-              </div>
-            )}
-          </div>
+          )}
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             {ansichtModus === 'stundenplan'
               ? <Stundenplan onTodoBadgeClick={setHighlightedTodoId} />
-              : <KalenderView modus={kalenderModus} onTodoClick={setHighlightedTodoId} />}
+              : <KalenderView
+                  modus={kalenderModus}
+                  setModus={setKalenderModus}
+                  switchSlot={<Segmented options={ANSICHTEN} value={ansichtModus} onChange={setAnsichtModus} />}
+                  onTodoClick={setHighlightedTodoId} />}
           </div>
         </div>
         <div

@@ -25,7 +25,22 @@ const edupageKlassen = (beschr) => { const m = /(?:^|\n)\s*Klassen:\s*([^\n]+)/i
 // Beschreibung ohne die separat angezeigte „Klassen:"-Zeile (vermeidet Dopplung).
 const ohneKlassenZeile = (beschr) => (beschr || '').replace(/(?:^|\n)\s*Klassen:[^\n]*/i, '').replace(/^\n+/, '').trim()
 
-export default function KalenderView({ modus = 'monat', onTodoClick }) {
+// Modernes Segment-Steuerelement (Pill-Gruppe). Auch in UebersichtView genutzt.
+export function Segmented({ options, value, onChange }) {
+  return (
+    <div className="inline-flex rounded-full bg-paper-100 dark:bg-ink-800 p-0.5">
+      {options.map(([id, label]) => (
+        <button
+          key={id}
+          onClick={() => onChange(id)}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${value === id ? 'bg-white dark:bg-ink-700 text-coral-600 dark:text-coral-300 shadow-sm' : 'text-ink-500 dark:text-ink-400 hover:text-ink-700 dark:hover:text-ink-200'}`}
+        >{label}</button>
+      ))}
+    </div>
+  )
+}
+
+export default function KalenderView({ modus = 'monat', setModus, switchSlot, onTodoClick }) {
   const { termine, kalenderTermine, todos, klassen, aktuellesSchuljahr, einstellungen, ladeTermine, ladeKalenderTermine, syncKalender } = useStore()
   const [anker, setAnker] = useState(heuteStr)
   const [stundenzeiten, setStundenzeiten] = useState([])
@@ -123,17 +138,24 @@ export default function KalenderView({ modus = 'monat', onTodoClick }) {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ink-900">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-paper-200 dark:border-ink-800 flex-shrink-0">
-        <button className="w-7 h-7 rounded-lg text-ink-600 dark:text-ink-300 hover:bg-paper-100 dark:hover:bg-ink-800 text-lg leading-none" onClick={() => springe(-1)} title="Zurück">‹</button>
-        <button className="btn-secondary text-xs px-2 py-1" onClick={() => setAnker(heuteStr())}>Heute</button>
-        <button className="w-7 h-7 rounded-lg text-ink-600 dark:text-ink-300 hover:bg-paper-100 dark:hover:bg-ink-800 text-lg leading-none" onClick={() => springe(1)} title="Vor">›</button>
-        <span className="text-sm font-semibold text-ink-800 dark:text-paper-100 ml-1">{titelText}</span>
-        <div className="ml-auto flex items-center gap-2">
-          <button className="btn-secondary text-xs px-2 py-1" onClick={handleSync} disabled={syncLaeuft} title="EduPage-/webcal-Kalender abgleichen">
-            {syncLaeuft ? 'Sync…' : '↻ Sync'}
+      {/* Ein zusammenhängender Header: Ansichts-Switch · Woche/Monat · Navigation · Titel · Aktionen */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-paper-200 dark:border-ink-800 flex-shrink-0 flex-wrap">
+        {switchSlot}
+        {setModus && <Segmented options={[['woche', 'Woche'], ['monat', 'Monat']]} value={modus} onChange={setModus} />}
+        <div className="w-px h-5 bg-paper-200 dark:bg-ink-700 mx-1" />
+        <div className="flex items-center gap-0.5">
+          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-500 dark:text-ink-300 hover:bg-paper-100 dark:hover:bg-ink-800 text-lg leading-none" onClick={() => springe(-1)} title="Zurück">‹</button>
+          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-500 dark:text-ink-300 hover:bg-paper-100 dark:hover:bg-ink-800 text-lg leading-none" onClick={() => springe(1)} title="Vor">›</button>
+        </div>
+        <button className="text-xs font-medium px-2.5 py-1 rounded-full border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-ink-300 hover:bg-paper-100 dark:hover:bg-ink-800" onClick={() => setAnker(heuteStr())}>Heute</button>
+        <span className="text-base font-semibold text-ink-800 dark:text-paper-100 ml-1">{titelText}</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-500 dark:text-ink-300 hover:bg-paper-100 dark:hover:bg-ink-800 disabled:opacity-50" onClick={handleSync} disabled={syncLaeuft} title="EduPage-/webcal-Kalender abgleichen">
+            <span className={syncLaeuft ? 'animate-spin inline-block' : ''}>↻</span>
           </button>
-          <button className="btn-primary text-xs px-2 py-1" onClick={() => setFormModal({ preset: { datum: heuteStr() } })}>+ Termin</button>
+          <button className="text-xs font-semibold px-3 py-1.5 rounded-full bg-coral-500 hover:bg-coral-600 text-white flex items-center gap-1 shadow-sm" onClick={() => setFormModal({ preset: { datum: heuteStr() } })}>
+            <span className="text-sm leading-none">+</span> Termin
+          </button>
         </div>
       </div>
 
@@ -170,8 +192,8 @@ function Chip({ ev, zeit, onClick, onHover, onLeave, className = '' }) {
       onClick={onClick}
       onMouseEnter={e => onHover?.(ev, e)}
       onMouseLeave={() => onLeave?.()}
-      className={`w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate ${readonly ? 'cursor-default' : 'cursor-pointer hover:brightness-95'} ${className}`}
-      style={{ backgroundColor: ev.farbe + '26', color: ev.farbe }}
+      className={`w-full text-left text-[11px] font-medium leading-tight px-1.5 py-[3px] rounded-md truncate ${readonly ? 'cursor-default' : 'cursor-pointer hover:brightness-95'} ${className}`}
+      style={{ backgroundColor: ev.farbe + '22', color: ev.farbe }}
     >
       {ev.typ === 'todo' ? (ev.subtyp === 'faellig' ? '✓ ' : '🔔 ') : ''}
       {zeit ? <span className="tabular-nums opacity-80">{zeit} </span> : null}
@@ -187,13 +209,13 @@ function MonatsGitter({ jahr, monat, eventsAmTag, zeitVon, schulferien, onTag, o
   const heute = heuteStr()
   const MAX = 3
   return (
-    <div className="flex-1 min-h-0 overflow-auto p-2">
-      <div className="grid grid-cols-7 gap-px mb-px">
+    <div className="flex-1 min-h-0 overflow-auto p-3">
+      <div className="grid grid-cols-7 mb-1">
         {WOCHENTAG_KURZ.map((t, i) => (
-          <div key={t} className={`text-[11px] font-semibold text-center py-1 ${i >= 5 ? 'text-ink-400' : 'text-ink-500 dark:text-ink-400'}`}>{t}</div>
+          <div key={t} className={`text-[10px] font-semibold uppercase tracking-wider text-center pb-1 ${i >= 5 ? 'text-ink-300 dark:text-ink-600' : 'text-ink-400 dark:text-ink-500'}`}>{t}</div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1.5">
         {wochen.flat().map(({ datum, imMonat }, idx) => {
           const ferien = ferienFuerTag(datum, schulferien)
           const wochenende = (idx % 7) >= 5
@@ -206,18 +228,20 @@ function MonatsGitter({ jahr, monat, eventsAmTag, zeitVon, schulferien, onTag, o
           return (
             <div
               key={datum}
-              className={`min-h-[92px] rounded-lg border p-1 flex flex-col gap-0.5 cursor-pointer transition-colors
-                ${imMonat ? 'bg-white dark:bg-ink-900' : 'bg-paper-50/60 dark:bg-ink-950/40 opacity-60'}
-                ${ferien ? 'bg-rose-50/70 dark:bg-rose-950/20' : ''}
-                ${istHeute ? 'border-coral-400 ring-1 ring-coral-400/40' : 'border-paper-200 dark:border-ink-800'}
-                hover:bg-coral-50/40 dark:hover:bg-coral-900/20`}
+              className={`group relative min-h-[104px] rounded-xl p-1.5 flex flex-col gap-1 cursor-pointer transition-colors
+                ${ferien ? 'bg-rose-50/60 dark:bg-rose-950/20' : (imMonat ? 'bg-paper-50/50 dark:bg-ink-800/30' : 'bg-transparent')}
+                ${istHeute ? 'ring-2 ring-coral-400 dark:ring-coral-500' : ''}
+                ${imMonat ? '' : 'opacity-45'}
+                hover:bg-paper-100 dark:hover:bg-ink-800/60`}
               onClick={() => onTag(datum)}
             >
-              <div className="flex items-center justify-between">
-                <span className={`text-[11px] font-semibold ${istHeute ? 'text-coral-600 dark:text-coral-400' : wochenende ? 'text-ink-400' : 'text-ink-600 dark:text-ink-300'}`}>
-                  {parseInt(datum.slice(8))}
-                </span>
-                {ferien && <span className="text-[8px] text-rose-500 truncate max-w-[70%]" title={ferien.name}>{ferien.name}</span>}
+              <div className="flex items-center justify-between h-6">
+                {istHeute ? (
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-coral-500 text-white text-[11px] font-bold">{parseInt(datum.slice(8))}</span>
+                ) : (
+                  <span className={`text-[12px] font-semibold pl-1 ${wochenende ? 'text-ink-300 dark:text-ink-600' : 'text-ink-500 dark:text-ink-300'}`}>{parseInt(datum.slice(8))}</span>
+                )}
+                {ferien && <span className="text-[8px] font-medium text-rose-500 truncate max-w-[64%] pr-0.5" title={ferien.name}>{ferien.name}</span>}
               </div>
               {tages.slice(0, MAX).map(ev => (
                 <div key={ev.id} onClick={e => { e.stopPropagation(); onEvent(ev) }}>
@@ -225,7 +249,7 @@ function MonatsGitter({ jahr, monat, eventsAmTag, zeitVon, schulferien, onTag, o
                 </div>
               ))}
               {tages.length > MAX && (
-                <span className="text-[9px] text-ink-400 pl-1">+{tages.length - MAX} weitere</span>
+                <span className="text-[10px] font-medium text-ink-400 hover:text-ink-600 dark:hover:text-ink-200 pl-1">+{tages.length - MAX} weitere</span>
               )}
             </div>
           )
@@ -254,19 +278,28 @@ function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stun
   const ROW_H = 44
   const stunden = Array.from({ length: endH - startH }, (_, i) => startH + i)
   const posTop = (hhmm) => ((hhmmZuMin(hhmm) - startH * 60) / 60) * ROW_H
+  // „Jetzt"-Linie: aktuelle Uhrzeit in Minuten seit Rasterbeginn (nur wenn im sichtbaren Bereich).
+  const jetzt = new Date()
+  const jetztMin = jetzt.getHours() * 60 + jetzt.getMinutes()
+  const jetztTop = (jetztMin >= startH * 60 && jetztMin <= endH * 60) ? ((jetztMin - startH * 60) / 60) * ROW_H : null
 
   return (
     <div className="flex-1 min-h-0 overflow-auto">
       {/* Kopf: Wochentage */}
       <div className="grid sticky top-0 z-10 bg-white dark:bg-ink-900 border-b border-paper-200 dark:border-ink-800" style={{ gridTemplateColumns: '48px repeat(7, 1fr)' }}>
         <div />
-        {tage.map(d => {
+        {tage.map((d, i) => {
           const ferien = ferienFuerTag(d, schulferien)
+          const we = i >= 5
           return (
-            <div key={d} className={`text-center py-1 border-l border-paper-100 dark:border-ink-800 ${d === heute ? 'bg-coral-50 dark:bg-coral-900/20' : ''}`}>
-              <div className="text-[10px] text-ink-400">{WOCHENTAG_KURZ[tage.indexOf(d)]}</div>
-              <div className={`text-sm font-semibold ${d === heute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-700 dark:text-paper-200'}`}>{parseInt(d.slice(8))}</div>
-              {ferien && <div className="text-[8px] text-rose-500 truncate" title={ferien.name}>{ferien.name}</div>}
+            <div key={d} className={`text-center py-1.5 border-l border-paper-100 dark:border-ink-800 ${ferien ? 'bg-rose-50/50 dark:bg-rose-950/20' : ''}`}>
+              <div className={`text-[10px] font-semibold uppercase tracking-wide ${we ? 'text-ink-300 dark:text-ink-600' : 'text-ink-400'}`}>{WOCHENTAG_KURZ[i]}</div>
+              {d === heute ? (
+                <div className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-coral-500 text-white text-sm font-bold">{parseInt(d.slice(8))}</div>
+              ) : (
+                <div className={`mt-0.5 text-sm font-semibold ${we ? 'text-ink-400 dark:text-ink-500' : 'text-ink-700 dark:text-paper-200'}`}>{parseInt(d.slice(8))}</div>
+              )}
+              {ferien && <div className="text-[8px] text-rose-500 truncate px-0.5" title={ferien.name}>{ferien.name}</div>}
             </div>
           )
         })}
@@ -308,6 +341,12 @@ function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stun
                   style={{ top: i * ROW_H, height: ROW_H }}
                   onClick={() => onTag(d, `${String(h).padStart(2, '0')}:00`)} />
               ))}
+              {d === heute && jetztTop != null && (
+                <div className="absolute left-0 right-0 z-10 pointer-events-none flex items-center" style={{ top: jetztTop }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-coral-500 -ml-0.5" />
+                  <span className="flex-1 h-px bg-coral-500" />
+                </div>
+              )}
               {timed.map(ev => {
                 const top = posTop(zeitVon(ev))
                 const ende = zeitBis(ev) ? posTop(zeitBis(ev)) : top + ROW_H / 2
@@ -320,8 +359,8 @@ function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stun
                     onClick={e => { e.stopPropagation(); onEvent(ev) }}
                     onMouseEnter={e => onHover?.(ev, e)}
                     onMouseLeave={() => onLeave?.()}
-                    className={`absolute rounded px-1 py-0.5 text-[10px] leading-tight overflow-hidden text-left ${ev.readonly ? 'cursor-default' : 'cursor-pointer'}`}
-                    style={{ top, height: hoehe, left: `calc(${lane * breite}% + 1px)`, width: `calc(${breite}% - 2px)`, backgroundColor: ev.farbe + '30', color: ev.farbe, borderLeft: `2px solid ${ev.farbe}` }}
+                    className={`absolute rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-tight overflow-hidden text-left shadow-sm ${ev.readonly ? 'cursor-default' : 'cursor-pointer hover:brightness-95'}`}
+                    style={{ top, height: hoehe, left: `calc(${lane * breite}% + 1px)`, width: `calc(${breite}% - 2px)`, backgroundColor: ev.farbe + '22', color: ev.farbe, borderLeft: `3px solid ${ev.farbe}` }}
                   >
                     <span className="tabular-nums opacity-80">{zeitVon(ev)}</span> {ev.typ === 'edupage' && ev.klassen ? <span className="font-semibold">{ev.klassen} · </span> : null}{ev.titel}
                   </button>
