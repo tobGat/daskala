@@ -111,7 +111,7 @@ export default function KalenderView({ modus = 'monat', setModus, switchSlot, zi
       const d = new Date(jahr, monat - 1 + richtung, 1)
       setAnker(toLocalDateStr(d))
     } else {
-      setAnker(addDaysStr(anker, richtung * 7))
+      setAnker(addDaysStr(anker, richtung * (modus === 'agenda' ? 14 : 7)))
     }
   }
 
@@ -136,6 +136,8 @@ export default function KalenderView({ modus = 'monat', setModus, switchSlot, zi
   const kw = getKalenderwoche(anker).kw
   const titelText = modus === 'monat'
     ? `${monatsName(monat)} ${jahr}`
+    : modus === 'agenda'
+    ? `Agenda ab ${new Date(anker + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}`
     : (() => { const tage = getWochenTage(anker); return `KW ${kw} · ${tage[0].slice(8)}.–${tage[6].slice(8)}. ${monatsName(parseInt(tage[6].slice(5, 7)))}` })()
 
   return (
@@ -143,7 +145,7 @@ export default function KalenderView({ modus = 'monat', setModus, switchSlot, zi
       {/* Ein zusammenhängender Header: Ansichts-Switch · Woche/Monat · Navigation · Titel · Aktionen */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-paper-200 dark:border-ink-800 flex-shrink-0 flex-wrap">
         {switchSlot}
-        {setModus && <Segmented options={[['woche', 'Woche'], ['monat', 'Monat']]} value={modus} onChange={setModus} />}
+        {setModus && <Segmented options={[['woche', 'Woche'], ['monat', 'Monat'], ['agenda', 'Agenda']]} value={modus} onChange={setModus} />}
         <div className="w-px h-5 bg-paper-200 dark:bg-ink-700 mx-1" />
         <div className="flex items-center gap-0.5">
           <button className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-500 dark:text-ink-300 hover:bg-paper-100 dark:hover:bg-ink-800 text-lg leading-none" onClick={() => springe(-1)} title="Zurück">‹</button>
@@ -161,12 +163,19 @@ export default function KalenderView({ modus = 'monat', setModus, switchSlot, zi
         </div>
       </div>
 
-      {modus === 'monat'
-        ? <MonatsGitter jahr={jahr} monat={monat} eventsAmTag={eventsAmTag} zeitVon={zeitVon} schulferien={schulferien}
-            onTag={(d) => setFormModal({ preset: { datum: d } })} onEvent={eventKlick} onHover={zeigeHover} onLeave={versteckeHover} />
-        : <WochenGitter anker={anker} eventsAmTag={eventsAmTag} istZeitEvent={istZeitEvent}
-            zeitVon={zeitVon} zeitBis={zeitBis} stundenzeiten={stundenzeiten} schulferien={schulferien}
-            onTag={(d, uhrzeit) => setFormModal({ preset: { datum: d, uhrzeit } })} onEvent={eventKlick} onHover={zeigeHover} onLeave={versteckeHover} />}
+      {modus === 'monat' && (
+        <MonatsGitter jahr={jahr} monat={monat} eventsAmTag={eventsAmTag} zeitVon={zeitVon} schulferien={schulferien}
+          onTag={(d) => setFormModal({ preset: { datum: d } })} onEvent={eventKlick} onHover={zeigeHover} onLeave={versteckeHover} />
+      )}
+      {modus === 'woche' && (
+        <WochenGitter anker={anker} eventsAmTag={eventsAmTag} istZeitEvent={istZeitEvent}
+          zeitVon={zeitVon} zeitBis={zeitBis} stundenzeiten={stundenzeiten} schulferien={schulferien}
+          onTag={(d, uhrzeit) => setFormModal({ preset: { datum: d, uhrzeit } })} onEvent={eventKlick} onHover={zeigeHover} onLeave={versteckeHover} />
+      )}
+      {modus === 'agenda' && (
+        <AgendaListe ab={anker} events={events} zeitVon={zeitVon} schulferien={schulferien}
+          onEvent={eventKlick} onHover={zeigeHover} onLeave={versteckeHover} />
+      )}
 
       {hover && <TerminTooltip ev={hover.ev} x={hover.x} y={hover.y} zeitVon={zeitVon} zeitBis={zeitBis} />}
 
@@ -368,6 +377,62 @@ function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stun
                   </button>
                 )
               })}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Agenda-Ansicht: chronologische Liste kommender Einträge, nach Tag gruppiert ──
+function AgendaListe({ ab, events, zeitVon, schulferien, onEvent, onHover, onLeave }) {
+  const list = events
+    .filter(e => e.datum >= ab)
+    .sort((a, b) => a.datum.localeCompare(b.datum) || (zeitVon(a) || '').localeCompare(zeitVon(b) || ''))
+    .slice(0, 200)
+  const gruppen = []
+  const idx = {}
+  for (const e of list) {
+    if (idx[e.datum] == null) { idx[e.datum] = gruppen.length; gruppen.push({ datum: e.datum, items: [] }) }
+    gruppen[idx[e.datum]].items.push(e)
+  }
+  const heute = heuteStr()
+  const fmtTag = (d) => new Date(d + 'T00:00:00').toLocaleDateString('de-AT', { weekday: 'long', day: '2-digit', month: '2-digit' })
+  return (
+    <div className="flex-1 min-h-0 overflow-auto">
+      {gruppen.length === 0 && (
+        <div className="text-center py-16 text-ink-400"><div className="text-3xl mb-2">📭</div><p className="text-sm">Keine bevorstehenden Termine</p></div>
+      )}
+      <div className="max-w-2xl mx-auto p-3 space-y-4">
+        {gruppen.map(g => {
+          const ferien = ferienFuerTag(g.datum, schulferien)
+          const istHeute = g.datum === heute
+          return (
+            <div key={g.datum}>
+              <div className="flex items-center gap-2 mb-1 sticky top-0 bg-white dark:bg-ink-900 py-1 z-10">
+                <span className={`text-sm font-semibold capitalize ${istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-700 dark:text-paper-200'}`}>{fmtTag(g.datum)}{istHeute ? ' · heute' : ''}</span>
+                {ferien && <span className="text-[11px] text-rose-500">{ferien.name}</span>}
+              </div>
+              <div className="space-y-1">
+                {g.items.map(ev => (
+                  <button
+                    key={ev.id}
+                    onClick={() => onEvent(ev)}
+                    onMouseEnter={e => onHover?.(ev, e)}
+                    onMouseLeave={() => onLeave?.()}
+                    className={`w-full flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left hover:bg-paper-100 dark:hover:bg-ink-800 transition-colors ${ev.readonly ? 'cursor-default' : 'cursor-pointer'}`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: ev.farbe }} />
+                    <span className="w-20 flex-shrink-0 text-xs tabular-nums text-ink-500 dark:text-ink-400">{ev.ganztags ? 'ganztägig' : (zeitVon(ev) || '')}</span>
+                    <span className="flex-1 min-w-0 truncate text-sm text-ink-800 dark:text-paper-200">
+                      {ev.typ === 'todo' ? (ev.subtyp === 'faellig' ? '✓ ' : '🔔 ') : ''}
+                      {ev.typ === 'edupage' && ev.klassen ? <span className="font-semibold">{ev.klassen} · </span> : null}
+                      {ev.titel}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           )
         })}
