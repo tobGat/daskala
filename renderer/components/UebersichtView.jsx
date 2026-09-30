@@ -41,9 +41,18 @@ export default function UebersichtView() {
   } = useStore()
   const [highlightedTodoId, setHighlightedTodoId] = useState(null)
   const mobil = useIsMobile()
-  // Hauptbereich: Stundenplan · Woche · Monat (in localStorage gemerkt).
-  const [ansichtModus, setAnsichtModusState] = useState(() => localStorage.getItem('dashboard-ansicht') || 'stundenplan')
+  // Hauptbereich: binär Stundenplan | Kalender; im Kalender zusätzlich Woche | Monat.
+  const gespeichert = localStorage.getItem('dashboard-ansicht')
+  const [ansichtModus, setAnsichtModusState] = useState(
+    (gespeichert === 'kalender' || gespeichert === 'woche' || gespeichert === 'monat') ? 'kalender' : 'stundenplan')
+  const [kalenderModus, setKalenderModusState] = useState(() => {
+    const k = localStorage.getItem('dashboard-kalender-modus')
+    if (k === 'woche' || k === 'monat') return k
+    return (gespeichert === 'woche' || gespeichert === 'monat') ? gespeichert : 'monat'
+  })
   const setAnsichtModus = (m) => { setAnsichtModusState(m); try { localStorage.setItem('dashboard-ansicht', m) } catch { /* ignore */ } }
+  const setKalenderModus = (m) => { setKalenderModusState(m); try { localStorage.setItem('dashboard-kalender-modus', m) } catch { /* ignore */ } }
+  const segCls = (aktiv) => `px-3 py-1.5 rounded-md transition-colors ${aktiv ? 'bg-white dark:bg-ink-700 text-coral-600 dark:text-coral-300 shadow-sm' : 'text-ink-500 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300'}`
 
   // Resizable Sidebar — wie früher in App.jsx
   const [todoBreite, setTodoBreite]   = useState(() => parseInt(localStorage.getItem('todo-panel-breite') ?? '288'))
@@ -144,26 +153,32 @@ export default function UebersichtView() {
             <StatPill label={offeneTodos === 1 ? 'ToDo' : 'ToDos'}         value={offeneTodos}     emoji="✏️" accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300" />
             <StatPill label={kommendeTermine === 1 ? 'Termin' : 'Termine'} value={kommendeTermine} emoji="📅" accent="bg-mint-50 text-mint-700 dark:bg-mint-900/30 dark:text-mint-300" />
           </div>
-
-          {/* Umschalter: Stundenplan · Woche · Monat */}
-          <div className="ml-auto flex rounded-lg bg-paper-100 dark:bg-ink-800 p-0.5 text-xs font-medium">
-            {[['stundenplan', 'Stundenplan'], ['woche', 'Woche'], ['monat', 'Monat']].map(([id, label]) => (
-              <button
-                key={id}
-                className={`px-3 py-1.5 rounded-md transition-colors ${ansichtModus === id ? 'bg-white dark:bg-ink-700 text-coral-600 dark:text-coral-300 shadow-sm' : 'text-ink-500 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300'}`}
-                onClick={() => setAnsichtModus(id)}
-              >{label}</button>
-            ))}
-          </div>
         </div>
       </div>
 
       {/* Hauptbereich: Stundenplan links, Sidebar (Todos+Termine) rechts */}
       <div className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-hidden flex flex-col">
-          {ansichtModus === 'stundenplan'
-            ? <Stundenplan onTodoBadgeClick={setHighlightedTodoId} />
-            : <KalenderView modus={ansichtModus} onTodoClick={setHighlightedTodoId} />}
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            {ansichtModus === 'stundenplan'
+              ? <Stundenplan onTodoBadgeClick={setHighlightedTodoId} />
+              : <KalenderView modus={kalenderModus} onTodoClick={setHighlightedTodoId} />}
+          </div>
+          {/* Umschalt-Leiste am unteren Rand des Moduls */}
+          <div className="flex-shrink-0 flex items-center gap-3 px-3 py-1.5 border-t border-paper-200 dark:border-ink-800 bg-white dark:bg-ink-900">
+            <div className="flex rounded-lg bg-paper-100 dark:bg-ink-800 p-0.5 text-xs font-medium">
+              {[['stundenplan', 'Stundenplan'], ['kalender', 'Kalender']].map(([id, label]) => (
+                <button key={id} className={segCls(ansichtModus === id)} onClick={() => setAnsichtModus(id)}>{label}</button>
+              ))}
+            </div>
+            {ansichtModus === 'kalender' && (
+              <div className="flex rounded-lg bg-paper-100 dark:bg-ink-800 p-0.5 text-xs font-medium">
+                {[['woche', 'Woche'], ['monat', 'Monat']].map(([id, label]) => (
+                  <button key={id} className={segCls(kalenderModus === id)} onClick={() => setKalenderModus(id)}>{label}</button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div
           className="w-1 flex-shrink-0 cursor-col-resize hover:bg-coral-400 dark:hover:bg-coral-600 bg-paper-200 dark:bg-ink-800 transition-colors"

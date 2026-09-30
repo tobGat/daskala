@@ -28,6 +28,9 @@ export default function KalenderView({ modus = 'monat', onTodoClick }) {
   const [formModal, setFormModal] = useState(null) // { initial } | { preset }
   const [detail, setDetail] = useState(null)       // schreibgeschützter EduPage-Detail
   const [syncLaeuft, setSyncLaeuft] = useState(false)
+  const [hover, setHover] = useState(null)         // { ev, x, y } – Detail-Tooltip beim Überfahren
+  const zeigeHover = (ev, e) => setHover({ ev, x: e.clientX, y: e.clientY })
+  const versteckeHover = () => setHover(null)
 
   useEffect(() => {
     ladeTermine(); ladeKalenderTermine()
@@ -54,6 +57,7 @@ export default function KalenderView({ modus = 'monat', onTodoClick }) {
         id: `e${t.id}`, quelleId: t.id, typ: 'eigen', readonly: false, titel: t.titel,
         datum: t.datum, bisDatum: t.bis_datum || null, uhrzeit: t.uhrzeit, bisUhrzeit: t.bis_uhrzeit,
         ganztags: !!t.ganztags, stundeId: t.stunde_id, notiz: t.notiz,
+        klasseName: klassen.find(k => k.id === t.klasse_id)?.name || null,
         farbe: klassen.find(k => k.id === t.klasse_id)?.farbe || FARBE_EIGEN, raw: t,
       })
     }
@@ -129,10 +133,12 @@ export default function KalenderView({ modus = 'monat', onTodoClick }) {
 
       {modus === 'monat'
         ? <MonatsGitter jahr={jahr} monat={monat} eventsAmTag={eventsAmTag} zeitVon={zeitVon} schulferien={schulferien}
-            onTag={(d) => setFormModal({ preset: { datum: d } })} onEvent={eventKlick} />
-        : <WochenGitter anker={anker} events={events} eventsAmTag={eventsAmTag} istZeitEvent={istZeitEvent}
+            onTag={(d) => setFormModal({ preset: { datum: d } })} onEvent={eventKlick} onHover={zeigeHover} onLeave={versteckeHover} />
+        : <WochenGitter anker={anker} eventsAmTag={eventsAmTag} istZeitEvent={istZeitEvent}
             zeitVon={zeitVon} zeitBis={zeitBis} stundenzeiten={stundenzeiten} schulferien={schulferien}
-            onTag={(d, uhrzeit) => setFormModal({ preset: { datum: d, uhrzeit } })} onEvent={eventKlick} />}
+            onTag={(d, uhrzeit) => setFormModal({ preset: { datum: d, uhrzeit } })} onEvent={eventKlick} onHover={zeigeHover} onLeave={versteckeHover} />}
+
+      {hover && <TerminTooltip ev={hover.ev} x={hover.x} y={hover.y} zeitVon={zeitVon} zeitBis={zeitBis} />}
 
       {formModal && (
         <TerminForm
@@ -151,12 +157,13 @@ export default function KalenderView({ modus = 'monat', onTodoClick }) {
 }
 
 // ── Event-Chip (kompakt) ──────────────────────────────────────────────────────
-function Chip({ ev, zeit, onClick, className = '' }) {
+function Chip({ ev, zeit, onClick, onHover, onLeave, className = '' }) {
   const readonly = ev.readonly
   return (
     <button
       onClick={onClick}
-      title={ev.titel}
+      onMouseEnter={e => onHover?.(ev, e)}
+      onMouseLeave={() => onLeave?.()}
       className={`w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate ${readonly ? 'cursor-default' : 'cursor-pointer hover:brightness-95'} ${className}`}
       style={{ backgroundColor: ev.farbe + '26', color: ev.farbe }}
     >
@@ -168,7 +175,7 @@ function Chip({ ev, zeit, onClick, className = '' }) {
 }
 
 // ── Monatsansicht ─────────────────────────────────────────────────────────────
-function MonatsGitter({ jahr, monat, eventsAmTag, zeitVon, schulferien, onTag, onEvent }) {
+function MonatsGitter({ jahr, monat, eventsAmTag, zeitVon, schulferien, onTag, onEvent, onHover, onLeave }) {
   const wochen = getMonatsWochen(jahr, monat)
   const heute = heuteStr()
   const MAX = 3
@@ -207,7 +214,7 @@ function MonatsGitter({ jahr, monat, eventsAmTag, zeitVon, schulferien, onTag, o
               </div>
               {tages.slice(0, MAX).map(ev => (
                 <div key={ev.id} onClick={e => { e.stopPropagation(); onEvent(ev) }}>
-                  <Chip ev={ev} zeit={istZeitChip(ev) ? zeitVon(ev) : null} onClick={() => {}} />
+                  <Chip ev={ev} zeit={istZeitChip(ev) ? zeitVon(ev) : null} onClick={() => {}} onHover={onHover} onLeave={onLeave} />
                 </div>
               ))}
               {tages.length > MAX && (
@@ -223,7 +230,7 @@ function MonatsGitter({ jahr, monat, eventsAmTag, zeitVon, schulferien, onTag, o
 const istZeitChip = (ev) => !ev.ganztags && !ev.bisDatum && (ev.uhrzeit || ev.stundeId)
 
 // ── Wochenansicht (Ganztags-Band + Zeitraster) ────────────────────────────────
-function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stundenzeiten, schulferien, onTag, onEvent }) {
+function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stundenzeiten, schulferien, onTag, onEvent, onHover, onLeave }) {
   const tage = getWochenTage(anker)
   const heute = heuteStr()
 
@@ -267,7 +274,7 @@ function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stun
             <div key={d} className="border-l border-paper-100 dark:border-ink-800 p-0.5 space-y-0.5 min-h-[26px]" onClick={() => onTag(d, null)}>
               {band.map(ev => (
                 <div key={ev.id} onClick={e => { e.stopPropagation(); onEvent(ev) }}>
-                  <Chip ev={ev} onClick={() => {}} />
+                  <Chip ev={ev} onClick={() => {}} onHover={onHover} onLeave={onLeave} />
                 </div>
               ))}
             </div>
@@ -304,7 +311,8 @@ function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stun
                   <button
                     key={ev.id}
                     onClick={e => { e.stopPropagation(); onEvent(ev) }}
-                    title={ev.titel}
+                    onMouseEnter={e => onHover?.(ev, e)}
+                    onMouseLeave={() => onLeave?.()}
                     className={`absolute rounded px-1 py-0.5 text-[10px] leading-tight overflow-hidden text-left ${ev.readonly ? 'cursor-default' : 'cursor-pointer'}`}
                     style={{ top, height: hoehe, left: `calc(${lane * breite}% + 1px)`, width: `calc(${breite}% - 2px)`, backgroundColor: ev.farbe + '30', color: ev.farbe, borderLeft: `2px solid ${ev.farbe}` }}
                   >
@@ -367,6 +375,44 @@ function EduPageDetail({ ev, onClose }) {
           <div><span className="text-ink-400">Quelle: </span>📆 {ev.aboName || 'EduPage'} (schreibgeschützt)</div>
         </dl>
         <div className="mt-5"><button className="btn-primary w-full" onClick={onClose}>Schließen</button></div>
+      </div>
+    </div>
+  )
+}
+
+// ── Hover-Tooltip mit Termin-Details ──────────────────────────────────────────
+function TerminTooltip({ ev, x, y, zeitVon, zeitBis }) {
+  const fmt = (d) => new Date(d + 'T00:00:00').toLocaleDateString('de-AT', { weekday: 'short', day: '2-digit', month: '2-digit' })
+  const datumText = ev.bisDatum && ev.bisDatum !== ev.datum ? `${fmt(ev.datum)} – ${fmt(ev.bisDatum)}` : fmt(ev.datum)
+  const zeitText = ev.ganztags ? 'ganztägig' : (zeitVon(ev) ? `${zeitVon(ev)}${zeitBis(ev) ? '–' + zeitBis(ev) : ''} Uhr` : null)
+  const quelle = ev.typ === 'edupage' ? `📆 ${ev.aboName || 'EduPage'}`
+    : ev.typ === 'todo' ? `ToDo · ${ev.subtyp === 'faellig' ? 'fällig' : 'Erinnerung'}`
+    : 'Termin'
+  // Position mit Rand-Klemmung, damit der Tooltip im Viewport bleibt.
+  const left = Math.max(8, Math.min(x + 14, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 268))
+  const top = Math.max(8, Math.min(y + 14, (typeof window !== 'undefined' ? window.innerHeight : 800) - 170))
+  return (
+    <div
+      className="fixed z-[120] pointer-events-none w-64 rounded-xl border border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-800 shadow-lg p-3 animate-fade-in"
+      style={{ left, top }}
+    >
+      <div className="flex items-start gap-2">
+        <span className="w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0" style={{ backgroundColor: ev.farbe }} />
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-ink-900 dark:text-white leading-snug break-words">
+            {ev.typ === 'todo' ? (ev.subtyp === 'faellig' ? '✓ ' : '🔔 ') : ''}{ev.titel}
+          </div>
+          <div className="text-[11px] text-ink-500 dark:text-ink-400 mt-0.5">
+            {datumText}{zeitText ? ` · ${zeitText}` : ''}
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 space-y-0.5 text-[11px] text-ink-600 dark:text-ink-300">
+        {ev.klasseName && <div><span className="text-ink-400">Klasse: </span>{ev.klasseName}</div>}
+        {ev.ort && <div><span className="text-ink-400">Ort: </span>{ev.ort}</div>}
+        {ev.notiz && <div className="line-clamp-2"><span className="text-ink-400">Notiz: </span>{ev.notiz}</div>}
+        {ev.beschreibung && <div className="line-clamp-3 whitespace-pre-wrap">{ev.beschreibung}</div>}
+        <div className="text-ink-400 pt-0.5">{quelle}{ev.readonly && ev.typ === 'edupage' ? ' · schreibgeschützt' : ''}</div>
       </div>
     </div>
   )
