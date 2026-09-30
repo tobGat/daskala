@@ -8,12 +8,6 @@ import Stundenplan from './Stundenplan'
 import KalenderView, { Segmented } from './KalenderView'
 import { useIsMobile } from '../hooks/useIsMobile'
 
-// Lokales Datum (YYYY-MM-DD) – bewusst NICHT toISOString (UTC), sonst zeigt der Zähler nahe Mitternacht
-// einen Tag daneben. Gleiche Logik wie im TerminePanel.
-function localDateStr(d = new Date()) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 function Begruessung() {
   const h = new Date().getHours()
   if (h < 5)  return { text: 'Noch wach?',           emoji: '🌙' }
@@ -25,9 +19,7 @@ function Begruessung() {
 }
 
 export default function UebersichtView() {
-  const {
-    aktuellesSchuljahr, todos, termine, zeigePlaner,
-  } = useStore()
+  const { aktuellesSchuljahr, zeigePlaner } = useStore()
   const [highlightedTodoId, setHighlightedTodoId] = useState(null)
   const mobil = useIsMobile()
   // Hauptbereich: binär Stundenplan | Kalender; im Kalender zusätzlich Woche | Monat.
@@ -84,11 +76,6 @@ export default function UebersichtView() {
 
   const begruessung = useMemo(() => Begruessung(), [])
 
-  const offeneTodos = (todos ?? []).filter(t => !t.erledigt).length
-  // Kommende Termine (ab heute) – analog zum ToDos-Zähler (alle offenen) und zur „kommend"-Liste im Panel.
-  const heute = localDateStr()
-  const kommendeTermine = (termine ?? []).filter(t => t.datum >= heute).length
-
   // ── Mobile Ansicht: nur der Stundenplan (Tagesansicht). ToDos/Termine laufen
   //    über die Kopfzeilen-Symbole; ein Badge-Tap öffnet die passende Vollbild-Liste. ──
   if (mobil) {
@@ -104,18 +91,12 @@ export default function UebersichtView() {
   return (
     <div className="flex-1 overflow-hidden flex flex-col bg-paper-50 dark:bg-ink-950">
 
-      {/* Schmale Kopfzeile: Begrüßung + kompakte Zähler */}
+      {/* Schmale Kopfzeile: Begrüßung */}
       <div className="flex-shrink-0 px-4 py-1 border-b border-paper-200 dark:border-ink-800 bg-white dark:bg-ink-900">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-sm font-semibold text-ink-800 dark:text-paper-100 flex items-center gap-1.5">
-            <span className="text-base leading-none">{begruessung.emoji}</span>{begruessung.text}
-            <span className="text-[11px] font-normal text-ink-400 dark:text-ink-500">· {aktuellesSchuljahr?.bezeichnung ?? '—'}</span>
-          </span>
-          <div className="ml-auto flex items-center gap-3 text-xs text-ink-500 dark:text-ink-400">
-            <span className="flex items-center gap-1"><span aria-hidden>✏️</span><span className="font-bold tabular-nums text-ink-700 dark:text-paper-200">{offeneTodos}</span> {offeneTodos === 1 ? 'ToDo' : 'ToDos'}</span>
-            <span className="flex items-center gap-1"><span aria-hidden>📅</span><span className="font-bold tabular-nums text-ink-700 dark:text-paper-200">{kommendeTermine}</span> {kommendeTermine === 1 ? 'Termin' : 'Termine'}</span>
-          </div>
-        </div>
+        <span className="text-sm font-semibold text-ink-800 dark:text-paper-100 flex items-center gap-1.5">
+          <span className="text-base leading-none">{begruessung.emoji}</span>{begruessung.text}
+          <span className="text-[11px] font-normal text-ink-400 dark:text-ink-500">· {aktuellesSchuljahr?.bezeichnung ?? '—'}</span>
+        </span>
       </div>
 
       {/* Hauptbereich: Stundenplan/Kalender links, ToDos-Sidebar rechts */}
