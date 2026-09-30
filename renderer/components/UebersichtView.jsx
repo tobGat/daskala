@@ -159,13 +159,8 @@ export default function UebersichtView() {
       {/* Hauptbereich: Stundenplan links, Sidebar (Todos+Termine) rechts */}
       <div className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            {ansichtModus === 'stundenplan'
-              ? <Stundenplan onTodoBadgeClick={setHighlightedTodoId} />
-              : <KalenderView modus={kalenderModus} onTodoClick={setHighlightedTodoId} />}
-          </div>
-          {/* Umschalt-Leiste am unteren Rand des Moduls */}
-          <div className="flex-shrink-0 flex items-center gap-3 px-3 py-1.5 border-t border-paper-200 dark:border-ink-800 bg-white dark:bg-ink-900">
+          {/* Umschalt-Leiste zentral oben im Modul */}
+          <div className="flex-shrink-0 flex items-center justify-center gap-3 px-3 py-1.5 border-b border-paper-200 dark:border-ink-800 bg-white dark:bg-ink-900">
             <div className="flex rounded-lg bg-paper-100 dark:bg-ink-800 p-0.5 text-xs font-medium">
               {[['stundenplan', 'Stundenplan'], ['kalender', 'Kalender']].map(([id, label]) => (
                 <button key={id} className={segCls(ansichtModus === id)} onClick={() => setAnsichtModus(id)}>{label}</button>
@@ -178,6 +173,11 @@ export default function UebersichtView() {
                 ))}
               </div>
             )}
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            {ansichtModus === 'stundenplan'
+              ? <Stundenplan onTodoBadgeClick={setHighlightedTodoId} />
+              : <KalenderView modus={kalenderModus} onTodoClick={setHighlightedTodoId} />}
           </div>
         </div>
         <div

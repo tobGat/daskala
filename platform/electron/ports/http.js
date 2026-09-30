@@ -17,9 +17,11 @@ function holeText(url, tiefe = 0) {
         return
       }
       if (code < 200 || code >= 300) { res.resume(); reject(new Error('HTTP ' + code)); return }
-      let data = ''
-      res.on('data', (c) => { data += c })
-      res.on('end', () => resolve(data))
+      // Buffer sammeln und erst am Ende als UTF-8 dekodieren – sonst zerbrechen
+      // Mehrbyte-Zeichen (Umlaute) an Chunk-Grenzen.
+      const chunks = []
+      res.on('data', (c) => chunks.push(c))
+      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
     })
     req.on('error', reject)
     req.setTimeout(15000, () => req.destroy(new Error('timeout')))

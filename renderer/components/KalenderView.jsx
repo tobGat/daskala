@@ -20,6 +20,11 @@ const FARBE_ERINNERUNG = '#f59e0b'
 const heuteStr = () => toLocalDateStr(new Date())
 const hhmmZuMin = (hhmm) => { if (!hhmm) return null; const [h, m] = hhmm.split(':').map(Number); return h * 60 + (m || 0) }
 
+// EduPage schreibt die Klasse(n) als Zeile „Klassen: 1a, 1b" in die Beschreibung.
+const edupageKlassen = (beschr) => { const m = /(?:^|\n)\s*Klassen:\s*([^\n]+)/i.exec(beschr || ''); return m ? m[1].trim() : null }
+// Beschreibung ohne die separat angezeigte „Klassen:"-Zeile (vermeidet Dopplung).
+const ohneKlassenZeile = (beschr) => (beschr || '').replace(/(?:^|\n)\s*Klassen:[^\n]*/i, '').replace(/^\n+/, '').trim()
+
 export default function KalenderView({ modus = 'monat', onTodoClick }) {
   const { termine, kalenderTermine, todos, klassen, aktuellesSchuljahr, einstellungen, ladeTermine, ladeKalenderTermine, syncKalender } = useStore()
   const [anker, setAnker] = useState(heuteStr)
@@ -66,6 +71,7 @@ export default function KalenderView({ modus = 'monat', onTodoClick }) {
         id: `k${t.id}`, quelleId: t.id, typ: 'edupage', readonly: true, titel: t.titel,
         datum: t.datum, bisDatum: t.bis_datum || null, uhrzeit: t.uhrzeit, bisUhrzeit: t.bis_uhrzeit,
         ganztags: !!t.ganztags, ort: t.ort, beschreibung: t.beschreibung, aboName: t.abo_name,
+        klassen: edupageKlassen(t.beschreibung), klasseName: edupageKlassen(t.beschreibung),
         farbe: t.abo_farbe || FARBE_EXTERN, raw: t,
       })
     }
@@ -169,6 +175,7 @@ function Chip({ ev, zeit, onClick, onHover, onLeave, className = '' }) {
     >
       {ev.typ === 'todo' ? (ev.subtyp === 'faellig' ? '✓ ' : '🔔 ') : ''}
       {zeit ? <span className="tabular-nums opacity-80">{zeit} </span> : null}
+      {ev.typ === 'edupage' && ev.klassen ? <span className="font-semibold">{ev.klassen} · </span> : null}
       {ev.titel}
     </button>
   )
@@ -316,7 +323,7 @@ function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stun
                     className={`absolute rounded px-1 py-0.5 text-[10px] leading-tight overflow-hidden text-left ${ev.readonly ? 'cursor-default' : 'cursor-pointer'}`}
                     style={{ top, height: hoehe, left: `calc(${lane * breite}% + 1px)`, width: `calc(${breite}% - 2px)`, backgroundColor: ev.farbe + '30', color: ev.farbe, borderLeft: `2px solid ${ev.farbe}` }}
                   >
-                    <span className="tabular-nums opacity-80">{zeitVon(ev)}</span> {ev.titel}
+                    <span className="tabular-nums opacity-80">{zeitVon(ev)}</span> {ev.typ === 'edupage' && ev.klassen ? <span className="font-semibold">{ev.klassen} · </span> : null}{ev.titel}
                   </button>
                 )
               })}
@@ -370,8 +377,9 @@ function EduPageDetail({ ev, onClose }) {
         </div>
         <dl className="text-sm text-ink-700 dark:text-paper-300 space-y-1.5">
           <div><span className="text-ink-400">Datum: </span>{datum}{zeit ? ` · ${zeit}` : ''}</div>
+          {ev.klassen && <div><span className="text-ink-400">Klassen: </span>{ev.klassen}</div>}
           {ev.ort && <div><span className="text-ink-400">Ort: </span>{ev.ort}</div>}
-          {ev.beschreibung && <div className="whitespace-pre-wrap"><span className="text-ink-400">Info: </span>{ev.beschreibung}</div>}
+          {ohneKlassenZeile(ev.beschreibung) && <div className="whitespace-pre-wrap"><span className="text-ink-400">Info: </span>{ohneKlassenZeile(ev.beschreibung)}</div>}
           <div><span className="text-ink-400">Quelle: </span>📆 {ev.aboName || 'EduPage'} (schreibgeschützt)</div>
         </dl>
         <div className="mt-5"><button className="btn-primary w-full" onClick={onClose}>Schließen</button></div>
@@ -408,10 +416,10 @@ function TerminTooltip({ ev, x, y, zeitVon, zeitBis }) {
         </div>
       </div>
       <div className="mt-2 space-y-0.5 text-[11px] text-ink-600 dark:text-ink-300">
-        {ev.klasseName && <div><span className="text-ink-400">Klasse: </span>{ev.klasseName}</div>}
+        {ev.klasseName && <div><span className="text-ink-400">{ev.typ === 'edupage' ? 'Klassen: ' : 'Klasse: '}</span>{ev.klasseName}</div>}
         {ev.ort && <div><span className="text-ink-400">Ort: </span>{ev.ort}</div>}
         {ev.notiz && <div className="line-clamp-2"><span className="text-ink-400">Notiz: </span>{ev.notiz}</div>}
-        {ev.beschreibung && <div className="line-clamp-3 whitespace-pre-wrap">{ev.beschreibung}</div>}
+        {ohneKlassenZeile(ev.beschreibung) && <div className="line-clamp-3 whitespace-pre-wrap">{ohneKlassenZeile(ev.beschreibung)}</div>}
         <div className="text-ink-400 pt-0.5">{quelle}{ev.readonly && ev.typ === 'edupage' ? ' · schreibgeschützt' : ''}</div>
       </div>
     </div>
