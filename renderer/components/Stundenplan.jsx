@@ -515,6 +515,22 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
     }
     return out
   }
+  // Kompakter Zähl-Badge – absolut positioniert, verändert die Kopfhöhe nicht.
+  const renderTagBadge = (tagDatum, extraClass = '') => {
+    const items = tagItems(tagDatum)
+    if (!items.length) return null
+    return (
+      <button
+        className={`inline-flex items-center gap-0.5 rounded-full pl-1 pr-1.5 py-[1px] text-[9px] font-bold bg-coral-100 text-coral-700 dark:bg-coral-900/50 dark:text-coral-300 hover:bg-coral-200 dark:hover:bg-coral-900/70 transition-colors shadow-sm ${extraClass}`}
+        onMouseEnter={e => setTagHover({ items, x: e.clientX, y: e.clientY })}
+        onMouseLeave={() => setTagHover(null)}
+        onClick={e => { e.stopPropagation(); setTagHover(null); onTagClick?.(tagDatum) }}
+        title="Termine & ToDos anzeigen"
+      >
+        <span aria-hidden className="text-[8px]">📅</span>{items.length}
+      </button>
+    )
+  }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -525,8 +541,9 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
             className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-xl text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 transition-colors">‹</button>
           <button onClick={zeigeHeuteTag} title="Zu heute" className="flex-1 flex flex-col items-center leading-tight">
             <span className={`text-sm font-bold ${istHeuteTag ? 'text-coral-600 dark:text-coral-400' : 'text-ink-800 dark:text-paper-100'}`}>{WOCHENTAGE[mobilTag]}</span>
-            <span className="text-[11px] text-ink-500 dark:text-ink-400">
+            <span className="text-[11px] text-ink-500 dark:text-ink-400 flex items-center gap-1">
               {new Date(wochenDaten[mobilTag] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' })}{istHeuteTag ? ' · heute' : ''}
+              {(() => { const n = tagItems(wochenDaten[mobilTag]).length; return n > 0 ? <span className="inline-flex items-center gap-0.5 rounded-full px-1.5 text-[9px] font-bold bg-coral-100 text-coral-700 dark:bg-coral-900/50 dark:text-coral-300">📅 {n}</span> : null })()}
             </span>
           </button>
           <button onClick={zeigeTagDanach} title="Nächster Tag"
@@ -635,8 +652,10 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                 return (
                   <th
                     key={i}
-                    className={`px-2 py-2 ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
+                    className={`relative px-2 py-2 ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
                   >
+                    {/* Zähl-Badge in der Ecke – absolut, damit die Kopfhöhe gleich bleibt */}
+                    <div className="absolute top-0.5 right-0.5 z-10">{renderTagBadge(wochenDaten[i])}</div>
                     <div className={wetterDetail ? 'flex items-center justify-center gap-1.5' : 'text-center'}>
                       <div className="text-center">
                         <div className={`text-sm font-semibold ${istHeute && !headerFerien ? 'underline underline-offset-4 decoration-coral-400' : ''}`}>
@@ -656,31 +675,6 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
               })}
             </tr>
             )}
-            {/* Zeile 2: Zähl-Badge (Termine + ToDos) pro Tag → Klick öffnet die Wochenansicht */}
-            <tr>
-              <td />
-              {tage.map((i) => {
-                const tagDatum = wochenDaten[i]
-                const items = tagItems(tagDatum)
-                return (
-                  <td key={i} className="px-1 pb-1.5 align-top">
-                    {items.length > 0 && (
-                      <div className="flex justify-center">
-                        <button
-                          className="inline-flex items-center gap-1 rounded-full pl-1.5 pr-2 py-0.5 text-[10px] font-bold bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-300 hover:bg-coral-200 dark:hover:bg-coral-900/60 transition-colors shadow-sm"
-                          onMouseEnter={e => setTagHover({ items, x: e.clientX, y: e.clientY })}
-                          onMouseLeave={() => setTagHover(null)}
-                          onClick={e => { e.stopPropagation(); setTagHover(null); onTagClick?.(tagDatum) }}
-                          title="Termine & ToDos anzeigen"
-                        >
-                          <span aria-hidden className="text-[9px]">📅</span>{items.length}
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                )
-              })}
-            </tr>
           </thead>
           <tbody>
             {stundenzeiten.map(stunde => {
