@@ -26,14 +26,25 @@ const edupageKlassen = (beschr) => { const m = /(?:^|\n)\s*Klassen:\s*([^\n]+)/i
 const ohneKlassenZeile = (beschr) => (beschr || '').replace(/(?:^|\n)\s*Klassen:[^\n]*/i, '').replace(/^\n+/, '').trim()
 
 // Modernes Segment-Steuerelement (Pill-Gruppe). Auch in UebersichtView genutzt.
-export function Segmented({ options, value, onChange }) {
+// variant 'accent' = farblich auffällig (Coral) für den Haupt-Umschalter.
+export function Segmented({ options, value, onChange, variant = 'default' }) {
+  const accent = variant === 'accent'
+  const container = accent
+    ? 'bg-coral-100 dark:bg-coral-900/30 ring-1 ring-coral-200 dark:ring-coral-800'
+    : 'bg-paper-100 dark:bg-ink-800'
+  const aktiv = accent
+    ? 'bg-coral-500 text-white shadow-sm'
+    : 'bg-white dark:bg-ink-700 text-coral-600 dark:text-coral-300 shadow-sm'
+  const inaktiv = accent
+    ? 'text-coral-700 dark:text-coral-300 hover:bg-coral-200/60 dark:hover:bg-coral-900/50'
+    : 'text-ink-500 dark:text-ink-400 hover:text-ink-700 dark:hover:text-ink-200'
   return (
-    <div className="inline-flex rounded-full bg-paper-100 dark:bg-ink-800 p-0.5">
+    <div className={`inline-flex rounded-full p-0.5 ${container}`}>
       {options.map(([id, label]) => (
         <button
           key={id}
           onClick={() => onChange(id)}
-          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${value === id ? 'bg-white dark:bg-ink-700 text-coral-600 dark:text-coral-300 shadow-sm' : 'text-ink-500 dark:text-ink-400 hover:text-ink-700 dark:hover:text-ink-200'}`}
+          className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${value === id ? aktiv : inaktiv}`}
         >{label}</button>
       ))}
     </div>

@@ -104,13 +104,13 @@ export default function UebersichtView() {
         <div className="flex-1 overflow-hidden flex flex-col">
           {ansichtModus === 'stundenplan'
             ? <Stundenplan
-                switchSlot={<Segmented options={ANSICHTEN} value={ansichtModus} onChange={wechsleAnsicht} />}
+                switchSlot={<Segmented options={ANSICHTEN} value={ansichtModus} onChange={wechsleAnsicht} variant="accent" />}
                 onTagClick={springeZuTag} />
             : <KalenderView
                 modus={kalenderModus}
                 setModus={setKalenderModus}
                 zielDatum={kalenderZiel}
-                switchSlot={<Segmented options={ANSICHTEN} value={ansichtModus} onChange={wechsleAnsicht} />}
+                switchSlot={<Segmented options={ANSICHTEN} value={ansichtModus} onChange={wechsleAnsicht} variant="accent" />}
                 onTodoClick={setHighlightedTodoId} />}
         </div>
         <div
