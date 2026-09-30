@@ -53,6 +53,10 @@ export default function UebersichtView() {
   const setAnsichtModus = (m) => { setAnsichtModusState(m); try { localStorage.setItem('dashboard-ansicht', m) } catch { /* ignore */ } }
   const setKalenderModus = (m) => { setKalenderModusState(m); try { localStorage.setItem('dashboard-kalender-modus', m) } catch { /* ignore */ } }
   const ANSICHTEN = [['stundenplan', 'Stundenplan'], ['kalender', 'Kalender']]
+  // Ziel-Datum für den Sprung aus einem Stundenplan-Tages-Badge in die Wochenansicht.
+  const [kalenderZiel, setKalenderZiel] = useState(null)
+  const wechsleAnsicht = (m) => { if (m === 'kalender') setKalenderZiel(null); setAnsichtModus(m) }
+  const springeZuTag = (datum) => { setKalenderModus('woche'); setKalenderZiel(datum); setAnsichtModus('kalender') }
 
   // Resizable Sidebar — wie früher in App.jsx
   const [todoBreite, setTodoBreite]   = useState(() => parseInt(localStorage.getItem('todo-panel-breite') ?? '288'))
@@ -123,7 +127,7 @@ export default function UebersichtView() {
     return (
       <div className="flex-1 flex flex-col overflow-hidden bg-paper-50 dark:bg-ink-950">
         <Stundenplan
-          onTodoBadgeClick={(id) => zeigePlaner('todos', id)}
+          onTagClick={() => zeigePlaner('termine')}
         />
       </div>
     )
@@ -159,20 +163,16 @@ export default function UebersichtView() {
       {/* Hauptbereich: Stundenplan links, Sidebar (Todos+Termine) rechts */}
       <div className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-hidden flex flex-col">
-          {ansichtModus === 'stundenplan' && (
-            <div className="flex-shrink-0 flex items-center px-3 py-2 border-b border-paper-200 dark:border-ink-800 bg-white dark:bg-ink-900">
-              <Segmented options={ANSICHTEN} value={ansichtModus} onChange={setAnsichtModus} />
-            </div>
-          )}
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            {ansichtModus === 'stundenplan'
-              ? <Stundenplan onTodoBadgeClick={setHighlightedTodoId} />
-              : <KalenderView
-                  modus={kalenderModus}
-                  setModus={setKalenderModus}
-                  switchSlot={<Segmented options={ANSICHTEN} value={ansichtModus} onChange={setAnsichtModus} />}
-                  onTodoClick={setHighlightedTodoId} />}
-          </div>
+          {ansichtModus === 'stundenplan'
+            ? <Stundenplan
+                switchSlot={<Segmented options={ANSICHTEN} value={ansichtModus} onChange={wechsleAnsicht} />}
+                onTagClick={springeZuTag} />
+            : <KalenderView
+                modus={kalenderModus}
+                setModus={setKalenderModus}
+                zielDatum={kalenderZiel}
+                switchSlot={<Segmented options={ANSICHTEN} value={ansichtModus} onChange={wechsleAnsicht} />}
+                onTodoClick={setHighlightedTodoId} />}
         </div>
         <div
           className="w-1 flex-shrink-0 cursor-col-resize hover:bg-coral-400 dark:hover:bg-coral-600 bg-paper-200 dark:bg-ink-800 transition-colors"

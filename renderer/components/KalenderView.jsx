@@ -40,9 +40,9 @@ export function Segmented({ options, value, onChange }) {
   )
 }
 
-export default function KalenderView({ modus = 'monat', setModus, switchSlot, onTodoClick }) {
+export default function KalenderView({ modus = 'monat', setModus, switchSlot, zielDatum, onTodoClick }) {
   const { termine, kalenderTermine, todos, klassen, aktuellesSchuljahr, einstellungen, ladeTermine, ladeKalenderTermine, syncKalender } = useStore()
-  const [anker, setAnker] = useState(heuteStr)
+  const [anker, setAnker] = useState(() => zielDatum || heuteStr())
   const [stundenzeiten, setStundenzeiten] = useState([])
   const [customFerien, setCustomFerien] = useState([])
   const [formModal, setFormModal] = useState(null) // { initial } | { preset }
@@ -59,6 +59,8 @@ export default function KalenderView({ modus = 'monat', setModus, switchSlot, on
   useEffect(() => {
     if (aktuellesSchuljahr) window.api.customFerien.getAll(aktuellesSchuljahr.id).then(r => setCustomFerien(r || [])).catch(() => {})
   }, [aktuellesSchuljahr?.id])
+  // Sprung aus dem Stundenplan-Tages-Badge: auf das Ziel-Datum navigieren.
+  useEffect(() => { if (zielDatum) setAnker(zielDatum) }, [zielDatum])
 
   const schulferien = useMemo(() => {
     const berechnet = berechneSchulferien(aktuellesSchuljahr?.bezeichnung ?? '', einstellungen?.bundesland ?? '')
@@ -286,7 +288,7 @@ function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stun
   return (
     <div className="flex-1 min-h-0 overflow-auto">
       {/* Kopf: Wochentage */}
-      <div className="grid sticky top-0 z-10 bg-white dark:bg-ink-900 border-b border-paper-200 dark:border-ink-800" style={{ gridTemplateColumns: '48px repeat(7, 1fr)' }}>
+      <div className="grid sticky top-0 z-10 bg-white dark:bg-ink-900 border-b border-paper-200 dark:border-ink-800" style={{ gridTemplateColumns: '52px repeat(7, minmax(0, 1fr))' }}>
         <div />
         {tage.map((d, i) => {
           const ferien = ferienFuerTag(d, schulferien)
@@ -306,12 +308,12 @@ function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stun
       </div>
 
       {/* Ganztags-/Mehrtags-Band */}
-      <div className="grid border-b border-paper-200 dark:border-ink-800" style={{ gridTemplateColumns: '48px repeat(7, 1fr)' }}>
+      <div className="grid border-b border-paper-200 dark:border-ink-800" style={{ gridTemplateColumns: '52px repeat(7, minmax(0, 1fr))' }}>
         <div className="text-[9px] text-ink-400 text-right pr-1 py-1">ganztg.</div>
         {tage.map(d => {
           const band = eventsAmTag(d).filter(e => !istZeitEvent(e))
           return (
-            <div key={d} className="border-l border-paper-100 dark:border-ink-800 p-0.5 space-y-0.5 min-h-[26px]" onClick={() => onTag(d, null)}>
+            <div key={d} className="min-w-0 border-l border-paper-100 dark:border-ink-800 p-0.5 space-y-0.5 min-h-[26px] cursor-pointer" onClick={() => onTag(d, null)}>
               {band.map(ev => (
                 <div key={ev.id} onClick={e => { e.stopPropagation(); onEvent(ev) }}>
                   <Chip ev={ev} onClick={() => {}} onHover={onHover} onLeave={onLeave} />
@@ -323,7 +325,7 @@ function WochenGitter({ anker, eventsAmTag, istZeitEvent, zeitVon, zeitBis, stun
       </div>
 
       {/* Zeitraster */}
-      <div className="grid relative" style={{ gridTemplateColumns: '48px repeat(7, 1fr)' }}>
+      <div className="grid relative" style={{ gridTemplateColumns: '52px repeat(7, minmax(0, 1fr))' }}>
         {/* Stunden-Spalte */}
         <div className="relative" style={{ height: stunden.length * ROW_H }}>
           {stunden.map((h, i) => (
