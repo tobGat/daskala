@@ -148,6 +148,14 @@ INSERT INTO termine (id, titel, datum, uhrzeit, bis_uhrzeit, notiz, klasse_id, s
   (1, 'Elternabend', '2025-10-20', '18:00', '19:30', 'Aula',       1, 1, NULL),
   (2, 'Wandertag',   '2025-10-05', NULL,    NULL,    NULL,         1, 1, 2);
 
+-- ── EduPage-/webcal-Kalender (Abo + importierte Termine) ────────────────────
+-- Feste erstellt_am (read-channels-Snapshot normalisiert Zeitstempel NICHT).
+INSERT INTO kalender_abos (id, name, url, farbe, aktiv, letzte_sync, letzter_fehler, anzahl, erstellt_am) VALUES
+  (1, 'EduPage', 'https://schule.edupage.org/rss/ical/', '#8b5cf6', 1, '2025-09-01 08:00:00', NULL, 2, '2025-09-01 08:00:00');
+INSERT INTO kalender_termine (id, abo_id, schuljahr_id, uid, titel, datum, bis_datum, uhrzeit, bis_uhrzeit, ganztags, ort, beschreibung, erstellt_am) VALUES
+  (1, 1, 1, 'uid-1', 'Sprechtag',        '2025-11-10', NULL, '15:00', '18:00', 0, 'Aula', NULL, '2025-09-01 08:00:00'),
+  (2, 1, 1, 'uid-2', 'Schulautonom frei','2025-10-27', NULL, NULL,    NULL,    1, NULL,   NULL, '2025-09-01 08:00:00');
+
 -- ── Todos ───────────────────────────────────────────────────────────────────
 INSERT INTO todos (id, titel, erledigt, klasse_id, fach_id, faelligkeit, erinnerung, reihenfolge) VALUES
   (1, 'Schularbeiten korrigieren', 0, 1, 1, '2025-10-16', '2025-10-15', 1),

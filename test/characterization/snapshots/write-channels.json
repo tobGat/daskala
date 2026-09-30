@@ -808,6 +808,60 @@
       ]
     }
   },
+  "kalender:aboCreate": {
+    "ret": 2,
+    "state": {
+      "kalender_abos": [
+        {
+          "id": 1,
+          "name": "EduPage",
+          "url": "https://schule.edupage.org/rss/ical/",
+          "farbe": "#8b5cf6",
+          "aktiv": 1,
+          "letzte_sync": "2025-09-01 08:00:00",
+          "letzter_fehler": null,
+          "anzahl": 2,
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "name": "Klasse 1A",
+          "url": "webcal://schule.edupage.org/rss/ical/?class=1A",
+          "farbe": "#0ea5e9",
+          "aktiv": 1,
+          "letzte_sync": null,
+          "letzter_fehler": null,
+          "anzahl": 0,
+          "erstellt_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "kalender:aboUpdate": {
+    "ret": true,
+    "state": {
+      "kalender_abos": [
+        {
+          "id": 1,
+          "name": "EduPage (aus)",
+          "url": "https://schule.edupage.org/rss/ical/",
+          "farbe": "#ef4444",
+          "aktiv": 0,
+          "letzte_sync": "2025-09-01 08:00:00",
+          "letzter_fehler": null,
+          "anzahl": 2,
+          "erstellt_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "kalender:aboDelete (Kaskade)": {
+    "ret": true,
+    "state": {
+      "kalender_abos": [],
+      "kalender_termine": []
+    }
+  },
   "todos:create": {
     "ret": 3,
     "state": {

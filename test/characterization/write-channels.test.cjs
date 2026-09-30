@@ -32,6 +32,10 @@ const CASES = [
   { name: 'niveau:set', channel: 'niveau:set', args: [1, 3, 'ST', '2026-02-01'], tables: ['schueler_niveau', 'schueler_niveau_historie'] },
   { name: 'termine:create', channel: 'termine:create', args: [{ titel: 'Sprechtag', datum: '2025-12-01', uhrzeit: '10:00', bisUhrzeit: '11:00', notiz: null, klasseId: 1, schuljahrId: 1, stundeId: null }], tables: ['termine'] },
   { name: 'termine:update', channel: 'termine:update', args: [1, { titel: 'Elternabend (verschoben)', datum: '2025-10-21', uhrzeit: '18:30', bisUhrzeit: '20:00', notiz: 'Aula', klasseId: 1, stundeId: null }], tables: ['termine'] },
+  // EduPage-/webcal-Kalender-Abos (Konfiguration; Termine per Sync, nicht per IPC-Write)
+  { name: 'kalender:aboCreate', channel: 'kalender:aboCreate', args: [{ name: 'Klasse 1A', url: 'webcal://schule.edupage.org/rss/ical/?class=1A', farbe: '#0ea5e9', aktiv: 1 }], tables: ['kalender_abos'] },
+  { name: 'kalender:aboUpdate', channel: 'kalender:aboUpdate', args: [1, { name: 'EduPage (aus)', url: 'https://schule.edupage.org/rss/ical/', farbe: '#ef4444', aktiv: 0 }], tables: ['kalender_abos'] },
+  { name: 'kalender:aboDelete (Kaskade)', channel: 'kalender:aboDelete', args: [1], tables: ['kalender_abos', 'kalender_termine'] },
   { name: 'todos:create', channel: 'todos:create', args: [{ titel: 'Kopien vorbereiten', klasseId: 1, fachId: 1, faelligkeit: '2025-11-01', erinnerung: null }], tables: ['todos'] },
   { name: 'todos:toggleErledigt', channel: 'todos:toggleErledigt', args: [1], tables: ['todos'] },
   // Notizbuch (zentrale Notizen mit Ordnern)

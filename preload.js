@@ -363,6 +363,15 @@ const api = {
     delete:  (id)            => invoke('termine:delete', id),
   },
 
+  kalender: {
+    aboGetAll:  ()            => invoke('kalender:aboGetAll'),
+    aboCreate:  (data)        => invoke('kalender:aboCreate', data),
+    aboUpdate:  (id, data)    => invoke('kalender:aboUpdate', id, data),
+    aboDelete:  (id)          => invoke('kalender:aboDelete', id),
+    getTermine: (schuljahrId) => invoke('kalender:getTermine', schuljahrId),
+    sync:       ()            => invoke('kalender:sync'),
+  },
+
   notizbuch: {
     ordnerGetAll: (schuljahrId) => invoke('notizbuch:ordnerGetAll', schuljahrId),
     ordnerCreate: (data)        => invoke('notizbuch:ordnerCreate', data),

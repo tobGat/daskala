@@ -44,6 +44,7 @@ const EXCLUDED = {
   // System / Netzwerk
   'shell:open': 'system', 'app:clipboard': 'system', 'app:reset': 'system', 'app:version': 'system',
   'update:installieren': 'system', 'wetter:getWoche': 'netzwerk', 'wetter:sucheOrt': 'netzwerk',
+  'kalender:sync': 'netzwerk',
   // Spezialfall: umfangreicher Schuljahreswechsel – eigener Test geplant (Phase 1)
   'jahresabschluss:neuesSchuljahr': 'spezialfall-todo',
   // Kompetenz-Katalog: statische Referenzdaten (JSON), kein DB-Zugriff

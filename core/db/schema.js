@@ -300,6 +300,36 @@ const TABLE_DDL = [
       bis TEXT NOT NULL,
       FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
     )`,
+  // EduPage-/webcal-Kalender: abonnierte ICS-Feeds (globale Konfiguration, nicht schuljahr-gebunden).
+  `CREATE TABLE IF NOT EXISTS kalender_abos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT,
+      url TEXT NOT NULL,
+      farbe TEXT,
+      aktiv INTEGER DEFAULT 1,
+      letzte_sync TEXT,
+      letzter_fehler TEXT,
+      anzahl INTEGER DEFAULT 0,
+      erstellt_am TEXT DEFAULT (datetime('now'))
+    )`,
+  // Aus den Feeds importierte Termine (schreibgeschützt, schuljahr-gebunden wie termine).
+  `CREATE TABLE IF NOT EXISTS kalender_termine (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      abo_id INTEGER NOT NULL,
+      schuljahr_id INTEGER NOT NULL,
+      uid TEXT,
+      titel TEXT NOT NULL,
+      datum TEXT NOT NULL,
+      bis_datum TEXT,
+      uhrzeit TEXT,
+      bis_uhrzeit TEXT,
+      ganztags INTEGER DEFAULT 0,
+      ort TEXT,
+      beschreibung TEXT,
+      erstellt_am TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (abo_id) REFERENCES kalender_abos(id) ON DELETE CASCADE,
+      FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
+    )`,
   `CREATE TABLE IF NOT EXISTS kompetenzbereiche (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       fach_id INTEGER NOT NULL,
@@ -541,6 +571,10 @@ const INDEX_DDL = [
       ON notiz_ordner (schuljahr_id, reihenfolge)`,
   `CREATE INDEX IF NOT EXISTS idx_notiz_eintraege_lookup
       ON notiz_eintraege (schuljahr_id, klasse_id, ordner_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_kalender_termine_lookup
+      ON kalender_termine (schuljahr_id, datum)`,
+  `CREATE INDEX IF NOT EXISTS idx_kalender_termine_abo
+      ON kalender_termine (abo_id)`,
   // UUID-Weiche (Phase 2.4): geräteübergreifend eindeutige Identität je Entität
   // für ein späteres Zusammenführen. UNIQUE-Index; mehrere NULL sind in SQLite
   // erlaubt, daher stören noch nicht befüllte Zeilen die Eindeutigkeit nicht.
@@ -1071,6 +1105,42 @@ function applySchema(db, deps) {
   `)
   db.exec(`CREATE INDEX IF NOT EXISTS idx_notiz_ordner_schuljahr ON notiz_ordner (schuljahr_id, reihenfolge)`)
   db.exec(`CREATE INDEX IF NOT EXISTS idx_notiz_eintraege_lookup ON notiz_eintraege (schuljahr_id, klasse_id, ordner_id)`)
+
+  // EduPage-/webcal-Kalender: Abos (globale Konfiguration) + importierte Termine (schuljahr-gebunden, schreibgeschützt).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS kalender_abos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT,
+      url TEXT NOT NULL,
+      farbe TEXT,
+      aktiv INTEGER DEFAULT 1,
+      letzte_sync TEXT,
+      letzter_fehler TEXT,
+      anzahl INTEGER DEFAULT 0,
+      erstellt_am TEXT DEFAULT (datetime('now'))
+    )
+  `)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS kalender_termine (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      abo_id INTEGER NOT NULL,
+      schuljahr_id INTEGER NOT NULL,
+      uid TEXT,
+      titel TEXT NOT NULL,
+      datum TEXT NOT NULL,
+      bis_datum TEXT,
+      uhrzeit TEXT,
+      bis_uhrzeit TEXT,
+      ganztags INTEGER DEFAULT 0,
+      ort TEXT,
+      beschreibung TEXT,
+      erstellt_am TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (abo_id) REFERENCES kalender_abos(id) ON DELETE CASCADE,
+      FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_kalender_termine_lookup ON kalender_termine (schuljahr_id, datum)`)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_kalender_termine_abo ON kalender_termine (abo_id)`)
 
   // Supplierstunden
   db.exec(`

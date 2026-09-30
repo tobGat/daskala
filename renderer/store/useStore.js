@@ -51,6 +51,8 @@ const useStore = create((set, get) => ({
   schuelerKompetenzen: {},     // { kompetenzbereichId_schuelerId: { niveau, notiz, aktualisiert } }
   todos: [],
   termine: [],
+  kalenderTermine: [], // importierte EduPage-/webcal-Termine (schreibgeschützt) des akt. Schuljahres
+  kalenderAbos: [],    // abonnierte Kalender-Feeds (Konfiguration, global)
 
   // ─── UI-Zustand ───────────────────────────────────────────────────────────
   detailSchueler: null,  // { id, vorname, nachname }
@@ -128,6 +130,8 @@ const useStore = create((set, get) => ({
       await get().ladeKlassen(aktuellesSchuljahr.id)
       await get().ladeTodos()
       await get().ladeTermine()
+      get().ladeKalenderTermine()
+      get().ladeKalenderAbos()
       // Offene Elternkontakt-Rückrufe beim Start prüfen → erzeugt ggf. KV-Trigger,
       // auch wenn der KV-Bereich in dieser Sitzung nicht geöffnet wird.
       window.api.kv.pruefeOffeneRueckrufe()
@@ -165,6 +169,7 @@ const useStore = create((set, get) => ({
     await get().ladeKlassen(schuljahr.id)
     await get().ladeTodos()
     await get().ladeTermine()
+    get().ladeKalenderTermine()
   },
 
   ladeTodos: async () => {
@@ -183,6 +188,35 @@ const useStore = create((set, get) => ({
     } catch (err) {
       console.error('[store] ladeTermine Fehler:', err)
     }
+  },
+
+  // Importierte EduPage-/webcal-Termine des aktuellen Schuljahres laden.
+  ladeKalenderTermine: async () => {
+    const { aktuellesSchuljahr } = get()
+    if (!aktuellesSchuljahr) return
+    try {
+      const data = await window.api.kalender?.getTermine?.(aktuellesSchuljahr.id) ?? []
+      set({ kalenderTermine: data })
+    } catch (err) {
+      console.error('[store] ladeKalenderTermine Fehler:', err)
+    }
+  },
+
+  ladeKalenderAbos: async () => {
+    try {
+      const data = await window.api.kalender?.aboGetAll?.() ?? []
+      set({ kalenderAbos: data })
+    } catch (err) {
+      console.error('[store] ladeKalenderAbos Fehler:', err)
+    }
+  },
+
+  // Feeds abrufen (nur Desktop) und danach Abos + Termine neu laden.
+  syncKalender: async () => {
+    const r = await window.api.kalender?.sync?.()
+    await get().ladeKalenderAbos()
+    await get().ladeKalenderTermine()
+    return r
   },
 
   // ─── Klassen ─────────────────────────────────────────────────────────────

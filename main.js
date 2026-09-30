@@ -24,6 +24,7 @@ const kompetenzenDomain = require('./core/domain/kompetenzen')
 const kompetenzKatalog = require('./core/domain/kompetenzKatalog')
 const kompetenzErhebungenDomain = require('./core/domain/kompetenzErhebungen')
 const notizbuchDomain = require('./core/domain/notizbuch')
+const kalenderDomain = require('./core/domain/kalender')
 const spaltenDomain = require('./core/domain/spalten')
 const eintraegeDomain = require('./core/domain/eintraege')
 const zeugnisnotenDomain = require('./core/domain/zeugnisnoten')
@@ -44,6 +45,7 @@ const materialienDomain = require('./core/domain/materialien')
 const jahresplanungDomain = require('./core/domain/jahresplanung')
 const exportService = require('./core/services/export')
 const wetterService = require('./core/services/wetter')
+const kalenderService = require('./core/services/kalender')
 const backupService = require('./core/services/backup')
 const importService = require('./core/services/import')
 const jahresabschlussDomain = require('./core/domain/jahresabschluss')
@@ -449,6 +451,44 @@ function autoBackupWennAktiv() {
     const p = schreibeBackupInOrdner(bkGet('backup_ordner'), 'Daskala-Sicherung', backupMax())
     if (p) { markiereBackupGemacht(); if (sig) bkSet('backup_auto_sig', sig) }
   } catch (e) { logError('autoBackupWennAktiv', e) }
+}
+
+// EduPage-/webcal-Kalender abgleichen: je aktivem Abo abrufen/parsen (Service) und
+// die Termine in der DB ersetzen (Domäne). Fehler werden pro Abo vermerkt, nicht geworfen.
+const kalenderDeps = { http: httpPort, logError }
+async function kalenderSync() {
+  try {
+    const schuljahre = db.prepare('SELECT id, bezeichnung, start_datum, end_datum FROM schuljahre').all()
+    const abos = await kalenderDomain.aboGetAll(dbPort)
+    let gesamt = 0
+    for (const abo of abos) {
+      if (!abo.aktiv) continue
+      const { events, fehler } = await kalenderService.syncAbo(kalenderDeps, abo, schuljahre)
+      const jetzt = new Date().toISOString()
+      if (!fehler) {
+        await kalenderDomain.termineReplaceForAbo(dbPort, abo.id, events)
+        await kalenderDomain.aboSetStatus(dbPort, abo.id, { letzteSync: jetzt, letzterFehler: null, anzahl: events.length })
+        gesamt += events.length
+      } else {
+        await kalenderDomain.aboSetStatus(dbPort, abo.id, { letzteSync: jetzt, letzterFehler: fehler, anzahl: abo.anzahl })
+      }
+    }
+    return { ok: true, anzahl: gesamt }
+  } catch (e) {
+    logError('kalender:sync', e)
+    return { ok: false, fehler: e.message }
+  }
+}
+
+// Beim Start: höchstens einmal pro Tag, nur wenn die Einbindung aktiviert ist.
+function kalenderAutoSync() {
+  try {
+    if (bkGet('edupage_aktiv') !== '1') return
+    const heute = new Date().toISOString().slice(0, 10)
+    if ((bkGet('kalender_letzte_sync') || '').slice(0, 10) === heute) return
+    bkSet('kalender_letzte_sync', new Date().toISOString())
+    kalenderSync().catch(e => logError('kalender:autoSync', e))
+  } catch (e) { logError('kalender:autoSync', e) }
 }
 
 // Vor einem Update eine Sicherung anlegen – intern und (falls konfiguriert) im Zielordner.
@@ -1076,6 +1116,15 @@ function registerIPC() {
   ipcMain.handle('termine:update', (_, id, data) => termineDomain.update(dbPort, id, data))
   ipcMain.handle('termine:delete', (_, id) => termineDomain.remove(dbPort, id))
 
+  // ─── EduPage-/webcal-Kalender ─────────────────────────────────────────────────
+  ipcMain.handle('kalender:aboGetAll', () => kalenderDomain.aboGetAll(dbPort))
+  ipcMain.handle('kalender:aboCreate', (_, data) => kalenderDomain.aboCreate(dbPort, data))
+  ipcMain.handle('kalender:aboUpdate', (_, id, data) => kalenderDomain.aboUpdate(dbPort, id, data))
+  ipcMain.handle('kalender:aboDelete', (_, id) => kalenderDomain.aboRemove(dbPort, id))
+  ipcMain.handle('kalender:getTermine', (_, schuljahrId) => kalenderDomain.termineGetAll(dbPort, schuljahrId))
+  // Netzwerk-Abgleich (on-demand): Abruf/Parse im Service, DB-Schreiben über die Domäne.
+  ipcMain.handle('kalender:sync', () => kalenderSync())
+
   // ─── Notizbuch (zentrale Notizen mit Ordnern) ─────────────────────────────────
   ipcMain.handle('notizbuch:ordnerGetAll', (_, schuljahrId) => notizbuchDomain.ordnerGetAll(dbPort, schuljahrId))
   ipcMain.handle('notizbuch:ordnerCreate', (_, data) => notizbuchDomain.ordnerCreate(dbPort, data))
@@ -1350,6 +1399,7 @@ app.whenReady().then(() => {
   setupMenu()
   createWindow()
   setupAutoUpdate()
+  kalenderAutoSync()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
