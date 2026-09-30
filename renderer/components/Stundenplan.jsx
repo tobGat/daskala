@@ -652,23 +652,17 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                 return (
                   <th
                     key={i}
-                    className={`relative px-2 py-2 ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
+                    className={`relative px-2 py-1 ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
                   >
                     {/* Zähl-Badge in der Ecke – absolut, damit die Kopfhöhe gleich bleibt */}
                     <div className="absolute top-0.5 right-0.5 z-10">{renderTagBadge(wochenDaten[i])}</div>
-                    <div className={wetterDetail ? 'flex items-center justify-center gap-1.5' : 'text-center'}>
-                      <div className="text-center">
-                        <div className={`text-sm font-semibold ${istHeute && !headerFerien ? 'underline underline-offset-4 decoration-coral-400' : ''}`}>
-                          {tag}
-                        </div>
-                        <div className="mt-0.5 flex items-center justify-center gap-1">
-                          <span className="text-[11px] font-normal opacity-70">
-                            {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
-                          </span>
-                          {!wetterDetail && <TagWetter w={wetter?.[wochenDaten[i]]} detail={false} />}
-                        </div>
-                      </div>
-                      {wetterDetail && <TagWetter w={wetter?.[wochenDaten[i]]} detail />}
+                    {/* Kompakte einzeilige Überschrift: Tag · Datum (+ Wetter) */}
+                    <div className="flex items-center justify-center gap-1.5 leading-tight">
+                      <span className={`text-sm font-semibold ${istHeute && !headerFerien ? 'underline underline-offset-4 decoration-coral-400' : ''}`}>{tag}</span>
+                      <span className="text-[11px] font-normal opacity-70 tabular-nums">
+                        {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
+                      </span>
+                      <TagWetter w={wetter?.[wochenDaten[i]]} detail={wetterDetail} />
                     </div>
                   </th>
                 )
