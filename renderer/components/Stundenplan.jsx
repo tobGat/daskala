@@ -197,8 +197,8 @@ function aktuellerWochentag() {
   return d >= 1 && d <= 5 ? d : null
 }
 
-export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
-  const { klassen, todos, termine, kalenderTermine, aktuellesSchuljahr, einstellungen } = useStore()
+export default function Stundenplan({ onTodoBadgeClick }) {
+  const { klassen, todos, aktuellesSchuljahr, einstellungen } = useStore()
   const planungAktiv = einstellungen?.planung_aktiv === '1'
   const wetterDetail = einstellungen?.wetter_detail === '1'
   const wetterZellen = einstellungen?.wetter_zellen === '1'
@@ -638,14 +638,10 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                 const tagDatum = wochenDaten[i]
                 const faelligHier    = todos.filter(t => !t.erledigt && t.faelligkeit === tagDatum)
                 const erinnerungHier = todos.filter(t => !t.erledigt && t.erinnerung  === tagDatum)
-                const termineHier    = termine.filter(t => t.datum === tagDatum)
-                // Importierte (EduPage-/webcal-)Termine – auch mehrtägige über ihre Spanne.
-                const kalenderHier   = kalenderTermine.filter(t => t.datum <= tagDatum && (t.bis_datum || t.datum) >= tagDatum)
+                // Termine/EduPage laufen jetzt im Kalender (Dashboard-Umschalter); hier nur ToDo-Badges.
                 const badges = [
                   ...faelligHier.map(t => ({ t, typ: 'faellig' })),
                   ...erinnerungHier.map(t => ({ t, typ: 'erinnerung' })),
-                  ...termineHier.map(t => ({ t, typ: 'termin' })),
-                  ...kalenderHier.map(t => ({ t, typ: 'kalender' })),
                 ]
                 return (
                   <td key={i} className="px-1 pb-1.5 align-top">
@@ -653,36 +649,20 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                       {badges.map(({ t, typ }) => (
                         <div
                           key={`${typ}-${t.id}`}
-                          className={`text-[9px] px-1.5 py-0.5 rounded font-medium truncate ${typ === 'kalender' ? 'cursor-default' : 'cursor-pointer'} ${
+                          className={`text-[9px] px-1.5 py-0.5 rounded font-medium truncate cursor-pointer ${
                             typ === 'faellig'
                               ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                              : typ === 'erinnerung'
-                              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
-                              : typ === 'kalender'
-                              ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400'
-                              : 'bg-coral-100 dark:bg-coral-900/30 text-coral-600 dark:text-coral-400'
+                              : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
                           }`}
-                          style={typ === 'kalender' && t.abo_farbe ? { backgroundColor: t.abo_farbe + '26', color: t.abo_farbe } : undefined}
-                          title={typ === 'kalender' ? `${t.abo_name ? t.abo_name + ': ' : ''}${t.titel}${t.ort ? ' · ' + t.ort : ''}` : t.titel}
+                          title={t.titel}
                           onClick={e => {
                             e.stopPropagation()
-                            if (typ === 'termin') onTerminBadgeClick?.(t.id)
-                            else if (typ === 'kalender') { /* schreibgeschützt – nur Tooltip */ }
-                            else onTodoBadgeClick?.(t.id)
+                            onTodoBadgeClick?.(t.id)
                           }}
                         >
                           {typ === 'faellig'
                             ? `✓ ${t.titel}`
-                            : typ === 'erinnerung'
-                            ? `🔔 ${t.titel} – ${faelligkeitRelativ(t.faelligkeit, tagDatum)}`
-                            : typ === 'kalender'
-                            ? `📆 ${(!t.ganztags && t.uhrzeit) ? t.uhrzeit + ' ' : ''}${t.titel}`
-                            : (() => {
-                                const stHinweis = t.stunde_id
-                                  ? (stundenzeiten.find(s => s.id === t.stunde_id)?.stunde + '. Std ')
-                                  : (t.uhrzeit ? t.uhrzeit + (t.bis_uhrzeit ? '–' + t.bis_uhrzeit : '') + ' ' : '')
-                                return `◆ ${stHinweis ?? ''}${t.titel}`
-                              })()}
+                            : `🔔 ${t.titel} – ${faelligkeitRelativ(t.faelligkeit, tagDatum)}`}
                         </div>
                       ))}
                     </div>

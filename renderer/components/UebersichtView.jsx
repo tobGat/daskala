@@ -6,6 +6,7 @@ import useStore from '../store/useStore'
 import TodoBoard from './TodoBoard'
 import TerminePanel from './TerminePanel'
 import Stundenplan from './Stundenplan'
+import KalenderView from './KalenderView'
 import { useIsMobile } from '../hooks/useIsMobile'
 
 // Lokales Datum (YYYY-MM-DD) – bewusst NICHT toISOString (UTC), sonst zeigt der Zähler nahe Mitternacht
@@ -39,8 +40,10 @@ export default function UebersichtView() {
     aktuellesSchuljahr, todos, termine, zeigePlaner,
   } = useStore()
   const [highlightedTodoId, setHighlightedTodoId] = useState(null)
-  const [highlightedTerminId, setHighlightedTerminId] = useState(null)
   const mobil = useIsMobile()
+  // Hauptbereich: Stundenplan · Woche · Monat (in localStorage gemerkt).
+  const [ansichtModus, setAnsichtModusState] = useState(() => localStorage.getItem('dashboard-ansicht') || 'stundenplan')
+  const setAnsichtModus = (m) => { setAnsichtModusState(m); try { localStorage.setItem('dashboard-ansicht', m) } catch { /* ignore */ } }
 
   // Resizable Sidebar — wie früher in App.jsx
   const [todoBreite, setTodoBreite]   = useState(() => parseInt(localStorage.getItem('todo-panel-breite') ?? '288'))
@@ -112,7 +115,6 @@ export default function UebersichtView() {
       <div className="flex-1 flex flex-col overflow-hidden bg-paper-50 dark:bg-ink-950">
         <Stundenplan
           onTodoBadgeClick={(id) => zeigePlaner('todos', id)}
-          onTerminBadgeClick={(id) => zeigePlaner('termine', id)}
         />
       </div>
     )
@@ -142,16 +144,26 @@ export default function UebersichtView() {
             <StatPill label={offeneTodos === 1 ? 'ToDo' : 'ToDos'}         value={offeneTodos}     emoji="✏️" accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300" />
             <StatPill label={kommendeTermine === 1 ? 'Termin' : 'Termine'} value={kommendeTermine} emoji="📅" accent="bg-mint-50 text-mint-700 dark:bg-mint-900/30 dark:text-mint-300" />
           </div>
+
+          {/* Umschalter: Stundenplan · Woche · Monat */}
+          <div className="ml-auto flex rounded-lg bg-paper-100 dark:bg-ink-800 p-0.5 text-xs font-medium">
+            {[['stundenplan', 'Stundenplan'], ['woche', 'Woche'], ['monat', 'Monat']].map(([id, label]) => (
+              <button
+                key={id}
+                className={`px-3 py-1.5 rounded-md transition-colors ${ansichtModus === id ? 'bg-white dark:bg-ink-700 text-coral-600 dark:text-coral-300 shadow-sm' : 'text-ink-500 dark:text-ink-400 hover:text-coral-600 dark:hover:text-coral-300'}`}
+                onClick={() => setAnsichtModus(id)}
+              >{label}</button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Hauptbereich: Stundenplan links, Sidebar (Todos+Termine) rechts */}
       <div className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-hidden flex flex-col">
-          <Stundenplan
-            onTodoBadgeClick={setHighlightedTodoId}
-            onTerminBadgeClick={setHighlightedTerminId}
-          />
+          {ansichtModus === 'stundenplan'
+            ? <Stundenplan onTodoBadgeClick={setHighlightedTodoId} />
+            : <KalenderView modus={ansichtModus} onTodoClick={setHighlightedTodoId} />}
         </div>
         <div
           className="w-1 flex-shrink-0 cursor-col-resize hover:bg-coral-400 dark:hover:bg-coral-600 bg-paper-200 dark:bg-ink-800 transition-colors"
@@ -168,8 +180,6 @@ export default function UebersichtView() {
           />
           <TerminePanel
             hoehe={termineHoehe}
-            highlightedTerminId={highlightedTerminId}
-            onHighlightCleared={() => setHighlightedTerminId(null)}
           />
         </div>
       </div>

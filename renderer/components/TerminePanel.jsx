@@ -3,125 +3,10 @@
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 import React, { useState, useEffect, useRef } from 'react'
 import useStore from '../store/useStore'
+import TerminForm from './TerminForm'
 
 function localDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-function TerminForm({ initial, klassen, stundenzeiten, onSpeichern, onAbbrechen }) {
-  const hatStundeInitial = !!initial?.stunde_id
-  const [titel, setTitel]         = useState(initial?.titel ?? '')
-  const [datum, setDatum]         = useState(initial?.datum ?? localDateStr(new Date()))
-  const [zeitModus, setZeitModus] = useState(hatStundeInitial ? 'stunde' : 'uhrzeit')
-  const [uhrzeit, setUhrzeit]     = useState(initial?.uhrzeit ?? '')
-  const [bisUhrzeit, setBisUhrzeit] = useState(initial?.bis_uhrzeit ?? '')
-  const [stundeId, setStundeId]   = useState(initial?.stunde_id ? String(initial.stunde_id) : '')
-  const [notiz, setNotiz]         = useState(initial?.notiz ?? '')
-  const [klasseId, setKlasseId]   = useState(initial?.klasse_id ? String(initial.klasse_id) : '')
-  const inputRef = useRef(null)
-
-  useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 50)
-    const onKey = e => { if (e.key === 'Escape') onAbbrechen() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onAbbrechen])
-
-  const speichern = async () => {
-    const t = titel.trim()
-    if (!t || !datum) return
-    await onSpeichern({
-      titel: t, datum,
-      uhrzeit: zeitModus === 'uhrzeit' ? (uhrzeit || null) : null,
-      // Bis-Uhrzeit nur, wenn eine Von-Uhrzeit gesetzt ist.
-      bisUhrzeit: zeitModus === 'uhrzeit' && uhrzeit ? (bisUhrzeit || null) : null,
-      stundeId: zeitModus === 'stunde' ? (stundeId ? parseInt(stundeId) : null) : null,
-      notiz: notiz.trim() || null,
-      klasseId: klasseId ? parseInt(klasseId) : null,
-    })
-  }
-
-  const labelCls = 'block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1'
-
-  return (
-    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onAbbrechen()}>
-      <div className="modal-box">
-        <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-5">{initial ? 'Termin bearbeiten' : 'Neuer Termin'}</h2>
-
-        <div className="mb-4">
-          <label className={labelCls}>Titel</label>
-          <input
-            ref={inputRef}
-            className="input"
-            placeholder="z.B. Elternabend"
-            value={titel}
-            onChange={e => setTitel(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') speichern() }}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div>
-            <label className={labelCls}>Datum</label>
-            <input type="date" className="input" value={datum} onChange={e => setDatum(e.target.value)} />
-          </div>
-          {klassen.length > 0 && (
-            <div>
-              <label className={labelCls}>Klasse</label>
-              <select className="input" value={klasseId} onChange={e => setKlasseId(e.target.value)}>
-                <option value="">Keine Klasse</option>
-                {klassen.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
-              </select>
-            </div>
-          )}
-        </div>
-
-        <div className="mb-4">
-          <label className={labelCls}>Zeit</label>
-          <div className="flex rounded-lg overflow-hidden border border-paper-200 dark:border-ink-700 text-xs mb-2">
-            <button type="button" className={`flex-1 py-1.5 font-medium transition-colors ${zeitModus === 'uhrzeit' ? 'bg-coral-500 text-white' : 'text-ink-600 dark:text-ink-400 hover:bg-paper-100 dark:hover:bg-ink-700'}`} onClick={() => setZeitModus('uhrzeit')}>Uhrzeit</button>
-            <button type="button" className={`flex-1 py-1.5 font-medium transition-colors ${zeitModus === 'stunde' ? 'bg-coral-500 text-white' : 'text-ink-600 dark:text-ink-400 hover:bg-paper-100 dark:hover:bg-ink-700'}`} onClick={() => setZeitModus('stunde')}>Unterrichtsstunde</button>
-          </div>
-          {zeitModus === 'uhrzeit' ? (
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <span className="block text-[10px] text-ink-400 mb-0.5">Von</span>
-                <input type="time" className="input" value={uhrzeit} onChange={e => setUhrzeit(e.target.value)} />
-              </div>
-              <span className="text-ink-400 pb-2.5">–</span>
-              <div className="flex-1">
-                <span className="block text-[10px] text-ink-400 mb-0.5">Bis <span className="font-normal">(optional)</span></span>
-                <input type="time" className="input" value={bisUhrzeit} onChange={e => setBisUhrzeit(e.target.value)} disabled={!uhrzeit} />
-              </div>
-            </div>
-          ) : (
-            <select className="input" value={stundeId} onChange={e => setStundeId(e.target.value)}>
-              <option value="">Stunde wählen…</option>
-              {stundenzeiten.map(s => <option key={s.id} value={s.id}>{s.stunde}. Stunde {s.beginn ? `(${s.beginn})` : ''}</option>)}
-            </select>
-          )}
-        </div>
-
-        <div className="mb-6">
-          <label className={labelCls}>Notiz <span className="font-normal text-ink-400">(optional)</span></label>
-          <input
-            className="input"
-            placeholder="Notiz"
-            value={notiz}
-            onChange={e => setNotiz(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') speichern() }}
-          />
-        </div>
-
-        <div className="flex gap-3">
-          <button className="btn-secondary flex-1" onClick={onAbbrechen}>Abbrechen</button>
-          <button className="btn-primary flex-1" onClick={speichern} disabled={!titel.trim() || !datum}>
-            {initial ? 'Speichern' : 'Hinzufügen'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 function TerminKarte({ termin, klassen, stundenzeiten, onDelete, onEdit, flashRef, flashed, extern }) {
@@ -162,7 +47,7 @@ function TerminKarte({ termin, klassen, stundenzeiten, onDelete, onEdit, flashRe
             {termin.bis_uhrzeit && <div className="opacity-70">–{termin.bis_uhrzeit}</div>}
           </div>
         )}
-        {extern && termin.ganztags === 1 && (
+        {termin.ganztags === 1 && !stundeLabel && (
           <div className="text-[9px] text-ink-400 leading-tight">ganztg.</div>
         )}
       </div>

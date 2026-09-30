@@ -289,6 +289,8 @@ const TABLE_DDL = [
       schuljahr_id INTEGER NOT NULL,
       stunde_id INTEGER,
       bis_uhrzeit TEXT,
+      ganztags INTEGER DEFAULT 0,
+      bis_datum TEXT,
       FOREIGN KEY (klasse_id) REFERENCES klassen(id) ON DELETE SET NULL,
       FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
     )`,
@@ -991,6 +993,8 @@ function applySchema(db, deps) {
   `)
   spalteErgaenzen('termine', 'stunde_id', 'INTEGER')
   spalteErgaenzen('termine', 'bis_uhrzeit', 'TEXT')
+  spalteErgaenzen('termine', 'ganztags', 'INTEGER DEFAULT 0')
+  spalteErgaenzen('termine', 'bis_datum', 'TEXT')
 
   // Benutzerdefinierte Ferien (Ergänzung/Überschreibung der berechneten Ferien)
   db.exec(`

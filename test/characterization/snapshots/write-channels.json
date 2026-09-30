@@ -752,7 +752,9 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": null,
-          "bis_uhrzeit": "19:30"
+          "bis_uhrzeit": "19:30",
+          "ganztags": 0,
+          "bis_datum": null
         },
         {
           "id": 2,
@@ -763,7 +765,9 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": 2,
-          "bis_uhrzeit": null
+          "bis_uhrzeit": null,
+          "ganztags": 0,
+          "bis_datum": null
         },
         {
           "id": 3,
@@ -774,7 +778,9 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": null,
-          "bis_uhrzeit": "11:00"
+          "bis_uhrzeit": "11:00",
+          "ganztags": 0,
+          "bis_datum": null
         }
       ]
     }
@@ -792,7 +798,9 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": null,
-          "bis_uhrzeit": "20:00"
+          "bis_uhrzeit": "20:00",
+          "ganztags": 0,
+          "bis_datum": null
         },
         {
           "id": 2,
@@ -803,7 +811,55 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": 2,
-          "bis_uhrzeit": null
+          "bis_uhrzeit": null,
+          "ganztags": 0,
+          "bis_datum": null
+        }
+      ]
+    }
+  },
+  "termine:create (ganztägig, mehrtägig)": {
+    "ret": 3,
+    "state": {
+      "termine": [
+        {
+          "id": 1,
+          "titel": "Elternabend",
+          "datum": "2025-10-20",
+          "uhrzeit": "18:00",
+          "notiz": "Aula",
+          "klasse_id": 1,
+          "schuljahr_id": 1,
+          "stunde_id": null,
+          "bis_uhrzeit": "19:30",
+          "ganztags": 0,
+          "bis_datum": null
+        },
+        {
+          "id": 2,
+          "titel": "Wandertag",
+          "datum": "2025-10-05",
+          "uhrzeit": null,
+          "notiz": null,
+          "klasse_id": 1,
+          "schuljahr_id": 1,
+          "stunde_id": 2,
+          "bis_uhrzeit": null,
+          "ganztags": 0,
+          "bis_datum": null
+        },
+        {
+          "id": 3,
+          "titel": "Projektwoche",
+          "datum": "2025-11-17",
+          "uhrzeit": null,
+          "notiz": null,
+          "klasse_id": 1,
+          "schuljahr_id": 1,
+          "stunde_id": null,
+          "bis_uhrzeit": null,
+          "ganztags": 1,
+          "bis_datum": "2025-11-21"
         }
       ]
     }
@@ -4768,7 +4824,9 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": null,
-          "bis_uhrzeit": "19:30"
+          "bis_uhrzeit": "19:30",
+          "ganztags": 0,
+          "bis_datum": null
         }
       ]
     }

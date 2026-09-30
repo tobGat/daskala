@@ -86,3 +86,47 @@ export function monatsName(monat /* 1-12 */) {
 
 // Reihenfolge der Monate im Schuljahr (Sep, Okt, …, Aug)
 export const SCHULJAHR_MONATE = [9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8]
+
+// ─── Kalender-Raster ──────────────────────────────────────────────────────────
+// n Tage ab einem Startdatum als YYYY-MM-DD-Strings.
+export function addDaysStr(datumStr, n) {
+  const d = new Date(datumStr + 'T00:00:00')
+  d.setDate(d.getDate() + n)
+  return toLocalDateStr(d)
+}
+
+// Montag der Woche, in der `datumStr` liegt.
+export function montagDerWoche(datumStr) {
+  const d = new Date(datumStr + 'T00:00:00')
+  const dow = d.getDay() || 7            // So=7
+  d.setDate(d.getDate() - (dow - 1))
+  return toLocalDateStr(d)
+}
+
+// Die 7 Tage (Mo–So) der Woche von `datumStr` als YYYY-MM-DD-Strings.
+export function getWochenTage(datumStr) {
+  const mo = montagDerWoche(datumStr)
+  return Array.from({ length: 7 }, (_, i) => addDaysStr(mo, i))
+}
+
+// Monatsraster (Montag-first) für (jahr, monat 1-12): Array von Wochen à 7 Tagen.
+// Auffüllung mit Tagen aus Vor-/Folgemonat, damit ganze Wochenzeilen entstehen.
+// Jeder Tag: { datum: 'YYYY-MM-DD', imMonat: boolean }.
+export function getMonatsWochen(jahr, monat /* 1-12 */) {
+  const startDow = (new Date(jahr, monat - 1, 1).getDay() + 6) % 7   // 0=Mo … 6=So
+  const letzterDatum = toLocalDateStr(new Date(jahr, monat, 0))      // letzter Tag des Monats
+  const wochen = []
+  let cursor = toLocalDateStr(new Date(jahr, monat - 1, 1 - startDow))
+  let guard = 0
+  while (guard++ < 6) {
+    const woche = Array.from({ length: 7 }, (_, i) => {
+      const datum = addDaysStr(cursor, i)
+      return { datum, imMonat: new Date(datum + 'T00:00:00').getMonth() === monat - 1 }
+    })
+    wochen.push(woche)
+    const letzterDerWoche = woche[6].datum
+    cursor = addDaysStr(cursor, 7)
+    if (letzterDerWoche >= letzterDatum) break   // Monat vollständig abgedeckt
+  }
+  return wochen
+}

@@ -825,6 +825,8 @@
       "schuljahr_id": 1,
       "stunde_id": 2,
       "bis_uhrzeit": null,
+      "ganztags": 0,
+      "bis_datum": null,
       "klasse_name": "1A"
     },
     {
@@ -837,6 +839,8 @@
       "schuljahr_id": 1,
       "stunde_id": null,
       "bis_uhrzeit": "19:30",
+      "ganztags": 0,
+      "bis_datum": null,
       "klasse_name": "1A"
     }
   ],
