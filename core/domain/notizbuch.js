@@ -11,11 +11,11 @@ async function ordnerGetAll(db, schuljahrId) {
   return db.select('SELECT * FROM notiz_ordner WHERE schuljahr_id = ? ORDER BY reihenfolge, id', [schuljahrId])
 }
 
-async function ordnerCreate(db, { schuljahrId, name, farbe, klasseId }) {
+async function ordnerCreate(db, { schuljahrId, name, farbe, klasseId, elternId }) {
   const max = (await db.selectOne('SELECT MAX(reihenfolge) AS m FROM notiz_ordner WHERE schuljahr_id = ?', [schuljahrId]))?.m ?? 0
   const info = await db.execute(
-    'INSERT INTO notiz_ordner (schuljahr_id, name, farbe, reihenfolge, klasse_id) VALUES (?, ?, ?, ?, ?)',
-    [schuljahrId, name, farbe ?? null, max + 1, klasseId ?? null])
+    'INSERT INTO notiz_ordner (schuljahr_id, name, farbe, reihenfolge, klasse_id, eltern_id) VALUES (?, ?, ?, ?, ?, ?)',
+    [schuljahrId, name, farbe ?? null, max + 1, klasseId ?? null, elternId ?? null])
   return info.lastInsertRowid
 }
 
@@ -25,7 +25,9 @@ async function ordnerUpdate(db, id, { name, farbe }) {
 }
 
 async function ordnerRemove(db, id) {
-  // ON DELETE CASCADE räumt die Notizen dieses Ordners mit ab.
+  // Unter-Ordner (eigene) mitlöschen; die Notizen räumt jeweils das ON DELETE CASCADE
+  // über notiz_eintraege.ordner_id mit ab (eine Ebene Verschachtelung).
+  await db.execute('DELETE FROM notiz_ordner WHERE eltern_id = ?', [id])
   await db.execute('DELETE FROM notiz_ordner WHERE id = ?', [id])
   return true
 }

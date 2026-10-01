@@ -42,6 +42,7 @@ const CASES = [
   // Notizbuch (zentrale Notizen mit Ordnern)
   { name: 'notizbuch:ordnerCreate', channel: 'notizbuch:ordnerCreate', args: [{ schuljahrId: 1, name: 'Klausuren', farbe: '#22c55e' }], tables: ['notiz_ordner'] },
   { name: 'notizbuch:ordnerCreate (Klassen-Unterordner)', channel: 'notizbuch:ordnerCreate', args: [{ schuljahrId: 1, name: 'Elternarbeit', farbe: '#0ea5e9', klasseId: 1 }], tables: ['notiz_ordner'] },
+  { name: 'notizbuch:ordnerCreate (eigener Unterordner)', channel: 'notizbuch:ordnerCreate', args: [{ schuljahrId: 1, name: 'Unterthema', farbe: '#a855f7', elternId: 1 }], tables: ['notiz_ordner'] },
   { name: 'notizbuch:ordnerUpdate', channel: 'notizbuch:ordnerUpdate', args: [2, { name: 'Projekte 2025', farbe: '#a855f7' }], tables: ['notiz_ordner'] },
   { name: 'notizbuch:ordnerDelete (Kaskade)', channel: 'notizbuch:ordnerDelete', args: [1], tables: ['notiz_ordner', 'notiz_eintraege'] },
   { name: 'notizbuch:notizCreate', channel: 'notizbuch:notizCreate', args: [{ schuljahrId: 1, klasseId: 1, ordnerId: null, titel: 'Elternsprechtag', text: 'Termine sammeln' }], tables: ['notiz_eintraege'] },
