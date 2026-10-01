@@ -67,6 +67,8 @@ const CASES = [
   // Stundenplan-/Wochen-Planung
   { channel: 'stundenplan:getByKlasse', args: [1] },
   { channel: 'stundenplan:getParallelFach', args: [1, 'Deutsch'] },
+  { channel: 'stundenplan:freiGetAll',   args: [] },      // freie (nicht klassengebundene) Belegungen
+
   { channel: 'stundenPlanung:get',      args: [1, '2025-10-13'] },
   { channel: 'stundenPlanung:getWoche', args: ['2025-10-13'] },
   { channel: 'stundenPlanung:getHueWoche', args: ['2025-10-13'] },

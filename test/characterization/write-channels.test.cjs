@@ -44,6 +44,10 @@ const CASES = [
   { name: 'stundenplan:create', channel: 'stundenplan:create', args: [{ wochentag: 4, stundeId: 2, fachId: 1, wochenIntervall: 1 }], tables: ['stundenplan'] },
   // Sonderfall: Ziel-Slot belegt → Tausch der beiden Stunden (transaktional).
   { name: 'stundenplan:verschieben (Tausch)', channel: 'stundenplan:verschieben', args: [1, 1, 2], tables: ['stundenplan'] },
+  // Freie (nicht klassengebundene) Belegungen: Sprechstunde, Kustodiat, QB-Stunden …
+  { name: 'stundenplan:freiCreate', channel: 'stundenplan:freiCreate', args: [{ wochentag: 3, stundeId: 3, titel: 'Sprechstunde', farbe: 'blau', wochenIntervall: 1 }], tables: ['stundenplan_frei'] },
+  { name: 'stundenplan:freiUpdate', channel: 'stundenplan:freiUpdate', args: [1, { titel: 'Kustodiat', farbe: 'gruen', wochenIntervall: 2, ankerDatum: '2025-10-13' }], tables: ['stundenplan_frei'] },
+  { name: 'stundenplan:freiDelete', channel: 'stundenplan:freiDelete', args: [1], tables: ['stundenplan_frei'] },
 
   // ── Schuljahre / Klassen / Fächer ──────────────────────────────────────────
   { name: 'schuljahre:create', channel: 'schuljahre:create', args: ['2026/27'], tables: ['schuljahre'] },

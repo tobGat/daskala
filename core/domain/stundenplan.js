@@ -103,4 +103,37 @@ async function getParallelFach(db, aktuelleKlasseId, fachName) {
   return out
 }
 
-module.exports = { getAll, create, remove, update, verschieben, getByKlasse, getParallelFach }
+// ── Freie (nicht klassengebundene) Belegungen: Sprechstunde, Kustodiat, QB … ──────────────
+async function freiGetAll(db) {
+  return db.select(`
+      SELECT sf.*, sz.stunde, sz.beginn, sz.ende
+      FROM stundenplan_frei sf
+      JOIN stundenzeiten sz ON sz.id = sf.stunde_id
+      ORDER BY sf.wochentag, sz.stunde
+    `)
+}
+
+async function freiCreate(db, data) {
+  const iv = Math.max(1, parseInt(data.wochenIntervall) || 1)
+  const anker = iv > 1 ? (data.ankerDatum ?? null) : null
+  const info = await db.execute(
+    'INSERT INTO stundenplan_frei (wochentag, stunde_id, titel, farbe, wochen_intervall, anker_datum) VALUES (?, ?, ?, ?, ?, ?)',
+    [data.wochentag, data.stundeId, data.titel, data.farbe ?? null, iv, anker])
+  return info.lastInsertRowid
+}
+
+async function freiUpdate(db, id, data) {
+  const iv = Math.max(1, parseInt(data.wochenIntervall) || 1)
+  const anker = iv > 1 ? (data.ankerDatum ?? null) : null
+  await db.execute(
+    'UPDATE stundenplan_frei SET titel = ?, farbe = ?, wochen_intervall = ?, anker_datum = ? WHERE id = ?',
+    [data.titel, data.farbe ?? null, iv, anker, id])
+  return true
+}
+
+async function freiRemove(db, id) {
+  await db.execute('DELETE FROM stundenplan_frei WHERE id = ?', [id])
+  return true
+}
+
+module.exports = { getAll, create, remove, update, verschieben, getByKlasse, getParallelFach, freiGetAll, freiCreate, freiUpdate, freiRemove }

@@ -1289,6 +1289,34 @@
     }
   ],
   "stundenplan:getParallelFach": [],
+  "stundenplan:freiGetAll": [
+    {
+      "id": 1,
+      "wochentag": 2,
+      "stunde_id": 2,
+      "titel": "Sprechstunde",
+      "farbe": "blau",
+      "wochen_intervall": 1,
+      "anker_datum": null,
+      "erstellt_am": "2025-09-01 08:00:00",
+      "stunde": 2,
+      "beginn": "08:50",
+      "ende": "09:40"
+    },
+    {
+      "id": 2,
+      "wochentag": 4,
+      "stunde_id": 1,
+      "titel": "Kustodiat",
+      "farbe": "gruen",
+      "wochen_intervall": 2,
+      "anker_datum": "2025-09-08",
+      "erstellt_am": "2025-09-01 08:00:00",
+      "stunde": 1,
+      "beginn": "07:55",
+      "ende": "08:45"
+    }
+  ],
   "stundenPlanung:get": {
     "id": 1,
     "stundenplan_id": 1,

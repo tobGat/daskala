@@ -226,6 +226,10 @@ export function createMobileApi(dbPort) {
       update: (id, d) => stundenplanDomain.update(dbPort, id, d),
       delete: (id) => stundenplanDomain.remove(dbPort, id),
       verschieben: (id, wt, sid) => stundenplanDomain.verschieben(dbPort, id, wt, sid),
+      freiGetAll: () => stundenplanDomain.freiGetAll(dbPort),
+      freiCreate: (d) => stundenplanDomain.freiCreate(dbPort, d),
+      freiUpdate: (id, d) => stundenplanDomain.freiUpdate(dbPort, id, d),
+      freiDelete: (id) => stundenplanDomain.freiRemove(dbPort, id),
     }),
     stundenPlanung: dp('stundenPlanung', {
       get: (spId, wd) => stundenPlanungDomain.get(dbPort, spId, wd),

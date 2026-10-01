@@ -186,6 +186,46 @@ function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert }) 
   )
 }
 
+// Farb-Palette für freie Belegungen (Tailwind-Klassen je Farbschlüssel).
+const FREI_FARBEN = {
+  grau:   { bg: 'bg-slate-100 dark:bg-slate-800/50',   border: 'border-slate-300 dark:border-slate-600',   accent: 'bg-slate-400 dark:bg-slate-500',   text: 'text-slate-700 dark:text-slate-200',   dot: 'bg-slate-400' },
+  blau:   { bg: 'bg-sky-100 dark:bg-sky-900/40',        border: 'border-sky-300 dark:border-sky-700',        accent: 'bg-sky-400 dark:bg-sky-500',        text: 'text-sky-800 dark:text-sky-200',        dot: 'bg-sky-400' },
+  gruen:  { bg: 'bg-emerald-100 dark:bg-emerald-900/40', border: 'border-emerald-300 dark:border-emerald-700', accent: 'bg-emerald-400 dark:bg-emerald-500', text: 'text-emerald-800 dark:text-emerald-200', dot: 'bg-emerald-400' },
+  gelb:   { bg: 'bg-amber-100 dark:bg-amber-900/40',    border: 'border-amber-300 dark:border-amber-700',    accent: 'bg-amber-400 dark:bg-amber-500',    text: 'text-amber-800 dark:text-amber-200',    dot: 'bg-amber-400' },
+  violett:{ bg: 'bg-violet-100 dark:bg-violet-900/40',  border: 'border-violet-300 dark:border-violet-700',  accent: 'bg-violet-400 dark:bg-violet-500',  text: 'text-violet-800 dark:text-violet-200',  dot: 'bg-violet-400' },
+  rot:    { bg: 'bg-rose-100 dark:bg-rose-900/40',      border: 'border-rose-300 dark:border-rose-700',      accent: 'bg-rose-400 dark:bg-rose-500',      text: 'text-rose-800 dark:text-rose-200',      dot: 'bg-rose-400' },
+}
+const FREI_FARB_DEFAULT = 'grau'
+function freiFarbe(key) {
+  return FREI_FARBEN[key] || FREI_FARBEN[FREI_FARB_DEFAULT]
+}
+
+function SlotInhaltFrei({ frei, pausiert }) {
+  const f = freiFarbe(frei.farbe)
+  const iv = frei.wochen_intervall || 1
+  const ivBadge = iv > 1 ? (
+    <span
+      className="text-[8px] font-bold px-1 rounded bg-black/10 dark:bg-white/15 whitespace-nowrap leading-tight"
+      title={`Findet alle ${iv} Wochen statt`}
+    >
+      {intervallLabel(iv)}
+    </span>
+  ) : null
+  return (
+    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex ${pausiert ? 'opacity-40 border-dashed' : ''}`}>
+      <div className={`w-1 flex-shrink-0 ${f.accent}`} />
+      <div className={`flex-1 px-1.5 py-1 min-w-0 ${f.text}`}>
+        <div className="font-semibold text-xs truncate leading-tight" title={frei.titel}>{frei.titel}</div>
+        <div className="text-xs leading-tight opacity-60 flex items-center gap-1 min-w-0">
+          <span className="truncate">frei</span>
+          {ivBadge}
+          {pausiert && <span className="text-[8px] font-semibold uppercase tracking-wide whitespace-nowrap">· diese Wo. frei</span>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function aktuelleStunde(stundenzeiten) {
   const now = new Date()
   const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
@@ -205,6 +245,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
 
   const [stundenzeiten, setStundenzeiten] = useState([])
   const [stundenplanEintraege, setStundenplanEintraege] = useState([])
+  const [freiEintraege, setFreiEintraege] = useState([]) // freie, nicht klassengebundene Belegungen
   const [bearbeitungsModus, setBearbeitungsModus] = useState(false)
   const [dragEintragId, setDragEintragId] = useState(null)      // id der per Drag gezogenen Stunde
   const [dragOverSlot, setDragOverSlot] = useState(null)        // { wochentag, stundeId } — Ziel-Highlight
@@ -295,12 +336,14 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   }, [kontextMenu])
 
   const laden = async () => {
-    const [sz, sp] = await Promise.all([
+    const [sz, sp, frei] = await Promise.all([
       window.api.stundenzeiten.getAll(),
       window.api.stundenplan.getAll(),
+      window.api.stundenplan.freiGetAll(),
     ])
     setStundenzeiten(sz)
     setStundenplanEintraege(sp)
+    setFreiEintraege(frei ?? [])
   }
 
   const ladenPlanungen = async () => {
@@ -350,13 +393,19 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const supplierFuerSlot = (wochentag, stundeId) =>
     supplierstunden.find(s => s.wochentag === wochentag && s.stunde_id === stundeId)
 
+  const freiFuerSlot = (wochentag, stundeId) =>
+    freiEintraege.find(f => f.wochentag === wochentag && f.stunde_id === stundeId)
+
   const handleSlotClick = (wochentag, stunde) => {
     const eintragRaw = eintragFuerSlot(wochentag, stunde.id)
     // In der normalen Ansicht zählt ein Eintrag nur in seiner aktiven Woche.
     const eintrag = eintragRaw && (bearbeitungsModus || aktivInWoche(eintragRaw)) ? eintragRaw : null
-    const supplier = !eintrag ? supplierFuerSlot(wochentag, stunde.id) : null
+    const freiRaw = !eintrag ? freiFuerSlot(wochentag, stunde.id) : null
+    const freiEintrag = freiRaw && (bearbeitungsModus || aktivInWoche(freiRaw)) ? freiRaw : null
+    const supplier = !eintrag && !freiEintrag ? supplierFuerSlot(wochentag, stunde.id) : null
     if (bearbeitungsModus) {
-      setSlotModal({ wochentag, stundeId: stunde.id, eintrag })
+      // Anlegen/Bearbeiten: Fach ODER freie Belegung im selben Dialog.
+      setSlotModal({ wochentag, stundeId: stunde.id, eintrag, freiEintrag })
     } else if (eintrag) {
       // Bei deaktivierter Planung nur ein schlankes Notiz-Modal — keine volle Planung
       if (planungAktiv) {
@@ -393,6 +442,8 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
     const id = dragEintragId
     dragAufraeumen()
     if (id == null) return
+    // Ziel-Slot ist mit einer freien Belegung besetzt → nicht überschreiben.
+    if (freiFuerSlot(wochentag, stundeId)) return
     await window.api.stundenplan.verschieben(id, wochentag, stundeId)
     await laden()
   }
@@ -402,6 +453,12 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
     e.stopPropagation()
     const eintragRaw = eintragFuerSlot(wochentag, stunde.id)
     const eintrag = eintragRaw && (bearbeitungsModus || aktivInWoche(eintragRaw)) ? eintragRaw : null
+    // Freie Belegung: per Rechtsklick direkt zum Bearbeiten/Löschen öffnen (statt Kontextmenü).
+    if (!eintrag) {
+      const freiRaw = freiFuerSlot(wochentag, stunde.id)
+      const freiEintrag = freiRaw && (bearbeitungsModus || aktivInWoche(freiRaw)) ? freiRaw : null
+      if (freiEintrag) { setSlotModal({ wochentag, stundeId: stunde.id, eintrag: null, freiEintrag }); return }
+    }
     const supplier = supplierFuerSlot(wochentag, stunde.id)
     setKontextMenu({ x: e.clientX, y: e.clientY, wochentag, stunde, eintrag, supplier })
   }
@@ -433,6 +490,26 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
         fachId,
         wochenIntervall,
         ankerDatum,
+      })
+    }
+    await laden()
+    setSlotModal(null)
+  }
+
+  // Freie (nicht klassengebundene) Belegung anlegen/ändern/löschen.
+  const handleFreiSpeichern = async (data) => {
+    if (!slotModal) return
+    if (slotModal.freiEintrag) {
+      if (data) {
+        await window.api.stundenplan.freiUpdate(slotModal.freiEintrag.id, data)
+      } else {
+        await window.api.stundenplan.freiDelete(slotModal.freiEintrag.id)
+      }
+    } else if (data) {
+      await window.api.stundenplan.freiCreate({
+        wochentag: slotModal.wochentag,
+        stundeId: slotModal.stundeId,
+        ...data,
       })
     }
     await laden()
@@ -708,11 +785,16 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                     // in der normalen Ansicht wie ein freier Slot behandeln.
                     const eintrag = eintragRaw && (bearbeitungsModus || eintragAktiv) ? eintragRaw : null
                     const pausiert = !!eintrag && !eintragAktiv
+                    // Freie (nicht klassengebundene) Belegung: Sprechstunde/Kustodiat/QB …
+                    const freiRaw = !eintrag ? freiFuerSlot(wochentag, stunde.id) : null
+                    const freiAktiv = freiRaw ? aktivInWoche(freiRaw) : false
+                    const frei = freiRaw && (bearbeitungsModus || freiAktiv) ? freiRaw : null
+                    const freiPausiert = !!frei && !freiAktiv
                     const istAktuell = istAktuelleStunde && aktuelleWoche === 0 && aktTag === wochentag
                     const planung = eintrag ? planungFuerEintrag(eintrag.id) : null
                     const entfallen = !!planung?.entfall
-                    // Supplierstunde: freier Slot ODER Ersatz für eine entfallene Stunde
-                    const supplier = (!eintrag || entfallen) ? supplierFuerSlot(wochentag, stunde.id) : null
+                    // Supplierstunde: freier Slot (ohne freie Belegung) ODER Ersatz für eine entfallene Stunde
+                    const supplier = ((!eintrag && !frei) || entfallen) ? supplierFuerSlot(wochentag, stunde.id) : null
                     const hueHier = hueEintraege.filter(h => h.wochentag === wochentag && h.stunde_id === stunde.id)
                     const stripMd = (s) => s?.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/^---+$/gm, '—').replace(/^- /gm, '• ')
                     const tooltipText = planung ? [planung.titel, planung.inhalt?.substring(0, 150)].filter(Boolean).map(stripMd).join('\n') : ''
@@ -776,6 +858,8 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                             entfall={entfallen}
                             pausiert={pausiert}
                           />
+                        ) : frei ? (
+                          <SlotInhaltFrei frei={frei} pausiert={freiPausiert} />
                         ) : (
                           bearbeitungsModus && (
                             <div className="h-full rounded border border-dashed border-paper-200 dark:border-ink-700 flex items-center justify-center">
@@ -998,6 +1082,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           alleFaecher={alleFaecher}
           klassen={klassen}
           onSpeichern={handleSlotSpeichern}
+          onFreiSpeichern={handleFreiSpeichern}
           onClose={() => setSlotModal(null)}
         />
       )}
@@ -1297,11 +1382,18 @@ function SupplierPlanungModal({ supplier, wocheDatum, onClose, onGespeichert }) 
   )
 }
 
-function SlotModal({ slotModal, wocheDatum, alleFaecher, klassen, onSpeichern, onClose }) {
+function SlotModal({ slotModal, wocheDatum, alleFaecher, klassen, onSpeichern, onFreiSpeichern, onClose }) {
+  const istBearbeiten = !!(slotModal.eintrag || slotModal.freiEintrag)
+  // Modus: „fach" (klassengebundenes Fach) oder „frei" (Sprechstunde/Kustodiat/QB …).
+  // Beim Bearbeiten fix aus dem vorhandenen Eintrag, bei neuem Slot umschaltbar.
+  const [modus, setModus] = useState(slotModal.freiEintrag ? 'frei' : 'fach')
+
   const [gewaehltFachId, setGewaehltFachId] = useState(slotModal.eintrag?.fach_id ?? '')
+  const [titel, setTitel] = useState(slotModal.freiEintrag?.titel ?? '')
+  const [farbe, setFarbe] = useState(slotModal.freiEintrag?.farbe ?? FREI_FARB_DEFAULT)
 
   // Wochen-Rhythmus. intervall === 0 ist der Sentinel für „Individuell".
-  const initIv = slotModal.eintrag?.wochen_intervall || 1
+  const initIv = slotModal.eintrag?.wochen_intervall || slotModal.freiEintrag?.wochen_intervall || 1
   const PRESETS = [1, 2, 3, 4]
   const [intervall, setIntervall] = useState(PRESETS.includes(initIv) ? initIv : 0)
   const [customStr, setCustomStr] = useState(PRESETS.includes(initIv) ? '' : String(initIv))
@@ -1318,47 +1410,107 @@ function SlotModal({ slotModal, wocheDatum, alleFaecher, klassen, onSpeichern, o
   // bleibt stabil), sonst die aktuell angezeigte Woche als „findet-statt"-Woche.
   const ankerBerechnen = (iv) => {
     if (iv <= 1) return null
-    if (slotModal.eintrag && (slotModal.eintrag.wochen_intervall || 1) === iv && slotModal.eintrag.anker_datum) {
-      return slotModal.eintrag.anker_datum
+    const best = modus === 'frei' ? slotModal.freiEintrag : slotModal.eintrag
+    if (best && (best.wochen_intervall || 1) === iv && best.anker_datum) {
+      return best.anker_datum
     }
     return wocheDatum
   }
 
+  const titelGetrimmt = titel.trim()
+  const speicherbar = modus === 'frei' ? !!titelGetrimmt : true
+
   const speichern = () => {
-    onSpeichern(
-      gewaehltFachId ? parseInt(gewaehltFachId) : null,
-      { wochenIntervall: effIv, ankerDatum: ankerBerechnen(effIv) },
-    )
+    if (modus === 'frei') {
+      if (!titelGetrimmt) return
+      onFreiSpeichern({ titel: titelGetrimmt, farbe, wochenIntervall: effIv, ankerDatum: ankerBerechnen(effIv) })
+    } else {
+      onSpeichern(
+        gewaehltFachId ? parseInt(gewaehltFachId) : null,
+        { wochenIntervall: effIv, ankerDatum: ankerBerechnen(effIv) },
+      )
+    }
   }
 
+  const zeigeWiederholung = modus === 'frei' ? !!titelGetrimmt : !!gewaehltFachId
   const kw = wocheDatum ? getKalenderwoche(wocheDatum) : null
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box">
         <h2 className="text-base font-semibold text-ink-900 dark:text-white mb-4">
-          {slotModal.eintrag ? 'Stunde bearbeiten' : 'Stunde belegen'}
+          {istBearbeiten ? 'Stunde bearbeiten' : 'Stunde belegen'}
         </h2>
 
-        <div className="mb-5">
-          <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 uppercase tracking-wide mb-2">Fach & Klasse</label>
-          <select
-            className="input"
-            value={gewaehltFachId}
-            onChange={e => setGewaehltFachId(e.target.value)}
-          >
-            <option value="">— Leer lassen —</option>
-            {klassen.map(k => (
-              <optgroup key={k.id} label={k.name}>
-                {(fachNachKlasse[k.id] ?? []).map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </div>
+        {/* Modus-Umschalter — nur beim Neu-Belegen; beim Bearbeiten bleibt der Typ fix. */}
+        {!istBearbeiten && (
+          <div className="mb-5 flex rounded-lg bg-paper-100 dark:bg-ink-800 p-0.5">
+            <button
+              type="button"
+              className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${modus === 'fach' ? 'bg-white dark:bg-ink-700 text-ink-900 dark:text-white shadow-sm' : 'text-ink-500 dark:text-ink-400'}`}
+              onClick={() => setModus('fach')}
+            >
+              Fach &amp; Klasse
+            </button>
+            <button
+              type="button"
+              className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${modus === 'frei' ? 'bg-white dark:bg-ink-700 text-ink-900 dark:text-white shadow-sm' : 'text-ink-500 dark:text-ink-400'}`}
+              onClick={() => setModus('frei')}
+            >
+              Frei
+            </button>
+          </div>
+        )}
 
-        {gewaehltFachId && (
+        {modus === 'fach' ? (
+          <div className="mb-5">
+            <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 uppercase tracking-wide mb-2">Fach &amp; Klasse</label>
+            <select
+              className="input"
+              value={gewaehltFachId}
+              onChange={e => setGewaehltFachId(e.target.value)}
+            >
+              <option value="">— Leer lassen —</option>
+              {klassen.map(k => (
+                <optgroup key={k.id} label={k.name}>
+                  {(fachNachKlasse[k.id] ?? []).map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <>
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 uppercase tracking-wide mb-2">Bezeichnung</label>
+              <input
+                type="text"
+                className="input"
+                value={titel}
+                onChange={e => setTitel(e.target.value)}
+                placeholder="z. B. Sprechstunde, Kustodiat, QB-Stunde"
+                autoFocus
+              />
+            </div>
+            <div className="mb-5">
+              <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 uppercase tracking-wide mb-2">Farbe</label>
+              <div className="flex flex-wrap gap-2">
+                {Object.keys(FREI_FARBEN).map(key => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setFarbe(key)}
+                    className={`w-7 h-7 rounded-full ${FREI_FARBEN[key].dot} transition-transform ${farbe === key ? 'ring-2 ring-offset-2 ring-ink-400 dark:ring-offset-ink-900 scale-110' : 'hover:scale-105'}`}
+                    aria-label={key}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {zeigeWiederholung && (
           <div className="mb-5">
             <label className="block text-xs font-medium text-ink-500 dark:text-ink-400 uppercase tracking-wide mb-2">Wiederholung</label>
             <select
@@ -1387,7 +1539,6 @@ function SlotModal({ slotModal, wocheDatum, alleFaecher, klassen, onSpeichern, o
                   value={customStr}
                   onChange={e => setCustomStr(e.target.value)}
                   placeholder="5"
-                  autoFocus
                 />
                 <span className="text-sm text-ink-600 dark:text-ink-400">Wochen</span>
               </div>
@@ -1405,9 +1556,13 @@ function SlotModal({ slotModal, wocheDatum, alleFaecher, klassen, onSpeichern, o
           {slotModal.eintrag && (
             <button className="btn-danger" onClick={() => onSpeichern(null)}>Löschen</button>
           )}
+          {slotModal.freiEintrag && (
+            <button className="btn-danger" onClick={() => onFreiSpeichern(null)}>Löschen</button>
+          )}
           <button
             className="btn-primary flex-1"
             onClick={speichern}
+            disabled={!speicherbar}
           >
             Speichern
           </button>

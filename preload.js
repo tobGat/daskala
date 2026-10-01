@@ -200,6 +200,10 @@ const api = {
     delete: (id) => invoke('stundenplan:delete', id),
     update: (id, data) => invoke('stundenplan:update', id, data),
     verschieben: (id, wochentag, stundeId) => invoke('stundenplan:verschieben', id, wochentag, stundeId),
+    freiGetAll: () => invoke('stundenplan:freiGetAll'),
+    freiCreate: (data) => invoke('stundenplan:freiCreate', data),
+    freiUpdate: (id, data) => invoke('stundenplan:freiUpdate', id, data),
+    freiDelete: (id) => invoke('stundenplan:freiDelete', id),
   },
 
   supplierstunden: {
