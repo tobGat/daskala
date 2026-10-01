@@ -8,6 +8,17 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.11.0',
+    datum: '2026-10-01',
+    punkte: [
+      'Neuer Kalender (Woche · Monat · Agenda) – das große Upgrade der bisherigen Terminliste: Im Dashboard schaltest du oben mit dem farbigen Umschalter zwischen „Stundenplan" und „Kalender". Der Kalender bündelt endlich alles an einem Ort und verbessert die Organisation des Schulalltags deutlich: eigene Termine, abonnierte externe Kalender, fällige ToDos/Erinnerungen sowie Ferien und Feiertage als farbigen Hintergrund. Drei Ansichten – Monat (Überblick), Woche (mit Uhrzeiten-Raster und „Jetzt"-Linie) und Agenda (chronologische Liste kommender Termine). Neue Termine legst du mit einem Klick auf einen Tag bzw. eine Uhrzeit an, Bearbeiten/Löschen per Klick, Details erscheinen beim Überfahren in einem Tooltip.',
+      'Externe Kalender einbinden (EduPage, Google, Outlook …): Unter Einstellungen → „📆 Externe Kalender" abonnierst du beliebige Kalender per webcal-/ICS-Link und siehst deren Termine direkt in Daskala. So holst du z. B. deinen EduPage-Kalender (Sprechtage, Prüfungen, Schulveranstaltungen) in die App – ebenso Google Kalender oder Outlook/Microsoft 365. Die Abo-Adresse findest du bei EduPage unter Profil/Kalender („iCal"/„Abonnieren"), bei Google unter „Geheime Adresse im iCal-Format" und bei Outlook über „Freigeben/Veröffentlichen". Jedem Kalender gibst du Name und Farbe; wiederkehrende Termine werden automatisch aufgelöst, und bei EduPage wird die Klasse direkt beim Termin angezeigt (z. B. „1a, 1b · Wandertag"). Die Einbindung ist schreibgeschützt, wird beim Programmstart einmal täglich und jederzeit auf Knopfdruck aktualisiert (Desktop).',
+      'Eigene Termine jetzt ganztägig und mehrtägig: Neben Uhrzeit oder Unterrichtsstunde legst du Termine auch „ganztägig" und über ein „Bis"-Datum über mehrere Tage an – ideal für Projektwochen, Exkursionen oder mehrtägige Sprechtage. Im Kalender erscheinen sie als durchgehende Balken.',
+      'Tages-Badge im Stundenplan: An Tagen mit Terminen oder ToDos zeigt der Stundenplan am Wochentag einen kleinen Zähl-Badge. Ein Hover zeigt die Liste des Tages, ein Klick springt direkt in die Wochenansicht des Kalenders. Die Kopfzeile des Stundenplans ist jetzt kompakter.',
+      'Freie (nicht klassengebundene) Stundenplan-Belegungen: Stunden lassen sich nun auch „frei" belegen – etwa für Sprechstunden, Kustodiate oder QB-Stunden. Im Bearbeitungsmodus wählst du statt „Fach & Klasse" einfach „Frei" und vergibst Bezeichnung, Farbe und Wochen-Rhythmus.',
+    ],
+  },
+  {
     version: '1.10.0',
     datum: '2026-09-28',
     punkte: [
