@@ -825,6 +825,8 @@
       "schuljahr_id": 1,
       "stunde_id": 2,
       "bis_uhrzeit": null,
+      "ganztags": 0,
+      "bis_datum": null,
       "klasse_name": "1A"
     },
     {
@@ -837,7 +839,58 @@
       "schuljahr_id": 1,
       "stunde_id": null,
       "bis_uhrzeit": "19:30",
+      "ganztags": 0,
+      "bis_datum": null,
       "klasse_name": "1A"
+    }
+  ],
+  "kalender:aboGetAll": [
+    {
+      "id": 1,
+      "name": "EduPage",
+      "url": "https://schule.edupage.org/rss/ical/",
+      "farbe": "#8b5cf6",
+      "aktiv": 1,
+      "letzte_sync": "2025-09-01 08:00:00",
+      "letzter_fehler": null,
+      "anzahl": 2,
+      "erstellt_am": "2025-09-01 08:00:00"
+    }
+  ],
+  "kalender:getTermine": [
+    {
+      "id": 2,
+      "abo_id": 1,
+      "schuljahr_id": 1,
+      "uid": "uid-2",
+      "titel": "Schulautonom frei",
+      "datum": "2025-10-27",
+      "bis_datum": null,
+      "uhrzeit": null,
+      "bis_uhrzeit": null,
+      "ganztags": 1,
+      "ort": null,
+      "beschreibung": null,
+      "erstellt_am": "2025-09-01 08:00:00",
+      "abo_name": "EduPage",
+      "abo_farbe": "#8b5cf6"
+    },
+    {
+      "id": 1,
+      "abo_id": 1,
+      "schuljahr_id": 1,
+      "uid": "uid-1",
+      "titel": "Sprechtag",
+      "datum": "2025-11-10",
+      "bis_datum": null,
+      "uhrzeit": "15:00",
+      "bis_uhrzeit": "18:00",
+      "ganztags": 0,
+      "ort": "Aula",
+      "beschreibung": null,
+      "erstellt_am": "2025-09-01 08:00:00",
+      "abo_name": "EduPage",
+      "abo_farbe": "#8b5cf6"
     }
   ],
   "notizbuch:ordnerGetAll": [

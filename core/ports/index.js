@@ -52,9 +52,10 @@
  */
 
 /**
- * HTTP(S)-JSON-Abruf. Ersetzt `require('https')`.
+ * HTTP(S)-Abruf. Ersetzt `require('https')`.
  * @typedef {Object} HttpPort
- * @property {(url: string) => Promise<Object>} getJson
+ * @property {(url: string) => Promise<Object>} getJson  JSON abrufen und parsen.
+ * @property {(url: string) => Promise<string>} getText  Rohtext abrufen (z. B. ICS-Feed).
  */
 
 /**

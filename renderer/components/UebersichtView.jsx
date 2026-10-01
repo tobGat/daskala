@@ -4,15 +4,9 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import useStore from '../store/useStore'
 import TodoBoard from './TodoBoard'
-import TerminePanel from './TerminePanel'
 import Stundenplan from './Stundenplan'
+import KalenderView, { Segmented } from './KalenderView'
 import { useIsMobile } from '../hooks/useIsMobile'
-
-// Lokales Datum (YYYY-MM-DD) – bewusst NICHT toISOString (UTC), sonst zeigt der Zähler nahe Mitternacht
-// einen Tag daneben. Gleiche Logik wie im TerminePanel.
-function localDateStr(d = new Date()) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 function Begruessung() {
   const h = new Date().getHours()
@@ -24,30 +18,30 @@ function Begruessung() {
   return       { text: 'Langer Tag heute?',          emoji: '🌙' }
 }
 
-function StatPill({ label, value, accent, emoji }) {
-  return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl ${accent}`}>
-      <span className="text-base leading-none">{emoji}</span>
-      <span className="text-lg font-bold tabular-nums leading-none">{value}</span>
-      <span className="text-[11px] font-medium leading-none">{label}</span>
-    </div>
-  )
-}
-
 export default function UebersichtView() {
-  const {
-    aktuellesSchuljahr, todos, termine, zeigePlaner,
-  } = useStore()
+  const { aktuellesSchuljahr, zeigePlaner } = useStore()
   const [highlightedTodoId, setHighlightedTodoId] = useState(null)
-  const [highlightedTerminId, setHighlightedTerminId] = useState(null)
   const mobil = useIsMobile()
+  // Hauptbereich: binär Stundenplan | Kalender; im Kalender zusätzlich Woche | Monat.
+  const gespeichert = localStorage.getItem('dashboard-ansicht')
+  const [ansichtModus, setAnsichtModusState] = useState(
+    (gespeichert === 'kalender' || gespeichert === 'woche' || gespeichert === 'monat') ? 'kalender' : 'stundenplan')
+  const [kalenderModus, setKalenderModusState] = useState(() => {
+    const k = localStorage.getItem('dashboard-kalender-modus')
+    if (k === 'woche' || k === 'monat' || k === 'agenda') return k
+    return (gespeichert === 'woche' || gespeichert === 'monat') ? gespeichert : 'monat'
+  })
+  const setAnsichtModus = (m) => { setAnsichtModusState(m); try { localStorage.setItem('dashboard-ansicht', m) } catch { /* ignore */ } }
+  const setKalenderModus = (m) => { setKalenderModusState(m); try { localStorage.setItem('dashboard-kalender-modus', m) } catch { /* ignore */ } }
+  const ANSICHTEN = [['stundenplan', 'Stundenplan'], ['kalender', 'Kalender']]
+  // Ziel-Datum für den Sprung aus einem Stundenplan-Tages-Badge in die Wochenansicht.
+  const [kalenderZiel, setKalenderZiel] = useState(null)
+  const wechsleAnsicht = (m) => { if (m === 'kalender') setKalenderZiel(null); setAnsichtModus(m) }
+  const springeZuTag = (datum) => { setKalenderModus('woche'); setKalenderZiel(datum); setAnsichtModus('kalender') }
 
-  // Resizable Sidebar — wie früher in App.jsx
-  const [todoBreite, setTodoBreite]   = useState(() => parseInt(localStorage.getItem('todo-panel-breite') ?? '288'))
-  const [termineHoehe, setTermineHoehe] = useState(() => parseInt(localStorage.getItem('termine-panel-hoehe') ?? '256'))
-
+  // Resizable Sidebar (nur noch Breite; Termine laufen im Kalender/Agenda)
+  const [todoBreite, setTodoBreite] = useState(() => parseInt(localStorage.getItem('todo-panel-breite') ?? '288'))
   const draggingH = useRef(false); const startX = useRef(0); const startBreite = useRef(0)
-  const draggingV = useRef(false); const startY = useRef(0); const startHoehe = useRef(0)
 
   const onDragStart = useCallback((e) => {
     draggingH.current = true
@@ -57,23 +51,11 @@ export default function UebersichtView() {
     document.body.style.userSelect = 'none'
   }, [todoBreite])
 
-  const onDragStartV = useCallback((e) => {
-    draggingV.current = true
-    startY.current = e.clientY
-    startHoehe.current = termineHoehe
-    document.body.style.cursor = 'row-resize'
-    document.body.style.userSelect = 'none'
-  }, [termineHoehe])
-
   useEffect(() => {
     const onMove = (e) => {
       if (draggingH.current) {
         const delta = startX.current - e.clientX
         setTodoBreite(Math.min(600, Math.max(220, startBreite.current + delta)))
-      }
-      if (draggingV.current) {
-        const delta = e.clientY - startY.current
-        setTermineHoehe(Math.min(600, Math.max(120, startHoehe.current - delta)))
       }
     }
     const onUp = () => {
@@ -82,12 +64,6 @@ export default function UebersichtView() {
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
         setTodoBreite(prev => { localStorage.setItem('todo-panel-breite', String(prev)); return prev })
-      }
-      if (draggingV.current) {
-        draggingV.current = false
-        document.body.style.cursor = ''
-        document.body.style.userSelect = ''
-        setTermineHoehe(prev => { localStorage.setItem('termine-panel-hoehe', String(prev)); return prev })
       }
     }
     document.addEventListener('mousemove', onMove)
@@ -100,19 +76,13 @@ export default function UebersichtView() {
 
   const begruessung = useMemo(() => Begruessung(), [])
 
-  const offeneTodos = (todos ?? []).filter(t => !t.erledigt).length
-  // Kommende Termine (ab heute) – analog zum ToDos-Zähler (alle offenen) und zur „kommend"-Liste im Panel.
-  const heute = localDateStr()
-  const kommendeTermine = (termine ?? []).filter(t => t.datum >= heute).length
-
   // ── Mobile Ansicht: nur der Stundenplan (Tagesansicht). ToDos/Termine laufen
   //    über die Kopfzeilen-Symbole; ein Badge-Tap öffnet die passende Vollbild-Liste. ──
   if (mobil) {
     return (
       <div className="flex-1 flex flex-col overflow-hidden bg-paper-50 dark:bg-ink-950">
         <Stundenplan
-          onTodoBadgeClick={(id) => zeigePlaner('todos', id)}
-          onTerminBadgeClick={(id) => zeigePlaner('termine', id)}
+          onTagClick={() => zeigePlaner('termine')}
         />
       </div>
     )
@@ -121,37 +91,27 @@ export default function UebersichtView() {
   return (
     <div className="flex-1 overflow-hidden flex flex-col bg-paper-50 dark:bg-ink-950">
 
-      {/* Toolbar oben: Begrüßung + Stats + Klassen-Chips */}
-      <div className="flex-shrink-0 px-5 py-3 border-b border-paper-200 dark:border-ink-800 bg-white dark:bg-ink-900">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-2xl leading-none">{begruessung.emoji}</span>
-            <div className="leading-tight">
-              <div className="text-base font-bold text-ink-800 dark:text-paper-100 font-display">
-                {begruessung.text}
-              </div>
-              <div className="text-[11px] text-ink-500 dark:text-ink-400">
-                {aktuellesSchuljahr?.bezeichnung ?? '—'}
-              </div>
-            </div>
-          </div>
-
-          <div className="w-px h-8 bg-paper-200 dark:bg-ink-800 flex-shrink-0" />
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <StatPill label={offeneTodos === 1 ? 'ToDo' : 'ToDos'}         value={offeneTodos}     emoji="✏️" accent="bg-coral-50 text-coral-700 dark:bg-coral-900/30 dark:text-coral-300" />
-            <StatPill label={kommendeTermine === 1 ? 'Termin' : 'Termine'} value={kommendeTermine} emoji="📅" accent="bg-mint-50 text-mint-700 dark:bg-mint-900/30 dark:text-mint-300" />
-          </div>
-        </div>
+      {/* Schmale Kopfzeile: Begrüßung */}
+      <div className="flex-shrink-0 px-4 py-1 border-b border-paper-200 dark:border-ink-800 bg-white dark:bg-ink-900">
+        <span className="text-sm font-semibold text-ink-800 dark:text-paper-100 flex items-center gap-1.5">
+          <span className="text-base leading-none">{begruessung.emoji}</span>{begruessung.text}
+          <span className="text-[11px] font-normal text-ink-400 dark:text-ink-500">· {aktuellesSchuljahr?.bezeichnung ?? '—'}</span>
+        </span>
       </div>
 
-      {/* Hauptbereich: Stundenplan links, Sidebar (Todos+Termine) rechts */}
+      {/* Hauptbereich: Stundenplan/Kalender links, ToDos-Sidebar rechts */}
       <div className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-hidden flex flex-col">
-          <Stundenplan
-            onTodoBadgeClick={setHighlightedTodoId}
-            onTerminBadgeClick={setHighlightedTerminId}
-          />
+          {ansichtModus === 'stundenplan'
+            ? <Stundenplan
+                switchSlot={<Segmented options={ANSICHTEN} value={ansichtModus} onChange={wechsleAnsicht} variant="accent" />}
+                onTagClick={springeZuTag} />
+            : <KalenderView
+                modus={kalenderModus}
+                setModus={setKalenderModus}
+                zielDatum={kalenderZiel}
+                switchSlot={<Segmented options={ANSICHTEN} value={ansichtModus} onChange={wechsleAnsicht} variant="accent" />}
+                onTodoClick={setHighlightedTodoId} />}
         </div>
         <div
           className="w-1 flex-shrink-0 cursor-col-resize hover:bg-coral-400 dark:hover:bg-coral-600 bg-paper-200 dark:bg-ink-800 transition-colors"
@@ -161,15 +121,6 @@ export default function UebersichtView() {
           <TodoBoard
             highlightedTodoId={highlightedTodoId}
             onHighlightCleared={() => setHighlightedTodoId(null)}
-          />
-          <div
-            className="h-1 flex-shrink-0 cursor-row-resize hover:bg-coral-400 dark:hover:bg-coral-600 bg-paper-200 dark:bg-ink-800 transition-colors"
-            onMouseDown={onDragStartV}
-          />
-          <TerminePanel
-            hoehe={termineHoehe}
-            highlightedTerminId={highlightedTerminId}
-            onHighlightCleared={() => setHighlightedTerminId(null)}
           />
         </div>
       </div>

@@ -110,7 +110,7 @@ function baueKiPrompt({ bez, startJahr, endJahr, ferienData, faecherListe }) {
 }
 
 export default function Einstellungen({ onClose }) {
-  const { gewichtungGlobal, theme, setTheme, einstellungen, pushToast, aktuellesSchuljahr, schuljahre, archivWiederherstellen, archivLoeschen } = useStore()
+  const { gewichtungGlobal, theme, setTheme, einstellungen, pushToast, aktuellesSchuljahr, schuljahre, archivWiederherstellen, archivLoeschen, kalenderAbos, ladeKalenderAbos, syncKalender } = useStore()
   const [kiExportLaeuft, setKiExportLaeuft] = useState(false)
 
   // Baut die Chatbot-Anleitung und speichert sie als Markdown-Datei.
@@ -367,6 +367,48 @@ export default function Einstellungen({ onClose }) {
     setWetterZellen(an)
     await window.api.einstellungen.set('wetter_zellen', an ? '1' : '0')
     useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
+
+  // ── EduPage-/webcal-Kalender ────────────────────────────────────────────────
+  const [edupageAktiv, setEdupageAktiv] = useState(einstellungen['edupage_aktiv'] === '1')
+  const [neuName, setNeuName] = useState('')
+  const [neuUrl, setNeuUrl] = useState('')
+  const [neuFarbe, setNeuFarbe] = useState(KI_FARBEN[1])
+  const [syncLaeuft, setSyncLaeuft] = useState(false)
+
+  useEffect(() => { ladeKalenderAbos() }, [])
+
+  const handleEdupageAktiv = async (an) => {
+    setEdupageAktiv(an)
+    await window.api.einstellungen.set('edupage_aktiv', an ? '1' : '0')
+    useStore.setState({ einstellungen: await window.api.einstellungen.getAll() })
+  }
+  const handleAboHinzufuegen = async () => {
+    const url = neuUrl.trim()
+    if (!url) return
+    await window.api.kalender.aboCreate({ name: neuName.trim() || null, url, farbe: neuFarbe, aktiv: 1 })
+    setNeuName(''); setNeuUrl(''); setNeuFarbe(KI_FARBEN[1])
+    await ladeKalenderAbos()
+  }
+  const handleAboAktiv = async (abo, an) => {
+    await window.api.kalender.aboUpdate(abo.id, { name: abo.name, url: abo.url, farbe: abo.farbe, aktiv: an ? 1 : 0 })
+    await ladeKalenderAbos()
+    await useStore.getState().ladeKalenderTermine()
+  }
+  const handleAboLoeschen = async (abo) => {
+    if (!confirm(`Kalender „${abo.name || abo.url}" entfernen? Die importierten Termine werden gelöscht.`)) return
+    await window.api.kalender.aboDelete(abo.id)
+    await ladeKalenderAbos()
+    await useStore.getState().ladeKalenderTermine()
+  }
+  const handleSync = async () => {
+    setSyncLaeuft(true)
+    try {
+      const r = await syncKalender()
+      if (r?.ok) pushToast(`Kalender aktualisiert (${r.anzahl} Termine).`, 'success')
+      else pushToast('Kalender-Abgleich fehlgeschlagen.', 'error')
+    } catch { pushToast('Kalender-Abgleich fehlgeschlagen.', 'error') }
+    finally { setSyncLaeuft(false) }
   }
 
   const ladeBackupStatus = async () => {
@@ -781,6 +823,86 @@ export default function Einstellungen({ onClose }) {
                     </p>
                   </div>
                 </label>
+              </div>
+            )}
+          </Akkordeon>
+
+          {/* Externe Kalender (webcal/ICS) */}
+          <Akkordeon id="edupage" icon="📆" titel="Externe Kalender" offen={offenerBereich} onToggle={toggleBereich}>
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={edupageAktiv} onChange={e => handleEdupageAktiv(e.target.checked)} className="mt-0.5" />
+              <div>
+                <span className="text-sm text-ink-700 dark:text-paper-200">Externe Kalender einbinden</span>
+                <p className="text-[11px] text-ink-400 leading-snug">
+                  Abonniert beliebige webcal-/ICS-Kalender (EduPage, Google, Outlook u. a.) – etwa Sprechtage, Prüfungen
+                  oder Events. Die Termine erscheinen schreibgeschützt im Kalender. Abruf nur am Desktop.
+                </p>
+              </div>
+            </label>
+
+            {edupageAktiv && (
+              <div className="mt-4 space-y-4 pl-6">
+                {/* Bestehende Abos */}
+                {kalenderAbos.length > 0 && (
+                  <div className="space-y-2">
+                    {kalenderAbos.map(abo => (
+                      <div key={abo.id} className="rounded-xl border border-paper-200 dark:border-ink-700 px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: abo.farbe || '#7c6cff' }} />
+                          <span className="text-sm text-ink-700 dark:text-paper-200 font-medium truncate flex-1">{abo.name || abo.url}</span>
+                          <label className="flex items-center gap-1 text-[11px] text-ink-500 cursor-pointer select-none flex-shrink-0" title="Kalender ein-/ausblenden">
+                            <input type="checkbox" checked={abo.aktiv === 1} onChange={e => handleAboAktiv(abo, e.target.checked)} />
+                            aktiv
+                          </label>
+                          <button className="text-xs text-ink-400 hover:text-red-500 px-1 flex-shrink-0" onClick={() => handleAboLoeschen(abo)} title="Entfernen">✕</button>
+                        </div>
+                        <p className="text-[10px] text-ink-400 truncate mt-0.5">{abo.url}</p>
+                        <p className="text-[10px] mt-0.5">
+                          {abo.letzter_fehler
+                            ? <span className="text-red-500">Fehler: {abo.letzter_fehler}</span>
+                            : abo.letzte_sync
+                              ? <span className="text-ink-400">Zuletzt: {new Date(abo.letzte_sync).toLocaleString('de-AT', { dateStyle: 'short', timeStyle: 'short' })} · {abo.anzahl} Termine</span>
+                              : <span className="text-ink-400">Noch nicht synchronisiert</span>}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Neues Abo */}
+                <div className="rounded-xl border border-dashed border-paper-300 dark:border-ink-700 p-3 space-y-2">
+                  <h4 className="text-sm font-semibold text-ink-700 dark:text-paper-300">Kalender hinzufügen</h4>
+                  <input className="input" placeholder="Bezeichnung (optional), z. B. Google, Outlook, EduPage" value={neuName} onChange={e => setNeuName(e.target.value)} />
+                  <input className="input" placeholder="webcal://… oder https://…/ical" value={neuUrl} onChange={e => setNeuUrl(e.target.value)} />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {KI_FARBEN.map(f => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setNeuFarbe(f)}
+                        className={`w-6 h-6 rounded-full transition-transform ${neuFarbe === f ? 'ring-2 ring-offset-2 ring-ink-400 dark:ring-offset-ink-900 scale-110' : 'hover:scale-105'}`}
+                        style={{ backgroundColor: f }}
+                        aria-label={f}
+                      />
+                    ))}
+                  </div>
+                  <button className="btn-secondary w-full" onClick={handleAboHinzufuegen} disabled={!neuUrl.trim()}>Hinzufügen</button>
+                </div>
+
+                <button className="btn-primary w-full" onClick={handleSync} disabled={syncLaeuft || kalenderAbos.length === 0}>
+                  {syncLaeuft ? 'Synchronisiere…' : 'Jetzt synchronisieren'}
+                </button>
+
+                {/* Wo finde ich die ICS-/webcal-URL? */}
+                <div className="text-[11px] text-ink-400 leading-snug space-y-1">
+                  <p className="font-medium text-ink-500 dark:text-ink-400">Wo finde ich die Abo-URL?</p>
+                  <ul className="space-y-0.5 list-disc pl-4">
+                    <li><span className="font-medium">EduPage:</span> Profil/Kalender → „iCal" bzw. „Abonnieren".</li>
+                    <li><span className="font-medium">Google Kalender:</span> Einstellungen → Kalender wählen → „Geheime Adresse im iCal-Format" (endet auf <span className="tabular-nums">…/basic.ics</span>).</li>
+                    <li><span className="font-medium">Outlook / Microsoft 365:</span> Kalender → Freigeben/Veröffentlichen → ICS-Link kopieren.</li>
+                  </ul>
+                  <p>Nur lesend – Änderungen in Google/Outlook erscheinen je nach Anbieter erst nach einigen Stunden. Beim App-Start wird höchstens einmal pro Tag automatisch abgeglichen.</p>
+                </div>
               </div>
             )}
           </Akkordeon>

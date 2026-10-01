@@ -752,7 +752,9 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": null,
-          "bis_uhrzeit": "19:30"
+          "bis_uhrzeit": "19:30",
+          "ganztags": 0,
+          "bis_datum": null
         },
         {
           "id": 2,
@@ -763,7 +765,9 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": 2,
-          "bis_uhrzeit": null
+          "bis_uhrzeit": null,
+          "ganztags": 0,
+          "bis_datum": null
         },
         {
           "id": 3,
@@ -774,7 +778,9 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": null,
-          "bis_uhrzeit": "11:00"
+          "bis_uhrzeit": "11:00",
+          "ganztags": 0,
+          "bis_datum": null
         }
       ]
     }
@@ -792,7 +798,9 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": null,
-          "bis_uhrzeit": "20:00"
+          "bis_uhrzeit": "20:00",
+          "ganztags": 0,
+          "bis_datum": null
         },
         {
           "id": 2,
@@ -803,9 +811,111 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": 2,
-          "bis_uhrzeit": null
+          "bis_uhrzeit": null,
+          "ganztags": 0,
+          "bis_datum": null
         }
       ]
+    }
+  },
+  "termine:create (ganztägig, mehrtägig)": {
+    "ret": 3,
+    "state": {
+      "termine": [
+        {
+          "id": 1,
+          "titel": "Elternabend",
+          "datum": "2025-10-20",
+          "uhrzeit": "18:00",
+          "notiz": "Aula",
+          "klasse_id": 1,
+          "schuljahr_id": 1,
+          "stunde_id": null,
+          "bis_uhrzeit": "19:30",
+          "ganztags": 0,
+          "bis_datum": null
+        },
+        {
+          "id": 2,
+          "titel": "Wandertag",
+          "datum": "2025-10-05",
+          "uhrzeit": null,
+          "notiz": null,
+          "klasse_id": 1,
+          "schuljahr_id": 1,
+          "stunde_id": 2,
+          "bis_uhrzeit": null,
+          "ganztags": 0,
+          "bis_datum": null
+        },
+        {
+          "id": 3,
+          "titel": "Projektwoche",
+          "datum": "2025-11-17",
+          "uhrzeit": null,
+          "notiz": null,
+          "klasse_id": 1,
+          "schuljahr_id": 1,
+          "stunde_id": null,
+          "bis_uhrzeit": null,
+          "ganztags": 1,
+          "bis_datum": "2025-11-21"
+        }
+      ]
+    }
+  },
+  "kalender:aboCreate": {
+    "ret": 2,
+    "state": {
+      "kalender_abos": [
+        {
+          "id": 1,
+          "name": "EduPage",
+          "url": "https://schule.edupage.org/rss/ical/",
+          "farbe": "#8b5cf6",
+          "aktiv": 1,
+          "letzte_sync": "2025-09-01 08:00:00",
+          "letzter_fehler": null,
+          "anzahl": 2,
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "name": "Klasse 1A",
+          "url": "webcal://schule.edupage.org/rss/ical/?class=1A",
+          "farbe": "#0ea5e9",
+          "aktiv": 1,
+          "letzte_sync": null,
+          "letzter_fehler": null,
+          "anzahl": 0,
+          "erstellt_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "kalender:aboUpdate": {
+    "ret": true,
+    "state": {
+      "kalender_abos": [
+        {
+          "id": 1,
+          "name": "EduPage (aus)",
+          "url": "https://schule.edupage.org/rss/ical/",
+          "farbe": "#ef4444",
+          "aktiv": 0,
+          "letzte_sync": "2025-09-01 08:00:00",
+          "letzter_fehler": null,
+          "anzahl": 2,
+          "erstellt_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "kalender:aboDelete (Kaskade)": {
+    "ret": true,
+    "state": {
+      "kalender_abos": [],
+      "kalender_termine": []
     }
   },
   "todos:create": {
@@ -4795,7 +4905,9 @@
           "klasse_id": 1,
           "schuljahr_id": 1,
           "stunde_id": null,
-          "bis_uhrzeit": "19:30"
+          "bis_uhrzeit": "19:30",
+          "ganztags": 0,
+          "bis_datum": null
         }
       ]
     }

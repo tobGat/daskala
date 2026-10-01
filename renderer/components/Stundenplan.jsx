@@ -76,15 +76,25 @@ function TagWetter({ w, detail }) {
   )
 }
 
-function faelligkeitRelativ(faelligkeit, vonDatum) {
-  if (!faelligkeit) return null
-  const diff = Math.round(
-    (new Date(faelligkeit + 'T00:00:00') - new Date(vonDatum + 'T00:00:00')) / 86400000
+// Kompakter Tooltip mit der Termin-/ToDo-Liste eines Tages (Kopf-Badge).
+function TagTooltip({ items, x, y }) {
+  const left = Math.max(8, Math.min(x + 14, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 268))
+  const top = Math.max(8, Math.min(y + 14, (typeof window !== 'undefined' ? window.innerHeight : 800) - (60 + items.length * 22)))
+  return (
+    <div className="fixed z-[120] pointer-events-none w-64 rounded-xl border border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-800 shadow-lg p-2.5 animate-fade-in" style={{ left, top }}>
+      <div className="text-[11px] font-semibold text-ink-500 dark:text-ink-400 mb-1.5">{items.length} Eintrag{items.length === 1 ? '' : 'e'}</div>
+      <ul className="space-y-1">
+        {items.map((it, i) => (
+          <li key={i} className="flex items-center gap-1.5 text-[12px] text-ink-700 dark:text-paper-200">
+            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: it.farbe }} />
+            {it.zeit && <span className="tabular-nums text-ink-400 flex-shrink-0">{it.zeit}</span>}
+            <span className="truncate">{it.titel}</span>
+            {it.hinweis && <span className="text-[10px] text-ink-400 flex-shrink-0">· {it.hinweis}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
-  if (diff < 0)  return `${Math.abs(diff)}d überfällig`
-  if (diff === 0) return 'Heute fällig'
-  if (diff === 1) return 'Morgen fällig'
-  return `in ${diff} Tagen fällig`
 }
 
 function getKalenderwoche(datumStr) {
@@ -237,8 +247,8 @@ function aktuellerWochentag() {
   return d >= 1 && d <= 5 ? d : null
 }
 
-export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
-  const { klassen, todos, termine, aktuellesSchuljahr, einstellungen } = useStore()
+export default function Stundenplan({ switchSlot, onTagClick }) {
+  const { klassen, todos, termine, kalenderTermine, aktuellesSchuljahr, einstellungen } = useStore()
   const planungAktiv = einstellungen?.planung_aktiv === '1'
   const wetterDetail = einstellungen?.wetter_detail === '1'
   const wetterZellen = einstellungen?.wetter_zellen === '1'
@@ -266,6 +276,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const [hueEintraege, setHueEintraege] = useState([])
   const [customFerien, setCustomFerien] = useState([])
   const [wetter, setWetter] = useState(null)   // { 'YYYY-MM-DD': { code, tmax, tmin } }
+  const [tagHover, setTagHover] = useState(null) // { items, x, y } – Tooltip des Tages-Badges
 
   // Schulferien berechnen (berechnete + benutzerdefinierte)
   const schulferien = useMemo(() => {
@@ -569,6 +580,35 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
   const zeigeHeuteTag = () => { const d = new Date().getDay(); setAktuelleWoche(0); setMobilTag(d >= 1 && d <= 5 ? d - 1 : 0) }
   const istHeuteTag = aktuelleWoche === 0 && aktTag === mobilTag + 1
 
+  // Termine (eigene + EduPage) und ToDos eines Tages – für den Zähl-Badge im Kopf.
+  const tagItems = (tagDatum) => {
+    const out = []
+    for (const t of termine) if (t.datum === tagDatum) out.push({ typ: 'termin', titel: t.titel, zeit: t.uhrzeit, farbe: klassen.find(k => k.id === t.klasse_id)?.farbe || '#fb6936' })
+    for (const t of kalenderTermine) if (t.datum <= tagDatum && (t.bis_datum || t.datum) >= tagDatum) out.push({ typ: 'edupage', titel: t.titel, zeit: t.ganztags ? null : t.uhrzeit, farbe: t.abo_farbe || '#7c6cff' })
+    for (const td of todos) {
+      if (td.erledigt) continue
+      if (td.faelligkeit === tagDatum) out.push({ typ: 'todo', titel: td.titel, hinweis: 'fällig', farbe: '#ef4444' })
+      else if (td.erinnerung === tagDatum) out.push({ typ: 'todo', titel: td.titel, hinweis: 'Erinnerung', farbe: '#f59e0b' })
+    }
+    return out
+  }
+  // Kompakter Zähl-Badge – absolut positioniert, verändert die Kopfhöhe nicht.
+  const renderTagBadge = (tagDatum, extraClass = '') => {
+    const items = tagItems(tagDatum)
+    if (!items.length) return null
+    return (
+      <button
+        className={`inline-flex items-center gap-0.5 rounded-full pl-1 pr-1.5 py-[1px] text-[9px] font-bold bg-coral-100 text-coral-700 dark:bg-coral-900/50 dark:text-coral-300 hover:bg-coral-200 dark:hover:bg-coral-900/70 transition-colors shadow-sm ${extraClass}`}
+        onMouseEnter={e => setTagHover({ items, x: e.clientX, y: e.clientY })}
+        onMouseLeave={() => setTagHover(null)}
+        onClick={e => { e.stopPropagation(); setTagHover(null); onTagClick?.(tagDatum) }}
+        title="Termine & ToDos anzeigen"
+      >
+        <span aria-hidden className="text-[8px]">📅</span>{items.length}
+      </button>
+    )
+  }
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Toolbar */}
@@ -578,8 +618,9 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
             className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-xl text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 transition-colors">‹</button>
           <button onClick={zeigeHeuteTag} title="Zu heute" className="flex-1 flex flex-col items-center leading-tight">
             <span className={`text-sm font-bold ${istHeuteTag ? 'text-coral-600 dark:text-coral-400' : 'text-ink-800 dark:text-paper-100'}`}>{WOCHENTAGE[mobilTag]}</span>
-            <span className="text-[11px] text-ink-500 dark:text-ink-400">
+            <span className="text-[11px] text-ink-500 dark:text-ink-400 flex items-center gap-1">
               {new Date(wochenDaten[mobilTag] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' })}{istHeuteTag ? ' · heute' : ''}
+              {(() => { const n = tagItems(wochenDaten[mobilTag]).length; return n > 0 ? <span className="inline-flex items-center gap-0.5 rounded-full px-1.5 text-[9px] font-bold bg-coral-100 text-coral-700 dark:bg-coral-900/50 dark:text-coral-300">📅 {n}</span> : null })()}
             </span>
           </button>
           <button onClick={zeigeTagDanach} title="Nächster Tag"
@@ -587,6 +628,7 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
         </div>
       ) : (
       <div className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-ink-950 border-b border-paper-100 dark:border-ink-800/60">
+        {switchSlot}
         <div className="flex items-center gap-1">
           <button
             className="w-7 h-7 flex items-center justify-center text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 rounded-lg transition-colors"
@@ -687,77 +729,23 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
                 return (
                   <th
                     key={i}
-                    className={`px-2 py-2 ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
+                    className={`relative px-2 py-1 ${headerFerien ? 'text-rose-400 dark:text-rose-500' : istHeute ? 'text-coral-600 dark:text-coral-400' : 'text-ink-500 dark:text-ink-400'}`}
                   >
-                    <div className={wetterDetail ? 'flex items-center justify-center gap-1.5' : 'text-center'}>
-                      <div className="text-center">
-                        <div className={`text-sm font-semibold ${istHeute && !headerFerien ? 'underline underline-offset-4 decoration-coral-400' : ''}`}>
-                          {tag}
-                        </div>
-                        <div className="mt-0.5 flex items-center justify-center gap-1">
-                          <span className="text-[11px] font-normal opacity-70">
-                            {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
-                          </span>
-                          {!wetterDetail && <TagWetter w={wetter?.[wochenDaten[i]]} detail={false} />}
-                        </div>
-                      </div>
-                      {wetterDetail && <TagWetter w={wetter?.[wochenDaten[i]]} detail />}
+                    {/* Zähl-Badge in der Ecke – absolut, damit die Kopfhöhe gleich bleibt */}
+                    <div className="absolute top-0.5 right-0.5 z-10">{renderTagBadge(wochenDaten[i])}</div>
+                    {/* Kompakte einzeilige Überschrift: Tag · Datum (+ Wetter) */}
+                    <div className="flex items-center justify-center gap-1.5 leading-tight">
+                      <span className={`text-sm font-semibold ${istHeute && !headerFerien ? 'underline underline-offset-4 decoration-coral-400' : ''}`}>{tag}</span>
+                      <span className="text-[11px] font-normal opacity-70 tabular-nums">
+                        {new Date(wochenDaten[i] + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
+                      </span>
+                      <TagWetter w={wetter?.[wochenDaten[i]]} detail={wetterDetail} />
                     </div>
                   </th>
                 )
               })}
             </tr>
             )}
-            {/* Zeile 2: Todo-Badges */}
-            <tr>
-              <td />
-              {tage.map((i) => {
-                const tagDatum = wochenDaten[i]
-                const faelligHier    = todos.filter(t => !t.erledigt && t.faelligkeit === tagDatum)
-                const erinnerungHier = todos.filter(t => !t.erledigt && t.erinnerung  === tagDatum)
-                const termineHier    = termine.filter(t => t.datum === tagDatum)
-                const badges = [
-                  ...faelligHier.map(t => ({ t, typ: 'faellig' })),
-                  ...erinnerungHier.map(t => ({ t, typ: 'erinnerung' })),
-                  ...termineHier.map(t => ({ t, typ: 'termin' })),
-                ]
-                return (
-                  <td key={i} className="px-1 pb-1.5 align-top">
-                    <div className="flex flex-col gap-0.5">
-                      {badges.map(({ t, typ }) => (
-                        <div
-                          key={`${typ}-${t.id}`}
-                          className={`text-[9px] px-1.5 py-0.5 rounded font-medium truncate cursor-pointer ${
-                            typ === 'faellig'
-                              ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                              : typ === 'erinnerung'
-                              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
-                              : 'bg-coral-100 dark:bg-coral-900/30 text-coral-600 dark:text-coral-400'
-                          }`}
-                          title={t.titel}
-                          onClick={e => {
-                            e.stopPropagation()
-                            if (typ === 'termin') onTerminBadgeClick?.(t.id)
-                            else onTodoBadgeClick?.(t.id)
-                          }}
-                        >
-                          {typ === 'faellig'
-                            ? `✓ ${t.titel}`
-                            : typ === 'erinnerung'
-                            ? `🔔 ${t.titel} – ${faelligkeitRelativ(t.faelligkeit, tagDatum)}`
-                            : (() => {
-                                const stHinweis = t.stunde_id
-                                  ? (stundenzeiten.find(s => s.id === t.stunde_id)?.stunde + '. Std ')
-                                  : (t.uhrzeit ? t.uhrzeit + (t.bis_uhrzeit ? '–' + t.bis_uhrzeit : '') + ' ' : '')
-                                return `◆ ${stHinweis ?? ''}${t.titel}`
-                              })()}
-                        </div>
-                      ))}
-                    </div>
-                  </td>
-                )
-              })}
-            </tr>
           </thead>
           <tbody>
             {stundenzeiten.map(stunde => {
@@ -1073,6 +1061,8 @@ export default function Stundenplan({ onTodoBadgeClick, onTerminBadgeClick }) {
           )}
         </div>
       )}
+
+      {tagHover && <TagTooltip items={tagHover.items} x={tagHover.x} y={tagHover.y} />}
 
       {/* Slot-Modal */}
       {slotModal && (

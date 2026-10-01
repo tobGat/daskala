@@ -13,17 +13,17 @@ async function getAll(db, schuljahrId) {
     `, [schuljahrId])
 }
 
-async function create(db, { titel, datum, uhrzeit, bisUhrzeit, notiz, klasseId, schuljahrId, stundeId }) {
+async function create(db, { titel, datum, uhrzeit, bisUhrzeit, notiz, klasseId, schuljahrId, stundeId, ganztags, bisDatum }) {
   const info = await db.execute(
-    'INSERT INTO termine (titel, datum, uhrzeit, bis_uhrzeit, notiz, klasse_id, schuljahr_id, stunde_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [titel, datum, uhrzeit ?? null, bisUhrzeit ?? null, notiz ?? null, klasseId ?? null, schuljahrId, stundeId ?? null]
+    'INSERT INTO termine (titel, datum, uhrzeit, bis_uhrzeit, notiz, klasse_id, schuljahr_id, stunde_id, ganztags, bis_datum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [titel, datum, uhrzeit ?? null, bisUhrzeit ?? null, notiz ?? null, klasseId ?? null, schuljahrId, stundeId ?? null, ganztags ? 1 : 0, bisDatum ?? null]
   )
   return info.lastInsertRowid
 }
 
-async function update(db, id, { titel, datum, uhrzeit, bisUhrzeit, notiz, klasseId, stundeId }) {
-  await db.execute('UPDATE termine SET titel = ?, datum = ?, uhrzeit = ?, bis_uhrzeit = ?, notiz = ?, klasse_id = ?, stunde_id = ? WHERE id = ?',
-    [titel, datum, uhrzeit ?? null, bisUhrzeit ?? null, notiz ?? null, klasseId ?? null, stundeId ?? null, id])
+async function update(db, id, { titel, datum, uhrzeit, bisUhrzeit, notiz, klasseId, stundeId, ganztags, bisDatum }) {
+  await db.execute('UPDATE termine SET titel = ?, datum = ?, uhrzeit = ?, bis_uhrzeit = ?, notiz = ?, klasse_id = ?, stunde_id = ?, ganztags = ?, bis_datum = ? WHERE id = ?',
+    [titel, datum, uhrzeit ?? null, bisUhrzeit ?? null, notiz ?? null, klasseId ?? null, stundeId ?? null, ganztags ? 1 : 0, bisDatum ?? null, id])
   return true
 }
 

@@ -27,6 +27,7 @@ import kompetenzErhebungenDomain from '../../core/domain/kompetenzErhebungen'
 import gewichtungDomain from '../../core/domain/gewichtung'
 import todosDomain from '../../core/domain/todos'
 import termineDomain from '../../core/domain/termine'
+import kalenderDomain from '../../core/domain/kalender'
 import notizbuchDomain from '../../core/domain/notizbuch'
 import customFerienDomain from '../../core/domain/customFerien'
 import stundenzeitenDomain from '../../core/domain/stundenzeiten'
@@ -196,6 +197,14 @@ export function createMobileApi(dbPort) {
       create: (d) => termineDomain.create(dbPort, d),
       update: (id, d) => termineDomain.update(dbPort, id, d),
       delete: (id) => termineDomain.remove(dbPort, id),
+    }),
+    // EduPage-/webcal-Kalender: DB-Methoden lokal; sync bleibt Stub (Mobil ohne HTTP-Schicht).
+    kalender: dp('kalender', {
+      aboGetAll: () => kalenderDomain.aboGetAll(dbPort),
+      aboCreate: (d) => kalenderDomain.aboCreate(dbPort, d),
+      aboUpdate: (id, d) => kalenderDomain.aboUpdate(dbPort, id, d),
+      aboDelete: (id) => kalenderDomain.aboRemove(dbPort, id),
+      getTermine: (sjId) => kalenderDomain.termineGetAll(dbPort, sjId),
     }),
     notizbuch: dp('notizbuch', {
       ordnerGetAll: (sjId) => notizbuchDomain.ordnerGetAll(dbPort, sjId),

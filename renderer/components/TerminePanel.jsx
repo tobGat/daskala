@@ -3,192 +3,97 @@
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 import React, { useState, useEffect, useRef } from 'react'
 import useStore from '../store/useStore'
+import TerminForm from './TerminForm'
 
 function localDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function TerminForm({ initial, klassen, stundenzeiten, onSpeichern, onAbbrechen }) {
-  const hatStundeInitial = !!initial?.stunde_id
-  const [titel, setTitel]         = useState(initial?.titel ?? '')
-  const [datum, setDatum]         = useState(initial?.datum ?? localDateStr(new Date()))
-  const [zeitModus, setZeitModus] = useState(hatStundeInitial ? 'stunde' : 'uhrzeit')
-  const [uhrzeit, setUhrzeit]     = useState(initial?.uhrzeit ?? '')
-  const [bisUhrzeit, setBisUhrzeit] = useState(initial?.bis_uhrzeit ?? '')
-  const [stundeId, setStundeId]   = useState(initial?.stunde_id ? String(initial.stunde_id) : '')
-  const [notiz, setNotiz]         = useState(initial?.notiz ?? '')
-  const [klasseId, setKlasseId]   = useState(initial?.klasse_id ? String(initial.klasse_id) : '')
-  const inputRef = useRef(null)
-
-  useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 50)
-    const onKey = e => { if (e.key === 'Escape') onAbbrechen() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onAbbrechen])
-
-  const speichern = async () => {
-    const t = titel.trim()
-    if (!t || !datum) return
-    await onSpeichern({
-      titel: t, datum,
-      uhrzeit: zeitModus === 'uhrzeit' ? (uhrzeit || null) : null,
-      // Bis-Uhrzeit nur, wenn eine Von-Uhrzeit gesetzt ist.
-      bisUhrzeit: zeitModus === 'uhrzeit' && uhrzeit ? (bisUhrzeit || null) : null,
-      stundeId: zeitModus === 'stunde' ? (stundeId ? parseInt(stundeId) : null) : null,
-      notiz: notiz.trim() || null,
-      klasseId: klasseId ? parseInt(klasseId) : null,
-    })
-  }
-
-  const labelCls = 'block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1'
-
-  return (
-    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onAbbrechen()}>
-      <div className="modal-box">
-        <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-5">{initial ? 'Termin bearbeiten' : 'Neuer Termin'}</h2>
-
-        <div className="mb-4">
-          <label className={labelCls}>Titel</label>
-          <input
-            ref={inputRef}
-            className="input"
-            placeholder="z.B. Elternabend"
-            value={titel}
-            onChange={e => setTitel(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') speichern() }}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div>
-            <label className={labelCls}>Datum</label>
-            <input type="date" className="input" value={datum} onChange={e => setDatum(e.target.value)} />
-          </div>
-          {klassen.length > 0 && (
-            <div>
-              <label className={labelCls}>Klasse</label>
-              <select className="input" value={klasseId} onChange={e => setKlasseId(e.target.value)}>
-                <option value="">Keine Klasse</option>
-                {klassen.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
-              </select>
-            </div>
-          )}
-        </div>
-
-        <div className="mb-4">
-          <label className={labelCls}>Zeit</label>
-          <div className="flex rounded-lg overflow-hidden border border-paper-200 dark:border-ink-700 text-xs mb-2">
-            <button type="button" className={`flex-1 py-1.5 font-medium transition-colors ${zeitModus === 'uhrzeit' ? 'bg-coral-500 text-white' : 'text-ink-600 dark:text-ink-400 hover:bg-paper-100 dark:hover:bg-ink-700'}`} onClick={() => setZeitModus('uhrzeit')}>Uhrzeit</button>
-            <button type="button" className={`flex-1 py-1.5 font-medium transition-colors ${zeitModus === 'stunde' ? 'bg-coral-500 text-white' : 'text-ink-600 dark:text-ink-400 hover:bg-paper-100 dark:hover:bg-ink-700'}`} onClick={() => setZeitModus('stunde')}>Unterrichtsstunde</button>
-          </div>
-          {zeitModus === 'uhrzeit' ? (
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <span className="block text-[10px] text-ink-400 mb-0.5">Von</span>
-                <input type="time" className="input" value={uhrzeit} onChange={e => setUhrzeit(e.target.value)} />
-              </div>
-              <span className="text-ink-400 pb-2.5">–</span>
-              <div className="flex-1">
-                <span className="block text-[10px] text-ink-400 mb-0.5">Bis <span className="font-normal">(optional)</span></span>
-                <input type="time" className="input" value={bisUhrzeit} onChange={e => setBisUhrzeit(e.target.value)} disabled={!uhrzeit} />
-              </div>
-            </div>
-          ) : (
-            <select className="input" value={stundeId} onChange={e => setStundeId(e.target.value)}>
-              <option value="">Stunde wählen…</option>
-              {stundenzeiten.map(s => <option key={s.id} value={s.id}>{s.stunde}. Stunde {s.beginn ? `(${s.beginn})` : ''}</option>)}
-            </select>
-          )}
-        </div>
-
-        <div className="mb-6">
-          <label className={labelCls}>Notiz <span className="font-normal text-ink-400">(optional)</span></label>
-          <input
-            className="input"
-            placeholder="Notiz"
-            value={notiz}
-            onChange={e => setNotiz(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') speichern() }}
-          />
-        </div>
-
-        <div className="flex gap-3">
-          <button className="btn-secondary flex-1" onClick={onAbbrechen}>Abbrechen</button>
-          <button className="btn-primary flex-1" onClick={speichern} disabled={!titel.trim() || !datum}>
-            {initial ? 'Speichern' : 'Hinzufügen'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function TerminKarte({ termin, klassen, stundenzeiten, onDelete, onEdit, flashRef, flashed }) {
+function TerminKarte({ termin, klassen, stundenzeiten, onDelete, onEdit, flashRef, flashed, extern }) {
   const heute = localDateStr(new Date())
   const vergangen = termin.datum < heute
 
-  const stundeNummer = termin.stunde_id
+  const stundeNummer = !extern && termin.stunde_id
     ? stundenzeiten.find(s => s.id === termin.stunde_id)?.stunde
     : null
   const stundeLabel = stundeNummer != null ? `${stundeNummer}. Std` : null
-  const klassenFarbe = klassen.find(k => k.id === termin.klasse_id)?.farbe ?? null
 
-  // Default-Farbe (kein klassenFarbe): subtiler Coral-Hauch
-  const bgColor  = klassenFarbe ? klassenFarbe + '1a' : 'rgb(251 105 54 / 0.06)'
-  const leftCol  = klassenFarbe ?? '#fb6936'
+  // Farbe: eigene Termine nach Klasse (Default Coral); EduPage-Termine nach Abo-Farbe (Default Violett).
+  const klassenFarbe = klassen.find(k => k.id === termin.klasse_id)?.farbe ?? null
+  const farbe = extern ? (termin.abo_farbe || '#7c6cff') : (klassenFarbe ?? '#fb6936')
+  const bgColor = extern
+    ? (termin.abo_farbe ? termin.abo_farbe + '14' : 'rgb(124 108 255 / 0.06)')
+    : (klassenFarbe ? klassenFarbe + '1a' : 'rgb(251 105 54 / 0.06)')
+
+  const zeigeZeit = !stundeLabel && !termin.ganztags && termin.uhrzeit
+  const untertitel = extern ? (termin.ort || termin.beschreibung) : termin.notiz
 
   return (
     <div
       ref={flashRef}
       className={`group flex items-start gap-2 p-2 rounded-xl border transition-all hover:shadow-soft ${vergangen ? 'opacity-50' : ''} ${flashed ? 'border-coral-400 ring-2 ring-coral-400/40 animate-pop-in' : 'border-transparent'}`}
-      style={{ backgroundColor: bgColor, borderLeftColor: leftCol, borderLeftWidth: 3 }}
+      style={{ backgroundColor: bgColor, borderLeftColor: farbe, borderLeftWidth: 3 }}
     >
       <div className="flex-shrink-0 text-center min-w-[36px]">
-        <div className="text-[10px] font-bold text-coral-600 dark:text-coral-400 leading-tight">
+        <div className={`text-[10px] font-bold leading-tight ${extern ? 'text-ink-600 dark:text-ink-300' : 'text-coral-600 dark:text-coral-400'}`}>
           {new Date(termin.datum + 'T00:00:00').toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
         </div>
         {stundeLabel && (
           <div className="text-[9px] text-ink-500 leading-tight">{stundeLabel}</div>
         )}
-        {!stundeLabel && termin.uhrzeit && (
+        {zeigeZeit && (
           <div className="text-[9px] text-ink-500 leading-tight">
             <div>{termin.uhrzeit}</div>
             {termin.bis_uhrzeit && <div className="opacity-70">–{termin.bis_uhrzeit}</div>}
           </div>
         )}
+        {termin.ganztags === 1 && !stundeLabel && (
+          <div className="text-[9px] text-ink-400 leading-tight">ganztg.</div>
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-ink-800 dark:text-paper-200 leading-snug truncate">{termin.titel}</p>
         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-          {termin.klasse_name && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-coral-100 dark:bg-coral-900/40 text-coral-700 dark:text-coral-400 font-semibold">
-              {termin.klasse_name}
+          {extern ? (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex items-center gap-0.5"
+              style={{ backgroundColor: farbe + '26', color: farbe }}
+              title="Aus abonniertem Kalender – schreibgeschützt"
+            >
+              <span aria-hidden>📆</span>{termin.abo_name || 'EduPage'}
             </span>
+          ) : (
+            termin.klasse_name && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-coral-100 dark:bg-coral-900/40 text-coral-700 dark:text-coral-400 font-semibold">
+                {termin.klasse_name}
+              </span>
+            )
           )}
-          {termin.notiz && (
-            <span className="text-[10px] text-ink-500 truncate">{termin.notiz}</span>
+          {untertitel && (
+            <span className="text-[10px] text-ink-500 truncate">{untertitel}</span>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
-        <button
-          className="text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 text-xs w-5 h-5 flex items-center justify-center rounded transition-colors"
-          onClick={() => onEdit(termin)}
-          title="Bearbeiten"
-        >✎</button>
-        <button
-          className="text-ink-500 hover:text-red-500 text-xs w-5 h-5 flex items-center justify-center rounded transition-colors"
-          onClick={() => onDelete(termin.id)}
-          title="Löschen"
-        >✕</button>
-      </div>
+      {!extern && (
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+          <button
+            className="text-ink-500 hover:text-coral-600 dark:hover:text-coral-300 text-xs w-5 h-5 flex items-center justify-center rounded transition-colors"
+            onClick={() => onEdit(termin)}
+            title="Bearbeiten"
+          >✎</button>
+          <button
+            className="text-ink-500 hover:text-red-500 text-xs w-5 h-5 flex items-center justify-center rounded transition-colors"
+            onClick={() => onDelete(termin.id)}
+            title="Löschen"
+          >✕</button>
+        </div>
+      )}
     </div>
   )
 }
 
 export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighlightCleared }) {
-  const { termine, ladeTermine, klassen, aktuellesSchuljahr } = useStore()
+  const { termine, kalenderTermine, ladeTermine, ladeKalenderTermine, klassen, aktuellesSchuljahr } = useStore()
   const [formModal, setFormModal] = useState(null) // null | { initial: null|termin }
   const [vergangeneOffen, setVergangeneOffen] = useState(false)
   const [flashedId, setFlashedId] = useState(null)
@@ -197,6 +102,7 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
 
   useEffect(() => {
     ladeTermine()
+    ladeKalenderTermine()
     window.api.stundenzeiten.getAll().then(setStundenzeiten)
       .catch(e => console.error('stundenzeiten.getAll:', e))
   }, [])
@@ -240,12 +146,16 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
   }
 
   const heute = localDateStr(new Date())
-  const sortiert = [...termine].sort((a, b) => {
-    const d = a.datum.localeCompare(b.datum)
-    return d !== 0 ? d : (a.uhrzeit ?? '').localeCompare(b.uhrzeit ?? '')
+  // Eigene und importierte (EduPage-/webcal-)Termine gemeinsam sortieren.
+  const alle = [
+    ...termine.map(t => ({ item: t, extern: false, key: `t${t.id}` })),
+    ...kalenderTermine.map(t => ({ item: t, extern: true, key: `k${t.id}` })),
+  ].sort((a, b) => {
+    const d = a.item.datum.localeCompare(b.item.datum)
+    return d !== 0 ? d : (a.item.uhrzeit ?? '').localeCompare(b.item.uhrzeit ?? '')
   })
-  const kommend   = sortiert.filter(t => t.datum >= heute)
-  const vergangen = sortiert.filter(t => t.datum < heute).reverse()
+  const kommend   = alle.filter(x => x.item.datum >= heute)
+  const vergangen = alle.filter(x => x.item.datum < heute).reverse()
 
   return (
     <div
@@ -278,16 +188,17 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
             </div>
           )}
 
-          {kommend.map(t => (
+          {kommend.map(x => (
             <TerminKarte
-              key={t.id}
-              termin={t}
+              key={x.key}
+              termin={x.item}
+              extern={x.extern}
               klassen={klassen}
               stundenzeiten={stundenzeiten}
               onDelete={terminLoeschen}
               onEdit={t => setFormModal({ initial: t })}
-              flashRef={el => { itemRefs.current[t.id] = el }}
-              flashed={flashedId === t.id}
+              flashRef={x.extern ? undefined : el => { itemRefs.current[x.item.id] = el }}
+              flashed={!x.extern && flashedId === x.item.id}
             />
           ))}
 
@@ -302,16 +213,17 @@ export default function TerminePanel({ hoehe = 256, highlightedTerminId, onHighl
               </button>
               {vergangeneOffen && (
                 <div className="space-y-1.5 mt-1">
-                  {vergangen.map(t => (
+                  {vergangen.map(x => (
                     <TerminKarte
-                      key={t.id}
-                      termin={t}
+                      key={x.key}
+                      termin={x.item}
+                      extern={x.extern}
                       klassen={klassen}
                       stundenzeiten={stundenzeiten}
                       onDelete={terminLoeschen}
                       onEdit={t => setFormModal({ initial: t })}
-                      flashRef={el => { itemRefs.current[t.id] = el }}
-                      flashed={flashedId === t.id}
+                      flashRef={x.extern ? undefined : el => { itemRefs.current[x.item.id] = el }}
+                      flashed={!x.extern && flashedId === x.item.id}
                     />
                   ))}
                 </div>
