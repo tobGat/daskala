@@ -8,6 +8,13 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.12.0',
+    datum: '2026-10-01',
+    punkte: [
+      'Unterordner im Notizen-Bereich: Klassen-Ordner und eigene Ordner lassen sich jetzt auf-/zuklappen (Pfeil ▶) und mit frei benennbaren Unterordnern strukturieren (eigene Farbe je Unterordner) – z. B. „Elternarbeit", „Projekte" oder „Beobachtungen". So ordnest du Notizen innerhalb einer Klasse feiner. Über das „＋" am jeweiligen Ordner legst du einen Unterordner an; Unterordner lassen sich umbenennen und löschen (beim Löschen eines Ordners werden enthaltene Unterordner samt Notizen mitentfernt). Über das „Ordner"-Auswahlfeld im Editor verschiebst du eine Notiz direkt in einen (Unter-)Ordner – Unterordner erscheinen dort eingerückt.',
+    ],
+  },
+  {
     version: '1.11.0',
     datum: '2026-10-01',
     punkte: [
