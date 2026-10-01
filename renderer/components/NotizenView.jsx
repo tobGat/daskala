@@ -40,9 +40,11 @@ export default function NotizenView() {
   const [selNotizId, setSelNotizId] = useState(null)
   const [entwurf, setEntwurf] = useState({ titel: '', text: '' })
   // Ordner-UI
-  const [ordnerFormOffen, setOrdnerFormOffen] = useState(false)
+  const [ordnerForm, setOrdnerForm] = useState(null) // null | { klasseId?, elternId? } – offenes Anlege-Formular
   const [neuName, setNeuName] = useState('')
   const [neuFarbe, setNeuFarbe] = useState(FARBEN[0])
+  const [offeneKlassen, setOffeneKlassen] = useState(() => new Set()) // aufgeklappte Klassen-Ordner
+  const [offeneOrdner, setOffeneOrdner] = useState(() => new Set())   // aufgeklappte eigene Ordner
   const [renameId, setRenameId] = useState(null)
   const [renameWert, setRenameWert] = useState('')
   const [loeschOrdnerId, setLoeschOrdnerId] = useState(null)
@@ -130,11 +132,13 @@ export default function NotizenView() {
   }
 
   const ordnerAnlegen = async () => {
-    const name = neuName.trim(); if (!name || !sjId) return
-    const id = await window.api.notizbuch.ordnerCreate({ schuljahrId: sjId, name, farbe: neuFarbe })
-    setNeuName(''); setOrdnerFormOffen(false); setNeuFarbe(FARBEN[0])
+    const name = neuName.trim(); if (!name || !sjId || !ordnerForm) return
+    const id = await window.api.notizbuch.ordnerCreate({ schuljahrId: sjId, name, farbe: neuFarbe, klasseId: ordnerForm.klasseId ?? null, elternId: ordnerForm.elternId ?? null })
+    setNeuName(''); setOrdnerForm(null); setNeuFarbe(FARBEN[0])
     await laden(); setSel('o:' + id)
   }
+  const toggleKlasse = (kid) => setOffeneKlassen(s => { const n = new Set(s); n.has(kid) ? n.delete(kid) : n.add(kid); return n })
+  const toggleOrdner = (oid) => setOffeneOrdner(s => { const n = new Set(s); n.has(oid) ? n.delete(oid) : n.add(oid); return n })
   const ordnerUmbenennen = async () => {
     const name = renameWert.trim()
     const o = ordner.find(x => x.id === renameId)
@@ -153,12 +157,28 @@ export default function NotizenView() {
     return <div className="flex-1 flex items-center justify-center text-sm text-ink-400 bg-paper-50 dark:bg-ink-950">Kein Schuljahr ausgewählt.</div>
   }
 
-  // Ziel-Optionen für das Verschieben-Dropdown im Editor.
-  const zielOptionen = [
-    { key: 'all', label: 'Allgemein' },
-    ...echteKlassen.map(k => ({ key: 'k:' + k.id, label: 'Klasse ' + k.name })),
-    ...ordner.map(o => ({ key: 'o:' + o.id, label: o.name })),
-  ]
+  // Ordner-Gruppierung: Klassen-Unterordner (klasse_id), eigene Unterordner (eltern_id),
+  // eigene Top-Level-Ordner (weder noch; verwaiste Klassen-Unterordner zählen hier mit).
+  const istEchteKlasse = (kid) => echteKlassen.some(k => k.id === kid)
+  const unterordnerVon = (kid) => ordner.filter(o => o.klasse_id === kid)
+  const kinderVon = (oid) => ordner.filter(o => o.eltern_id === oid)
+  const eigeneOrdner = ordner.filter(o => o.eltern_id == null && (o.klasse_id == null || !istEchteKlasse(o.klasse_id)))
+  // Notizzahl eines Ordners inkl. seiner Unterordner (für Löschen-Bestätigung).
+  const ordnerNotizCount = (oid) => {
+    const kids = kinderVon(oid).map(k => k.id)
+    return notizen.filter(n => n.ordner_id === oid || kids.includes(n.ordner_id)).length
+  }
+
+  // Ziel-Optionen für das Verschieben-Dropdown im Editor (Unterordner eingerückt).
+  const zielOptionen = [{ key: 'all', label: 'Allgemein' }]
+  for (const k of echteKlassen) {
+    zielOptionen.push({ key: 'k:' + k.id, label: 'Klasse ' + k.name })
+    for (const o of unterordnerVon(k.id)) zielOptionen.push({ key: 'o:' + o.id, label: '↳ ' + k.name + ' / ' + o.name })
+  }
+  for (const o of eigeneOrdner) {
+    zielOptionen.push({ key: 'o:' + o.id, label: o.name })
+    for (const c of kinderVon(o.id)) zielOptionen.push({ key: 'o:' + c.id, label: '↳ ' + o.name + ' / ' + c.name })
+  }
   const aktKey = selNotiz ? (selNotiz.klasse_id != null ? 'k:' + selNotiz.klasse_id : selNotiz.ordner_id != null ? 'o:' + selNotiz.ordner_id : 'all') : 'all'
 
   const OrdnerBtn = ({ aktiv, farbe, icon, name, count, onClick, kinder }) => (
@@ -169,6 +189,96 @@ export default function NotizenView() {
       <span className="flex-1 truncate">{name}</span>
       {count > 0 && <span className="text-[10px] text-ink-400 tabular-nums flex-shrink-0">{count}</span>}
       {kinder}
+    </div>
+  )
+
+  // Ein (Unter-)Ordner-Eintrag: normale Zeile, Umbenennen- oder Löschen-Modus. `indent` rückt Unterordner ein.
+  const renderOrdnerRow = (o, indent = false) => {
+    const pad = indent ? 'pl-7' : ''
+    if (renameId === o.id) return (
+      <div key={o.id} className={`flex items-center gap-1 px-1.5 py-1 ${pad}`}>
+        <input autoFocus value={renameWert} onChange={e => setRenameWert(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') ordnerUmbenennen(); if (e.key === 'Escape') setRenameId(null) }}
+          className="flex-1 min-w-0 text-sm px-1.5 py-0.5 rounded border border-coral-300 dark:border-coral-700 bg-white dark:bg-ink-800 text-ink-800 dark:text-paper-100 focus:outline-none" />
+        <button onClick={ordnerUmbenennen} className="text-mint-600 text-xs px-1">✓</button>
+        <button onClick={() => setRenameId(null)} className="text-ink-400 text-xs px-1">✕</button>
+      </div>
+    )
+    if (loeschOrdnerId === o.id) return (
+      <div key={o.id} className={`flex items-center gap-1.5 px-2 py-1.5 text-[11px] ${pad}`}>
+        <span className="flex-1 text-ink-600 dark:text-paper-300 truncate">Löschen? {ordnerNotizCount(o.id)} Notiz(en)</span>
+        <button onClick={() => ordnerLoeschen(o.id)} className="text-red-500 hover:text-red-600 font-medium">Löschen</button>
+        <button onClick={() => setLoeschOrdnerId(null)} className="text-ink-400">Abbr.</button>
+      </div>
+    )
+    return (
+      <div key={o.id} className={pad}>
+        <OrdnerBtn aktiv={sel === 'o:' + o.id} farbe={o.farbe || '#94a3b8'} name={o.name}
+          count={zaehle(n => n.ordner_id === o.id)} onClick={() => setSel('o:' + o.id)}
+          kinder={
+            <span className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={e => { e.stopPropagation(); setRenameId(o.id); setRenameWert(o.name) }} title="Umbenennen"
+                className="w-5 h-5 rounded flex items-center justify-center text-ink-400 hover:text-coral-600">✎</button>
+              <button onClick={e => { e.stopPropagation(); setLoeschOrdnerId(o.id) }} title="Löschen"
+                className="w-5 h-5 rounded flex items-center justify-center text-ink-400 hover:text-red-500">✕</button>
+            </span>
+          } />
+      </div>
+    )
+  }
+
+  // Ein eigener Top-Level-Ordner: auf-/zuklappbar, mit Unterordnern + „＋ Unterordner".
+  const renderOwnFolder = (o) => {
+    if (renameId === o.id || loeschOrdnerId === o.id) return renderOrdnerRow(o, false)
+    const offen = offeneOrdner.has(o.id)
+    const kinder = kinderVon(o.id)
+    return (
+      <div key={o.id}>
+        <div className={`group flex items-center gap-1 pl-1 pr-1.5 py-1.5 rounded-lg cursor-pointer text-sm transition-colors ${sel === 'o:' + o.id
+          ? 'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-200'
+          : 'text-ink-700 dark:text-paper-200 hover:bg-paper-100 dark:hover:bg-ink-800'}`}
+          onClick={() => setSel('o:' + o.id)}>
+          <button onClick={e => { e.stopPropagation(); toggleOrdner(o.id) }} title={offen ? 'Zuklappen' : 'Aufklappen'}
+            className="w-4 h-4 flex items-center justify-center text-ink-400 flex-shrink-0">
+            <span className={`text-[9px] transition-transform ${offen ? 'rotate-90' : ''}`}>▶</span>
+          </button>
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: o.farbe || '#94a3b8' }} />
+          <span className="flex-1 truncate">{o.name}</span>
+          {zaehle(n => n.ordner_id === o.id) > 0 && <span className="text-[10px] text-ink-400 tabular-nums flex-shrink-0">{zaehle(n => n.ordner_id === o.id)}</span>}
+          <span className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+            <button onClick={e => { e.stopPropagation(); setOffeneOrdner(s => new Set(s).add(o.id)); setOrdnerForm({ elternId: o.id }); setNeuName(''); setNeuFarbe(FARBEN[0]) }} title="Unterordner hinzufügen"
+              className="w-5 h-5 rounded flex items-center justify-center text-ink-400 hover:text-coral-600">＋</button>
+            <button onClick={e => { e.stopPropagation(); setRenameId(o.id); setRenameWert(o.name) }} title="Umbenennen"
+              className="w-5 h-5 rounded flex items-center justify-center text-ink-400 hover:text-coral-600">✎</button>
+            <button onClick={e => { e.stopPropagation(); setLoeschOrdnerId(o.id) }} title="Löschen"
+              className="w-5 h-5 rounded flex items-center justify-center text-ink-400 hover:text-red-500">✕</button>
+          </span>
+        </div>
+        {offen && (
+          <div className="mt-0.5">
+            {kinder.map(c => renderOrdnerRow(c, true))}
+            {ordnerForm && ordnerForm.elternId === o.id && renderOrdnerForm(true)}
+            {kinder.length === 0 && !(ordnerForm && ordnerForm.elternId === o.id) && (
+              <p className="text-[10px] text-ink-400 pl-7 py-0.5">Kein Unterordner.</p>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Inline-Formular zum Anlegen eines (Unter-)Ordners.
+  const renderOrdnerForm = (indent = false) => (
+    <div className={`px-1.5 py-1.5 space-y-1.5 ${indent ? 'pl-7' : ''}`}>
+      <input autoFocus value={neuName} onChange={e => setNeuName(e.target.value)} placeholder="Ordnername"
+        onKeyDown={e => { if (e.key === 'Enter') ordnerAnlegen(); if (e.key === 'Escape') setOrdnerForm(null) }}
+        className="w-full text-sm px-2 py-1 rounded-lg border border-paper-300 dark:border-ink-700 bg-white dark:bg-ink-800 text-ink-800 dark:text-paper-100 focus:outline-none focus:ring-2 focus:ring-coral-400/30" />
+      <div className="flex items-center gap-1.5">
+        {FARBEN.map(f => (
+          <button key={f} onClick={() => setNeuFarbe(f)} className={`w-4 h-4 rounded-full ${neuFarbe === f ? 'ring-2 ring-offset-1 ring-ink-400 dark:ring-offset-ink-900' : ''}`} style={{ backgroundColor: f }} />
+        ))}
+        <button onClick={ordnerAnlegen} disabled={!neuName.trim()} className="ml-auto text-xs font-semibold px-2 py-1 rounded-lg bg-coral-600 text-white hover:bg-coral-700 disabled:opacity-40">Anlegen</button>
+      </div>
     </div>
   )
 
@@ -190,59 +300,48 @@ export default function NotizenView() {
             <p className="text-[10px] font-bold uppercase tracking-wider text-ink-400 px-2 mb-1">Klassen</p>
             {echteKlassen.length === 0
               ? <p className="text-[11px] text-ink-400 px-2">Keine Klassen.</p>
-              : echteKlassen.map(k => (
-                <OrdnerBtn key={k.id} aktiv={sel === 'k:' + k.id} icon="📁" name={k.name}
-                  count={zaehle(n => n.klasse_id === k.id)} onClick={() => setSel('k:' + k.id)} />
-              ))}
+              : echteKlassen.map(k => {
+                const subs = unterordnerVon(k.id)
+                const offen = offeneKlassen.has(k.id)
+                return (
+                  <div key={k.id}>
+                    <div className={`group flex items-center gap-1 pl-1 pr-1.5 py-1.5 rounded-lg cursor-pointer text-sm transition-colors ${sel === 'k:' + k.id
+                      ? 'bg-coral-100 text-coral-700 dark:bg-coral-900/40 dark:text-coral-200'
+                      : 'text-ink-700 dark:text-paper-200 hover:bg-paper-100 dark:hover:bg-ink-800'}`}
+                      onClick={() => setSel('k:' + k.id)}>
+                      <button onClick={e => { e.stopPropagation(); toggleKlasse(k.id) }} title={offen ? 'Zuklappen' : 'Aufklappen'}
+                        className="w-4 h-4 flex items-center justify-center text-ink-400 flex-shrink-0">
+                        <span className={`text-[9px] transition-transform ${offen ? 'rotate-90' : ''}`}>▶</span>
+                      </button>
+                      <span aria-hidden className="text-sm leading-none">📁</span>
+                      <span className="flex-1 truncate">{k.name}</span>
+                      {zaehle(n => n.klasse_id === k.id) > 0 && <span className="text-[10px] text-ink-400 tabular-nums flex-shrink-0">{zaehle(n => n.klasse_id === k.id)}</span>}
+                      <button onClick={e => { e.stopPropagation(); setOffeneKlassen(s => new Set(s).add(k.id)); setOrdnerForm({ klasseId: k.id }); setNeuName(''); setNeuFarbe(FARBEN[0]) }}
+                        title="Unterordner hinzufügen"
+                        className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded flex items-center justify-center text-ink-400 hover:text-coral-600 flex-shrink-0">＋</button>
+                    </div>
+                    {offen && (
+                      <div className="mt-0.5">
+                        {subs.map(o => renderOrdnerRow(o, true))}
+                        {ordnerForm && ordnerForm.klasseId === k.id && renderOrdnerForm(true)}
+                        {subs.length === 0 && !(ordnerForm && ordnerForm.klasseId === k.id) && (
+                          <p className="text-[10px] text-ink-400 pl-7 py-0.5">Kein Unterordner.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
           </div>
 
           <div>
             <div className="flex items-center justify-between px-2 mb-1">
               <p className="text-[10px] font-bold uppercase tracking-wider text-ink-400">Eigene Ordner</p>
-              <button onClick={() => { setOrdnerFormOffen(o => !o); setNeuName('') }} title="Ordner hinzufügen"
+              <button onClick={() => { setOrdnerForm(f => (f && f.klasseId == null && f.elternId == null) ? null : { klasseId: null, elternId: null }); setNeuName('') }} title="Ordner hinzufügen"
                 className="text-ink-400 hover:text-coral-600 text-sm leading-none w-5 h-5 rounded flex items-center justify-center hover:bg-paper-100 dark:hover:bg-ink-800">＋</button>
             </div>
-            {ordner.map(o => (
-              renameId === o.id ? (
-                <div key={o.id} className="flex items-center gap-1 px-1.5 py-1">
-                  <input autoFocus value={renameWert} onChange={e => setRenameWert(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') ordnerUmbenennen(); if (e.key === 'Escape') setRenameId(null) }}
-                    className="flex-1 min-w-0 text-sm px-1.5 py-0.5 rounded border border-coral-300 dark:border-coral-700 bg-white dark:bg-ink-800 text-ink-800 dark:text-paper-100 focus:outline-none" />
-                  <button onClick={ordnerUmbenennen} className="text-mint-600 text-xs px-1">✓</button>
-                  <button onClick={() => setRenameId(null)} className="text-ink-400 text-xs px-1">✕</button>
-                </div>
-              ) : loeschOrdnerId === o.id ? (
-                <div key={o.id} className="flex items-center gap-1.5 px-2 py-1.5 text-[11px]">
-                  <span className="flex-1 text-ink-600 dark:text-paper-300 truncate">Löschen? {zaehle(n => n.ordner_id === o.id)} Notiz(en)</span>
-                  <button onClick={() => ordnerLoeschen(o.id)} className="text-red-500 hover:text-red-600 font-medium">Löschen</button>
-                  <button onClick={() => setLoeschOrdnerId(null)} className="text-ink-400">Abbr.</button>
-                </div>
-              ) : (
-                <OrdnerBtn key={o.id} aktiv={sel === 'o:' + o.id} farbe={o.farbe || '#94a3b8'} name={o.name}
-                  count={zaehle(n => n.ordner_id === o.id)} onClick={() => setSel('o:' + o.id)}
-                  kinder={
-                    <span className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={e => { e.stopPropagation(); setRenameId(o.id); setRenameWert(o.name) }} title="Umbenennen"
-                        className="w-5 h-5 rounded flex items-center justify-center text-ink-400 hover:text-coral-600">✎</button>
-                      <button onClick={e => { e.stopPropagation(); setLoeschOrdnerId(o.id) }} title="Löschen"
-                        className="w-5 h-5 rounded flex items-center justify-center text-ink-400 hover:text-red-500">✕</button>
-                    </span>
-                  } />
-              )
-            ))}
-            {ordnerFormOffen && (
-              <div className="px-1.5 py-1.5 space-y-1.5">
-                <input autoFocus value={neuName} onChange={e => setNeuName(e.target.value)} placeholder="Ordnername"
-                  onKeyDown={e => { if (e.key === 'Enter') ordnerAnlegen(); if (e.key === 'Escape') setOrdnerFormOffen(false) }}
-                  className="w-full text-sm px-2 py-1 rounded-lg border border-paper-300 dark:border-ink-700 bg-white dark:bg-ink-800 text-ink-800 dark:text-paper-100 focus:outline-none focus:ring-2 focus:ring-coral-400/30" />
-                <div className="flex items-center gap-1.5">
-                  {FARBEN.map(f => (
-                    <button key={f} onClick={() => setNeuFarbe(f)} className={`w-4 h-4 rounded-full ${neuFarbe === f ? 'ring-2 ring-offset-1 ring-ink-400 dark:ring-offset-ink-900' : ''}`} style={{ backgroundColor: f }} />
-                  ))}
-                  <button onClick={ordnerAnlegen} disabled={!neuName.trim()} className="ml-auto text-xs font-semibold px-2 py-1 rounded-lg bg-coral-600 text-white hover:bg-coral-700 disabled:opacity-40">Anlegen</button>
-                </div>
-              </div>
-            )}
+            {eigeneOrdner.map(o => renderOwnFolder(o))}
+            {ordnerForm && ordnerForm.klasseId == null && ordnerForm.elternId == null && renderOrdnerForm(false)}
           </div>
         </div>
       </div>

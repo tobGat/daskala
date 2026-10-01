@@ -992,6 +992,8 @@
           "name": "Ideen",
           "farbe": "#fb6936",
           "reihenfolge": 1,
+          "klasse_id": null,
+          "eltern_id": null,
           "erstellt_am": "<TS>"
         },
         {
@@ -1000,6 +1002,8 @@
           "name": "Projekte",
           "farbe": "#0ea5e9",
           "reihenfolge": 2,
+          "klasse_id": null,
+          "eltern_id": null,
           "erstellt_am": "<TS>"
         },
         {
@@ -1008,6 +1012,82 @@
           "name": "Klausuren",
           "farbe": "#22c55e",
           "reihenfolge": 3,
+          "klasse_id": null,
+          "eltern_id": null,
+          "erstellt_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "notizbuch:ordnerCreate (Klassen-Unterordner)": {
+    "ret": 3,
+    "state": {
+      "notiz_ordner": [
+        {
+          "id": 1,
+          "schuljahr_id": 1,
+          "name": "Ideen",
+          "farbe": "#fb6936",
+          "reihenfolge": 1,
+          "klasse_id": null,
+          "eltern_id": null,
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "schuljahr_id": 1,
+          "name": "Projekte",
+          "farbe": "#0ea5e9",
+          "reihenfolge": 2,
+          "klasse_id": null,
+          "eltern_id": null,
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 3,
+          "schuljahr_id": 1,
+          "name": "Elternarbeit",
+          "farbe": "#0ea5e9",
+          "reihenfolge": 3,
+          "klasse_id": 1,
+          "eltern_id": null,
+          "erstellt_am": "<TS>"
+        }
+      ]
+    }
+  },
+  "notizbuch:ordnerCreate (eigener Unterordner)": {
+    "ret": 3,
+    "state": {
+      "notiz_ordner": [
+        {
+          "id": 1,
+          "schuljahr_id": 1,
+          "name": "Ideen",
+          "farbe": "#fb6936",
+          "reihenfolge": 1,
+          "klasse_id": null,
+          "eltern_id": null,
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 2,
+          "schuljahr_id": 1,
+          "name": "Projekte",
+          "farbe": "#0ea5e9",
+          "reihenfolge": 2,
+          "klasse_id": null,
+          "eltern_id": null,
+          "erstellt_am": "<TS>"
+        },
+        {
+          "id": 3,
+          "schuljahr_id": 1,
+          "name": "Unterthema",
+          "farbe": "#a855f7",
+          "reihenfolge": 3,
+          "klasse_id": null,
+          "eltern_id": 1,
           "erstellt_am": "<TS>"
         }
       ]
@@ -1023,6 +1103,8 @@
           "name": "Ideen",
           "farbe": "#fb6936",
           "reihenfolge": 1,
+          "klasse_id": null,
+          "eltern_id": null,
           "erstellt_am": "<TS>"
         },
         {
@@ -1031,6 +1113,8 @@
           "name": "Projekte 2025",
           "farbe": "#a855f7",
           "reihenfolge": 2,
+          "klasse_id": null,
+          "eltern_id": null,
           "erstellt_am": "<TS>"
         }
       ]
@@ -1046,6 +1130,8 @@
           "name": "Projekte",
           "farbe": "#0ea5e9",
           "reihenfolge": 2,
+          "klasse_id": null,
+          "eltern_id": null,
           "erstellt_am": "<TS>"
         }
       ],

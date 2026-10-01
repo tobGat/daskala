@@ -395,6 +395,8 @@ const TABLE_DDL = [
       name TEXT NOT NULL,
       farbe TEXT,
       reihenfolge INTEGER DEFAULT 0,
+      klasse_id INTEGER,
+      eltern_id INTEGER,
       erstellt_am TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
     )`,
@@ -1112,10 +1114,16 @@ function applySchema(db, deps) {
       name TEXT NOT NULL,
       farbe TEXT,
       reihenfolge INTEGER DEFAULT 0,
+      klasse_id INTEGER,
+      eltern_id INTEGER,
       erstellt_am TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (schuljahr_id) REFERENCES schuljahre(id) ON DELETE CASCADE
     )
   `)
+  // Unterordner: klasse_id = Unterordner einer Klasse; eltern_id = Unterordner eines
+  // eigenen Ordners (beide ohne FK, als idempotente Spalten-Ergänzung für bestehende DBs).
+  spalteErgaenzen('notiz_ordner', 'klasse_id', 'INTEGER')
+  spalteErgaenzen('notiz_ordner', 'eltern_id', 'INTEGER')
   db.exec(`
     CREATE TABLE IF NOT EXISTS notiz_eintraege (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
