@@ -900,6 +900,7 @@
       "name": "Ideen",
       "farbe": "#fb6936",
       "reihenfolge": 1,
+      "klasse_id": null,
       "erstellt_am": "2025-09-01 08:00:00"
     },
     {
@@ -908,6 +909,7 @@
       "name": "Projekte",
       "farbe": "#0ea5e9",
       "reihenfolge": 2,
+      "klasse_id": null,
       "erstellt_am": "2025-09-01 08:05:00"
     }
   ],

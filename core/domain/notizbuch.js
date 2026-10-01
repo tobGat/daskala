@@ -11,11 +11,11 @@ async function ordnerGetAll(db, schuljahrId) {
   return db.select('SELECT * FROM notiz_ordner WHERE schuljahr_id = ? ORDER BY reihenfolge, id', [schuljahrId])
 }
 
-async function ordnerCreate(db, { schuljahrId, name, farbe }) {
+async function ordnerCreate(db, { schuljahrId, name, farbe, klasseId }) {
   const max = (await db.selectOne('SELECT MAX(reihenfolge) AS m FROM notiz_ordner WHERE schuljahr_id = ?', [schuljahrId]))?.m ?? 0
   const info = await db.execute(
-    'INSERT INTO notiz_ordner (schuljahr_id, name, farbe, reihenfolge) VALUES (?, ?, ?, ?)',
-    [schuljahrId, name, farbe ?? null, max + 1])
+    'INSERT INTO notiz_ordner (schuljahr_id, name, farbe, reihenfolge, klasse_id) VALUES (?, ?, ?, ?, ?)',
+    [schuljahrId, name, farbe ?? null, max + 1, klasseId ?? null])
   return info.lastInsertRowid
 }
 
