@@ -183,6 +183,14 @@
   .feat p{margin:0;color:var(--ink-soft);font-size:.96rem}
   @media(max-width:860px){.feat{grid-template-columns:1fr}}
 
+  /* ---------- Elternsprechtag (Alleinstellungsmerkmal) ---------- */
+  #elternsprechtag .split{display:grid;grid-template-columns:1.05fr .95fr;gap:52px;align-items:center}
+  #elternsprechtag .check{margin-top:24px;display:flex;flex-direction:column;gap:14px;font-size:1.02rem;color:var(--ink-soft)}
+  #elternsprechtag .check > span{display:flex;align-items:flex-start;gap:11px;line-height:1.5}
+  #elternsprechtag .check .tick{margin-top:4px}
+  #elternsprechtag .check strong{color:var(--ink);font-weight:600}
+  @media(max-width:860px){#elternsprechtag .split{grid-template-columns:1fr;gap:38px}}
+
   /* ---------- Installation ---------- */
   .install{display:grid;grid-template-columns:1fr 1fr;gap:24px}
   .panel{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:28px;box-shadow:var(--shadow)}
@@ -281,6 +289,7 @@
       Daskala<span class="dot">.</span>
     </a>
     <nav class="links">
+      <a href="#elternsprechtag">Elternsprechtag</a>
       <a href="#funktionen">Funktionen</a>
       <a href="#installation">Installation</a>
       <a href="#datenschutz">Datenschutz</a>
@@ -329,6 +338,48 @@
           <tr><td class="name">Felix W.</td><td class="note"><span class="grade g3">3</span></td></tr>
         </table>
         <div class="foot"><span>Ø 1,75</span><span class="mono">lokal gespeichert</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ELTERNSPRECHTAG (Alleinstellungsmerkmal) -->
+  <section class="band alt" id="elternsprechtag">
+    <div class="wrap split">
+      <div class="rv">
+        <span class="eyebrow">Der Unterschied · <b>Elternsprechtag</b></span>
+        <h2 style="font-size:clamp(1.9rem,3.8vw,2.6rem);margin:18px 0 12px">Am Elternsprechtag zählt, was du belegen kannst.</h2>
+        <p style="color:var(--ink-soft);font-size:1.1rem;max-width:44ch;margin:0">
+          Daskala dokumentiert das ganze Jahr lückenlos – jede Note, jede Mitarbeit, jede Beobachtung. Am Sprechtag öffnest du einfach das Profil eines Kindes und hast sofort eine sachliche, nachvollziehbare Gesprächsgrundlage. Kein Zettelchaos, keine Bauchentscheidungen – und weil alles lokal bleibt, verlassen die Daten nie deinen Rechner.
+        </p>
+        <div class="check">
+          <span>
+            <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span><strong>Leistungsdiagramm</strong> – die Entwicklung übers ganze Jahr, samt Niveau-Verlauf bei differenzierter Beurteilung (AHS/ST).</span>
+          </span>
+          <span>
+            <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span><strong>Mitarbeit &amp; Hausübung</strong> als belegte Historie statt bloßer Zahl – jede Aufzeichnung ist nachvollziehbar.</span>
+          </span>
+          <span>
+            <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span><strong>Notizen, Beobachtungen und Kompetenzraster</strong> pro Kind – auf einen Blick griffbereit.</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Profil-Signaturkarte -->
+      <div class="book rv" aria-hidden="true">
+        <div class="head">
+          <span class="t">Lena H. · 3b</span>
+          <span class="k mono">Elternsprechtag</span>
+        </div>
+        <table>
+          <tr><td class="name">Entwicklung</td><td class="note" style="color:#1c6a72;font-weight:600">↗ stabil</td></tr>
+          <tr><td class="name">Mitarbeit</td><td class="note mono">+12 / −3</td></tr>
+          <tr><td class="name">Niveau</td><td class="note">AHS · seit Nov.</td></tr>
+          <tr><td class="name">Hausübung</td><td class="note mono">9 / 10</td></tr>
+        </table>
+        <div class="foot"><span>4 Beobachtungen notiert</span><span class="mono">nur lokal</span></div>
       </div>
     </div>
   </section>
