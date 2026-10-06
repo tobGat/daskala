@@ -8,6 +8,16 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.13.0',
+    datum: '2026-10-06',
+    punkte: [
+      'Stundenplan-Fokus beim Überfahren: Fährst du mit der Maus über eine Stunde, werden die übrigen Stunden dezent heller dargestellt – so treten die betreffende Stunde und weitere Stunden desselben Fachs in dieser Woche klar hervor. Du siehst auf einen Blick, wann dieses Fach noch stattfindet.',
+      'Im Planungs-Fenster zur vorigen/nächsten Stunde blättern: Öffnest du die Planung einer Stunde, springst du mit „‹ Vorige Stunde" und „Nächste Stunde ›" direkt zur vorherigen bzw. nächsten Stunde desselben Fachs – auch über Wochengrenzen hinweg. So siehst du rasch, was zuletzt gemacht wurde, oder planst die kommenden Stunden vor. Ein kleiner „Ausgangsstunde"-Button bringt dich zurück zur ursprünglich angeklickten Stunde; ungespeicherte Eingaben werden beim Blättern automatisch übernommen.',
+      'Noten-Spalten einfärben und fixieren: Einzelne Spalten der Notenliste kannst du jetzt individuell einfärben und an den Anfang oder das Ende fixieren (einfrieren), sodass sie beim horizontalen Scrollen sichtbar bleiben – praktisch z. B. für die Semesternote oder wichtige Schularbeiten. Farbe und Fixierung lassen sich bereits beim Erstellen der Spalte sowie später per Rechtsklick bzw. im Bearbeiten-Fenster festlegen.',
+      'Neuer Design-Modus „Grau": Zusätzlich zu Hell und Dunkel gibt es jetzt einen Grau-Modus – ein etwas helleres Pendant zum Dark-Modus. Umschaltbar unter Einstellungen → Ansicht & Module → Design.',
+    ],
+  },
+  {
     version: '1.12.0',
     datum: '2026-10-01',
     punkte: [
