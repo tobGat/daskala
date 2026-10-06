@@ -153,10 +153,12 @@ function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert, he
   const f = getKlasseFarbe(eintrag.klasse_id)
   // Hover-Hervorhebung: 'stark' (überfahrene Stunde) = deutlich größer + Ring/Schatten;
   // 'schwach' (gleiches Fach in der Woche) = dezenter Ring + leicht größer.
+  // z-Index liegt auf dem <td> (Stacking-Context der ganzen Zelle), damit die
+  // vergrößerte Stunde zuverlässig vor überschneidenden Nachbarzellen bleibt.
   const hervorKlasse = hervor === 'stark'
-    ? 'relative z-20 scale-[1.14] shadow-xl ring-2 ring-coral-500 dark:ring-coral-400 brightness-105'
+    ? 'relative scale-[1.14] shadow-xl ring-2 ring-coral-500 dark:ring-coral-400 brightness-105'
     : hervor === 'schwach'
-      ? 'relative z-10 scale-[1.04] ring-2 ring-coral-300/80 dark:ring-coral-500/50'
+      ? 'relative scale-[1.04] ring-2 ring-coral-300/80 dark:ring-coral-500/50'
       : ''
   const hervorBasis = 'transition-transform duration-150 ease-out origin-center'
   const iv = eintrag.wochen_intervall || 1
@@ -821,6 +823,7 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                       <td
                         key={tagIdx}
                         className={`relative px-1 py-1 h-14 align-top border border-paper-200 dark:border-ink-800 transition-colors
+                          ${hervor === 'stark' ? 'z-30' : hervor === 'schwach' ? 'z-20' : ''}
                           ${istFerien ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''}
                           ${istAktuell && !istFerien ? 'ring-2 ring-coral-400 ring-inset' : ''}
                           ${istDragOver ? 'ring-2 ring-coral-500 ring-inset bg-coral-50/60 dark:bg-coral-900/40' : ''}
