@@ -94,6 +94,7 @@ const CASES = [
 
   // ── Spalten / Einträge / Zeugnisnoten ──────────────────────────────────────
   { name: 'spalten:update', channel: 'spalten:update', args: [1, { kuerzel: 'SA1x', datum: '2025-10-16', notiz: 'geändert' }], tables: ['spalten'] },
+  { name: 'spalten:update (Farbe+Fixierung)', channel: 'spalten:update', args: [2, { kuerzel: 'T1', datum: '2025-11-20', notiz: null, farbe: '#0ea5e9', fixiert: 'ende' }], tables: ['spalten'] },
   { name: 'spalten:delete', channel: 'spalten:delete', args: [2], tables: ['spalten', 'eintraege'] },
   { name: 'spalten:toggleEingeklappt', channel: 'spalten:toggleEingeklappt', args: [1], tables: ['spalten'] },
   { name: 'spalten:setEingeklappt', channel: 'spalten:setEingeklappt', args: [[1, 2], 1], tables: ['spalten'] },

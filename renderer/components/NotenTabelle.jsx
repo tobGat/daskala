@@ -28,9 +28,19 @@ const KAT_DOT = {
 
 const KATEGORIEN_LABEL = { MA: 'Mitarbeit', 'HÜ': 'Hausübung', T: 'Test', SA: 'Schularbeit', CUSTOM: 'Individuell' }
 
+// Auswahl-Palette für individuelle Spaltenfarben (kräftig genug für weiße Kopf-Schrift).
+export const SPALTEN_FARBEN = ['#ef4444', '#f97316', '#d97706', '#16a34a', '#0d9488', '#0ea5e9', '#6366f1', '#9333ea', '#db2777', '#64748b']
+
+// Feste Breiten für die Sticky-Offsets (Desktop): Namensspalte, Noten-Zelle, eingeklappt, ZN.
+const NAME_W = 184, ZELLE_W = 38, EINGEKL_W = 22, ZN_W = 46
+// Baut das Inline-Style für eine fixierte (sticky) Zelle/Kopf.
+const stickyStyleVon = (sticky, zIndex) => sticky ? { position: 'sticky', [sticky.side]: sticky.offset, zIndex } : null
+
 // ─── Spalten-Header ───────────────────────────────────────────────────────────
-const SpalteHeader = memo(function SpalteHeader({ spalte, onContextMenu }) {
+const SpalteHeader = memo(function SpalteHeader({ spalte, onContextMenu, sticky }) {
   const { toggleSpalteEingeklappt } = useStore()
+  const stick = stickyStyleVon(sticky, 12)
+  const farbe = spalte.farbe || null
 
   const datumAnzeige = spalte.datum
     ? new Date(spalte.datum).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })
@@ -39,8 +49,8 @@ const SpalteHeader = memo(function SpalteHeader({ spalte, onContextMenu }) {
   if (spalte.eingeklappt) {
     return (
       <th
-        className="p-0 cursor-pointer hover:bg-paper-200 dark:hover:bg-ink-800 bg-paper-50 dark:bg-ink-900"
-        style={{ width: 22, minWidth: 22 }}
+        className={`p-0 cursor-pointer hover:bg-paper-200 dark:hover:bg-ink-800 ${stick ? 'bg-white dark:bg-ink-900' : 'bg-paper-50 dark:bg-ink-900'}`}
+        style={{ width: EINGEKL_W, minWidth: EINGEKL_W, ...(stick || {}) }}
         onClick={() => toggleSpalteEingeklappt(spalte.id)}
         onContextMenu={e => onContextMenu(e, spalte)}
         title={`${spalte.kuerzel} ${datumAnzeige} – Klick zum Ausklappen`}
@@ -57,18 +67,25 @@ const SpalteHeader = memo(function SpalteHeader({ spalte, onContextMenu }) {
   return (
     <th
       className="p-0 text-center cursor-pointer select-none group relative bg-white dark:bg-ink-900 transition-all"
-      style={{ width: 38, minWidth: 38 }}
+      style={{ width: ZELLE_W, minWidth: ZELLE_W, ...(stick || {}) }}
       onContextMenu={e => onContextMenu(e, spalte)}
       title={spalte.notiz ?? 'Rechtsklick für Optionen'}
     >
-      <div className="h-14 flex flex-col items-center justify-center px-1 gap-1">
-        <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold leading-none tracking-tight transition-all group-hover:scale-110 ${KAT_FARBE[spalte.kategorie] ?? KAT_FARBE.CUSTOM}`}>
+      {farbe && <span aria-hidden className="absolute inset-0 pointer-events-none" style={{ backgroundColor: farbe + '22' }} />}
+      <div className="relative h-14 flex flex-col items-center justify-center px-1 gap-1">
+        <span
+          className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold leading-none tracking-tight transition-all group-hover:scale-110 ${farbe ? '' : (KAT_FARBE[spalte.kategorie] ?? KAT_FARBE.CUSTOM)}`}
+          style={farbe ? { backgroundColor: farbe, color: '#fff' } : undefined}
+        >
           {spalte.kuerzel}
         </span>
         {datumAnzeige && (
           <span className="text-[9px] font-medium text-ink-400 dark:text-ink-500 leading-none">{datumAnzeige}</span>
         )}
       </div>
+      {spalte.fixiert && (
+        <span aria-hidden className="absolute top-0.5 left-0.5 text-[9px] leading-none" title={spalte.fixiert === 'start' ? 'Am Anfang fixiert' : 'Am Ende fixiert'}>📌</span>
+      )}
       {spalte.notiz && (
         <span className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${KAT_DOT[spalte.kategorie] ?? KAT_DOT.CUSTOM}`} />
       )}
@@ -76,8 +93,9 @@ const SpalteHeader = memo(function SpalteHeader({ spalte, onContextMenu }) {
   )
 })
 
-const EingeklappteZelle = memo(function EingeklappteZelle() {
-  return <td style={{ width: 22, minWidth: 22 }} className="bg-paper-50/70 dark:bg-ink-900/50" />
+const EingeklappteZelle = memo(function EingeklappteZelle({ sticky }) {
+  const stick = stickyStyleVon(sticky, 6)
+  return <td style={{ width: EINGEKL_W, minWidth: EINGEKL_W, ...(stick || {}) }} className={stick ? 'bg-white dark:bg-ink-950' : 'bg-paper-50/70 dark:bg-ink-900/50'} />
 })
 
 // ─── ZN-Header ────────────────────────────────────────────────────────────────
@@ -535,6 +553,24 @@ export default function NotenTabelle() {
   const spaltenS2 = spalten.filter(s => s.semester === 2)
   const spaltenZeigen = [...spaltenS1, ...(aktiveSemester === 2 ? spaltenS2 : [])]
 
+  // Sticky-Offsets für fixierte Spalten (nur Desktop): führende 'start'- und abschließende
+  // 'ende'-Spalten frieren links nach der Namensspalte bzw. rechts vor der ZN-Spalte ein.
+  const stickyMap = {}
+  if (!mobil) {
+    const breite = (s) => s.eingeklappt ? EINGEKL_W : ZELLE_W
+    let left = NAME_W
+    for (const s of spaltenZeigen) {
+      if (s.fixiert === 'start') { stickyMap[s.id] = { side: 'left', offset: left }; left += breite(s) }
+      else break
+    }
+    let right = ZN_W
+    for (let i = spaltenZeigen.length - 1; i >= 0; i--) {
+      const s = spaltenZeigen[i]
+      if (s.fixiert === 'ende') { stickyMap[s.id] = { side: 'right', offset: right }; right += breite(s) }
+      else break
+    }
+  }
+
   const handleSpalteContextMenu = useCallback((e, spalte) => {
     e.preventDefault()
     setSpaltenContextMenu({ x: e.clientX, y: e.clientY, spalte })
@@ -545,10 +581,17 @@ export default function NotenTabelle() {
     setSpalteBearbeitenModal(spalte)
   }
 
-  const handleSpalteBearbeitenSpeichern = async ({ kuerzel, datum, notiz }) => {
-    await window.api.spalten.update(spalteBearbeitenModal.id, { kuerzel, datum, notiz })
+  const handleSpalteBearbeitenSpeichern = async ({ kuerzel, datum, notiz, farbe, fixiert }) => {
+    await window.api.spalten.update(spalteBearbeitenModal.id, { kuerzel, datum, notiz, farbe, fixiert })
     await ladeSpalten()
     setSpalteBearbeitenModal(null)
+  }
+
+  // Schnell-Fixierung aus dem Kontextmenü (behält die übrigen Felder bei).
+  const handleFixieren = async (sp, wert) => {
+    await window.api.spalten.update(sp.id, { kuerzel: sp.kuerzel, datum: sp.datum, notiz: sp.notiz, farbe: sp.farbe, fixiert: wert })
+    await ladeSpalten()
+    setSpaltenContextMenu(null)
   }
 
   const handleSpalteLoeschen = async (spalteId) => {
@@ -667,12 +710,12 @@ export default function NotenTabelle() {
                   </th>
                 ) : (
                   spaltenS1.map(sp => (
-                    <SpalteHeader key={sp.id} spalte={sp} onContextMenu={handleSpalteContextMenu} />
+                    <SpalteHeader key={sp.id} spalte={sp} onContextMenu={handleSpalteContextMenu} sticky={stickyMap[sp.id]} />
                   ))
                 )}
 
                 {aktiveSemester === 2 && spaltenS2.map(sp => (
-                  <SpalteHeader key={sp.id} spalte={sp} onContextMenu={handleSpalteContextMenu} />
+                  <SpalteHeader key={sp.id} spalte={sp} onContextMenu={handleSpalteContextMenu} sticky={stickyMap[sp.id]} />
                 ))}
 
                 {!mobil && <GhostSpalteHeader onClick={openSpalteModal} />}
@@ -702,15 +745,15 @@ export default function NotenTabelle() {
                   ) : (
                     spaltenS1.map(sp =>
                       sp.eingeklappt
-                        ? <EingeklappteZelle key={sp.id} />
-                        : <Zelle key={sp.id} spalte={sp} schueler={s} />
+                        ? <EingeklappteZelle key={sp.id} sticky={stickyMap[sp.id]} />
+                        : <Zelle key={sp.id} spalte={sp} schueler={s} stickyStyle={stickyMap[sp.id]} />
                     )
                   )}
 
                   {aktiveSemester === 2 && spaltenS2.map(sp =>
                     sp.eingeklappt
-                      ? <EingeklappteZelle key={sp.id} />
-                      : <Zelle key={sp.id} spalte={sp} schueler={s} />
+                      ? <EingeklappteZelle key={sp.id} sticky={stickyMap[sp.id]} />
+                      : <Zelle key={sp.id} spalte={sp} schueler={s} stickyStyle={stickyMap[sp.id]} />
                   )}
 
                   {!mobil && <GhostZelle onClick={openSpalteModal} />}
@@ -769,6 +812,22 @@ export default function NotenTabelle() {
                 <span className="w-6 text-center">🗓️</span> Chronologisch sortieren (S{sp.semester})
               </button>
               <div className="context-menu-separator" />
+              {sp.fixiert !== 'start' && (
+                <button type="button" className={menuItem} onClick={() => handleFixieren(sp, 'start')}>
+                  <span className="w-6 text-center">📌</span> An den Anfang fixieren
+                </button>
+              )}
+              {sp.fixiert !== 'ende' && (
+                <button type="button" className={menuItem} onClick={() => handleFixieren(sp, 'ende')}>
+                  <span className="w-6 text-center">📌</span> Ans Ende fixieren
+                </button>
+              )}
+              {sp.fixiert && (
+                <button type="button" className={menuItem} onClick={() => handleFixieren(sp, null)}>
+                  <span className="w-6 text-center">✕</span> Fixierung aufheben
+                </button>
+              )}
+              <div className="context-menu-separator" />
               <button type="button" className={menuItem} onClick={() => handleSpalteBearbeiten(sp)}>
                 <span className="w-6 text-center">✎</span> Spalte bearbeiten
               </button>
@@ -810,6 +869,22 @@ export default function NotenTabelle() {
             <div className="context-menu-item" onClick={() => handleSortierenChrono(spaltenContextMenu.spalte.semester)}>
               Chronologisch sortieren (S{spaltenContextMenu.spalte.semester})
             </div>
+            <div className="context-menu-separator" />
+            {spaltenContextMenu.spalte.fixiert !== 'start' && (
+              <div className="context-menu-item" onClick={() => handleFixieren(spaltenContextMenu.spalte, 'start')}>
+                📌 An den Anfang fixieren
+              </div>
+            )}
+            {spaltenContextMenu.spalte.fixiert !== 'ende' && (
+              <div className="context-menu-item" onClick={() => handleFixieren(spaltenContextMenu.spalte, 'ende')}>
+                📌 Ans Ende fixieren
+              </div>
+            )}
+            {spaltenContextMenu.spalte.fixiert && (
+              <div className="context-menu-item" onClick={() => handleFixieren(spaltenContextMenu.spalte, null)}>
+                Fixierung aufheben
+              </div>
+            )}
             <div className="context-menu-separator" />
             <div className="context-menu-item" onClick={() => handleSpalteBearbeiten(spaltenContextMenu.spalte)}>
               ✎ Spalte bearbeiten
@@ -1000,17 +1075,28 @@ function SpalteBearbeitenModal({ spalte, onSpeichern, onClose }) {
   const [kuerzel, setKuerzel] = useState(spalte.kuerzel)
   const [datum, setDatum] = useState(spalte.datum ?? '')
   const [notiz, setNotiz] = useState(spalte.notiz ?? '')
+  const [farbe, setFarbe] = useState(spalte.farbe ?? null)
+  const [fixiert, setFixiert] = useState(spalte.fixiert ?? null)
   const [loading, setLoading] = useState(false)
 
   const speichern = async () => {
     if (!kuerzel.trim()) return
     setLoading(true)
     try {
-      await onSpeichern({ kuerzel: kuerzel.trim(), datum: datum || null, notiz: notiz.trim() || null })
+      await onSpeichern({ kuerzel: kuerzel.trim(), datum: datum || null, notiz: notiz.trim() || null, farbe, fixiert })
     } finally {
       setLoading(false)
     }
   }
+  const fixBtn = (wert, label) => (
+    <button
+      type="button"
+      onClick={() => setFixiert(wert)}
+      className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-colors ${fixiert === wert
+        ? 'bg-coral-500 text-white border-coral-500'
+        : 'border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-100 dark:hover:bg-ink-800'}`}
+    >{label}</button>
+  )
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
@@ -1050,6 +1136,37 @@ function SpalteBearbeitenModal({ spalte, onSpeichern, onClose }) {
               onChange={e => setNotiz(e.target.value)}
               placeholder={spalte.kategorie === 'MA' || spalte.kategorie === 'HÜ' ? 'z.B. Hinweise…' : 'z.B. Rechtschreibung, Bruchrechnen…'}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1">Farbe <span className="font-normal text-ink-400">(Spalte einfärben)</span></label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setFarbe(null)}
+                className={`w-6 h-6 rounded-full border flex items-center justify-center text-[10px] text-ink-400 ${!farbe ? 'ring-2 ring-offset-1 ring-ink-400 dark:ring-offset-ink-900 border-paper-300' : 'border-paper-200 dark:border-ink-700'}`}
+                title="Standard (Kategorie-Farbe)"
+              >✕</button>
+              {SPALTEN_FARBEN.map(f => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFarbe(f)}
+                  className={`w-6 h-6 rounded-full transition-transform ${farbe === f ? 'ring-2 ring-offset-1 ring-ink-400 dark:ring-offset-ink-900 scale-110' : 'hover:scale-105'}`}
+                  style={{ backgroundColor: f }}
+                  aria-label={f}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1">Fixieren <span className="font-normal text-ink-400">(bleibt beim Scrollen sichtbar)</span></label>
+            <div className="flex gap-2">
+              {fixBtn(null, 'Keine')}
+              {fixBtn('start', '📌 Anfang')}
+              {fixBtn('ende', 'Ende 📌')}
+            </div>
           </div>
         </div>
 

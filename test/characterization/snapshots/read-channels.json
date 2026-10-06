@@ -1227,6 +1227,8 @@
       "ma_stufen": 2,
       "ma_symbol": "pm",
       "ma_symbole": null,
+      "farbe": null,
+      "fixiert": null,
       "uuid": null
     },
     {
@@ -1242,6 +1244,8 @@
       "ma_stufen": 2,
       "ma_symbol": "pm",
       "ma_symbole": null,
+      "farbe": null,
+      "fixiert": null,
       "uuid": null
     }
   ],

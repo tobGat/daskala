@@ -526,6 +526,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         },
         {
@@ -541,6 +543,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         },
         {
@@ -556,6 +560,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": "<UUID>"
         }
       ]
@@ -3820,6 +3826,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         },
         {
@@ -3835,6 +3843,49 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
+          "uuid": null
+        }
+      ]
+    }
+  },
+  "spalten:update (Farbe+Fixierung)": {
+    "ret": true,
+    "state": {
+      "spalten": [
+        {
+          "id": 1,
+          "fach_id": 1,
+          "semester": 1,
+          "kategorie": "SA",
+          "kuerzel": "SA1",
+          "datum": "2025-10-15",
+          "reihenfolge": 1,
+          "eingeklappt": 0,
+          "notiz": null,
+          "ma_stufen": 2,
+          "ma_symbol": "pm",
+          "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
+          "uuid": null
+        },
+        {
+          "id": 2,
+          "fach_id": 1,
+          "semester": 1,
+          "kategorie": "T",
+          "kuerzel": "T1",
+          "datum": "2025-11-20",
+          "reihenfolge": 2,
+          "eingeklappt": 0,
+          "notiz": null,
+          "ma_stufen": 2,
+          "ma_symbol": "pm",
+          "ma_symbole": null,
+          "farbe": "#0ea5e9",
+          "fixiert": "ende",
           "uuid": null
         }
       ]
@@ -3857,6 +3908,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         }
       ],
@@ -3897,6 +3950,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         },
         {
@@ -3912,6 +3967,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         }
       ]
@@ -3934,6 +3991,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         },
         {
@@ -3949,6 +4008,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         }
       ]
@@ -3971,6 +4032,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         },
         {
@@ -3986,6 +4049,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         }
       ]
@@ -4008,6 +4073,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         },
         {
@@ -4023,6 +4090,8 @@
           "ma_stufen": 2,
           "ma_symbol": "pm",
           "ma_symbole": null,
+          "farbe": null,
+          "fixiert": null,
           "uuid": null
         }
       ]

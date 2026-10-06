@@ -130,7 +130,7 @@ function noteKlasse(n) {
 }
 
 // ─── Haupt-Zelle ─────────────────────────────────────────────────────────────
-const Zelle = memo(function Zelle({ spalte, schueler }) {
+const Zelle = memo(function Zelle({ spalte, schueler, stickyStyle }) {
   const { eintraege, setEintrag, aktivesFach, niveaus, niveauHistorie } = useStore()
   const [popupOffen, setPopupOffen] = useState(false)
   const cellRef = useRef(null)
@@ -211,8 +211,13 @@ const Zelle = memo(function Zelle({ spalte, schueler }) {
     ? `${schueler.nachname} ${schueler.vorname} | ${spalte.kuerzel} ${spalte.datum ?? ''} · Niveau: ${niveauHier}`
     : `${schueler.nachname} ${schueler.vorname} | ${spalte.kuerzel} ${spalte.datum ?? ''}`) + hueHinweis
 
+  // Sticky (fixierte Spalte) + individuelle Spaltenfarbe (zarte Tönung hinter der Zelle).
+  const stick = stickyStyle ? { position: 'sticky', [stickyStyle.side]: stickyStyle.offset, zIndex: 6 } : null
+  const farbe = spalte.farbe || null
+
   return (
-    <td className="p-0 relative" style={{ width: 38, minWidth: 38 }}>
+    <td className={`p-0 relative ${stick ? 'bg-white dark:bg-ink-950' : ''}`} style={{ width: 38, minWidth: 38, ...(stick || {}) }}>
+      {farbe && <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ backgroundColor: farbe + '17' }} />}
       <div
         ref={cellRef}
         className={`zelle ${niveauKlasse} ${anzeigeKlasse}`}
