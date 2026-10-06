@@ -914,7 +914,7 @@ export default function Einstellungen({ onClose }) {
               <div>
                 <h4 className="text-sm font-semibold text-ink-700 dark:text-paper-300 mb-3">Design</h4>
                 <div className="flex gap-3">
-                  {[['hell', 'Hell ☀'], ['dunkel', 'Dunkel 🌙']].map(([val, label]) => (
+                  {[['hell', 'Hell ☀'], ['grau', 'Grau 🌫'], ['dunkel', 'Dunkel 🌙']].map(([val, label]) => (
                     <button
                       key={val}
                       className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium transition-colors

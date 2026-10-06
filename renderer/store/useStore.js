@@ -5,6 +5,15 @@ import { create } from 'zustand'
 
 let toastSeq = 0
 
+// Theme auf <html> anwenden. „dunkel" und „grau" sind beide Dark-Varianten
+// (→ .dark für alle dark:-Styles); „grau" setzt zusätzlich .theme-grau, das die
+// dunklen Ink-Flächen aufhellt (siehe index.css).
+function themeAnwenden(theme) {
+  const cl = document.documentElement.classList
+  cl.toggle('dark', theme === 'dunkel' || theme === 'grau')
+  cl.toggle('theme-grau', theme === 'grau')
+}
+
 const useStore = create((set, get) => ({
   // ─── App-Zustand ──────────────────────────────────────────────────────────
   initialized: false,
@@ -91,11 +100,7 @@ const useStore = create((set, get) => ({
     const theme = alle['theme'] ?? 'hell'
 
     // Theme anwenden
-    if (theme === 'dunkel') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    themeAnwenden(theme)
 
     // Gewichtung laden
     const gRows = await window.api.gewichtungGlobal.getAll()
@@ -609,11 +614,7 @@ const useStore = create((set, get) => ({
 
   // ─── Theme ───────────────────────────────────────────────────────────────
   setTheme: async (theme) => {
-    if (theme === 'dunkel') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    themeAnwenden(theme)
     set({ theme })
     await window.api.einstellungen.set('theme', theme)
   },
