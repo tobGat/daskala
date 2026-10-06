@@ -80,7 +80,7 @@
     background-color: #ffffff;
   }
   .dark .noten-tabelle tbody tr:nth-child(even) > td:first-child {
-    background-color: rgb(14 13 12);
+    background-color: rgb(var(--ink-950));  /* folgt dem Theme (im Grau-Modus heller) */
   }
 
   .noten-tabelle th {
@@ -93,7 +93,7 @@
 
   .dark .noten-tabelle th {
     @apply bg-ink-900 text-ink-400;
-    box-shadow: 0 1px 0 0 rgb(46 42 38 / 1);
+    box-shadow: 0 1px 0 0 rgb(var(--ink-800));  /* folgt dem Theme (Grau-Modus) */
   }
 
   .noten-tabelle th.name-header {
