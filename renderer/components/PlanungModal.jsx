@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import useStore from '../store/useStore'
 import MaterialListe from './MaterialListe'
 
@@ -50,20 +50,32 @@ export function formatFristDatum(dateStr) {
   return d.toLocaleDateString('de-AT', { weekday: 'short', day: 'numeric', month: 'numeric' })
 }
 
-export default function PlanungModal({ eintrag, wocheDatum, fachWochentage = [], onClose, onGespeichert }) {
+export default function PlanungModal({ eintrag: eintragProp, wocheDatum: wocheProp, fachWochentage = [], nachbarLektion, onClose, onGespeichert }) {
+  // Lokaler Zustand für die aktuell angezeigte Lektion – so kann im Modal zur
+  // vorherigen/nächsten Stunde desselben Fachs geblättert werden.
+  const [eintrag, setEintrag] = useState(eintragProp)
+  const [wocheDatum, setWocheDatum] = useState(wocheProp)
   const [titel, setTitel] = useState('')
   const [inhalt, setInhalt] = useState('')
   const [musizieren, setMusizieren] = useState(false)
   const [musiziertWarnung, setMusiziertWarnung] = useState(false)
   const [laden, setLaden] = useState(true)
+  const [bereit, setBereit] = useState(false)
   const [jahresAbschnitte, setJahresAbschnitte] = useState([])
   const [hueText, setHueText] = useState('')
   const [hueFristOption, setHueFristOption] = useState('naechste')
   const [hueFristDatum, setHueFristDatum] = useState('')
   const [links, setLinks] = useState([])
   const istMusik = eintrag.fach_name?.toLowerCase().includes('musik')
+  // Ausgangszustand der geladenen Planung (für „geändert?"-Erkennung) und ob
+  // für diese Lektion bereits eine Planung existierte.
+  const snapshotRef = useRef(null)
+  const bestandRef = useRef(false)
 
   useEffect(() => {
+    let aktiv = true
+    setLaden(true)
+    setMusiziertWarnung(false)
     const [datum] = wocheDatum.split('T')
     const freitag = new Date(datum)
     freitag.setDate(freitag.getDate() + 4)
@@ -73,27 +85,80 @@ export default function PlanungModal({ eintrag, wocheDatum, fachWochentage = [],
       window.api.stundenPlanung.get(eintrag.id, wocheDatum),
       window.api.jahresplanung.getAll(eintrag.fach_id),
     ]).then(([plan, abschnitte]) => {
-      if (plan) {
-        setTitel(plan.titel)
-        setInhalt(plan.inhalt)
-        setMusizieren(!!plan.musizieren)
-        setHueText(plan.hue_text ?? '')
-        setLinks(parseLinks(plan.link))
-        if (plan.hue_frist_datum) {
-          const naechste = naechsteLektionDatum(wocheDatum, eintrag.wochentag, fachWochentage, 1)
-          const uebnaechste = naechsteLektionDatum(wocheDatum, eintrag.wochentag, fachWochentage, 2)
-          if (plan.hue_frist_datum === naechste) setHueFristOption('naechste')
-          else if (plan.hue_frist_datum === uebnaechste) setHueFristOption('uebnaechste')
-          else { setHueFristOption('datum'); setHueFristDatum(plan.hue_frist_datum) }
-        }
+      if (!aktiv) return
+      let opt = 'naechste', fdat = ''
+      const geladeneLinks = plan ? parseLinks(plan.link) : []
+      if (plan && plan.hue_frist_datum) {
+        const naechste = naechsteLektionDatum(wocheDatum, eintrag.wochentag, fachWochentage, 1)
+        const uebnaechste = naechsteLektionDatum(wocheDatum, eintrag.wochentag, fachWochentage, 2)
+        if (plan.hue_frist_datum === naechste) opt = 'naechste'
+        else if (plan.hue_frist_datum === uebnaechste) opt = 'uebnaechste'
+        else { opt = 'datum'; fdat = plan.hue_frist_datum }
+      }
+      // Felder immer setzen (auch leer) – damit beim Wechsel zu einer leeren Lektion
+      // keine Inhalte der vorherigen stehenbleiben.
+      setTitel(plan?.titel ?? '')
+      setInhalt(plan?.inhalt ?? '')
+      setMusizieren(!!plan?.musizieren)
+      setHueText(plan?.hue_text ?? '')
+      setHueFristOption(opt)
+      setHueFristDatum(fdat)
+      setLinks(geladeneLinks)
+      bestandRef.current = !!plan
+      snapshotRef.current = {
+        titel: plan?.titel ?? '', inhalt: plan?.inhalt ?? '', musizieren: !!plan?.musizieren,
+        hueText: plan?.hue_text ?? '', hueFristOption: opt, hueFristDatum: fdat, links: geladeneLinks,
       }
       setJahresAbschnitte(abschnitte.filter(a => a.datum_bis >= datum && a.datum_von <= freitagStr))
     }).catch(e => {
       console.error('PlanungModal laden:', e)
       useStore.getState().pushToast('Planung konnte nicht geladen werden.', 'error')
     })
-      .finally(() => setLaden(false))
-  }, [])
+      .finally(() => { if (aktiv) { setLaden(false); setBereit(true) } })
+
+    return () => { aktiv = false }
+  }, [eintrag.id, wocheDatum])
+
+  // Hat sich seit dem Laden etwas geändert?
+  const istDirty = () => {
+    const s = snapshotRef.current
+    if (!s) return false
+    return s.titel !== titel || s.inhalt !== inhalt || s.musizieren !== musizieren
+      || s.hueText !== hueText || s.hueFristOption !== hueFristOption || s.hueFristDatum !== hueFristDatum
+      || joinLinks(s.links) !== joinLinks(links)
+  }
+
+  // Vor dem Blättern ungespeicherte Änderungen sichern – aber keine leeren Planungen anlegen.
+  const persistWennNötig = async () => {
+    if (!istDirty()) return
+    const hatInhalt = !!(titel || inhalt || hueText || (links && links.length))
+    if (!hatInhalt && !bestandRef.current) return
+    try {
+      await window.api.stundenPlanung.save(eintrag.id, wocheDatum, titel, inhalt, musizieren, hueText || null, berechneHueFrist(), joinLinks(links))
+      await onGespeichert()
+    } catch (e) {
+      console.error('stundenPlanung.save (Navigation):', e)
+      useStore.getState().pushToast('Fehler beim Speichern: ' + e.message, 'error')
+    }
+  }
+
+  const geheZu = async (richtung) => {
+    if (!nachbarLektion || laden) return
+    const ziel = nachbarLektion(eintrag, wocheDatum, richtung)
+    if (!ziel) return
+    await persistWennNötig()
+    setEintrag(ziel.eintrag)
+    setWocheDatum(ziel.wocheDatum)
+  }
+
+  // Zurück zur ursprünglich angeklickten Stunde (Ausgangspunkt).
+  const nichtAmStart = eintrag.id !== eintragProp.id || wocheDatum !== wocheProp
+  const zurueckZumStart = async () => {
+    if (laden || !nichtAmStart) return
+    await persistWennNötig()
+    setEintrag(eintragProp)
+    setWocheDatum(wocheProp)
+  }
 
   const handleMusiziertChange = async (checked) => {
     if (checked) {
@@ -165,14 +230,13 @@ export default function PlanungModal({ eintrag, wocheDatum, fachWochentage = [],
     }, 0)
   }
 
-  const [datum] = wocheDatum.split('T')
-  const wocheAnzeige = (() => {
-    const d = new Date(datum)
-    const fr = new Date(d); fr.setDate(d.getDate() + 4)
-    return `${d.getDate()}.${d.getMonth()+1}. – ${fr.getDate()}.${fr.getMonth()+1}.${fr.getFullYear()}`
+  // Konkretes Datum der aktuell angezeigten Lektion (Montag + Wochentag-Versatz).
+  const lektionDatumAnzeige = (() => {
+    const d = new Date(berechneFristDatum(wocheDatum, eintrag.wochentag, 0) + 'T00:00:00')
+    return d.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   })()
 
-  if (laden) return null
+  if (!bereit) return null
 
   return (
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
@@ -183,7 +247,7 @@ export default function PlanungModal({ eintrag, wocheDatum, fachWochentage = [],
         {/* Header */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-ink-400">{eintrag.fach_name} · {eintrag.klasse_name} · {wocheAnzeige}</span>
+            <span className="text-xs text-ink-400">{eintrag.fach_name} · {eintrag.klasse_name}</span>
             {eintrag.klasse_teams_link && (
               <button
                 type="button"
@@ -193,6 +257,45 @@ export default function PlanungModal({ eintrag, wocheDatum, fachWochentage = [],
               >Teams ↗</button>
             )}
           </div>
+
+          {/* Navigation zur vorherigen/nächsten Stunde desselben Fachs */}
+          {nachbarLektion && (
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => geheZu(-1)}
+                disabled={laden}
+                className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 transition-colors disabled:opacity-40 disabled:cursor-default"
+                title="Zur vorherigen Stunde dieses Fachs – z. B. um nachzusehen, was zuletzt gemacht wurde"
+              >
+                <span aria-hidden className="text-sm leading-none">‹</span> Vorige Stunde
+              </button>
+              <div className="flex flex-col items-center gap-0.5 min-w-0">
+                <span className="text-xs font-medium text-ink-500 dark:text-ink-400 text-center truncate max-w-full">{lektionDatumAnzeige}</span>
+                {nichtAmStart && (
+                  <button
+                    type="button"
+                    onClick={zurueckZumStart}
+                    disabled={laden}
+                    className="flex items-center gap-1 text-[11px] leading-none text-coral-600 dark:text-coral-300 hover:underline disabled:opacity-40 disabled:no-underline"
+                    title="Zurück zur ursprünglich angeklickten Stunde"
+                  >
+                    <span aria-hidden>⟲</span> Ausgangsstunde
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => geheZu(1)}
+                disabled={laden}
+                className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-50 dark:hover:bg-ink-800 transition-colors disabled:opacity-40 disabled:cursor-default"
+                title="Zur nächsten Stunde dieses Fachs – z. B. um die kommenden Stunden vorzuplanen"
+              >
+                Nächste Stunde <span aria-hidden className="text-sm leading-none">›</span>
+              </button>
+            </div>
+          )}
+
           <input
             className="input text-base font-semibold"
             placeholder="Titel der Stunde…"

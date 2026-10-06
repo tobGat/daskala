@@ -119,9 +119,9 @@ function getKlasseFarbe(klasseId) {
   return KLASSE_FARBEN[klasseId % KLASSE_FARBEN.length]
 }
 
-function SupplierInhalt({ supplier }) {
+function SupplierInhalt({ supplier, status }) {
   return (
-    <div className="h-full rounded overflow-hidden border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 flex">
+    <div className={`h-full rounded overflow-hidden border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 flex transition-opacity duration-150 ease-out ${status === 'gedimmt' ? 'opacity-40' : ''}`}>
       <div className="w-1 flex-shrink-0 bg-orange-400 dark:bg-orange-600" />
       <div className="flex-1 px-1.5 py-1 min-w-0">
         <div className="font-semibold text-xs truncate leading-tight text-orange-900 dark:text-orange-100">
@@ -149,8 +149,17 @@ function intervallLabel(iv) {
   return iv === 2 ? '14-tg.' : `/${iv} Wo.`
 }
 
-function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert }) {
+function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert, status }) {
   const f = getKlasseFarbe(eintrag.klasse_id)
+  // Hover-Fokus: die überfahrene Stunde ('aktiv') und weitere Stunden desselben Fachs
+  // dieser Woche ('fach') bleiben voll sichtbar; alle übrigen Stunden werden heller
+  // ('gedimmt'). Die gehoverte Stunde bekommt zusätzlich einen dezenten Ring.
+  const statusKlasse = status === 'aktiv'
+    ? 'ring-2 ring-coral-400 dark:ring-coral-400'
+    : status === 'gedimmt'
+      ? 'opacity-40'
+      : ''
+  const statusBasis = 'transition-opacity duration-150 ease-out'
   const iv = eintrag.wochen_intervall || 1
   const ivBadge = iv > 1 ? (
     <span
@@ -162,7 +171,7 @@ function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert }) 
   ) : null
   if (entfall) {
     return (
-      <div className="h-full rounded overflow-hidden border border-paper-300 dark:border-ink-600 bg-paper-100 dark:bg-ink-800/60 flex relative">
+      <div className={`h-full rounded overflow-hidden border border-paper-300 dark:border-ink-600 bg-paper-100 dark:bg-ink-800/60 flex relative ${statusBasis} ${statusKlasse}`}>
         <div className="w-1 flex-shrink-0 bg-red-400 dark:bg-red-600" />
         <div className="flex-1 px-1.5 py-1 min-w-0 opacity-50">
           <div className="font-semibold text-xs truncate leading-tight line-through text-ink-500 dark:text-ink-400 decoration-red-500 dark:decoration-red-400 decoration-2">{eintrag.fach_name}</div>
@@ -173,7 +182,7 @@ function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert }) 
     )
   }
   return (
-    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex ${pausiert ? 'opacity-40 border-dashed' : ''}`}>
+    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex ${statusBasis} ${statusKlasse} ${pausiert ? 'opacity-40 border-dashed' : ''}`}>
       <div className={`w-1 flex-shrink-0 ${f.accent}`} />
       <div className={`flex-1 px-1.5 py-1 min-w-0 ${f.text}`}>
         <div className="font-semibold text-xs truncate leading-tight">{eintrag.fach_name}</div>
@@ -210,7 +219,7 @@ function freiFarbe(key) {
   return FREI_FARBEN[key] || FREI_FARBEN[FREI_FARB_DEFAULT]
 }
 
-function SlotInhaltFrei({ frei, pausiert }) {
+function SlotInhaltFrei({ frei, pausiert, status }) {
   const f = freiFarbe(frei.farbe)
   const iv = frei.wochen_intervall || 1
   const ivBadge = iv > 1 ? (
@@ -222,7 +231,7 @@ function SlotInhaltFrei({ frei, pausiert }) {
     </span>
   ) : null
   return (
-    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex ${pausiert ? 'opacity-40 border-dashed' : ''}`}>
+    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex transition-opacity duration-150 ease-out ${pausiert || status === 'gedimmt' ? 'opacity-40' : ''} ${pausiert ? 'border-dashed' : ''}`}>
       <div className={`w-1 flex-shrink-0 ${f.accent}`} />
       <div className={`flex-1 px-1.5 py-1 min-w-0 ${f.text}`}>
         <div className="font-semibold text-xs truncate leading-tight" title={frei.titel}>{frei.titel}</div>
@@ -277,6 +286,7 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
   const [customFerien, setCustomFerien] = useState([])
   const [wetter, setWetter] = useState(null)   // { 'YYYY-MM-DD': { code, tmax, tmin } }
   const [tagHover, setTagHover] = useState(null) // { items, x, y } – Tooltip des Tages-Badges
+  const [hoverFach, setHoverFach] = useState(null) // { fachId, key } – überfahrene Stunde + ihr Fach
 
   // Schulferien berechnen (berechnete + benutzerdefinierte)
   const schulferien = useMemo(() => {
@@ -399,6 +409,32 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
     if (iv <= 1 || !eintrag?.anker_datum) return true
     const diff = Math.round((new Date(montag + 'T00:00:00') - new Date(eintrag.anker_datum + 'T00:00:00')) / (7 * 86400000))
     return (((diff % iv) + iv) % iv) === 0
+  }
+
+  // Vorherige/nächste Lektion desselben Fachs – auch über Wochengrenzen hinweg –
+  // für die Navigation im Planungs-Modal. richtung: -1 = zurück, +1 = vor.
+  // Inaktive Wochen (z. B. 14-tägige Stunden) werden übersprungen.
+  const nachbarLektion = (eintrag, montag, richtung) => {
+    const slots = stundenplanEintraege
+      .filter(e => e.fach_id === eintrag.fach_id)
+      .sort((a, b) => a.wochentag - b.wochentag || (a.stunde ?? 0) - (b.stunde ?? 0))
+    if (slots.length === 0) return null
+    let idx = slots.findIndex(s => s.id === eintrag.id)
+    if (idx === -1) return null
+    let woche = montag
+    const wochePlus = (ds, w) => {
+      const d = new Date(ds + 'T00:00:00')
+      d.setDate(d.getDate() + w * 7)
+      return toLocalDateStr(d)
+    }
+    // Begrenzte Suche (~2 Schuljahre) als Sicherheitsnetz gegen Endlosschleifen.
+    for (let step = 0; step < slots.length * 110; step++) {
+      idx += richtung
+      if (idx >= slots.length) { idx = 0; woche = wochePlus(woche, 1) }
+      else if (idx < 0) { idx = slots.length - 1; woche = wochePlus(woche, -1) }
+      if (aktivInWoche(slots[idx], woche)) return { eintrag: slots[idx], wocheDatum: woche }
+    }
+    return null
   }
 
   const supplierFuerSlot = (wochentag, stundeId) =>
@@ -802,6 +838,15 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                       dragOverSlot?.wochentag === wochentag && dragOverSlot?.stundeId === stunde.id
                     const istGezogen = bearbeitungsModus && !!eintrag && dragEintragId === eintrag.id
 
+                    // Hover-Fokus: überfahrene Stunde ('aktiv') und weitere Stunden desselben Fachs
+                    // dieser Woche ('fach') bleiben voll sichtbar; alle übrigen Stunden werden heller ('gedimmt').
+                    const slotKey = `${wochentag}-${stunde.id}`
+                    const istHoverSlot = hoverFach && hoverFach.key === slotKey
+                    const istFachHover = hoverFach && eintrag && eintrag.fach_id === hoverFach.fachId && !istHoverSlot
+                    const slotStatus = !hoverFach
+                      ? null
+                      : istHoverSlot ? 'aktiv' : istFachHover ? 'fach' : 'gedimmt'
+
                     return (
                       <td
                         key={tagIdx}
@@ -821,6 +866,8 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                         onDragEnd={dragAufraeumen}
                         onClick={() => !istFerien && handleSlotClick(wochentag, stunde)}
                         onContextMenu={e => istFerien ? e.preventDefault() : handleSlotContextMenu(e, wochentag, stunde)}
+                        onMouseEnter={!mobil && eintrag ? () => setHoverFach({ fachId: eintrag.fach_id, key: slotKey }) : undefined}
+                        onMouseLeave={!mobil && eintrag ? () => setHoverFach(null) : undefined}
                         title={istFerien ? ferienInfo.name : tooltipText}
                       >
                         {zellenWetter && (
@@ -837,7 +884,7 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                             <span className="text-[10px] font-medium text-rose-400 dark:text-rose-500 text-center leading-tight px-1">{ferienInfo.name}</span>
                           </div>
                         ) : supplier ? (
-                          <SupplierInhalt supplier={supplier} />
+                          <SupplierInhalt supplier={supplier} status={slotStatus} />
                         ) : eintrag ? (
                           <SlotInhalt
                             eintrag={eintrag}
@@ -845,9 +892,10 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                             planungNotiz={planung?.inhalt ? stripMd(planung.inhalt).split('\n').filter(Boolean)[0] : null}
                             entfall={entfallen}
                             pausiert={pausiert}
+                            status={slotStatus}
                           />
                         ) : frei ? (
-                          <SlotInhaltFrei frei={frei} pausiert={freiPausiert} />
+                          <SlotInhaltFrei frei={frei} pausiert={freiPausiert} status={slotStatus} />
                         ) : (
                           bearbeitungsModus && (
                             <div className="h-full rounded border border-dashed border-paper-200 dark:border-ink-700 flex items-center justify-center">
@@ -1091,6 +1139,7 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
           eintrag={planungModal.eintrag}
           wocheDatum={planungModal.wocheDatum}
           fachWochentage={stundenplanEintraege.filter(e => e.fach_id === planungModal.eintrag.fach_id).map(e => e.wochentag)}
+          nachbarLektion={nachbarLektion}
           onClose={() => setPlanungModal(null)}
           onGespeichert={ladenPlanungen}
         />
