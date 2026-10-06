@@ -5,6 +5,22 @@
 @layer base {
   * { box-sizing: border-box; }
 
+  /* Dunkle Ink-Flächen/Rahmen als Variablen (Default = Tailwind-Standardwerte).
+     Der „Grau"-Modus setzt zusätzlich zu .dark die Klasse html.theme-grau und hellt
+     diese Flächen gleichmäßig auf → ein etwas helleres Pendant zum Dark-Modus. */
+  :root {
+    --ink-700: 70 64 58;    /* #46403a */
+    --ink-800: 46 42 38;    /* #2e2a26 */
+    --ink-900: 28 26 23;    /* #1c1a17 */
+    --ink-950: 14 13 12;    /* #0e0d0c */
+  }
+  html.theme-grau {
+    --ink-700: 99 91 83;    /* #635b53 */
+    --ink-800: 74 68 62;    /* #4a443e */
+    --ink-900: 56 51 47;    /* #38332f */
+    --ink-950: 42 38 35;    /* #2a2623 */
+  }
+
   html, body, #root {
     height: 100%;
     margin: 0;

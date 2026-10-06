@@ -34,10 +34,12 @@ export default {
           400: '#a59c91',
           500: '#7c7167',
           600: '#5e544c',
-          700: '#46403a',
-          800: '#2e2a26',
-          900: '#1c1a17',
-          950: '#0e0d0c',
+          // Dunkle Flächen/Rahmen: über CSS-Variablen, damit der „Grau"-Modus
+          // (html.theme-grau) sie aufhellen kann. Defaults in index.css = diese Werte.
+          700: 'rgb(var(--ink-700) / <alpha-value>)',
+          800: 'rgb(var(--ink-800) / <alpha-value>)',
+          900: 'rgb(var(--ink-900) / <alpha-value>)',
+          950: 'rgb(var(--ink-950) / <alpha-value>)',
         },
         // Primary-Akzent: Coral (Peach). Wärme, Energie, aber nicht aufdringlich.
         coral: {
