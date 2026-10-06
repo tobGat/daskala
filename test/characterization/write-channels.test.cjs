@@ -25,6 +25,7 @@ const CASES = [
   { name: 'faecher:create', channel: 'faecher:create', args: [{ klasseId: 1, name: 'Englisch', farbe: null, benotungssystem: 'standard', alleSchueler: 1 }], tables: ['faecher'] },
   { name: 'schueler:create', channel: 'schueler:create', args: [{ klasseId: 1, vorname: 'Greta', nachname: 'Novak', fachIds: [1] }], tables: ['schueler', 'klassen_schueler', 'fach_schueler'] },
   { name: 'spalten:create', channel: 'spalten:create', args: [{ fachId: 1, semester: 2, kategorie: 'SA', kuerzel: 'SA2', datum: '2026-03-10', notiz: null }], tables: ['spalten'] },
+  { name: 'spalten:create (Farbe+Fixierung)', channel: 'spalten:create', args: [{ fachId: 1, semester: 1, kategorie: 'SA', kuerzel: 'SA3', datum: '2026-01-20', notiz: null, farbe: '#ef4444', fixiert: 'start' }], tables: ['spalten'] },
   { name: 'eintraege:set (neu)', channel: 'eintraege:set', args: [1, 3, '4'], tables: ['eintraege', 'eintraege_verlauf'] },
   { name: 'eintraege:set (update)', channel: 'eintraege:set', args: [1, 1, '1'], tables: ['eintraege', 'eintraege_verlauf'] },
   { name: 'notizen:set', channel: 'notizen:set', args: [3, 1, 'Fleißig im Unterricht.'], tables: ['notizen'] },

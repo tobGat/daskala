@@ -31,9 +31,9 @@ async function create(db, data) {
     }
   }
   const info = await db.execute(`
-      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen, ma_symbol, ma_symbole, uuid)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, stufen, data.maSymbol === 'pfeil' ? 'pfeil' : 'pm', maSymbole, neueUuid()])
+      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen, ma_symbol, ma_symbole, farbe, fixiert, uuid)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, stufen, data.maSymbol === 'pfeil' ? 'pfeil' : 'pm', maSymbole, data.farbe ?? null, data.fixiert ?? null, neueUuid()])
   return info.lastInsertRowid
 }
 
