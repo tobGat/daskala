@@ -149,8 +149,16 @@ function intervallLabel(iv) {
   return iv === 2 ? '14-tg.' : `/${iv} Wo.`
 }
 
-function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert }) {
+function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert, hervor }) {
   const f = getKlasseFarbe(eintrag.klasse_id)
+  // Hover-Hervorhebung: 'stark' (überfahrene Stunde) = deutlich größer + Ring/Schatten;
+  // 'schwach' (gleiches Fach in der Woche) = dezenter Ring + leicht größer.
+  const hervorKlasse = hervor === 'stark'
+    ? 'relative z-20 scale-[1.14] shadow-xl ring-2 ring-coral-500 dark:ring-coral-400 brightness-105'
+    : hervor === 'schwach'
+      ? 'relative z-10 scale-[1.04] ring-2 ring-coral-300/80 dark:ring-coral-500/50'
+      : ''
+  const hervorBasis = 'transition-transform duration-150 ease-out origin-center'
   const iv = eintrag.wochen_intervall || 1
   const ivBadge = iv > 1 ? (
     <span
@@ -162,7 +170,7 @@ function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert }) 
   ) : null
   if (entfall) {
     return (
-      <div className="h-full rounded overflow-hidden border border-paper-300 dark:border-ink-600 bg-paper-100 dark:bg-ink-800/60 flex relative">
+      <div className={`h-full rounded overflow-hidden border border-paper-300 dark:border-ink-600 bg-paper-100 dark:bg-ink-800/60 flex relative ${hervorBasis} ${hervorKlasse}`}>
         <div className="w-1 flex-shrink-0 bg-red-400 dark:bg-red-600" />
         <div className="flex-1 px-1.5 py-1 min-w-0 opacity-50">
           <div className="font-semibold text-xs truncate leading-tight line-through text-ink-500 dark:text-ink-400 decoration-red-500 dark:decoration-red-400 decoration-2">{eintrag.fach_name}</div>
@@ -173,7 +181,7 @@ function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert }) 
     )
   }
   return (
-    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex ${pausiert ? 'opacity-40 border-dashed' : ''}`}>
+    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex ${hervorBasis} ${hervorKlasse} ${pausiert ? 'opacity-40 border-dashed' : ''}`}>
       <div className={`w-1 flex-shrink-0 ${f.accent}`} />
       <div className={`flex-1 px-1.5 py-1 min-w-0 ${f.text}`}>
         <div className="font-semibold text-xs truncate leading-tight">{eintrag.fach_name}</div>
@@ -277,6 +285,7 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
   const [customFerien, setCustomFerien] = useState([])
   const [wetter, setWetter] = useState(null)   // { 'YYYY-MM-DD': { code, tmax, tmin } }
   const [tagHover, setTagHover] = useState(null) // { items, x, y } – Tooltip des Tages-Badges
+  const [hoverFach, setHoverFach] = useState(null) // { fachId, key } – überfahrene Stunde + ihr Fach
 
   // Schulferien berechnen (berechnete + benutzerdefinierte)
   const schulferien = useMemo(() => {
@@ -802,6 +811,12 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                       dragOverSlot?.wochentag === wochentag && dragOverSlot?.stundeId === stunde.id
                     const istGezogen = bearbeitungsModus && !!eintrag && dragEintragId === eintrag.id
 
+                    // Hover-Hervorhebung: überfahrene Stunde stark, weitere Stunden desselben Fachs schwach.
+                    const slotKey = `${wochentag}-${stunde.id}`
+                    const istHoverSlot = hoverFach && hoverFach.key === slotKey
+                    const istFachHover = hoverFach && eintrag && eintrag.fach_id === hoverFach.fachId && !istHoverSlot
+                    const hervor = istHoverSlot ? 'stark' : istFachHover ? 'schwach' : null
+
                     return (
                       <td
                         key={tagIdx}
@@ -821,6 +836,8 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                         onDragEnd={dragAufraeumen}
                         onClick={() => !istFerien && handleSlotClick(wochentag, stunde)}
                         onContextMenu={e => istFerien ? e.preventDefault() : handleSlotContextMenu(e, wochentag, stunde)}
+                        onMouseEnter={!mobil && eintrag ? () => setHoverFach({ fachId: eintrag.fach_id, key: slotKey }) : undefined}
+                        onMouseLeave={!mobil && eintrag ? () => setHoverFach(null) : undefined}
                         title={istFerien ? ferienInfo.name : tooltipText}
                       >
                         {zellenWetter && (
@@ -845,6 +862,7 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                             planungNotiz={planung?.inhalt ? stripMd(planung.inhalt).split('\n').filter(Boolean)[0] : null}
                             entfall={entfallen}
                             pausiert={pausiert}
+                            hervor={hervor}
                           />
                         ) : frei ? (
                           <SlotInhaltFrei frei={frei} pausiert={freiPausiert} />
