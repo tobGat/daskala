@@ -411,6 +411,32 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
     return (((diff % iv) + iv) % iv) === 0
   }
 
+  // Vorherige/nächste Lektion desselben Fachs – auch über Wochengrenzen hinweg –
+  // für die Navigation im Planungs-Modal. richtung: -1 = zurück, +1 = vor.
+  // Inaktive Wochen (z. B. 14-tägige Stunden) werden übersprungen.
+  const nachbarLektion = (eintrag, montag, richtung) => {
+    const slots = stundenplanEintraege
+      .filter(e => e.fach_id === eintrag.fach_id)
+      .sort((a, b) => a.wochentag - b.wochentag || (a.stunde ?? 0) - (b.stunde ?? 0))
+    if (slots.length === 0) return null
+    let idx = slots.findIndex(s => s.id === eintrag.id)
+    if (idx === -1) return null
+    let woche = montag
+    const wochePlus = (ds, w) => {
+      const d = new Date(ds + 'T00:00:00')
+      d.setDate(d.getDate() + w * 7)
+      return toLocalDateStr(d)
+    }
+    // Begrenzte Suche (~2 Schuljahre) als Sicherheitsnetz gegen Endlosschleifen.
+    for (let step = 0; step < slots.length * 110; step++) {
+      idx += richtung
+      if (idx >= slots.length) { idx = 0; woche = wochePlus(woche, 1) }
+      else if (idx < 0) { idx = slots.length - 1; woche = wochePlus(woche, -1) }
+      if (aktivInWoche(slots[idx], woche)) return { eintrag: slots[idx], wocheDatum: woche }
+    }
+    return null
+  }
+
   const supplierFuerSlot = (wochentag, stundeId) =>
     supplierstunden.find(s => s.wochentag === wochentag && s.stunde_id === stundeId)
 
@@ -1113,6 +1139,7 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
           eintrag={planungModal.eintrag}
           wocheDatum={planungModal.wocheDatum}
           fachWochentage={stundenplanEintraege.filter(e => e.fach_id === planungModal.eintrag.fach_id).map(e => e.wochentag)}
+          nachbarLektion={nachbarLektion}
           onClose={() => setPlanungModal(null)}
           onGespeichert={ladenPlanungen}
         />
