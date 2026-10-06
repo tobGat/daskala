@@ -71,7 +71,9 @@ const SpalteHeader = memo(function SpalteHeader({ spalte, onContextMenu, sticky 
       onContextMenu={e => onContextMenu(e, spalte)}
       title={spalte.notiz ?? 'Rechtsklick für Optionen'}
     >
-      {farbe && <span aria-hidden className="absolute inset-0 pointer-events-none" style={{ backgroundColor: farbe + '22' }} />}
+      {/* Spaltenfarbe als Tönung – im Dark-/Grau-Modus deutlich kräftiger, sonst
+          verschwindet die geringe Deckkraft auf dunklem Grund fast völlig. */}
+      {farbe && <span aria-hidden className="absolute inset-0 pointer-events-none opacity-[0.13] dark:opacity-[0.34]" style={{ backgroundColor: farbe }} />}
       <div className="relative h-14 flex flex-col items-center justify-center px-1 gap-1">
         <span
           className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold leading-none tracking-tight transition-all group-hover:scale-110 ${farbe ? '' : (KAT_FARBE[spalte.kategorie] ?? KAT_FARBE.CUSTOM)}`}

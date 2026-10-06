@@ -217,7 +217,7 @@ const Zelle = memo(function Zelle({ spalte, schueler, stickyStyle }) {
 
   return (
     <td className={`p-0 relative ${stick ? 'bg-white dark:bg-ink-950' : ''}`} style={{ width: 38, minWidth: 38, ...(stick || {}) }}>
-      {farbe && <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ backgroundColor: farbe + '17' }} />}
+      {farbe && <div aria-hidden className="absolute inset-0 pointer-events-none opacity-[0.09] dark:opacity-[0.26]" style={{ backgroundColor: farbe }} />}
       <div
         ref={cellRef}
         className={`zelle ${niveauKlasse} ${anzeigeKlasse}`}
