@@ -151,6 +151,15 @@ export default function PlanungModal({ eintrag: eintragProp, wocheDatum: wochePr
     setWocheDatum(ziel.wocheDatum)
   }
 
+  // Zurück zur ursprünglich angeklickten Stunde (Ausgangspunkt).
+  const nichtAmStart = eintrag.id !== eintragProp.id || wocheDatum !== wocheProp
+  const zurueckZumStart = async () => {
+    if (laden || !nichtAmStart) return
+    await persistWennNötig()
+    setEintrag(eintragProp)
+    setWocheDatum(wocheProp)
+  }
+
   const handleMusiziertChange = async (checked) => {
     if (checked) {
       try {
@@ -261,7 +270,20 @@ export default function PlanungModal({ eintrag: eintragProp, wocheDatum: wochePr
               >
                 <span aria-hidden className="text-sm leading-none">‹</span> Vorige Stunde
               </button>
-              <span className="text-xs font-medium text-ink-500 dark:text-ink-400 text-center truncate">{lektionDatumAnzeige}</span>
+              <div className="flex flex-col items-center gap-0.5 min-w-0">
+                <span className="text-xs font-medium text-ink-500 dark:text-ink-400 text-center truncate max-w-full">{lektionDatumAnzeige}</span>
+                {nichtAmStart && (
+                  <button
+                    type="button"
+                    onClick={zurueckZumStart}
+                    disabled={laden}
+                    className="flex items-center gap-1 text-[11px] leading-none text-coral-600 dark:text-coral-300 hover:underline disabled:opacity-40 disabled:no-underline"
+                    title="Zurück zur ursprünglich angeklickten Stunde"
+                  >
+                    <span aria-hidden>⟲</span> Ausgangsstunde
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => geheZu(1)}
