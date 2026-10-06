@@ -220,9 +220,21 @@
   .modal-overlay {
     @apply fixed inset-0 flex items-center justify-center z-50;
     background: rgba(46, 42, 38, 0.32);
+    animation: fadeIn 0.18s ease-out both;
+  }
+
+  /* Die Backdrop-Unschärfe liegt bewusst auf einer EIGENEN Ebene (::before), nicht auf
+     .modal-overlay selbst: Ist die (scrollende, animierte) .modal-box ein Nachkomme eines
+     backdrop-filter-Elements, verschätzt sich Chromium/Electron beim Hit-Testing und
+     Eingabefelder sind teils nicht klickbar (v. a. nach dem Scrollen in hohen Modals).
+     Als Geschwister-Ebene hinter der Box entfällt dieses Problem. */
+  .modal-overlay::before {
+    content: '';
+    position: fixed;
+    inset: 0;
     backdrop-filter: blur(12px) saturate(120%);
     -webkit-backdrop-filter: blur(12px) saturate(120%);
-    animation: fadeIn 0.18s ease-out both;
+    pointer-events: none;
   }
 
   .modal-box {
