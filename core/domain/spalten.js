@@ -7,7 +7,13 @@
 const { neueUuid } = require('../db/uuid')
 
 async function getAll(db, fachId) {
-  return db.select('SELECT * FROM spalten WHERE fach_id = ? ORDER BY semester, reihenfolge, datum', [fachId])
+  // Fixierte Spalten zuerst (fixiert='start') bzw. zuletzt (fixiert='ende') je Semester.
+  return db.select(
+    `SELECT * FROM spalten WHERE fach_id = ?
+       ORDER BY semester,
+                CASE fixiert WHEN 'start' THEN 0 WHEN 'ende' THEN 2 ELSE 1 END,
+                reihenfolge, datum`,
+    [fachId])
 }
 
 async function create(db, data) {
@@ -25,9 +31,9 @@ async function create(db, data) {
     }
   }
   const info = await db.execute(`
-      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen, ma_symbol, ma_symbole, uuid)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, stufen, data.maSymbol === 'pfeil' ? 'pfeil' : 'pm', maSymbole, neueUuid()])
+      INSERT INTO spalten (fach_id, semester, kategorie, kuerzel, datum, reihenfolge, notiz, ma_stufen, ma_symbol, ma_symbole, farbe, fixiert, uuid)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [data.fachId, data.semester, data.kategorie, data.kuerzel, data.datum, maxReihenfolge + 1, data.notiz ?? null, stufen, data.maSymbol === 'pfeil' ? 'pfeil' : 'pm', maSymbole, data.farbe ?? null, data.fixiert ?? null, neueUuid()])
   return info.lastInsertRowid
 }
 
@@ -50,12 +56,16 @@ async function remove(db, id) {
 }
 
 async function update(db, deps, id, data) {
-  const old = await db.selectOne('SELECT kuerzel, datum, notiz FROM spalten WHERE id = ?', [id])
-  await db.execute('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?', [data.kuerzel, data.datum, data.notiz ?? null, id])
+  const old = await db.selectOne('SELECT kuerzel, datum, notiz, farbe, fixiert FROM spalten WHERE id = ?', [id])
+  // farbe/fixiert nur überschreiben, wenn übergeben – sonst bestehende Werte behalten.
+  const farbe = data.farbe !== undefined ? (data.farbe ?? null) : (old?.farbe ?? null)
+  const fixiert = data.fixiert !== undefined ? (data.fixiert ?? null) : (old?.fixiert ?? null)
+  await db.execute('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ?, farbe = ?, fixiert = ? WHERE id = ?',
+    [data.kuerzel, data.datum, data.notiz ?? null, farbe, fixiert, id])
   if (old) deps.pushUndo({
-    description: 'Spalte umbenennen',
-    undo: () => db.execute('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?', [old.kuerzel, old.datum, old.notiz, id]),
-    redo: () => db.execute('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ? WHERE id = ?', [data.kuerzel, data.datum, data.notiz ?? null, id]),
+    description: 'Spalte bearbeiten',
+    undo: () => db.execute('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ?, farbe = ?, fixiert = ? WHERE id = ?', [old.kuerzel, old.datum, old.notiz, old.farbe ?? null, old.fixiert ?? null, id]),
+    redo: () => db.execute('UPDATE spalten SET kuerzel = ?, datum = ?, notiz = ?, farbe = ?, fixiert = ? WHERE id = ?', [data.kuerzel, data.datum, data.notiz ?? null, farbe, fixiert, id]),
   })
   return true
 }

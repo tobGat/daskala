@@ -3,6 +3,7 @@
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 import React, { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
+import { SPALTEN_FARBEN } from './NotenTabelle'
 
 const KATEGORIEN = [
   { id: 'MA', label: 'Mitarbeit', kuerzel: 'MA', farbe: 'bg-green-100 text-green-800' },
@@ -57,6 +58,8 @@ export default function SpalteHinzufuegen({ onClose }) {
   const [zweiSymbole, setZweiSymbole] = useState(() => letzteSymboleVon(2, 2, MA_ZWEI))
   const [datum, setDatum] = useState(new Date().toISOString().slice(0, 10))
   const [notiz, setNotiz] = useState('')
+  const [farbe, setFarbe] = useState(null)
+  const [fixiert, setFixiert] = useState(null)
   const [loading, setLoading] = useState(false)
   useEffect(() => {
     const kat = KATEGORIEN.find(k => k.id === kategorie)
@@ -116,6 +119,8 @@ export default function SpalteHinzufuegen({ onClose }) {
         kuerzel: kuerzel.trim(),
         datum: datum || null,
         notiz: notiz.trim() || null,
+        farbe,
+        fixiert,
         maStufen: kategorie === 'MA' ? stufen : 2,
         // Pfeil-Darstellung nur bei Default-Symbolen; eigene 2-stufige Symbole haben Vorrang.
         maSymbol: kategorie === 'MA' && stufen === 2 && zweiDarstellung === 'pfeil' && istDefaultZwei ? 'pfeil' : 'pm',
@@ -190,8 +195,9 @@ export default function SpalteHinzufuegen({ onClose }) {
                     >
                       {o.label}
                     </button>
-                    {/* Hover-Tooltip mit Info zur Stufen-Anzahl */}
-                    <div className="pointer-events-none absolute z-30 left-1/2 -translate-x-1/2 top-full mt-1.5 w-44 rounded-lg border border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-800 shadow-xl p-2 text-[11px] leading-snug text-ink-600 dark:text-paper-300 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                    {/* Hover-Tooltip ÜBER dem Button (nicht darunter): sonst liegt er über den
+                        darunter erscheinenden Symbol-Eingabefeldern und fängt deren erste Klicks ab. */}
+                    <div className="pointer-events-none absolute z-30 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-44 rounded-lg border border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-800 shadow-xl p-2 text-[11px] leading-snug text-ink-600 dark:text-paper-300 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                       {o.info}
                     </div>
                   </div>
@@ -381,6 +387,46 @@ export default function SpalteHinzufuegen({ onClose }) {
             onChange={e => setNotiz(e.target.value)}
             placeholder={istMitarbeit ? 'z.B. Hinweise…' : 'z.B. Rechtschreibung, Bruchrechnen…'}
           />
+        </div>
+
+        {/* Farbe */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1">Farbe <span className="text-ink-400 font-normal">(Spalte einfärben, optional)</span></label>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setFarbe(null)}
+              className={`w-6 h-6 rounded-full border flex items-center justify-center text-[10px] text-ink-400 ${!farbe ? 'ring-2 ring-offset-1 ring-ink-400 dark:ring-offset-ink-900 border-paper-300' : 'border-paper-200 dark:border-ink-700'}`}
+              title="Standard (Kategorie-Farbe)"
+            >✕</button>
+            {SPALTEN_FARBEN.map(f => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFarbe(f)}
+                className={`w-6 h-6 rounded-full transition-transform ${farbe === f ? 'ring-2 ring-offset-1 ring-ink-400 dark:ring-offset-ink-900 scale-110' : 'hover:scale-105'}`}
+                style={{ backgroundColor: f }}
+                aria-label={f}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Fixieren */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-ink-700 dark:text-paper-300 mb-1">Fixieren <span className="text-ink-400 font-normal">(bleibt beim Scrollen sichtbar)</span></label>
+          <div className="flex gap-2">
+            {[[null, 'Keine'], ['start', '📌 Anfang'], ['ende', 'Ende 📌']].map(([wert, label]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setFixiert(wert)}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-colors ${fixiert === wert
+                  ? 'bg-coral-500 text-white border-coral-500'
+                  : 'border-paper-200 dark:border-ink-700 text-ink-600 dark:text-paper-300 hover:bg-paper-100 dark:hover:bg-ink-800'}`}
+              >{label}</button>
+            ))}
+          </div>
         </div>
 
         {/* Semester */}

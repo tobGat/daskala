@@ -107,6 +107,8 @@ const TABLE_DDL = [
       ma_stufen INTEGER DEFAULT 2,
       ma_symbol TEXT DEFAULT 'pm',
       ma_symbole TEXT,
+      farbe TEXT,
+      fixiert TEXT,
       uuid TEXT,
       FOREIGN KEY (fach_id) REFERENCES faecher(id)
     )`,
@@ -875,6 +877,9 @@ function applySchema(db, deps) {
   // Eigene Symbole der mehrstufigen Mitarbeit (JSON-Array): Länge 3 für +/~/−, Länge 4 für die
   // Smiley-Skala. NULL = Defaults. Wertung positionsbasiert (Stufe → Teilnote).
   spalteErgaenzen('spalten', 'ma_symbole', 'TEXT')
+  // Individuelle Spaltenfarbe (Hex) und Fixierung ('start' | 'ende' | NULL).
+  spalteErgaenzen('spalten', 'farbe', 'TEXT')
+  spalteErgaenzen('spalten', 'fixiert', 'TEXT')
   spalteErgaenzen('eintraege', 'kommentar', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_text', 'TEXT')
   spalteErgaenzen('stunden_planung', 'hue_frist_datum', 'TEXT')

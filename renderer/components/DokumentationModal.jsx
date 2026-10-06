@@ -76,6 +76,7 @@ const DOKU = [
       'Der graue Strich „—" bei einer Hausübung bedeutet „nicht gewertet / entfällt" (z. B. entschuldigt oder dispensiert): Er fließt bewusst nicht in die Note ein und zählt auch nicht zur HÜ-Quote – anders als eine leere Zelle steht er als sichtbarer Vermerk.',
       'Klicke in eine Zelle und tippe die Note bzw. das Symbol. Änderungen lassen sich rückgängig machen (Strg+Z).',
       'Per Rechtsklick auf einen Spaltenkopf sortierst du die Spalten „Nach Kategorie" (gruppiert nach SA, Test, MA …) oder wieder „Chronologisch" (nach Datum).',
+      'Einzelne Spalten einfärben & fixieren: Schon beim Anlegen einer Spalte („Spalte hinzufügen") – und jederzeit später über „Spalte bearbeiten" (Rechtsklick auf den Spaltenkopf) – gibst du einer Spalte eine individuelle Farbe; Kopf und Zellen werden dann zart eingefärbt (Noten-/Symbolfarben bleiben vorrangig). Ebenso legst du dort fest, ob die Spalte „An den Anfang" oder „Ans Ende" fixiert wird: Sie rückt an den Rand und bleibt beim seitlichen Scrollen sichtbar (eingefroren wie die Namens- und die ZN-Spalte, erkennbar am 📌). Bestehende Spalten lassen sich auch direkt per Rechtsklick fixieren; „Fixierung aufheben" macht es rückgängig.',
       'Bei Schularbeiten, Tests und Individuell-Spalten kannst du ein Thema hinterlegen (z. B. „Bruchrechnen"). Es erscheint als Tooltip am Spaltenkopf und im Leistungsdiagramm des Schüler:innen-Profils.',
       { tipp: 'Semester 1 lässt sich einklappen, um in Semester 2 mehr Platz zu haben.' },
     ],
