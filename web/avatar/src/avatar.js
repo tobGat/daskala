@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tobias Gatterbauer
+// This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 // Avatar-Logik – MUSS mit Daskala (renderer/utils/avatar.js) übereinstimmen,
 // damit die Codes 1:1 kompatibel sind: gleiche @dicebear/lorelei-Version (9.4.2),
 // gleiche Paletten (SKIN/HAIR), gleiche Varianten-Logik und derselbe Codec.

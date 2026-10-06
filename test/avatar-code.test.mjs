@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tobias Gatterbauer
+// This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 // Tests für den Avatar-Code-Codec (renderer/utils/avatar.js).
 // Schützt die 1:1-Kompatibilität mit dem Web-Editor avatar.schulapps.at:
 // Ändert sich die lorelei-Reihenfolge, schlägt der „bekannter Code"-Test an.

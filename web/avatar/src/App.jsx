@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tobias Gatterbauer
+// This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
 import React, { useMemo, useState } from 'react'
 import { SKIN, HAIR, MERKMALE, OPTIONAL, variantsOf, randomOptions, svgFromOptions, optionsToCode } from './avatar.js'
 
