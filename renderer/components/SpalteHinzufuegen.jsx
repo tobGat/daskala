@@ -195,8 +195,9 @@ export default function SpalteHinzufuegen({ onClose }) {
                     >
                       {o.label}
                     </button>
-                    {/* Hover-Tooltip mit Info zur Stufen-Anzahl */}
-                    <div className="pointer-events-none absolute z-30 left-1/2 -translate-x-1/2 top-full mt-1.5 w-44 rounded-lg border border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-800 shadow-xl p-2 text-[11px] leading-snug text-ink-600 dark:text-paper-300 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                    {/* Hover-Tooltip ÜBER dem Button (nicht darunter): sonst liegt er über den
+                        darunter erscheinenden Symbol-Eingabefeldern und fängt deren erste Klicks ab. */}
+                    <div className="pointer-events-none absolute z-30 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-44 rounded-lg border border-paper-200 dark:border-ink-700 bg-white dark:bg-ink-800 shadow-xl p-2 text-[11px] leading-snug text-ink-600 dark:text-paper-300 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                       {o.info}
                     </div>
                   </div>
