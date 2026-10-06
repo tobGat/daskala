@@ -119,9 +119,9 @@ function getKlasseFarbe(klasseId) {
   return KLASSE_FARBEN[klasseId % KLASSE_FARBEN.length]
 }
 
-function SupplierInhalt({ supplier }) {
+function SupplierInhalt({ supplier, status }) {
   return (
-    <div className="h-full rounded overflow-hidden border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 flex">
+    <div className={`h-full rounded overflow-hidden border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 flex transition-opacity duration-150 ease-out ${status === 'gedimmt' ? 'opacity-40' : ''}`}>
       <div className="w-1 flex-shrink-0 bg-orange-400 dark:bg-orange-600" />
       <div className="flex-1 px-1.5 py-1 min-w-0">
         <div className="font-semibold text-xs truncate leading-tight text-orange-900 dark:text-orange-100">
@@ -149,18 +149,17 @@ function intervallLabel(iv) {
   return iv === 2 ? '14-tg.' : `/${iv} Wo.`
 }
 
-function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert, hervor }) {
+function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert, status }) {
   const f = getKlasseFarbe(eintrag.klasse_id)
-  // Hover-Hervorhebung: 'stark' (überfahrene Stunde) = deutlich größer + Ring/Schatten;
-  // 'schwach' (gleiches Fach in der Woche) = dezenter Ring + leicht größer.
-  // z-Index liegt auf dem <td> (Stacking-Context der ganzen Zelle), damit die
-  // vergrößerte Stunde zuverlässig vor überschneidenden Nachbarzellen bleibt.
-  const hervorKlasse = hervor === 'stark'
-    ? 'relative scale-[1.14] shadow-xl ring-2 ring-coral-500 dark:ring-coral-400 brightness-105'
-    : hervor === 'schwach'
-      ? 'relative scale-[1.04] ring-2 ring-coral-300/80 dark:ring-coral-500/50'
+  // Hover-Fokus: die überfahrene Stunde ('aktiv') und weitere Stunden desselben Fachs
+  // dieser Woche ('fach') bleiben voll sichtbar; alle übrigen Stunden werden heller
+  // ('gedimmt'). Die gehoverte Stunde bekommt zusätzlich einen dezenten Ring.
+  const statusKlasse = status === 'aktiv'
+    ? 'ring-2 ring-coral-400 dark:ring-coral-400'
+    : status === 'gedimmt'
+      ? 'opacity-40'
       : ''
-  const hervorBasis = 'transition-transform duration-150 ease-out origin-center'
+  const statusBasis = 'transition-opacity duration-150 ease-out'
   const iv = eintrag.wochen_intervall || 1
   const ivBadge = iv > 1 ? (
     <span
@@ -172,7 +171,7 @@ function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert, he
   ) : null
   if (entfall) {
     return (
-      <div className={`h-full rounded overflow-hidden border border-paper-300 dark:border-ink-600 bg-paper-100 dark:bg-ink-800/60 flex relative ${hervorBasis} ${hervorKlasse}`}>
+      <div className={`h-full rounded overflow-hidden border border-paper-300 dark:border-ink-600 bg-paper-100 dark:bg-ink-800/60 flex relative ${statusBasis} ${statusKlasse}`}>
         <div className="w-1 flex-shrink-0 bg-red-400 dark:bg-red-600" />
         <div className="flex-1 px-1.5 py-1 min-w-0 opacity-50">
           <div className="font-semibold text-xs truncate leading-tight line-through text-ink-500 dark:text-ink-400 decoration-red-500 dark:decoration-red-400 decoration-2">{eintrag.fach_name}</div>
@@ -183,7 +182,7 @@ function SlotInhalt({ eintrag, planungTitel, planungNotiz, entfall, pausiert, he
     )
   }
   return (
-    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex ${hervorBasis} ${hervorKlasse} ${pausiert ? 'opacity-40 border-dashed' : ''}`}>
+    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex ${statusBasis} ${statusKlasse} ${pausiert ? 'opacity-40 border-dashed' : ''}`}>
       <div className={`w-1 flex-shrink-0 ${f.accent}`} />
       <div className={`flex-1 px-1.5 py-1 min-w-0 ${f.text}`}>
         <div className="font-semibold text-xs truncate leading-tight">{eintrag.fach_name}</div>
@@ -220,7 +219,7 @@ function freiFarbe(key) {
   return FREI_FARBEN[key] || FREI_FARBEN[FREI_FARB_DEFAULT]
 }
 
-function SlotInhaltFrei({ frei, pausiert }) {
+function SlotInhaltFrei({ frei, pausiert, status }) {
   const f = freiFarbe(frei.farbe)
   const iv = frei.wochen_intervall || 1
   const ivBadge = iv > 1 ? (
@@ -232,7 +231,7 @@ function SlotInhaltFrei({ frei, pausiert }) {
     </span>
   ) : null
   return (
-    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex ${pausiert ? 'opacity-40 border-dashed' : ''}`}>
+    <div className={`h-full rounded overflow-hidden border ${f.bg} ${f.border} flex transition-opacity duration-150 ease-out ${pausiert || status === 'gedimmt' ? 'opacity-40' : ''} ${pausiert ? 'border-dashed' : ''}`}>
       <div className={`w-1 flex-shrink-0 ${f.accent}`} />
       <div className={`flex-1 px-1.5 py-1 min-w-0 ${f.text}`}>
         <div className="font-semibold text-xs truncate leading-tight" title={frei.titel}>{frei.titel}</div>
@@ -813,17 +812,19 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                       dragOverSlot?.wochentag === wochentag && dragOverSlot?.stundeId === stunde.id
                     const istGezogen = bearbeitungsModus && !!eintrag && dragEintragId === eintrag.id
 
-                    // Hover-Hervorhebung: überfahrene Stunde stark, weitere Stunden desselben Fachs schwach.
+                    // Hover-Fokus: überfahrene Stunde ('aktiv') und weitere Stunden desselben Fachs
+                    // dieser Woche ('fach') bleiben voll sichtbar; alle übrigen Stunden werden heller ('gedimmt').
                     const slotKey = `${wochentag}-${stunde.id}`
                     const istHoverSlot = hoverFach && hoverFach.key === slotKey
                     const istFachHover = hoverFach && eintrag && eintrag.fach_id === hoverFach.fachId && !istHoverSlot
-                    const hervor = istHoverSlot ? 'stark' : istFachHover ? 'schwach' : null
+                    const slotStatus = !hoverFach
+                      ? null
+                      : istHoverSlot ? 'aktiv' : istFachHover ? 'fach' : 'gedimmt'
 
                     return (
                       <td
                         key={tagIdx}
                         className={`relative px-1 py-1 h-14 align-top border border-paper-200 dark:border-ink-800 transition-colors
-                          ${hervor === 'stark' ? 'z-30' : hervor === 'schwach' ? 'z-20' : ''}
                           ${istFerien ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''}
                           ${istAktuell && !istFerien ? 'ring-2 ring-coral-400 ring-inset' : ''}
                           ${istDragOver ? 'ring-2 ring-coral-500 ring-inset bg-coral-50/60 dark:bg-coral-900/40' : ''}
@@ -857,7 +858,7 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                             <span className="text-[10px] font-medium text-rose-400 dark:text-rose-500 text-center leading-tight px-1">{ferienInfo.name}</span>
                           </div>
                         ) : supplier ? (
-                          <SupplierInhalt supplier={supplier} />
+                          <SupplierInhalt supplier={supplier} status={slotStatus} />
                         ) : eintrag ? (
                           <SlotInhalt
                             eintrag={eintrag}
@@ -865,10 +866,10 @@ export default function Stundenplan({ switchSlot, onTagClick }) {
                             planungNotiz={planung?.inhalt ? stripMd(planung.inhalt).split('\n').filter(Boolean)[0] : null}
                             entfall={entfallen}
                             pausiert={pausiert}
-                            hervor={hervor}
+                            status={slotStatus}
                           />
                         ) : frei ? (
-                          <SlotInhaltFrei frei={frei} pausiert={freiPausiert} />
+                          <SlotInhaltFrei frei={frei} pausiert={freiPausiert} status={slotStatus} />
                         ) : (
                           bearbeitungsModus && (
                             <div className="h-full rounded border border-dashed border-paper-200 dark:border-ink-700 flex items-center justify-center">
