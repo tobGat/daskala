@@ -124,9 +124,13 @@ export default {
           '100%': { opacity: 1 },
         },
         popIn: {
+          // WICHTIG: bei 100 % 'transform: none' (nicht 'scale(1)'). Mit fill-mode 'both'
+          // behält das Element sonst dauerhaft einen Transform → es bleibt ein kompositierter
+          // Layer. Über einem backdrop-filter (Modal-Backdrop) verschätzt sich Chromium/Electron
+          // dann beim Hit-Testing und Eingabefelder reagieren nicht. 'none' entfernt den Layer.
           '0%':   { opacity: 0, transform: 'scale(0.92)' },
           '60%':  { opacity: 1, transform: 'scale(1.02)' },
-          '100%': { transform: 'scale(1)' },
+          '100%': { opacity: 1, transform: 'none' },
         },
         slideUp: {
           '0%':   { opacity: 0, transform: 'translateY(20px)' },
