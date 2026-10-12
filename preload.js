@@ -314,6 +314,10 @@ const api = {
     pruefen:      () => invoke('update:pruefen'),
   },
 
+  fenster: {
+    fokus: () => invoke('fenster:fokus'),
+  },
+
   dialog: {
     openFile: (filters) => invoke('dialog:openFile', filters),
     saveFile: (filters, defaultName) => invoke('dialog:saveFile', filters, defaultName),

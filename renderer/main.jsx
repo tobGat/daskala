@@ -12,7 +12,23 @@ import Toaster from './components/Toaster'
 // Mobil (Capacitor-Spike): kein preload/IPC → wir bauen window.api im WebView auf
 // (SQLite via @capacitor-community/sqlite + Kern-Domänen). Der dynamische Import
 // hält den Capacitor-Code aus dem Desktop-Ladepfad heraus.
+// Electron (Windows): Nach nativen alert()/confirm() kehrt der Tastaturfokus nicht in die Seite
+// zurück – Eingabefelder (z. B. im Planungsmodal nach „Entfall") bleiben unklickbar, bis das
+// Fenster einmal den Fokus wechselt. Daher nach jedem solchen Dialog den Fokus zurückholen.
+function dialogeMitFokus() {
+  if (!window.api?.fenster?.fokus) return
+  for (const name of ['alert', 'confirm']) {
+    const original = window[name].bind(window)
+    window[name] = (...args) => {
+      const ergebnis = original(...args)
+      window.api.fenster.fokus()
+      return ergebnis
+    }
+  }
+}
+
 async function boot() {
+  dialogeMitFokus()
   if (!window.api) {
     const { bootstrapMobile } = await import('../platform/capacitor/bootstrap')
     await bootstrapMobile()

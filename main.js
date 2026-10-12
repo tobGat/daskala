@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tobias Gatterbauer
 // This file is part of Daskala. See the LICENSE file for the full GPL-3.0 text.
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu, shell, clipboard } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
@@ -57,7 +57,7 @@ const { neueUuid } = require('./core/db/uuid')
 const { createFsPort } = require('./platform/electron/ports/fs')
 const { createPdfPort } = require('./platform/electron/ports/pdf')
 const { createHttpPort } = require('./platform/electron/ports/http')
-const { createDialogPort } = require('./platform/electron/ports/dialog')
+const { createDialogPort, nativDialog } = require('./platform/electron/ports/dialog')
 const { createShellPort } = require('./platform/electron/ports/shell')
 const { createDbAdapter } = require('./platform/electron/db-better-sqlite3')
 const fsPort = createFsPort()
@@ -285,7 +285,7 @@ function doBackupCreate() {
 }
 
 async function doSaveAs(win) {
-  const result = await dialog.showSaveDialog(win, {
+  const result = await nativDialog.showSaveDialog(win, {
     defaultPath: 'daskala.sqlite',
     filters: [{ name: 'Daskala Datenbank', extensions: ['sqlite'] }],
   })
@@ -315,7 +315,7 @@ function neustartNachDatenwechsel() {
 }
 
 async function doOpen(win) {
-  const result = await dialog.showOpenDialog(win, {
+  const result = await nativDialog.showOpenDialog(win, {
     properties: ['openFile'],
     filters: [{ name: 'Daskala Datenbank', extensions: ['sqlite'] }],
   })
@@ -712,7 +712,7 @@ function registerIPC() {
   ipcMain.handle('faecher:getRoster', (_, fachId) => rosterFuerFach(fachId))
 
   ipcMain.handle('schueler:exportProfilPDF', async (_, { profil, klassenname }) => {
-    const { filePath, canceled } = await dialog.showSaveDialog({
+    const { filePath, canceled } = await nativDialog.showSaveDialog({
       defaultPath: `Leistungsprofil_${dateiTeil(profil.schueler.nachname)}_${dateiTeil(profil.schueler.vorname)}_${exportDatum()}.pdf`,
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     })
@@ -896,7 +896,7 @@ function registerIPC() {
   // Main-Prozess; die bewusste OS-Auswahl gilt als Autorisierung (kein Allowlist-Zwang).
   ipcMain.handle('backup:wiederherstellenAusDatei', async () => {
     const win = BrowserWindow.getAllWindows()[0]
-    const res = await dialog.showOpenDialog(win, {
+    const res = await nativDialog.showOpenDialog(win, {
       title: 'Sicherung auswählen',
       properties: ['openFile'],
       filters: [
@@ -906,7 +906,7 @@ function registerIPC() {
     })
     if (res.canceled || !res.filePaths?.[0]) return { canceled: true }
     const pfad = res.filePaths[0]
-    const { response } = await dialog.showMessageBox(win, {
+    const { response } = await nativDialog.showMessageBox(win, {
       type: 'warning',
       buttons: ['Abbrechen', 'Wiederherstellen'],
       defaultId: 1,
@@ -937,7 +937,7 @@ function registerIPC() {
   ipcMain.handle('backup:jetzt', async () => {
     let ordner = bkGet('backup_ordner')
     if (!ordner) {
-      const r = await dialog.showOpenDialog({
+      const r = await nativDialog.showOpenDialog({
         properties: ['openDirectory', 'createDirectory'],
         title: 'Ordner für die Sicherung wählen',
       })
@@ -951,7 +951,7 @@ function registerIPC() {
 
   // Ordner für automatische Sicherungen wählen (und merken).
   ipcMain.handle('backup:waehleOrdner', async () => {
-    const r = await dialog.showOpenDialog({
+    const r = await nativDialog.showOpenDialog({
       properties: ['openDirectory', 'createDirectory'],
       title: 'Ordner für automatische Sicherungen',
     })
@@ -1049,20 +1049,31 @@ function registerIPC() {
   ipcMain.handle('undo:state', () => undo.state())
 
 
+  // Nach nativen confirm()/alert() im Renderer gibt Electron (Windows) den Tastaturfokus nicht
+  // an die Seite zurück – Eingabefelder bleiben unklickbar, bis das Fenster den Fokus wechselt.
+  // blur()+focus() erzwingt diesen Wechsel (Aufruf: Wrapper in renderer/main.jsx).
+  ipcMain.handle('fenster:fokus', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || win.isDestroyed()) return
+    win.blur()
+    win.focus()
+    win.webContents.focus()
+  })
+
   // Dialog
   ipcMain.handle('dialog:openFile', async (_, filters) => {
-    const result = await dialog.showOpenDialog({ properties: ['openFile'], filters })
+    const result = await nativDialog.showOpenDialog({ properties: ['openFile'], filters })
     return result.canceled ? null : result.filePaths[0]
   })
 
   ipcMain.handle('dialog:saveFile', async (_, filters, defaultName) => {
-    const result = await dialog.showSaveDialog({ filters, defaultPath: defaultName })
+    const result = await nativDialog.showSaveDialog({ filters, defaultPath: defaultName })
     return result.canceled ? null : result.filePath
   })
 
   // Generischer Text-Datei-Export (Speicherort per Dialog wählen, Inhalt kommt aus dem Renderer).
   ipcMain.handle('datei:speichereText', async (_, content, defaultName, filters) => {
-    const result = await dialog.showSaveDialog({ defaultPath: defaultName, filters })
+    const result = await nativDialog.showSaveDialog({ defaultPath: defaultName, filters })
     if (result.canceled) return false
     try {
       fs.writeFileSync(result.filePath, String(content ?? ''), 'utf-8')

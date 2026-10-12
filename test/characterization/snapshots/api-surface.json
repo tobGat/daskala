@@ -50,6 +50,7 @@
   "faecher.setKompetenzraster",
   "faecher.setSchueler",
   "faecher.updateGewichtung",
+  "fenster.fokus",
   "gewichtungGlobal.getAll",
   "gewichtungGlobal.update",
   "gewichtungSchueler.get",

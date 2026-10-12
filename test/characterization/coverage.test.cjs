@@ -42,7 +42,7 @@ const EXCLUDED = {
   'dialog:saveFile': 'dialog', 'datei:speichereText': 'dialog', 'import:schuelerFromFile': 'fs',
   'jahresplanung:importVonDatei': 'fs',
   // System / Netzwerk
-  'shell:open': 'system', 'app:clipboard': 'system', 'app:reset': 'system', 'app:version': 'system',
+  'shell:open': 'system', 'fenster:fokus': 'system', 'app:clipboard': 'system', 'app:reset': 'system', 'app:version': 'system',
   'update:installieren': 'system', 'wetter:getWoche': 'netzwerk', 'wetter:sucheOrt': 'netzwerk',
   'kalender:sync': 'netzwerk',
   // Spezialfall: umfangreicher Schuljahreswechsel – eigener Test geplant (Phase 1)
