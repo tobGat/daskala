@@ -8,6 +8,13 @@ import React from 'react'
 // nächsten Release oben einen neuen Eintrag ergänzen.
 export const CHANGELOG = [
   {
+    version: '1.13.1',
+    datum: '2026-10-12',
+    punkte: [
+      'Eingabefelder wieder zuverlässig beschreibbar: In Fenstern wie der Stundenplanung ließen sich Felder manchmal nicht anklicken oder beschreiben – z. B. nach der Rückfrage beim Entfall einer Stunde oder nach „Datei hinzufügen". Das ist behoben; die Felder reagieren jetzt sofort.',
+    ],
+  },
+  {
     version: '1.13.0',
     datum: '2026-10-06',
     punkte: [
